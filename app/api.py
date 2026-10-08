@@ -51,6 +51,8 @@ from app.api_decision_draft_preview import router as decision_draft_preview_rout
 from app.api_decision_ledger import router as decision_ledger_router
 from app.api_decision_sessions import router as decision_sessions_router
 from app.api_etf_constituents import router as etf_constituents_router
+from app.api_holdings import router as holdings_router
+from app.api_holdings_history import router as holdings_history_router
 from app.api_holdings_market_evidence import router as holdings_market_evidence_router
 from app.api_holdings_oci_apply import router as holdings_oci_apply_router
 from app.api_market_topn import router as market_topn_router
@@ -120,6 +122,8 @@ app.include_router(etf_constituents_router)
 # POC2 Holdings × Market Discovery Evidence 1차 (2026-06-03) —
 # read-only GET /holdings/market-evidence/latest. 외부 fetch X, 신규 저장 X.
 app.include_router(holdings_market_evidence_router)
+app.include_router(holdings_router)  # POC5-05 Q-D GET/PUT /holdings(api.py 에서 이전)
+app.include_router(holdings_history_router)  # POC5-05 GET/PUT /holdings/trade-history
 # POC2 NAV / Discount Display FIX (2026-06-08) —
 # read-only GET /market/nav-discount/latest. 저장된 etf_nav_daily 만 read.
 app.include_router(nav_discount_router)
@@ -217,73 +221,7 @@ def post_generate(req: GenerateDraftRequest) -> RunResponse:
     return RunResponse.from_run(run)
 
 
-# ─── POC2 Step 1: holdings ─────────────────────────────────────────────
-
-
-class HoldingItem(BaseModel):
-    ticker: str
-    quantity: float
-    avg_buy_price: float
-    name: Optional[str] = None
-    # POC2 Step 2C: 표시/그룹용 라벨. 누락/빈 값은 백엔드에서 "일반" 으로 정규화.
-    account_group: Optional[str] = None
-
-
-class HoldingsPayload(BaseModel):
-    holdings: list[HoldingItem]
-
-
-@app.get("/holdings", response_model=HoldingsPayload)
-def get_holdings() -> HoldingsPayload:
-    """저장된 holdings 조회. 파일 없으면 빈 리스트 반환."""
-    try:
-        loaded = holdings_module.load()
-    except HoldingsValidationError as e:
-        # 저장된 파일이 손상된 경우. 사용자에게 명시적으로 알림.
-        raise HTTPException(status_code=500, detail=f"holdings 저장 파일 손상: {e}")
-    return HoldingsPayload(
-        holdings=[
-            HoldingItem(
-                ticker=h.ticker,
-                quantity=h.quantity,
-                avg_buy_price=h.avg_buy_price,
-                name=h.name,
-                account_group=h.account_group,
-            )
-            for h in loaded
-        ]
-    )
-
-
-@app.put("/holdings", response_model=HoldingsPayload)
-def put_holdings(payload: HoldingsPayload) -> HoldingsPayload:
-    """holdings 저장. 검증 실패 시 422 (run 생성 안 함).
-
-    POC2 Step 1 E항: 단순 입력 오류로 run_id 를 만들거나 FAILED run 을
-    저장하지 않는다. validation error 는 422 로 즉시 반환.
-
-    POC3-08 (A): 저장 경로는 strict_ticker=True — ticker 가 영숫자 6자가 아니면
-    422 로 차단("111"·"dasdasd" 같은 오타 저장 방지). ETF 실존 여부는 막지 않는다
-    (개별주 허용 — 프론트에서 경고만).
-    """
-    raw = [item.model_dump() for item in payload.holdings]
-    try:
-        validated = holdings_module.validate_holdings(raw, strict_ticker=True)
-    except HoldingsValidationError as e:
-        raise HTTPException(status_code=422, detail=str(e))
-    holdings_module.save(validated)
-    return HoldingsPayload(
-        holdings=[
-            HoldingItem(
-                ticker=h.ticker,
-                quantity=h.quantity,
-                avg_buy_price=h.avg_buy_price,
-                name=h.name,
-                account_group=h.account_group,
-            )
-            for h in validated
-        ]
-    )
+# ─── POC2 Step 1: holdings — GET/PUT /holdings 는 app/api_holdings.py(POC5-05 Q-D) ───
 
 
 class EtfNameLookupResponse(BaseModel):

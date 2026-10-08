@@ -15,18 +15,34 @@ export interface HoldingItem {
   name?: string | null;
   // POC2 Step 2C: 표시/그룹용 라벨. 빈 값/누락은 백엔드에서 "일반" 으로 정규화.
   account_group?: string | null;
+  // POC5-05: 보유 줄 · 보유 기간 ID(PC 전용 · OCI 로는 가지 않는다).
+  position_id?: string | null;
+  cycle_id?: string | null;
 }
 
 export interface HoldingsPayload {
   holdings: HoldingItem[];
+  // POC5-05: 화면이 읽은 문서 revision · 저장 동작별 UUID(응답 유실 재시도용).
+  revision?: number | null;
+  request_id?: string | null;
 }
 
-export function fetchHoldings(): Promise<HoldingsPayload> {
-  return request<HoldingsPayload>("GET", "/holdings");
+// POC5-05: 파일 없음 / 정상 빈 보유(전량매도) / 보유 있음.
+export type HoldingsFileStatus = "NO_FILE" | "EMPTY" | "OK";
+
+export interface HoldingsState {
+  holdings: HoldingItem[];
+  revision: number;
+  status: HoldingsFileStatus;
 }
 
-export function saveHoldings(payload: HoldingsPayload): Promise<HoldingsPayload> {
-  return request<HoldingsPayload>("PUT", "/holdings", payload);
+export function fetchHoldings(): Promise<HoldingsState> {
+  return request<HoldingsState>("GET", "/holdings");
+}
+
+// 입력 정정 모드 저장 — 수량 · 평단을 직접 고친 것은 매매가 아닌 '입력 정정' 으로 기록된다.
+export function saveHoldings(payload: HoldingsPayload): Promise<HoldingsState> {
+  return request<HoldingsState>("PUT", "/holdings", payload);
 }
 
 export function generateDraftFromHoldings(): Promise<Run> {

@@ -42,6 +42,10 @@ export interface HoldingsApplyStatusRecord {
   applied_at: string | null;
   oci_verified: boolean | null;
   message: string | null;
+  // POC5-05: 현재 PC 보유가 마지막 성공 적용과 다른가. null = 확인 안 됨(적용 완료로 보지 않는다).
+  pending_apply?: boolean | null;
+  // POC5-05: 마지막 성공 적용 시각(마지막 시도가 실패여도 남는다).
+  last_applied_at?: string | null;
 }
 
 export async function fetchHoldingsApplyStatus(): Promise<HoldingsApplyStatusRecord> {

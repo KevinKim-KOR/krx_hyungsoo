@@ -22,6 +22,7 @@ import argparse
 import json
 import sqlite3
 import sys
+from dataclasses import asdict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Optional
@@ -31,6 +32,7 @@ _PROJECT_ROOT = _SCRIPT_DIR.parent
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
+from app.holdings import holdings_from_document, is_history_document  # noqa: E402
 from app.runtime_evidence.holdings_selection import (  # noqa: E402
     LOOKBACK_TRADING_DAYS,
     TRADING_DAY_AXIS_TICKER,
@@ -62,6 +64,9 @@ class _CloseQuote:
 
 def _load_holdings(path: Path) -> list[dict[str, Any]]:
     raw = json.loads(path.read_text(encoding="utf-8"))
+    if is_history_document(raw):
+        # POC5-05: 이력 문서는 공용 판정을 거친다(손상 · 이력 불일치면 HoldingsValidationError).
+        return [asdict(h) for h in holdings_from_document(raw)]
     return raw.get("holdings") or raw.get("items") or []
 
 

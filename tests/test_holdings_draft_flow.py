@@ -67,7 +67,8 @@ def test_holdings_persists_across_new_client(client):
 def test_holdings_empty_get_returns_empty(client):
     r = client.get("/holdings")
     assert r.status_code == 200
-    assert r.json() == {"holdings": []}
+    # POC5-05 개정 2: 응답에 revision · status 가 더해졌다(파일 없음 = NO_FILE).
+    assert r.json() == {"holdings": [], "revision": 0, "status": "NO_FILE"}
 
 
 def test_holdings_validation_blocks_run_creation_422(client):

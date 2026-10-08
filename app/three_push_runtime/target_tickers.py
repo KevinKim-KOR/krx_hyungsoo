@@ -7,6 +7,9 @@ Fail-Closed: 파일 없음/파싱 오류/공용 validator 계약 위반은 raise
 - refresh 불필요 push_kind (예: market_briefing).
 - spike_or_falling_alert 이면서 artifact.candidates == [] (validator 통과 ·
   no-signal 정상 시나리오).
+- POC5-05 Q-A — **정상 빈 보유**(파일은 있고 holdings 가 `[]` · 전량매도)의
+  holdings_briefing · 사업군 대표가 없는 holdings_risk_alert. 조립이 완전성 가드
+  앞에서 `skipped/no_holdings` 로 돌린다(`holdings_selection_flow`).
 
 POC3-02C-OPS-02 — `holdings_risk_alert` 만 **보유 ∪ 승인된 사업군 대표**를 본다.
 전체 ETF 장중 조회는 금지다(설계 §2). 사업군 조회 실패는 보유 경로를 막지
@@ -104,9 +107,10 @@ def collect_target_tickers(push_kind: str) -> list[str]:
             raise RuntimeError(
                 f"holdings source missing: {_holdings_mod.HOLDINGS_FILE}"
             )
+        # POC5-05 Q-A — 파일이 있고 holdings 가 [] 면 **정상 빈 보유**(전량매도)다.
+        # 실패로 막지 않는다: 보유 브리핑 = [] · 위험 알림 = 사업군 대표만. 손상 ·
+        # 'holdings' 키 누락은 load() 가 그대로 raise 한다(Fail-Closed 유지).
         hs = _holdings_mod.load()
-        if not hs:
-            raise RuntimeError("holdings source is empty")
         held = [h.ticker for h in hs if isinstance(h.ticker, str)]
         if push_kind == "holdings_risk_alert":
             return union_with_sector_reps(held)

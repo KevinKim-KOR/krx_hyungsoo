@@ -26,4 +26,5 @@ export * from "./decisionDraftPreview";
 export * from "./priceSeries";
 export * from "./ociStartupStatus";
 export * from "./holdingsApply";
+export * from "./holdingsHistory";
 export * from "./decisionLedger";

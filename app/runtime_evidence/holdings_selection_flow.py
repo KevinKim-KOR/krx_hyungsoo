@@ -52,6 +52,34 @@ LAST_SLOT_ID = "CLOSE"
 SLOT_TIME_LABEL = {"OPEN": "09:15", "MIDDAY": "12:30", "CLOSE": "15:40"}
 
 
+# POC5-05 Q-A — 정상 빈 보유(전량매도) skip 사유. 보유 브리핑 · 위험 알림(대표 0) 공용.
+REASON_NO_HOLDINGS = "no_holdings"
+
+
+def should_skip_no_holdings(
+    price_refresh_diag: dict[str, Any], holdings_loader: Callable[[], list[Any]]
+) -> bool:
+    """조회 대상 0 이 **정상 빈 보유** 때문인가 (POC5-05 Q-A).
+
+    셋 다 맞을 때만 True — 이번 실행의 조회 대상이 0 · 보유 파일이 있다 · loader 가
+    `[]` 를 돌려준다. `holdings.load()` 는 파일 없음도 `[]` 라 파일 존재로 구분한다.
+
+    파일 없음 · 손상 · 조회 실패는 False 다 — 정상 빈 보유로 숨기지 않고 기존 경로
+    (완전성 가드 · 조립 실패)가 그대로 실패로 끝낸다. 조회 대상이 있으면 loader 를
+    부르지 않는다 — 비어 있지 않은 보유 · 대표가 있는 위험 알림은 동작이 그대로다.
+    """
+    if price_refresh_diag.get("target_tickers"):
+        return False
+    from app import holdings as _holdings_mod
+
+    if not _holdings_mod.HOLDINGS_FILE.exists():
+        return False
+    try:
+        return len(holdings_loader()) == 0
+    except Exception:  # noqa: BLE001 - 손상 · 조회 실패는 정상 빈 보유가 아니다
+        return False
+
+
 def slot_label_for(slot_id: Optional[str]) -> str:
     return SLOT_TIME_LABEL.get(slot_id or "", "")
 
@@ -415,9 +443,27 @@ def assemble_holdings_push(
     러너가 KS-10 임계를 넘지 않도록 옮겼다. **판정 순서는 그대로다**:
     비거래일 판정이 선정보다 앞선다(휴장일에 정상 종목을 데이터 지연으로 분류하지
     않기 위해). skip **결정**은 여기서 하지 않고 `skip_non_trading_day` 로 돌려
-    러너가 enable flag guard 뒤(§6-c)에서 판단한다.
+    러너가 enable flag guard 뒤(§6-c)에서 판단한다. 정상 빈 보유는 그 앞에서
+    `no_holdings` skip 지시로 끝난다(POC5-05 Q-A).
     """
     out = HoldingsAssembly()
+    # POC5-05 Q-A — 정상 빈 보유(전량매도)면 조회 대상이 0 이라 비거래일 판정 · 완전성
+    # 가드가 성립하지 않는다(대상 0 → `quote_incomplete` → 실패). 그래서 **가드 앞에서**
+    # 선정 0(`no_selection`)과 같은 결의 skip 으로 돌린다 — 빈 상태 저장 · 미발송 ·
+    # 판정은 flag guard 뒤(§6-c). 파일 없음 · 손상은 여기서 걸리지 않는다.
+    if should_skip_no_holdings(price_refresh_diag, holdings_loader):
+        out.outcome = HoldingsSelectionOutcome(
+            skip_reason=REASON_NO_HOLDINGS,
+            save_empty_state=True,
+            diagnostics={
+                "holdings_loaded_count": 0,
+                "holdings_unique_ticker_count": 0,
+                "holdings_selected_count": 0,
+            },
+        )
+        out.diagnostics.update(out.outcome.diagnostics)
+        return out
+
     skip_ntd, ntd_evidence, ntd_reason = check_non_trading_day(
         market_quotes=market_quotes or {},
         today_kst=today_kst,

@@ -67,18 +67,17 @@ def build_holdings_briefing_package() -> dict[str, Any]:
     """PUSH-2 runtime_package 생성 (기존 holdings 흐름 재사용).
 
     holdings 파일이 없으면 RuntimeError — 호출자가 처리.
-    """
-    import json as _json
 
+    POC5-05: 보유 문서 행에 줄 ID(position_id · cycle_id) 등 추가 필드가 생겼으므로
+    Holding(**h) 직접 생성(TypeError) 대신 공용 loader(holdings.load)로 읽는다.
+    """
     from app.draft import _build_holdings_payload
     from app.draft_message import build_message_text
-    from app.holdings import HOLDINGS_FILE, Holding
+    from app.holdings import HOLDINGS_FILE, load
 
     if not HOLDINGS_FILE.exists():
         raise RuntimeError(f"holdings 파일 없음 (PUSH-2 생성 불가): {HOLDINGS_FILE}")
-    raw = _json.loads(HOLDINGS_FILE.read_text(encoding="utf-8"))
-    items = raw if isinstance(raw, list) else raw.get("holdings", [])
-    holdings = [Holding(**h) for h in items]
+    holdings = load()
     if not holdings:
         raise RuntimeError("holdings 항목 0건 — PUSH-2 package 생성 불가")
 

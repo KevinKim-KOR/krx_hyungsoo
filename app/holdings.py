@@ -29,6 +29,7 @@
 from __future__ import annotations
 
 import json
+import math
 import re
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -150,7 +151,7 @@ def _coerce_holding(raw: Any, idx: int, *, strict_ticker: bool = False) -> Holdi
         raise HoldingsValidationError(
             f"holdings[{idx}].quantity 가 숫자가 아닙니다 (received: {raw['quantity']!r})"
         )
-    if quantity <= 0:
+    if not math.isfinite(quantity) or quantity <= 0:  # POC5-05: NaN · Infinity 거절
         raise HoldingsValidationError(
             f"holdings[{idx}].quantity 는 0 보다 커야 합니다 (received: {quantity})"
         )
@@ -162,7 +163,9 @@ def _coerce_holding(raw: Any, idx: int, *, strict_ticker: bool = False) -> Holdi
             f"holdings[{idx}].avg_buy_price 가 숫자가 아닙니다 "
             f"(received: {raw['avg_buy_price']!r})"
         )
-    if avg_buy_price <= 0:
+    if (
+        not math.isfinite(avg_buy_price) or avg_buy_price <= 0
+    ):  # POC5-05: NaN · Infinity 거절
         raise HoldingsValidationError(
             f"holdings[{idx}].avg_buy_price 는 0 보다 커야 합니다 (received: {avg_buy_price})"
         )
@@ -192,7 +195,13 @@ def _coerce_holding(raw: Any, idx: int, *, strict_ticker: bool = False) -> Holdi
     )
 
 
-def validate_holdings(raw_list: Any, *, strict_ticker: bool = False) -> list[Holding]:
+def validate_holdings(
+    raw_list: Any,
+    *,
+    strict_ticker: bool = False,
+    allow_empty: bool = False,
+    unique_triple: bool = True,
+) -> list[Holding]:
     """입력값을 검증하고 Holding 리스트로 변환. 실패 시 HoldingsValidationError.
 
     Step 2C 중복 정책:
@@ -201,10 +210,14 @@ def validate_holdings(raw_list: Any, *, strict_ticker: bool = False) -> list[Hol
 
     strict_ticker (POC3-08 A): 저장 경로에서만 True — ticker 형식(영숫자 6자) 강제.
     기본 False 는 기존 로드/재사용 경로 하위호환.
+
+    POC5-05: allow_empty=True 는 '정상 빈 보유'(전량매도)를 허용한다 — 로더 · 적용
+    payload 경로용. 입력 검증 기본값(빈 목록 거절)은 그대로다. unique_triple=False 는
+    줄 ID 로 계산한 보유(평단이 우연히 같아진 두 줄)를 로더가 거절하지 않게 한다.
     """
     if not isinstance(raw_list, list):
         raise HoldingsValidationError("holdings 페이로드는 리스트여야 합니다.")
-    if len(raw_list) == 0:
+    if len(raw_list) == 0 and not allow_empty:
         raise HoldingsValidationError(
             "holdings 가 비어 있습니다. 1개 이상의 보유 종목이 필요합니다."
         )
@@ -213,7 +226,7 @@ def validate_holdings(raw_list: Any, *, strict_ticker: bool = False) -> list[Hol
     for idx, raw in enumerate(raw_list):
         h = _coerce_holding(raw, idx, strict_ticker=strict_ticker)
         key = (h.ticker, h.account_group, float(h.avg_buy_price))
-        if key in seen:
+        if unique_triple and key in seen:
             raise HoldingsValidationError(
                 f"holdings[{idx}] 중복 — 동일 (ticker, account_group, avg_buy_price): "
                 f"{h.ticker!r}/{h.account_group!r}/{h.avg_buy_price}"
@@ -223,14 +236,139 @@ def validate_holdings(raw_list: Any, *, strict_ticker: bool = False) -> list[Hol
     return holdings
 
 
-def save(holdings: list[Holding]) -> None:
-    """검증된 holdings 를 단일 SSOT 파일로 저장."""
-    HOLDINGS_DIR.mkdir(parents=True, exist_ok=True)
+def serialize_payload(holdings: list[Holding]) -> bytes:
+    """기존 형태 {"holdings": [허용 5필드]} 의 고정 직렬화(POC5-05 OCI 적용 payload).
+
+    Holding 의 필드가 곧 허용 목록(ticker · quantity · avg_buy_price · name ·
+    account_group)이라 개인 이력 · 줄 ID 가 들어갈 자리가 없다.
+    """
     payload = {"holdings": [asdict(h) for h in holdings]}
-    HOLDINGS_FILE.write_text(
-        json.dumps(payload, indent=2, ensure_ascii=False),
-        encoding="utf-8",
+    return json.dumps(payload, indent=2, ensure_ascii=False).encode("utf-8")
+
+
+_PLAIN_ROW_KEYS = frozenset(
+    ("ticker", "quantity", "avg_buy_price", "name", "account_group")
+)
+
+
+def is_history_document(data: Any) -> bool:
+    """POC5-05: 기존 형식(최상위 = holdings 하나 · 행 = 허용 5필드 이하)이 아니면 True.
+
+    표지 키(schema_version · personal_trade_history)만 보지 않는다 — 키를 지운 이력 문서가
+    기존 형식으로 통과해 판정을 건너뛰지 않게, 기존 형식이 아닌 dict 는 모두 이력 문서로 보고
+    전체 판정(_check_history_consistency)을 거치게 한다. OCI payload 는 늘 기존 형식이다.
+    """
+    if not isinstance(data, dict):
+        return False
+    if set(data) != {"holdings"}:
+        return True
+    rows = data.get("holdings")
+    return isinstance(rows, list) and any(
+        isinstance(r, dict) and set(r) - _PLAIN_ROW_KEYS for r in rows
     )
+
+
+_DOC_ROW_KEYS = (
+    "ticker",
+    "quantity",
+    "avg_buy_price",
+    "name",
+    "account_group",
+    "position_id",
+    "cycle_id",
+)
+
+
+def _check_history_consistency(data: dict[str, Any]) -> None:
+    """이력 문서의 holdings 가 이력(정본)으로 다시 계산한 현재 보유와 같은지(POC5-05).
+
+    다르면 손상이다 — 이력에 잔량이 남았는데 holdings 만 빈 배열인 문서를 '정상 빈 보유'
+    로 받아 OCI 보유를 비우지 않게 한다. 이력 자체를 계산할 수 없어도 손상이다.
+    """
+    from app import holdings_book  # 순수 계산 모듈(이력 문서일 때만 · 순환 import 없음)
+
+    hist = data.get("personal_trade_history")
+    if (
+        data.get("schema_version") != 2
+        or isinstance(data.get("revision"), bool)
+        or not isinstance(data.get("revision"), int)
+        or not isinstance(hist, dict)
+        or not isinstance(hist.get("positions"), list)
+        or not isinstance(hist.get("records"), list)
+    ):
+        raise HoldingsValidationError("보유 · 이력 문서 형식이 올바르지 않습니다.")
+    records = hist["records"]
+    if any(isinstance(r, dict) and "virtual" in r for r in records):
+        raise HoldingsValidationError("저장된 기록에 임시 표시가 남아 있습니다(손상).")
+    if any(
+        not isinstance(r, dict) or set(r) - set(_DOC_ROW_KEYS) for r in data["holdings"]
+    ):
+        raise HoldingsValidationError("보유 목록 형식이 올바르지 않습니다(손상).")
+    try:
+        derived = holdings_book.compute(data)["holdings"]
+    except Exception as e:  # noqa: BLE001 — 계산 불가(기록 손상 · 충돌) = 문서 손상
+        raise HoldingsValidationError(f"매매 이력을 계산할 수 없습니다: {e}") from e
+
+    def row(r: Any) -> tuple:
+        if not isinstance(r, dict):
+            return ("<not-a-row>",)
+        out = []
+        for k in _DOC_ROW_KEYS:
+            v = r.get(k)
+            if k in ("quantity", "avg_buy_price") and isinstance(v, (int, float)):
+                v = float(v)
+            out.append(v)
+        return tuple(out)
+
+    stored = data["holdings"]
+    if not isinstance(stored, list) or [row(r) for r in stored] != [
+        row(r) for r in derived
+    ]:
+        raise HoldingsValidationError(
+            "보유 목록이 매매 이력과 맞지 않습니다(손상 · 빈 보유로 처리하지 않음)."
+        )
+
+
+def holdings_from_document(data: Any) -> list[Holding]:
+    """보유 문서(JSON 객체) → 현재 보유(허용 5필드). 손상 · 이력 불일치는 예외.
+
+    load() · PC OCI 적용 payload · 저장 경계가 같은 판정을 쓴다(POC5-05 · 한 곳).
+    정상 빈 보유(전량매도)는 []. 이력 문서의 holdings 는 줄 ID 로 계산한 결과라 평단이
+    우연히 같아진 두 줄을 삼중조합 중복으로 거절하지 않는다.
+    """
+    if not isinstance(data, dict):
+        raise HoldingsValidationError("보유 파일의 최상위가 객체가 아닙니다.")
+    raw_list = data.get("holdings")
+    if raw_list is None:
+        raise HoldingsValidationError("보유 파일의 'holdings' 키가 누락됐습니다.")
+    if not isinstance(raw_list, list):
+        raise HoldingsValidationError("보유 파일의 'holdings' 가 목록이 아닙니다.")
+    history = is_history_document(data)
+    if history:
+        _check_history_consistency(data)
+    return validate_holdings(raw_list, allow_empty=True, unique_triple=not history)
+
+
+def save(holdings: list[Holding]) -> None:
+    """검증된 holdings 를 기존 형태로 저장(구판 writer · 앱 경로는 holdings_store).
+
+    POC5-05: 현재 파일이 이력 포함 문서면 저장하지 않는다 — 이 함수는 이력 · 줄 ID 를
+    버리므로, 그 문서는 저장 경계(holdings_store)로만 바꾼다.
+    """
+    if HOLDINGS_FILE.exists():
+        try:
+            current = json.loads(HOLDINGS_FILE.read_text(encoding="utf-8"))
+        except ValueError as e:
+            # 손상 파일도 덮어쓰지 않는다(이력 문서였는지 알 수 없음 · 빈 보유로 바꾸지 않음).
+            raise HoldingsValidationError(
+                f"{HOLDINGS_FILE} 를 읽을 수 없어 덮어쓰지 않습니다."
+            ) from e
+        if is_history_document(current):
+            raise HoldingsValidationError(
+                "매매 이력이 든 보유 파일은 이 함수로 덮어쓰지 않습니다(종목 관리 화면 사용)."
+            )
+    HOLDINGS_DIR.mkdir(parents=True, exist_ok=True)
+    HOLDINGS_FILE.write_bytes(serialize_payload(holdings))
 
 
 def load() -> list[Holding]:
@@ -246,9 +384,6 @@ def load() -> list[Holding]:
     if not HOLDINGS_FILE.exists():
         return []
     data = json.loads(HOLDINGS_FILE.read_text(encoding="utf-8"))
-    raw_list = data.get("holdings")
-    if raw_list is None:
-        raise HoldingsValidationError(
-            f"{HOLDINGS_FILE} 의 'holdings' 키가 누락됐습니다."
-        )
-    return validate_holdings(raw_list)
+    # POC5-05: 정상 빈 보유(전량매도)는 [] — 파일 없음과의 구분은 호출자가
+    # HOLDINGS_FILE.exists() 로 한다. 이력 문서는 holdings 가 이력과 맞아야 한다.
+    return holdings_from_document(data)

@@ -37,6 +37,9 @@ def test_save_then_read_roundtrip(tmp_path, monkeypatch):
     assert rec["oci_verified"] is True
     assert "message" in rec
     assert "recorded_at" in rec
+    # POC5-05: 성공 기록이면 마지막 성공 적용 hash · 시각도 이번 값이다.
+    assert rec["last_applied_sha256"] == "abc123"
+    assert rec["last_applied_at"] == "2026-08-06T06:40:00+00:00"
     # secret/remote path 류는 저장하지 않는다.
     assert "ssh" not in " ".join(rec.keys()).lower()
 
@@ -67,11 +70,16 @@ def test_apply_records_status_on_real_attempt(tmp_path, monkeypatch):
     import hashlib
     import json
 
+    from app.holdings import serialize_payload, validate_holdings
+
     valid = {
         "holdings": [{"ticker": "069500", "quantity": 1.0, "avg_buy_price": 100.0}]
     }
     content = json.dumps(valid, ensure_ascii=False).encode("utf-8")
-    sha = hashlib.sha256(content).hexdigest()
+    # POC5-05: 전송 · hash 는 파일 바이트가 아니라 허용 5필드 payload 기준.
+    sha = hashlib.sha256(
+        serialize_payload(validate_holdings(valid["holdings"]))
+    ).hexdigest()
 
     hf = tmp_path / "holdings_latest.json"
     hf.write_bytes(content)
@@ -96,3 +104,6 @@ def test_apply_records_status_on_real_attempt(tmp_path, monkeypatch):
     assert rec is not None
     assert rec["status"] == mod.STATUS_OCI_APPLIED
     assert rec["applied_at"] is not None
+    assert rec["content_sha256"] == sha
+    assert rec["last_applied_sha256"] == sha
+    assert rec["last_applied_at"] == rec["applied_at"]

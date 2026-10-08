@@ -52,13 +52,21 @@ def post_apply_holdings_to_oci() -> HoldingsApplyResponse:
 
 
 class HoldingsApplyStatusResponse(BaseModel):
-    """마지막 OCI 적용 상태(지속 기록). 한 번도 적용 안 했으면 has_record=false."""
+    """마지막 OCI 적용 상태(지속 기록). 한 번도 적용 안 했으면 has_record=false.
+
+    POC5-05: pending_apply = 현재 PC 보유로 만든 적용 payload 가 마지막 **성공** 적용과
+    다른가. null = 성공 기록 없음 · PC 문서를 읽을 수 없음('확인 안 됨' · 적용 완료 아님).
+    hash 값 자체 · 원격 경로 · secret 은 담지 않는다.
+    """
 
     has_record: bool
     status: str | None = None
     applied_at: str | None = None
     oci_verified: bool | None = None
     message: str | None = None
+    # POC5-05: 마지막 성공 적용 시각(마지막 시도가 실패여도 남는다).
+    last_applied_at: str | None = None
+    pending_apply: bool | None = None
 
 
 @router.get("/apply/status", response_model=HoldingsApplyStatusResponse)
@@ -66,6 +74,7 @@ def get_holdings_apply_status() -> HoldingsApplyStatusResponse:
     """마지막 OCI 적용 시각·상태를 반환(요구 4). 화면 재진입해도 남는다.
 
     PC 로컬 status 파일을 읽는다. 실제 재적용은 하지 않는다(POST /apply 만 write).
+    POC5-05: 미적용 판정(pending_apply)을 위해 PC 보유 문서를 읽기만 한다(쓰기 0).
     """
     rec = holdings_oci_apply.read_apply_status()
     if rec is None:
@@ -76,4 +85,6 @@ def get_holdings_apply_status() -> HoldingsApplyStatusResponse:
         applied_at=rec.get("applied_at"),
         oci_verified=rec.get("oci_verified"),
         message=rec.get("message"),
+        pending_apply=holdings_oci_apply.pending_apply(rec),
+        last_applied_at=holdings_oci_apply.last_applied_at(rec),
     )

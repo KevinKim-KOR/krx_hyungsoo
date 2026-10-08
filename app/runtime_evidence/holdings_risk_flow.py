@@ -35,9 +35,11 @@ from app.runtime_evidence.holdings_risk_state import (
     merge_worst,
 )
 from app.runtime_evidence.holdings_selection_flow import (
+    REASON_NO_HOLDINGS,
     check_incomplete_without_today,
     check_non_trading_day,
     format_quote_asof,
+    should_skip_no_holdings,
 )
 from app.runtime_evidence.holdings_selection_source import (
     average_buy_prices,
@@ -282,9 +284,28 @@ def assemble_holdings_risk_push(
 
     러너가 KS-10 임계를 넘지 않도록 옮겼다. **판정 순서는 그대로다**:
     비거래일·완전성이 선정보다 앞선다. skip **결정**은 여기서 하지 않고
-    러너가 flag guard 뒤(§6-c)에서 판단한다.
+    러너가 flag guard 뒤(§6-c)에서 판단한다. 정상 빈 보유 + 대표 0 은 그 앞에서
+    `no_holdings` 로 끝난다(POC5-05 Q-A).
     """
     out = RiskAssembly()
+    # POC5-05 Q-A — 정상 빈 보유(전량매도): 사업군 대표가 있으면 조회 대상이 대표라
+    # 아래 기존 경로(가드 · 선정 · 장중 조립)를 그대로 탄다(보유 행 0). 대표도 없으면
+    # 조회 대상이 0 이라 가드가 성립하지 않는다 → **가드 앞에서** `no_holdings` skip
+    # 지시. 판정은 러너 §6-c(`skip_reason` · 본문 없음). 파일 없음 · 손상은 여기서
+    # 걸리지 않는다.
+    if should_skip_no_holdings(price_refresh_diag, holdings_loader):
+        out.outcome = HoldingsRiskOutcome(
+            today_kst=today_kst,
+            skip_reason=REASON_NO_HOLDINGS,
+            diagnostics={
+                "risk_holdings_loaded_count": 0,
+                "risk_unique_ticker_count": 0,
+                "risk_selected_count": 0,
+            },
+        )
+        out.diagnostics.update(out.outcome.diagnostics)
+        return out
+
     skip_ntd, ntd_evidence, ntd_reason, blocked = check_risk_preconditions(
         market_quotes=market_quotes or {},
         price_refresh_diag=price_refresh_diag,

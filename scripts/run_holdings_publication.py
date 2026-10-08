@@ -16,6 +16,12 @@
 지시문 §9 원문 비노출:
 - 종목명 · ticker · 수량 · 평단 · account_group · JSON 원문 stdout 미출력.
 - SHA-256, size, count, mode, owner 등 정합성 근거만 출력.
+
+POC5-05 (설계 개정 2 §11-3 · PLAN §2-5): 이 CLI 는 파일 원문 바이트를 그대로 게시한다.
+PC 보유 문서가 매매 이력 · 줄 ID 를 담게 됐으므로 prepare · verify · activate 모두
+최상위에 'holdings' 외 키가 있거나 행에 허용 5필드(ticker · quantity · avg_buy_price ·
+name · account_group) 외 키가 있는 파일을 거절한다(종목 관리의 적용 버튼 사용).
+정상 5필드 파일은 기존 검증 경로 그대로다.
 """
 
 from __future__ import annotations
@@ -41,6 +47,18 @@ from app.holdings import (  # noqa: E402
     validate_holdings,
 )
 
+# POC5-05: 원문 게시를 허용하는 최상위 키 · 행 키(기존 5필드 형식).
+_ALLOWED_TOP_KEYS = frozenset({"holdings"})
+_ALLOWED_ROW_KEYS = frozenset(
+    {"ticker", "quantity", "avg_buy_price", "name", "account_group"}
+)
+# 키 이름 · 값은 출력하지 않는다(고정 문구만 · §9 원문 비노출). Windows 콘솔(cp949)에서
+# 출력이 깨지지 않도록 cp949 로 인코딩되는 문자만 쓴다(긴 대시 대신 '-').
+_NOT_PUBLISHABLE_REASON = (
+    "not_publishable_history_or_row_id:매매 이력 · 줄 ID 가 든 파일은 게시하지 않음"
+    " - 종목 관리의 적용 버튼 사용"
+)
+
 # ── 유틸 ─────────────────────────────────────────────────────────────────────
 
 
@@ -53,12 +71,42 @@ def _hash_size(path: Path) -> tuple[str, int]:
     return hashlib.sha256(b).hexdigest(), len(b)
 
 
+def _has_non_publishable_keys(data: dict) -> bool:
+    """최상위에 holdings 외 키가 있거나, 행(dict)에 허용 5필드 외 키가 있으면 True."""
+    if set(data) - _ALLOWED_TOP_KEYS:
+        return True
+    rows = data.get("holdings")
+    if not isinstance(rows, list):
+        return False  # 형식 오류는 기존 검증 경로가 판정한다.
+    return any(isinstance(r, dict) and set(r) - _ALLOWED_ROW_KEYS for r in rows)
+
+
+def _active_refusal(path: Path) -> Optional[str]:
+    """active 를 교체하면 안 되는 사유(POC5-05). 없으면 None(기존 경로).
+
+    - 매매 이력 · 줄 ID 가 든 문서(PC 정본) → 5필드 파일로 덮어쓰지 않는다.
+    - 있는데 읽을 수 없는 파일(손상 · 잘린 이력 문서일 수 있음) → 덮어쓰지 않는다.
+    OCI 보유 복구는 종목 관리의 적용 버튼으로 한다.
+    """
+    if not path.exists():
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return "active_unreadable:읽을 수 없는 보유 파일은 교체하지 않음 - 종목 관리의 적용 버튼 사용"
+    if not isinstance(data, dict) or _has_non_publishable_keys(data):
+        return "active_is_history_document:매매 이력이 든 보유 파일은 교체하지 않음 - 종목 관리의 적용 버튼 사용"
+    return None
+
+
 def _parse_and_validate(path: Path) -> tuple[bool, int, Optional[str]]:
     """returns (valid, holding_count, error_reason).
 
     지시문 §9 · AC-17 준수 (FIX r1): HoldingsValidationError 원문은 종목 식별
     정보 (ticker / account_group / avg_buy_price) 를 포함할 수 있으므로 sanitised
     reason code 로만 반환. 상세 원인은 상위 로그에도 전달하지 않는다.
+
+    POC5-05: 매매 이력 · 줄 ID 가 든 문서(최상위 추가 키 · 행 추가 필드)는 거절한다.
     """
     try:
         text = path.read_text(encoding="utf-8")
@@ -70,6 +118,8 @@ def _parse_and_validate(path: Path) -> tuple[bool, int, Optional[str]]:
         return False, 0, f"json_parse_error:{type(e).__name__}"
     if not isinstance(data, dict):
         return False, 0, "top_level_not_dict"
+    if _has_non_publishable_keys(data):
+        return False, 0, _NOT_PUBLISHABLE_REASON
     raw = data.get("holdings")
     if raw is None:
         return False, 0, "missing_holdings_key"
@@ -266,6 +316,12 @@ def cmd_activate(args: argparse.Namespace) -> int:
         out["error_reason"] = "temp_and_active_directory_mismatch"
         _emit(out)
         return 2
+    # POC5-05: active 가 이력 문서(PC 정본)이거나 읽을 수 없으면 교체하지 않는다.
+    refusal = _active_refusal(active)
+    if refusal is not None:
+        out["error_reason"] = refusal
+        _emit(out)
+        return 3
 
     # TOCTOU 방지: activate 직전 재검증.
     valid, hc, err = _parse_and_validate(tmp)

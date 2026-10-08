@@ -75,7 +75,15 @@ def name_map() -> dict[str, str]:
         pass
     try:
         data = json.loads(Path(HOLDINGS_FILE).read_text(encoding="utf-8"))
-        for h in data.get("holdings") or []:
+        # POC5-05: 이력 문서는 공용 판정을 거친다(손상 · 이력 불일치 문서의 이름은 쓰지 않음).
+        if holdings.is_history_document(data):
+            rows = [
+                {"ticker": h.ticker, "name": h.name}
+                for h in holdings.holdings_from_document(data)
+            ]
+        else:
+            rows = data.get("holdings") or []
+        for h in rows:
             if isinstance(h, dict) and h.get("ticker") and h.get("name"):
                 out[str(h["ticker"])] = str(h["name"])
     except (OSError, ValueError, AttributeError, TypeError):

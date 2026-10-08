@@ -3231,3 +3231,61 @@ pre.ar-body { white-space: pre-wrap; font-family: inherit; font-size: 14px; back
 .ar-fb-row input[type="text"] { width: auto; flex: 1 1 220px; min-width: 0; padding: 5px 10px; font-size: 13px; }
 details.ar-ledger > summary { font-size: 16px; font-weight: 600; cursor: pointer; }
 details.ar-ledger[open] > summary { margin-bottom: 6px; }
+
+/* ─── POC5-05 개정 2 — 「종목 관리」 매매 입력 · History · 과거 보유(hmx-*) ───
+   입력 폼은 같은 폭 3열 × 줄 고정 · 라벨 1줄 · 입력 상자 높이 고정(칸 위아래가 항상 맞는다).
+   좁은 화면에서는 한 열로 쌓는다(정렬 유지). 색은 기존 토큰만 쓴다. */
+.hmx-small { font-size: 13px; }
+.hmx-scrim { position: fixed; inset: 0; background: rgba(17, 24, 39, 0.42); display: flex; align-items: flex-start; justify-content: center; padding: 6vh 16px 16px; overflow-y: auto; z-index: 50; }
+.hmx-dialog { background: var(--card); border: 1px solid var(--border); border-radius: 12px; width: 100%; max-width: 760px; padding: 18px 20px 20px; box-shadow: 0 12px 32px rgba(17, 24, 39, 0.18); }
+.hmx-dialog-wide { max-width: 980px; }
+.hmx-dialog-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
+.hmx-dialog-head h3 { margin: 0; font-size: 17px; }
+.hmx-dialog-foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+button.hmx-x { background: transparent; color: var(--muted); font-size: 20px; line-height: 1; padding: 2px 6px; }
+button.hmx-x:hover:not(:disabled) { background: var(--border-soft); }
+.hmx-form { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 14px; }
+.hmx-field { display: grid; grid-template-rows: 18px 38px; gap: 4px; min-width: 0; }
+.hmx-field-wide { grid-column: 1 / -1; }
+.hmx-field > label, .hmx-field > .hmx-lbl { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hmx-field input, .hmx-field select, .hmx-field .hmx-out { font: inherit; font-size: 14px; height: 38px; padding: 0 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--card); color: var(--fg); min-width: 0; width: 100%; box-sizing: border-box; }
+.hmx-field .hmx-out { display: flex; align-items: center; background: var(--bg); font-variant-numeric: tabular-nums; }
+.hmx-field .hmx-out.hmx-right, .hmx-field input.hmx-num { justify-content: flex-end; text-align: right; font-variant-numeric: tabular-nums; }
+.hmx-seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; height: 38px; }
+.hmx-seg button { background: var(--card); color: var(--fg); border: 0; border-radius: 0; padding: 0 4px; font-size: 13px; font-weight: 500; }
+.hmx-seg button + button { border-left: 1px solid var(--border); }
+.hmx-seg button[aria-pressed="true"] { background: rgba(37, 99, 235, 0.1); color: var(--accent); font-weight: 700; }
+.hmx-seg button:hover:not(:disabled) { background: rgba(37, 99, 235, 0.06); }
+.hmx-note { font-size: 12px; color: var(--muted); margin: 8px 0 0; }
+.hmx-preview { margin-top: 14px; border: 1px solid var(--border-soft); border-radius: 8px; padding: 10px 12px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 14px; font-size: 14px; }
+.hmx-preview > div { display: grid; gap: 2px; min-width: 0; }
+.hmx-k { font-size: 12px; color: var(--muted); }
+.hmx-v { font-weight: 600; font-variant-numeric: tabular-nums; }
+.hmx-error { margin-top: 12px; padding: 8px 12px; border-radius: 8px; background: rgba(220, 38, 38, 0.06); border: 1px solid rgba(220, 38, 38, 0.3); color: var(--danger); font-size: 13px; }
+.hmx-info { margin: 12px 0 0; padding: 8px 12px; border-radius: 8px; background: rgba(37, 99, 235, 0.08); font-size: 13px; }
+.hmx-tag { display: inline-block; font-size: 12px; padding: 1px 8px; border-radius: 999px; background: var(--border-soft); color: var(--muted); white-space: nowrap; }
+.hmx-tag-warn { background: rgba(217, 119, 6, 0.1); color: #8a5a00; border: 1px solid rgba(217, 119, 6, 0.35); }
+.hmx-tbl-wrap { overflow-x: auto; }
+.hmx-tbl { border-collapse: collapse; width: 100%; font-size: 13px; }
+.hmx-tbl th, .hmx-tbl td { text-align: left; padding: 7px 9px; border-bottom: 1px solid var(--border-soft); white-space: nowrap; }
+.hmx-tbl th { font-size: 12px; color: var(--muted); font-weight: 600; }
+.hmx-tbl td.hmx-r, .hmx-tbl th.hmx-r { text-align: right; font-variant-numeric: tabular-nums; }
+.hmx-tbl tr.hmx-click { cursor: pointer; }
+.hmx-tbl tr.hmx-click:hover { background: var(--bg); }
+.hmx-cycle { border: 1px solid var(--border-soft); border-radius: 10px; padding: 12px 14px; margin-top: 12px; }
+.hmx-cycle-head { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; align-items: baseline; margin-bottom: 8px; }
+.hmx-sum { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px 14px; margin-top: 10px; font-size: 13px; }
+.hmx-sum > div { display: grid; gap: 1px; min-width: 0; }
+.hmx-flow { margin-top: 10px; background: var(--bg); border-radius: 8px; padding: 10px 12px; font-size: 13px; }
+.hmx-flow ul { margin: 6px 0 0; padding-left: 18px; }
+.hmx-flow li + li { margin-top: 4px; }
+.hmx-row-actions { display: flex; gap: 6px; flex-wrap: nowrap; }
+button.hmx-btn-sm { padding: 4px 10px; font-size: 13px; }
+button.hmx-ghost { background: var(--card); color: var(--accent); border: 1px solid var(--border); }
+button.hmx-ghost:hover:not(:disabled) { background: rgba(37, 99, 235, 0.06); }
+details.hmx-closed > summary { font-size: 16px; font-weight: 600; cursor: pointer; }
+details.hmx-closed[open] > summary { margin-bottom: 10px; }
+@media (max-width: 560px) {
+  .hmx-form, .hmx-preview { grid-template-columns: minmax(0, 1fr); }
+  .hmx-sum { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

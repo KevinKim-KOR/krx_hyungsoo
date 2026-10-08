@@ -580,3 +580,242 @@ def test_verify_fail_does_not_leak_holdings_content(tmp_path: Path, capsys) -> N
     assert "LEAKED_GROUP_ZZZ" not in text
     assert "777777" not in text
     assert "66666" not in text
+
+
+# ── POC5-05: 매매 이력 · 줄 ID 가 든 파일 게시 거절 ─────────────────────────
+
+_HISTORY_DOC: dict[str, Any] = {
+    "schema_version": 2,
+    "revision": 3,
+    "holdings": [
+        {
+            "ticker": "069500",
+            "quantity": 10.0,
+            "avg_buy_price": 35000.0,
+            "name": "SECRET_NAME_POC505",
+            "account_group": "일반",
+            "position_id": "11111111-1111-4111-8111-111111111111",
+            "cycle_id": "22222222-2222-4222-8222-222222222222",
+        }
+    ],
+    "personal_trade_history": {"positions": [], "records": []},
+}
+
+
+def _row_extra_doc() -> dict[str, Any]:
+    """최상위는 holdings 뿐이지만 행에 개인 메타데이터(줄 ID)가 있는 문서."""
+    rows = _sample_holdings(2)
+    rows[1]["position_id"] = "33333333-3333-4333-8333-333333333333"
+    return {"holdings": rows}
+
+
+def _write_doc(path: Path, doc: dict[str, Any]) -> bytes:
+    path.write_text(json.dumps(doc, ensure_ascii=False), encoding="utf-8")
+    return path.read_bytes()
+
+
+def _assert_not_publishable(out: dict[str, Any], text: str) -> None:
+    assert out["error_reason"].endswith(cli._NOT_PUBLISHABLE_REASON)
+    assert "종목 관리의 적용 버튼" in out["error_reason"]
+    # 키 이름 · 원문 값은 출력하지 않는다(§9).
+    for leaked in ("position_id", "cycle_id", "personal_trade_history"):
+        assert leaked not in text
+    assert "069500" not in text
+    assert "SECRET_NAME_POC505" not in text
+
+
+def test_prepare_rejects_history_document(tmp_path: Path, capsys) -> None:
+    src = tmp_path / "holdings_latest.json"
+    _write_doc(src, _HISTORY_DOC)
+    exit_code = cli.main(["prepare", "--source", str(src)])
+    text = capsys.readouterr().out
+    out = json.loads(text.strip())
+    assert exit_code == 2
+    assert out["source_valid"] is False
+    assert out["source_hash"] == ""
+    _assert_not_publishable(out, text)
+
+
+def test_prepare_rejects_top_level_extra_key_only(tmp_path: Path, capsys) -> None:
+    # 행이 5필드뿐이어도 최상위에 holdings 외 키가 있으면 거절.
+    src = tmp_path / "holdings_latest.json"
+    _write_doc(src, {"holdings": _sample_holdings(1), "revision": 1})
+    exit_code = cli.main(["prepare", "--source", str(src)])
+    text = capsys.readouterr().out
+    assert exit_code == 2
+    _assert_not_publishable(json.loads(text.strip()), text)
+
+
+def test_prepare_rejects_row_extra_field(tmp_path: Path, capsys) -> None:
+    # 설계 §11-3: 최상위가 holdings 뿐이어도 행에 개인 메타데이터가 있으면 거절.
+    src = tmp_path / "holdings_latest.json"
+    _write_doc(src, _row_extra_doc())
+    exit_code = cli.main(["prepare", "--source", str(src)])
+    text = capsys.readouterr().out
+    out = json.loads(text.strip())
+    assert exit_code == 2
+    assert out["source_valid"] is False
+    _assert_not_publishable(out, text)
+
+
+def test_verify_rejects_history_and_row_extra(tmp_path: Path, capsys) -> None:
+    for i, doc in enumerate((_HISTORY_DOC, _row_extra_doc())):
+        tmp_dest = tmp_path / f"holdings_latest.json.tmp{i}"
+        b = _write_doc(tmp_dest, doc)
+        exit_code = cli.main(
+            [
+                "verify",
+                "--temp",
+                str(tmp_dest),
+                "--expected-hash",
+                hashlib.sha256(b).hexdigest(),
+                "--expected-size",
+                str(len(b)),
+                "--expected-count",
+                str(len(doc["holdings"])),
+            ]
+        )
+        text = capsys.readouterr().out
+        out = json.loads(text.strip())
+        assert exit_code == 2
+        assert out["destination_valid"] is False
+        assert out["activation_ready"] is False
+        _assert_not_publishable(out, text)
+
+
+def test_activate_rejects_history_and_row_extra_keeps_active(
+    tmp_path: Path, capsys, monkeypatch
+) -> None:
+    # hash · size · count 가 모두 맞아도 거절하고 기존 active 를 보존한다.
+    monkeypatch.setattr(cli, "_current_user", lambda: "test_user")
+    monkeypatch.setattr(
+        cli, "_file_mode_owner", lambda p: ("600", "test_user", "test_user")
+    )
+    monkeypatch.setattr(cli, "_apply_mode_600", lambda p: None)
+    active = tmp_path / "holdings_latest.json"
+    _write_holdings(active, _sample_holdings(1))
+    active_before = _snapshot(active)
+    for i, doc in enumerate((_HISTORY_DOC, _row_extra_doc())):
+        tmp_dest = tmp_path / f"holdings_latest.json.tmp{i}"
+        b = _write_doc(tmp_dest, doc)
+        exit_code = cli.main(
+            [
+                "activate",
+                "--temp",
+                str(tmp_dest),
+                "--active",
+                str(active),
+                "--expected-hash",
+                hashlib.sha256(b).hexdigest(),
+                "--expected-size",
+                str(len(b)),
+                "--expected-count",
+                str(len(doc["holdings"])),
+            ]
+        )
+        text = capsys.readouterr().out
+        out = json.loads(text.strip())
+        assert exit_code == 3
+        assert out["final_validation_passed"] is False
+        assert out["atomic_activation_completed"] is False
+        assert out["error_reason"].startswith("final_validation_failed:")
+        _assert_not_publishable(out, text)
+        assert _snapshot(active) == active_before
+        assert tmp_dest.exists()
+
+
+def test_five_field_file_with_all_fields_passes(tmp_path: Path, capsys) -> None:
+    # 정상 5필드(name · account_group 포함) 파일은 기존 검증 경로 그대로 통과.
+    src = tmp_path / "holdings_latest.json"
+    rows = _sample_holdings(2)
+    for r in rows:
+        r["name"] = "종목"
+    _write_holdings(src, rows)
+    exit_code = cli.main(["prepare", "--source", str(src)])
+    out = json.loads(capsys.readouterr().out.strip())
+    assert exit_code == 0
+    assert out["status"] == "ok"
+    assert out["source_holding_count"] == 2
+    assert out["source_hash"] == hashlib.sha256(src.read_bytes()).hexdigest()
+
+
+def test_not_publishable_reason_is_cp949_encodable() -> None:
+    # Windows 콘솔(cp949)에서 print 가 UnicodeEncodeError 로 죽지 않아야 한다.
+    cli._NOT_PUBLISHABLE_REASON.encode("cp949")
+
+
+def test_activate_refuses_to_replace_history_document_active(
+    tmp_path: Path, capsys, monkeypatch
+) -> None:
+    """POC5-05: active 가 매매 이력 문서(PC 정본)면 5필드 파일로 덮어쓰지 않는다."""
+    active = tmp_path / "holdings_latest.json"
+    history_doc = {
+        "schema_version": 2,
+        "revision": 3,
+        "holdings": [],
+        "personal_trade_history": {"positions": [], "records": []},
+    }
+    active.write_text(json.dumps(history_doc), encoding="utf-8")
+    before = active.read_bytes()
+    tmp_dest = tmp_path / "holdings_latest.json.tmp"
+    _write_holdings(tmp_dest, _sample_holdings(2))
+    b = tmp_dest.read_bytes()
+    monkeypatch.setattr(cli, "_current_user", lambda: "test_user")
+    monkeypatch.setattr(
+        cli, "_file_mode_owner", lambda p: ("600", "test_user", "test_user")
+    )
+    monkeypatch.setattr(cli, "_apply_mode_600", lambda p: None)
+    code = cli.main(
+        [
+            "activate",
+            "--temp",
+            str(tmp_dest),
+            "--active",
+            str(active),
+            "--expected-hash",
+            hashlib.sha256(b).hexdigest(),
+            "--expected-size",
+            str(len(b)),
+            "--expected-count",
+            "2",
+        ]
+    )
+    out = json.loads(capsys.readouterr().out.strip())
+    assert code == 3 and out["atomic_activation_completed"] is False
+    assert out["error_reason"].startswith("active_is_history_document")
+    assert active.read_bytes() == before and tmp_dest.exists()
+
+
+def test_activate_refuses_to_replace_unreadable_active(
+    tmp_path: Path, capsys, monkeypatch
+) -> None:
+    """POC5-05: 읽을 수 없는 active(잘린 이력 문서일 수 있음)는 교체하지 않는다."""
+    active = tmp_path / "holdings_latest.json"
+    active.write_bytes(b'{"schema_version": 2, "revision": 3, "hol')
+    before = active.read_bytes()
+    tmp_dest = tmp_path / "holdings_latest.json.tmp"
+    _write_holdings(tmp_dest, _sample_holdings(2))
+    b = tmp_dest.read_bytes()
+    monkeypatch.setattr(cli, "_current_user", lambda: "test_user")
+    monkeypatch.setattr(
+        cli, "_file_mode_owner", lambda p: ("600", "test_user", "test_user")
+    )
+    monkeypatch.setattr(cli, "_apply_mode_600", lambda p: None)
+    code = cli.main(
+        [
+            "activate",
+            "--temp",
+            str(tmp_dest),
+            "--active",
+            str(active),
+            "--expected-hash",
+            hashlib.sha256(b).hexdigest(),
+            "--expected-size",
+            str(len(b)),
+            "--expected-count",
+            "2",
+        ]
+    )
+    out = json.loads(capsys.readouterr().out.strip())
+    assert code == 3 and out["error_reason"].startswith("active_unreadable")
+    assert active.read_bytes() == before
