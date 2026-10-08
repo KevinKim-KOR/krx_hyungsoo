@@ -308,4 +308,15 @@ describe("#3 보유 표와 입력 정정 모드", () => {
     });
     await waitFor(() => expect(screen.getByText("PC 보유 변경 있음 · 아직 OCI 미적용")).toBeInTheDocument());
   });
+
+  it("OCI 적용 카드: 적용된 보유와 같으면 초록 표시(경고색 아님)", async () => {
+    fetchHoldings.mockResolvedValue(state([], "NO_FILE", 0));
+    fetchHoldingsApplyStatus.mockResolvedValue({ has_record: true, status: "OCI_APPLIED", applied_at: "2026-10-09T07:34:43+09:00", pending_apply: false });
+    await act(async () => {
+      renderView();
+    });
+    const same = await screen.findByText("OCI 에 적용된 보유와 같음");
+    expect(same).toHaveClass("hmx-tag", "hmx-tag-ok");
+    expect(same).not.toHaveClass("hmx-tag-warn");
+  });
 });

@@ -1,9 +1,9 @@
 # POC5-05 개발 결과서 — PERSONAL_HOLDINGS_TRADE_HISTORY (보유 · 매매 이력 통합 · 설계 개정 2)
 
-작성 2026-10-08 · 갱신 2026-10-09(검증자 r1 ~ r4 REJECTED 정정 · r5 VERIFIED · 보유 파일 백업 · 설계자 RESULT PASS_TO_DEPLOY) · 작성자: 개발자(VSCode Claude) · 수신: 검증자(Codex)
+작성 2026-10-08 · 갱신 2026-10-09(검증자 r1 ~ r4 REJECTED 정정 · r5 VERIFIED · 보유 파일 백업 · 설계자 RESULT PASS_TO_DEPLOY · 배포 · 종료) · 작성자: 개발자(VSCode Claude) · 수신: 검증자(Codex)
 
 ```text
-STATUS                 = IMPLEMENTED_VERIFIED_LOCAL — 검증자 r5 VERIFIED(2026-10-09 · 위험 NONE) · 설계자 RESULT PASS_TO_DEPLOY(2026-10-09) · 보유 파일 백업 완료(§7-2) · 미커밋 · 미배포 · 다음 = 커밋 · push(사용자 승인) → OCI pull → PC 실화면 · 첫 정상 적용 읽기 전용 확인 → 종료 기록(§7-3)
+STATUS                 = IMPLEMENTED_VERIFIED_DEPLOYED_CLOSED — 검증자 r5 VERIFIED(2026-10-09 · 위험 NONE) · 설계자 RESULT PASS_TO_DEPLOY(2026-10-09) · 보유 파일 백업(§7-2) · 커밋 `33b002e4` push(사용자 승인 2026-10-09) · OCI pull 2026-10-09 07:32:57 · PC 실화면 확인(사용자) · 첫 정상 OCI 적용 07:34:43 · 개발자 읽기 전용 확인 통과 · 종료(§10)
 DESIGNER_RESULT        = PASS_TO_DEPLOY(2026-10-09 · OUTSIDE_CHANGES ACCEPTED 17 · KNOWN_LIMITATIONS ACCEPTED_CURRENT_SCOPE 12 · REWORK NOT_REQUIRED · RESULT_RESUBMIT NOT_REQUIRED · 정정의 원래 수량 = 이번 supersedes_id 가 가리키는 유효 기록의 수량) — 원문 = 설계서 §12 · 끝에 전달문 원문
 VERIFIER               = r5 VERIFIED(2026-10-09 · A-1 ~ A-4 통과 · B-1 ~ B-6 없음 · 위험 NONE · 범위 폭주 NONE · 검증자 임시 사본에서 백엔드 239 · 화면 371 통과 · 결과서 §8-1 '새 5파일' → '새 6파일' 은 검증자가 직접 정정 · stage) · r4 REJECTED(2026-10-08 · A-1 · A-3 · 위험 LOW — 기존 정밀도 · 크기로 저장된 전량매도 기록의 단가만 정정해도 새 입력 한도로 422) → 정정 + 같은 부류 전수 점검(§6-7) · r3 REJECTED(2026-10-08 · A-1 · A-3 · 위험 MEDIUM — 새 검사가 기준잔고에도 10^15 상한을 적용해 기존 형식 경계값 파일이 load() 정상 · 화면 API 손상으로 갈림) → 정정(§6-6) · r2 REJECTED(2026-10-08 · A-1 · A-3 · B-1 · 위험 HIGH — 등록되지 않은 position 을 가리키는 기록을 계산에서 조용히 빼 손상 문서가 정상 빈 보유 · 새 매매 · 빈 OCI 적용으로 통과) → 정정 + 반박 검토 3관점(§6-4) · r1 REJECTED(① 이력과 불일치한 holdings 를 정상 빈 보유로 ② 매매대금 28자리 반올림) → 정정(§6-3)
 STEP_ID                = POC5-05 보유 · 매매 이력 통합(설계 개정 2)
@@ -229,9 +229,9 @@ BACKEND_FULL_REGRESSION= 3258 passed / 0 failed · exit 0 · 547.86s(2026-10-08 
 
 ## 7. 사용자 확인이 필요한 항목
 
-1. **실화면 확인**(OCI pull · PC 재기동 뒤): 보유 표 · 줄 클릭 매매 / 정정 창(칸 정렬) · History · 시장 흐름 · 과거 보유 · 입력 정정 모드 · OCI 카드 미적용 표시. **확인을 위해 가짜 매매를 저장하거나 기존 32줄을 다시 입력하지 않는다**(설계 §11-3 · §12-4) — 실제 거래 입력은 필요할 때 한다(사용자 데이터 입력 = 아직 · 설계자 기록).
+1. **실화면 확인 — 완료(사용자 2026-10-09 · 저장 · 가짜 매매 0)**(OCI pull · PC 재기동 뒤): 보유 표 · 줄 클릭 매매 / 정정 창(칸 정렬) · History · 시장 흐름 · 과거 보유 · 입력 정정 모드 · OCI 카드 미적용 표시. **확인을 위해 가짜 매매를 저장하거나 기존 32줄을 다시 입력하지 않는다**(설계 §11-3 · §12-4) — 실제 거래 입력은 필요할 때 한다(사용자 데이터 입력 = 아직 · 설계자 기록).
 2. **보유 파일 백업 완료**(2026-10-09 07:05 · 사용자 승인 2026-10-08 · 검증자 VERIFIED 뒤): `state/holdings/backup/holdings_latest_pre_POC5-05_20261009.json` — 원본과 sha256 `62712039ac95794023c3dfaad68b374b960888fda450b6392426c25b4c7caf3b` 같음 · 5,701바이트 · 32줄 · 기존 형식 5필드 · 읽기 전용 · git 추적 제외(`.gitignore` `backup/`) · 앱이 읽지 않는 경로. 이 백업은 **배포 전 보유 복원용**이다(설계자 §12-4): 첫 저장 때 v1 → v2 로 바뀌며, v2 에 실제 기록을 저장한 뒤 이 백업만 덮어쓰면 새 기록은 복구되지 않는다 — 그때 되돌릴 필요가 생기면 변경 후 문서를 먼저 보존하고 변경분을 확인한다(자동 롤백 · 새 백업 서비스 없음).
-3. 배포 순서(설계자 §12-4): 커밋 · push(사용자 승인) → **OCI pull**(보유 소비 변경 + 신규 의존 파일 함께 · 거래일 08:05 ~ 15:45 회피 · 휴장일에는 이 구간 적용 없음 — 2026-10-09 는 PC 캘린더 기준 휴장일 · 다음 거래일 10-12) → PC 재기동 · 실화면(위 1) → 기존 보유 그대로 첫 정상 수동 OCI 적용 → 개발자가 OCI 읽기 전용으로 확인(적용 파일 최상위 키 = `holdings` 하나 · 행 허용 5필드 · 개인 이력 / ID 없음 · PC 현재 보유와 일치) → POC5-05 종료 기록. 실제 첫 매매 · v2 저장 · 전량매도 · 다음 영업일 관찰은 종료 조건이 아니다.
+3. **배포 — 완료(2026-10-09 · §10)** · 순서(설계자 §12-4): 커밋 · push(사용자 승인) → **OCI pull**(보유 소비 변경 + 신규 의존 파일 함께 · 거래일 08:05 ~ 15:45 회피 · 휴장일에는 이 구간 적용 없음 — 2026-10-09 는 PC 캘린더 기준 휴장일 · 다음 거래일 10-12) → PC 재기동 · 실화면(위 1) → 기존 보유 그대로 첫 정상 수동 OCI 적용 → 개발자가 OCI 읽기 전용으로 확인(적용 파일 최상위 키 = `holdings` 하나 · 행 허용 5필드 · 개인 이력 / ID 없음 · PC 현재 보유와 일치) → POC5-05 종료 기록. 실제 첫 매매 · v2 저장 · 전량매도 · 다음 영업일 관찰은 종료 조건이 아니다.
 
 ## 8. 검증 실측 (2026-10-08)
 
@@ -299,5 +299,15 @@ r4 변이는 작업 폴더가 아닌 저장소 사본(scratchpad)에서 실행�
 
 ## 9. git 상태
 
-- `git status --short --untracked-files=all`(보고 직전 실측): 이 단계 파일 59개가 모두 staged(오른쪽 칸 공백 · `A` 36 · `M` 23 · r4 에서 새 파일 `tests/test_poc5_05_history_integrity.py` 1개 추가) · `??` 1건 = `docs/handoff/INVESTMENT_MODEL_V2_MASTER_HANDOFF_2026-07-26.md`(사용자 소유 · 이 단계와 무관 · stage 하지 않음).
-- 커밋 0 · push 0(검증 · 설계자 RESULT 판정 뒤 사용자 승인).
+- 구현 커밋 직전 실측(`git status --short --untracked-files=all`): 이 단계 파일 59개가 모두 staged(오른쪽 칸 공백 · `A` 36 · `M` 23 · r4 에서 새 파일 `tests/test_poc5_05_history_integrity.py` 1개 추가) · `??` 1건 = `docs/handoff/INVESTMENT_MODEL_V2_MASTER_HANDOFF_2026-07-26.md`(사용자 소유 · 이 단계와 무관 · stage 하지 않음).
+- 구현 커밋 `33b002e4`(`git show --stat`: `59 files changed, 12432 insertions(+), 503 deletions(-)`) · push `eb5d1ead..33b002e4 main -> main`(사용자 승인 2026-10-09). 종료 기록(§10 · 인계 · 색 변경)은 그 뒤 별도 커밋 — 최신 커밋은 `git log` 로 실측.
+
+## 10. 배포 · 종료 기록 (2026-10-09)
+
+- **OCI pull**: 2026-10-09 07:32:57 KST fast-forward → OCI HEAD `33b002e4`(OCI reflog · 읽기 전용) · pull 전 추적 파일 변경 0 · 휴장일(PC 캘린더 `non_trading_day`)이라 08:05 ~ 15:45 회피 구간 적용 없음(설계자 §12-4) · OCI 에 상시 실행 프로젝트 프로세스 없음(cron 실행) → 재시작 불필요.
+- **PC 실화면**: 사용자 확인 완료(2026-10-09 · 저장 · 가짜 매매 0 · 기존 32줄 재입력 0).
+- **첫 정상 OCI 적용(기존 보유 그대로)**: PC 적용 기록 `OCI_APPLIED` · 2026-10-09 07:34:43 KST. 개발자 OCI 읽기 전용 확인 — `state/holdings/holdings_latest.json` 07:34:41 · 5,474바이트 · 최상위 키 `holdings` 하나 · 32줄 · 행 키 = 허용 5필드(`account_group` · `avg_buy_price` · `name` · `quantity` · `ticker`) · 비유한 값 0 · 삼중조합 중복 0 · sha256 `e3246de34ab2ced0d8c520b13b313d8aec4b14da7291a8a454c9c80ee006503e` = PC 현재 보유로 만든 payload sha256 = PC `last_applied_sha256`(개인 이력 · ID 없음 · PC 현재 보유와 일치).
+- **PC 보유 파일**: 저장 없이 기존 형식 그대로(8월 13일 · 5,701바이트 · 백업과 같은 sha256 · §7-2).
+- **종료 뒤 사용자 직접 요청 UI 1건**(2026-10-09 · 색만 · PC 화면 전용 · 설계 · 검증 대상 아님): OCI 카드 'OCI 에 적용된 보유와 같음' 태그를 초록(`hmx-tag-ok` · `--ok` 계열 · 경고 태그와 같은 형태)으로. `OciApplyCard.tsx` 110 → 110 · `globals.css` 3291 → 3293 · 시험 1건 추가(`HoldingsManageView.behavior.test.tsx` 311 → 322) · `npx vitest run` → 30파일 372 passed · `tsc` · `eslint` exit 0. OCI 동작 영향 없음(PC 화면 · 문서만이라 OCI pull 불필요 · 다음 pull 때 맞춰짐). 색은 사용자가 다음 화면에서 확인.
+- **인계**: `docs/handoff/POC5-05_PERSONAL_HOLDINGS_TRADE_HISTORY_HANDOFF_2026-10-09.md`.
+- 종료 조건(설계자 §12-4-5): PC 실화면 · 첫 정상 적용 확인 → 충족. 실제 첫 매매 · v2 저장 · 전량매도 · 다음 영업일 관찰은 종료 조건이 아니다.

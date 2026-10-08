@@ -3265,6 +3265,8 @@ button.hmx-x:hover:not(:disabled) { background: var(--border-soft); }
 .hmx-info { margin: 12px 0 0; padding: 8px 12px; border-radius: 8px; background: rgba(37, 99, 235, 0.08); font-size: 13px; }
 .hmx-tag { display: inline-block; font-size: 12px; padding: 1px 8px; border-radius: 999px; background: var(--border-soft); color: var(--muted); white-space: nowrap; }
 .hmx-tag-warn { background: rgba(217, 119, 6, 0.1); color: #8a5a00; border: 1px solid rgba(217, 119, 6, 0.35); }
+/* OCI 에 적용된 보유와 같음 — 초록(--ok 계열 · 사용자 요청 2026-10-09) */
+.hmx-tag-ok { background: rgba(22, 163, 74, 0.1); color: #15803d; border: 1px solid rgba(22, 163, 74, 0.35); }
 .hmx-tbl-wrap { overflow-x: auto; }
 .hmx-tbl { border-collapse: collapse; width: 100%; font-size: 13px; }
 .hmx-tbl th, .hmx-tbl td { text-align: left; padding: 7px 9px; border-bottom: 1px solid var(--border-soft); white-space: nowrap; }

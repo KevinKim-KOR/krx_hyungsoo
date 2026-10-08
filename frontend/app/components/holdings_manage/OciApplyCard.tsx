@@ -61,7 +61,7 @@ export default function OciApplyCard({ refreshKey, busy }: Props) {
         ) : pending === null || pending === undefined ? (
           <span className="hmx-tag">적용 여부 확인 안 됨</span>
         ) : (
-          <span className="hmx-tag">OCI 에 적용된 보유와 같음</span>
+          <span className="hmx-tag hmx-tag-ok">OCI 에 적용된 보유와 같음</span>
         )}
       </div>
       <p className="helper" style={{ marginBottom: 8 }}>
