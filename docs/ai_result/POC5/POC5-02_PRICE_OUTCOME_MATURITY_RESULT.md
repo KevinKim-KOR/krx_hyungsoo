@@ -3,7 +3,7 @@
 작성 2026-10-07 · 갱신 2026-10-07(검증자 r1 VERIFIED · 사용자 결정 반영) · 작성자: 개발자(VSCode Claude) · 수신: 검증자(Codex)
 
 ```text
-STATUS                 = IMPLEMENTED_VERIFIED_DEPLOYED — 검증자 r1 VERIFIED(2026-10-07) · 설계자 RESULT `PASS_TO_DEPLOY_AFTER_GATE`(2026-10-07) · 커밋 `f0711340` · **OCI pull 2026-10-07 22:19:31(사용자 · POC5-03 `4e92d0c5` 와 함께 · 배포 게이트 = 01B 첫 거래일 확인 전 — 01B 는 2026-10-08 10:13 확인 통과)** · 첫 실행 2026-10-08 08:10 `no_ledger`(원장 생성 전) · 09:20 `ok` 대상 32 · INSERT 0 · 대기 111(실측) · 첫 결과 행(MATURED +1) 확인 = 2026-10-12 08:10 이후(10-09 한글날 휴장 · 운영 캘린더 실측)
+STATUS                 = IMPLEMENTED_VERIFIED_DEPLOYED — 검증자 r1 VERIFIED(2026-10-07) · 설계자 RESULT `PASS_TO_DEPLOY_AFTER_GATE`(2026-10-07) · 커밋 `f0711340` · **OCI pull 2026-10-07 22:19:31(사용자 · POC5-03 `4e92d0c5` 와 함께 · 배포 게이트 = 01B 첫 거래일 확인 전 — 01B 는 2026-10-08 10:13 확인 통과 · 설계자 2026-10-08 '예외 기록 · 현재 배포 유지 사후 수용 · 롤백 · 재검증 · PRIMARY 시작일 변경 없음')** · 첫 실행 2026-10-08 08:10 `no_ledger`(원장 생성 전) · 09:20 `ok` 대상 32 · INSERT 0 · 대기 111(실측) · 첫 결과 행(MATURED +1) 확인 = 2026-10-12 08:10 이후(10-09 한글날 휴장 · 운영 캘린더 실측)
                          (배포 게이트 = POC5-01B 첫 거래일 2026-10-08 운영 확인 · 설계서 §10)
 STEP_ID                = POC5-02 가격 결과 성숙
 DESIGNER_RESULT        = PASS_TO_DEPLOY_AFTER_GATE(2026-10-07 · 보유 이력 요청 = 필요성 인정 · POC5-03 제외 · 별도 소형 설계 · 금액 · 수량은 holdings 에만) — 원문 = 설계서 끝
