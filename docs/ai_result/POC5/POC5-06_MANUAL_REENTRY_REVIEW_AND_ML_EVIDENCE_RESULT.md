@@ -1,9 +1,9 @@
 # POC5-06 개발 결과서 — MANUAL_REENTRY_REVIEW_AND_ML_EVIDENCE (수동 재진입 검토 · ML 근거 · 설계 개정 2)
 
-작성 2026-10-10 · 갱신 2026-10-10(검증자 r1 REJECTED 정정 · r2 VERIFIED · 설계자 RESULT PASS_TO_DEPLOY) · 작성자: 개발자(VSCode Claude) · 수신: 검증자(Codex)
+작성 2026-10-10 · 갱신 2026-10-10(검증자 r1 REJECTED 정정 · r2 VERIFIED · 설계자 RESULT PASS_TO_DEPLOY · 커밋 · PC 실화면 · 종료) · 작성자: 개발자(VSCode Claude) · 수신: 검증자(Codex)
 
 ```text
-STATUS                 = IMPLEMENTED_VERIFIED_RESULT_PASS_TO_DEPLOY — 검증자 r2 VERIFIED · 설계자 RESULT PASS_TO_DEPLOY(2026-10-10) · 커밋 · push(사용자 승인) → PC 재기동 · 최종 실화면(설계 §11-3) 전 · 아직 CLOSED 아님
+STATUS                 = IMPLEMENTED_VERIFIED_DEPLOYED_CLOSED — 검증자 r2 VERIFIED · 설계자 RESULT PASS_TO_DEPLOY(2026-10-10) · 구현 커밋 `21706285` push(사용자 승인) · PC 재기동 · 최종 실화면 사용자 확인 · 산출물 · 부수효과 개발자 확인 → 종료(§10 · 설계자 재판정 없음 · 설계 §11-4)
 DESIGNER_RESULT        = PASS_TO_DEPLOY(2026-10-10 · IMPLEMENTATION ACCEPTED_CURRENT_SCOPE · OUTSIDE_CHANGES ACCEPTED 5 · KNOWN_LIMITATIONS ACCEPTED_CURRENT_SCOPE 6 · CODE_REWORK NOT_REQUIRED · RESULT_RESUBMIT NOT_REQUIRED · 문서 정정 = §6-1 판단 3 hash 설명 1문장(반영) · OCI_PULL NOT_REQUIRED · 실화면 통과하면 설계자 재판정 없이 종료) — 원문 = 설계서 §11 · 끝에 전달문 원문
 VERIFIER               = r2 VERIFIED(2026-10-10 · A-1 ~ A-4 통과 · B-1 ~ B-6 없음 · 위험 NONE · 범위 폭주 NONE · 검증자 격리 사본에서 백엔드 관련 130 · 화면 384 통과) · r1 REJECTED(2026-10-10 · A-1 · A-3 · B-1 · 위험 MEDIUM — 손상된 원장 사본(필수 표 없음 · 결과 표 생성 기록 뒤 표 없음)을 OK 로 반환해 기존 평가 · 결과가 '평가 없음' · '집계 중'으로 보임) → 정정(§6-3) · 결과서 KS-10 테스트 최대 608 → 609 는 검증자가 직접 정정
 STEP_ID                = POC5-06 수동 재진입 검토 · ML 근거(설계 개정 2)
@@ -53,7 +53,7 @@ BACKEND_FULL_REGRESSION= 3301 passed / 0 failed · exit 0 · 406.27s(2026-10-10 
 | §10-6 시험 추가 | DONE | 위 항목 + 모델 · 기준을 다른 날짜로 비교하는 변이 잡힘(§8-3) |
 | §2 화면 · 문구 | DONE | '저장 종가 YYYY-MM-DD 기준' · 늦으면 '이 날짜 기준 검토'(창 위 + 추정값 옆) · 열위 문구 · 매수/매도 지시 아님 · 신뢰구간 · 확률 없음 · [재매수(매매 창)] = 05 창(ML 연결 없음) |
 | §6 산출물 | DONE | 새 폴더 · 두 파일 · canonical sha256 · 라이브러리 버전 · pickle 없음 · 임시 폴더에 다 쓴 뒤 이름 바꿈 |
-| §7 PC 재기동 · 실화면(현재 보유 ETF 하나) | PARTIAL | 설계 순서상 설계자 RESULT 뒤 — 아직 안 함(§7) |
+| §7 PC 재기동 · 실화면(현재 보유 ETF 하나) | DONE | 2026-10-10 PC 재기동 · KODEX 200(069500) 실화면 사용자 확인 · 산출물 · 부수효과 개발자 확인(§10) |
 
 ## 2. 변경된 파일 목록
 
@@ -256,3 +256,14 @@ BACKEND_FULL_REGRESSION= 3301 passed / 0 failed · exit 0 · 406.27s(2026-10-10 
 
 - r1 정정 결과서 제출 직전 실측(`git status --short --untracked-files=all`): 이 단계 파일 35개가 모두 staged(오른쪽 칸 공백 · `A` 17 · `M` 18 — §2 목록과 같음) · `??` 1건 = `docs/handoff/INVESTMENT_MODEL_V2_MASTER_HANDOFF_2026-07-26.md`(사용자 소유 · 이 단계와 무관 · stage 하지 않음).
 - 커밋 전(설계자 RESULT 판정 · 사용자 승인 뒤 커밋 · push). 최신 커밋은 `git log` 로 실측.
+
+## 10. 배포 · 종료 기록 (2026-10-10)
+
+- **커밋 · push**: 구현 커밋 `21706285`(`git show --stat`: `35 files changed, 5199 insertions(+), 48 deletions(-)`) · push `ae5fa38c..21706285 main -> main`(사용자 승인 2026-10-10). OCI 에서 도는 파일 변경 0 → OCI pull · 첫 영업일 확인 없음(설계 §11-4).
+- **PC 재기동**: 백엔드 · 화면 dev 서버 새 프로세스(백엔드 시작 2026-10-10 23:42:34). 재기동 전에도 자동 반영 서버가 새 경로를 응답함을 읽기 전용 GET 으로 확인(KODEX 200 · 가격 2026-10-08 · 원장 OK · revision 0 · 문서 hash `b8643c0d044f`).
+- **최종 실화면(설계 §11-3)**: 사용자 확인 완료(2026-10-10 · KODEX 200(069500) · History → [재진입 검토] → 수동 ML 실행 → History 복귀 · 화면 배치 · 가독성 · 버튼 동작). §7-1 변경 5곳 중 실자료로 보이지 않는 '이 날짜 기준 검토'(가격 최신) · '항목 N개'(다중 item 없음) · 메모(평가 없음)는 화면 시험 근거(설계 §11-3 — 실제 평가 · 거래 · 시세를 바꾸지 않음).
+- **산출물(개발자 확인)**: `state/ml/research/poc5_06/20261010T234350_3e4a51dc/`(gitignore) — `review.json` · `input_snapshot.json` 두 파일 · 임시 폴더 0 · 069500 · 일반 계좌 · `OK` · t 2026-10-08 · 지연 없음 · 학습 표본 2,904(제외 `BASIS_BREAK` 80) · 구간 2,775 / 63 · 2,838 / 11 · 2,869 / 35 · MAE 4.37 / 4.36 %p `WORSE` · 추정 −3.48% · 기준 −2.02% · 읽은 기준 V1 · revision 0 · 문서 hash `b8643c0d044f` · 원장 동기화 2026-10-08 10:15:49 · scikit-learn 1.9.0 · numpy 2.4.6 · 1.562초 · 입력 가격 3,065행 · 축 표기 · 원장 OK 2건 · 산출물에 `values_json` · `profit_loss_pct` · 메모 없음.
+- **부수효과(개발자 확인)**: 실화면 전후 `state/holdings/holdings_latest.json` · `state/holdings/holdings_apply_status_latest.json`(OCI 적용 기록) · `state/decision/decision_evidence.sqlite`(원장 사본) · `state/market/market_data.sqlite` sha256 4개 모두 같음.
+- **종료 조건(설계 §11-4)**: PC 재기동 · §11-3 확인 통과 → `IMPLEMENTED_VERIFIED_DEPLOYED_CLOSED`. 모델 MAE 우위 · 새 거래 · 원장 동기화 · +20 성숙 · 시세 갱신은 종료 조건이 아니다.
+- **종료 뒤 사용자 제안(2026-10-10 · 다음 설계 후보 · 이번 단계 변경 0)**: "지금 보유하고 있는 종목들의 최초 거래일시를 모르니 2026-01-02로 해두면 어떨까" — 현재 기준잔고(BASELINE) · 잔고 등록(REGISTER) 기록은 수량 · 평단 두 칸뿐이라 날짜를 넣을 자리가 없다(`app/holdings_book.py` 기록 종류별 허용 칸). 넣는 방법에 따라 의미가 달라져(기준일 칸 추가 = 기록 형식 변경 / 2026-01-02 매수(BUY)로 바꿔 쓰기 = 실제와 다른 매수 기록 · 05 시장 흐름이 '매수 전후 변화'로 계산됨) 설계자 판단 대상 — 인계 §4 · `docs/backlog/BACKLOG.md` §8.
+- **인계**: `docs/handoff/POC5-06_MANUAL_REENTRY_REVIEW_AND_ML_EVIDENCE_HANDOFF_2026-10-10.md`.
