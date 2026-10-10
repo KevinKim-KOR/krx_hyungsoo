@@ -3291,3 +3291,32 @@ details.hmx-closed[open] > summary { margin-bottom: 10px; }
   .hmx-form, .hmx-preview { grid-template-columns: minmax(0, 1fr); }
   .hmx-sum { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+/* POC5-06 재진입 검토 창 — History 창 자리를 대신하는 창 · 세 부분(내 거래 · 저장된 근거 · ML 검토) */
+.hmx-tag-acc { background: rgba(37, 99, 235, 0.08); color: var(--accent); }
+.hmx-rv-back { font: inherit; font-size: 13px; border: 0; background: none; color: var(--accent); cursor: pointer; padding: 0; margin: -4px 0 6px; }
+.hmx-rv-body { display: grid; gap: 12px; }
+.hmx-rv-body > * { min-width: 0; }
+.hmx-rv-part { border: 1px solid var(--border-soft); border-radius: 10px; padding: 12px 14px; min-width: 0; }
+.hmx-rv-part h4 { margin: 0 0 10px; font-size: 15px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.hmx-rv-n { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 999px; background: rgba(37, 99, 235, 0.08); color: var(--accent); font-size: 12px; }
+.hmx-rv-sub { margin: 12px 0 6px; font-size: 13px; font-weight: 600; }
+.hmx-rv-kv { display: grid; grid-template-columns: 9.5em minmax(0, 1fr); gap: 6px 14px; font-size: 14px; margin: 0; }
+.hmx-rv-kv dt { color: var(--muted); }
+.hmx-rv-kv dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.hmx-rv-metrics { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.hmx-rv-estimate { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 10px; }
+.hmx-rv-metric { background: var(--bg); border: 1px solid var(--border-soft); border-radius: 8px; padding: 8px 10px; min-width: 0; }
+.hmx-rv-lbl { font-size: 12px; color: var(--muted); min-height: 2.6em; }
+.hmx-rv-val { font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.hmx-rv-big { font-size: 20px; }
+.hmx-rv-warn { background: rgba(217, 119, 6, 0.1); border: 1px solid rgba(217, 119, 6, 0.35); }
+.hmx-rv-limits { margin: 8px 0 0; padding-left: 18px; font-size: 13px; color: var(--muted); }
+.hmx-rv-limits li { overflow-wrap: anywhere; }
+.hmx-rv-limits li + li { margin-top: 2px; }
+.hmx-rv-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; width: 100%; }
+.hmx-rv-foot > span { min-width: 0; overflow-wrap: anywhere; }
+@media (max-width: 720px) {
+  .hmx-rv-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .hmx-rv-estimate { grid-template-columns: minmax(0, 1fr); }
+  .hmx-rv-kv { grid-template-columns: 8em minmax(0, 1fr); }
+}

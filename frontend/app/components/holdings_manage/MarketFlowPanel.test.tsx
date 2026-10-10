@@ -97,7 +97,7 @@ describe("ETF 기간", () => {
     for (const note of FLOW_ETF.notes) expect(screen.getByText(note)).toBeInTheDocument();
     expect(screen.getByText("계열: ETF 저장 종가 · KOSPI 저장 종가 · 출처는 각 날짜 행에 저장된 출처입니다.")).toBeInTheDocument();
     expect(
-      screen.getByText("재진입 판단을 돕는 ‘재진입 검토’(ML)는 후속 단계에서 따로 설계합니다."),
+      screen.getByText("재진입 판단을 돕는 근거 · ML 연구 추정은 이 기간의 [재진입 검토]에서 봅니다."),
     ).toBeInTheDocument();
     expect(screen.queryByRole("button")).toBeNull();
   });

@@ -123,7 +123,9 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 // 결과 행 한 칸. 행이 없으면 아직 성숙 전(집계 중).
-export function outcomeCell(row: LedgerOutcomeRow | undefined): string {
+export function outcomeCell(
+  row: Pick<LedgerOutcomeRow, "status" | "return_raw"> | undefined,
+): string {
   if (!row) return PENDING;
   if (row.status === "MATURED") return fmtReturn(row.return_raw);
   return STATUS_LABEL[row.status] ?? row.status;

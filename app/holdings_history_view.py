@@ -72,7 +72,14 @@ def _cycle_view(cy: dict[str, Any], by_id: dict, voids: dict) -> dict[str, Any]:
 
 def history(position_id: Optional[str] = None) -> dict[str, Any]:
     """position 별 보유 기간 · 기록 · 계산값. 쓰기 0 · 손상은 예외."""
-    state = store.read_document()
+    return history_of(store.read_document(), position_id)
+
+
+def history_of(
+    state: dict[str, Any], position_id: Optional[str] = None
+) -> dict[str, Any]:
+    """이미 읽은 문서(`read_document()` 결과)로 같은 History 를 만든다 — POC5-06 이 한 번 읽은
+    문서로 거래 사실 · 선택 검증을 함께 조립할 때 쓴다(다시 읽지 않는다)."""
     doc = state["doc"]
     cur = compute_doc(doc)
     records = doc["personal_trade_history"]["records"]
@@ -114,7 +121,13 @@ def history(position_id: Optional[str] = None) -> dict[str, Any]:
 
 def market_flow_input(position_id: str, cycle_id: str) -> tuple[str, dict[str, Any]]:
     """시장 흐름 계산 입력(종목코드 · 기간). 없으면 LookupError. 쓰기 0."""
-    doc = store.read_document()["doc"]
+    return market_flow_input_of(store.read_document()["doc"], position_id, cycle_id)
+
+
+def market_flow_input_of(
+    doc: dict[str, Any], position_id: str, cycle_id: str
+) -> tuple[str, dict[str, Any]]:
+    """이미 읽은 문서로 같은 입력을 만든다(POC5-06 · 다시 읽지 않는다)."""
     cur = compute_doc(doc)
     for pos in cur["positions"]:
         if pos["position_id"] != position_id:

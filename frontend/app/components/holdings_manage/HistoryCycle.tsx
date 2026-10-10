@@ -5,7 +5,8 @@
 // 정정 포함(참고 계산) 표시. 표: 기록 줄(HistoryEventRows). 요약: 보유 중 = 잔량 · 평단 · 남은 원가 ·
 // 미실현(부모가 넘긴 「보유 현황」과 같은 /holdings/enriched 값 · 없으면 '—') · 누적 실현 /
 // 종료 = 매도분 원가 합계 · 기간 실현손익 · 기간 수익률. [시장 흐름 보기]는 누를 때만 조회한다
-// (한 번 펼친 뒤 접어도 다시 부르지 않는다).
+// (한 번 펼친 뒤 접어도 다시 부르지 않는다). [재진입 검토](POC5-06)는 매매 유무와 무관하게 둔다 —
+// 부모가 검토 창을 History 자리에 연다.
 
 import { useState } from "react";
 import type { HoldingCycleView } from "@/lib/api";
@@ -25,6 +26,7 @@ interface Props {
   cycle: HoldingCycleView;
   priceInfo: PriceInfo | null; // 보유 중 기간에만 넘긴다
   actions: RowActions;
+  onReview?: () => void; // POC5-06 재진입 검토 창 열기
 }
 
 function Cell({ k, v, cls }: { k: string; v: string; cls?: string }) {
@@ -85,7 +87,7 @@ function CycleSummary({ cycle, priceInfo }: { cycle: HoldingCycleView; priceInfo
   );
 }
 
-export default function HistoryCycle({ positionId, cycle, priceInfo, actions }: Props) {
+export default function HistoryCycle({ positionId, cycle, priceInfo, actions, onReview }: Props) {
   const [flowShown, setFlowShown] = useState(false);
   const [flowLoaded, setFlowLoaded] = useState(false);
   const open = cycle.status === "OPEN";
@@ -116,9 +118,9 @@ export default function HistoryCycle({ positionId, cycle, priceInfo, actions }: 
         </table>
       </div>
       <CycleSummary cycle={cycle} priceInfo={priceInfo} />
-      {hasTrades ? (
-        <>
-          <div className="hmx-row-actions" style={{ marginTop: 10 }}>
+      {hasTrades || onReview ? (
+        <div className="hmx-row-actions" style={{ marginTop: 10 }}>
+          {hasTrades ? (
             <button
               type="button"
               className="hmx-btn-sm hmx-ghost"
@@ -130,13 +132,18 @@ export default function HistoryCycle({ positionId, cycle, priceInfo, actions }: 
             >
               {flowShown ? "시장 흐름 접기" : "시장 흐름 보기"}
             </button>
-          </div>
-          {flowLoaded ? (
-            <div hidden={!flowShown}>
-              <MarketFlowPanel positionId={positionId} cycleId={cycle.cycle_id} />
-            </div>
           ) : null}
-        </>
+          {onReview ? (
+            <button type="button" className="hmx-btn-sm" onClick={onReview}>
+              재진입 검토
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+      {hasTrades && flowLoaded ? (
+        <div hidden={!flowShown}>
+          <MarketFlowPanel positionId={positionId} cycleId={cycle.cycle_id} />
+        </div>
       ) : null}
     </section>
   );

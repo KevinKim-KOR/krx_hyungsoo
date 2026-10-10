@@ -512,22 +512,24 @@ def build_market_flow(
     cycle: dict,
     db_path: Optional[Path] = None,
     calendar_dir: Optional[Path] = None,
+    connection: Optional[sqlite3.Connection] = None,
 ) -> dict:
     """선택한 보유 기간 하나의 시장 흐름(저장 종가 · 정형 값). 쓰기 · 외부 조회 0.
 
     `cycle` = {cycle_id, opened_by: BASELINE|REGISTER|BUY, status: OPEN|CLOSED,
     events: [{record_id, kind: BUY|SELL, trade_date}] — 계산 순서 · 유효 거래만}.
     DB 파일 없음 · 표 없음 · 행 없음 = 항목별 NO_DATA. DB 파일은 있는데 읽기 오류 =
-    `MarketFlowReadError`. 형식이 틀린 입력 = `ValueError`.
+    `MarketFlowReadError`. 형식이 틀린 입력 = `ValueError`. `connection` = 호출부가 연 읽기 전용
+    연결(POC5-06 이 같은 읽기로 가격도 읽을 때 · 닫지 않는다).
     """
     ticker, events = _validated(ticker, cycle)
     opened_by, status = cycle["opened_by"], cycle["status"]
     days = _BasisDays(calendar_dir)
     path = Path(db_path) if db_path is not None else lop.market_db_path()
-    con: Optional[sqlite3.Connection] = None
+    con: Optional[sqlite3.Connection] = connection
     try:
         try:
-            con = lop.open_ro(path)
+            con = con if connection is not None else lop.open_ro(path)
         except FileNotFoundError:
             con = None  # 파일 없음 = 자료 없음(만들지 않는다)
         reader = _Reader(con)
@@ -549,7 +551,7 @@ def build_market_flow(
             f"market_db_read_failed:{type(exc).__name__}"
         ) from exc
     finally:
-        if con is not None:
+        if con is not None and connection is None:
             con.close()
 
     unknown = opened_by in _ANCHORS

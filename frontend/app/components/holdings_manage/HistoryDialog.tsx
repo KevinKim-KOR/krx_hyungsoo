@@ -28,6 +28,7 @@ interface Props {
   onRebuy: (position: PositionHistory) => void;
   onCorrect: (position: PositionHistory, cycle: HoldingCycleView, event: TradeEventView) => void;
   onChanged: () => void; // 취소 저장 뒤 부모가 보유 · 적용 상태를 다시 읽는다
+  onReview?: (cycleId: string) => void; // POC5-06 — 부모가 이 창 자리에 재진입 검토 창을 연다
 }
 
 const SUBTITLE = "체결단가 기준 · 수수료 · 세금 · 배당 미반영 · 이동평균 평단";
@@ -39,6 +40,7 @@ export default function HistoryDialog({
   onRebuy,
   onCorrect,
   onChanged,
+  onReview,
 }: Props) {
   const [position, setPosition] = useState<PositionHistory | null>(null);
   const [revision, setRevision] = useState<number | null>(null);
@@ -157,6 +159,7 @@ export default function HistoryDialog({
               cycle={cy}
               priceInfo={cy.status === "OPEN" ? (priceInfo ?? null) : null}
               actions={{ ...baseActions, onCorrect: (ev) => onCorrect(position, cy, ev) }}
+              onReview={onReview ? () => onReview(cy.cycle_id) : undefined}
             />
           ))}
           {position.is_open && closedCount === 0 ? (

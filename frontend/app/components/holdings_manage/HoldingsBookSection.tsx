@@ -4,7 +4,8 @@
 // 보유 줄(또는 [매매])을 누르면 그 종목 · 계좌가 고정된 매매 입력 창이 열리고, 저장하면 수량 ·
 // 평단과 History 가 함께 바뀐다. 수량 · 평단을 직접 고치는 일은 부모의 '입력 정정' 모드에서 한다.
 // 수익률 열 = 「보유 현황」과 같은 /holdings/enriched 값(줄별 연결 · 새 시세 조회 없음 · Q-C).
-// History · 시장 흐름은 누를 때만 조회한다(열기만으로 외부 조회 · ML 없음).
+// History · 시장 흐름은 누를 때만 조회한다(열기만으로 외부 조회 · ML 없음). POC5-06: History 기간의
+// [재진입 검토] → 검토 창이 History 자리를 대신하고 '← History' 로 돌아온다(창 위에 창 없음).
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -23,6 +24,8 @@ import { fmtNum, fmtSignedPct, pnlClass } from "./format";
 import TradeDialog from "./TradeDialog";
 import NewHoldingDialog from "./NewHoldingDialog";
 import HistoryDialog from "./HistoryDialog";
+import ReentryReviewDialog from "./ReentryReviewDialog";
+import type { MenuKey } from "../LeftSidebar";
 import ClosedHoldings from "./ClosedHoldings";
 
 const ACCOUNT_ORDER = ["일반", "ISA", "연금", "오픈뱅킹", "기타"];
@@ -61,6 +64,7 @@ type Open =
     }
   | { kind: "new"; rebuy?: PositionHistory | null }
   | { kind: "history"; positionId: string }
+  | { kind: "review"; positionId: string; cycleId: string }
   | null;
 
 interface Props {
@@ -71,6 +75,7 @@ interface Props {
   reloadKey: number;
   onEdit: () => void;
   onChanged: () => void; // 저장 · 창 닫기 뒤 부모가 보유 · 적용 상태를 다시 읽는다
+  onNavigate?: (key: MenuKey) => void; // 재진입 검토 창의 이동 링크(가격 갱신 · 원장 새로고침 화면)
 }
 
 export default function HoldingsBookSection({
@@ -81,6 +86,7 @@ export default function HoldingsBookSection({
   reloadKey,
   onEdit,
   onChanged,
+  onNavigate,
 }: Props) {
   const [open, setOpen] = useState<Open>(null);
   const [positions, setPositions] = useState<PositionHistory[]>([]);
@@ -320,6 +326,20 @@ export default function HoldingsBookSection({
           onRebuy={(p) => setOpen({ kind: "new", rebuy: p })}
           onCorrect={onCorrect}
           onChanged={changed}
+          onReview={(cid) => setOpen({ kind: "review", positionId: open.positionId, cycleId: cid })}
+        />
+      ) : null}
+      {open?.kind === "review" ? (
+        <ReentryReviewDialog
+          positionId={open.positionId}
+          cycleId={open.cycleId}
+          onBack={() => setOpen({ kind: "history", positionId: open.positionId })}
+          onClose={close}
+          onNavigate={onNavigate ? (menu) => onNavigate(menu as MenuKey) : undefined}
+          onTrade={(p) => {
+            const h = holdings.find((x) => x.position_id === p.position_id);
+            setOpen(h ? { kind: "trade", holding: h } : { kind: "new", rebuy: p });
+          }}
         />
       ) : null}
     </div>

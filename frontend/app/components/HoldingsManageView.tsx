@@ -511,6 +511,7 @@ export default function HoldingsManageView({ onNavigate }: Props) {
             setEditMode(true);
           }}
           onChanged={reload}
+          onNavigate={onNavigate}
         />
       ) : (
         <div className="card">

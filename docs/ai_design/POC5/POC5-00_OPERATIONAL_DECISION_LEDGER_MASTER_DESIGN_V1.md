@@ -247,6 +247,7 @@ POC5-04의 신호 유효성 결론만 표본 성숙을 기다린다. 기다리�
 * 현행 PUSH 문구·시간·임계·억제·상한 변경
 * 새로운 매수·매도 추천
 * ML 학습·RF/XGBoost/LightGBM 재개
+  (2026-10-09 한정 예외: POC5-06 PC 수동 연구 — `docs/ai_design/POC5/POC5-06_MANUAL_REENTRY_REVIEW_AND_ML_EVIDENCE_DESIGN_V1.md` 개정 2 §10-1 · 01~04 의 ML 미포함은 그대로)
 * outcome을 보고 성공 기준 변경
 * 누락된 과거 신호를 가격 데이터로 역생성
 * 테스트의 라이브 DB·상태 파일 쓰기
@@ -309,6 +310,7 @@ POC5 완료가 새 ML 개발을 자동 승인하지 않는다. 새 ML 연구는 
 * Telegram callback·신규 공개 API·신규 cron이 필요
 * 사용자 피드백 입력이 기존 발송 성공 여부에 영향
 * POC5 안에서 ML 모델을 다시 열어야 함
+  (2026-10-09 한정 예외: POC5-06 PC 수동 연구는 설계자 판정으로 이 조건의 예외 — `docs/ai_design/POC5/POC5-06_MANUAL_REENTRY_REVIEW_AND_ML_EVIDENCE_DESIGN_V1.md` 개정 2 §10-1 · 그 밖의 POC5 ML 재개는 여전히 중단 조건)
 
 먼저 `docs/ai_design/POC5/POC5-00_OPERATIONAL_DECISION_LEDGER_MASTER_DESIGN_V1.md`에 본 설계를 기록하고, 사실조사를 포함한 `docs/ai_plan/POC5/POC5-00_OPERATIONAL_DECISION_LEDGER_MASTER_PLAN_V1.md`을 제출한다. PLAN 판정 전 구현하지 않는다.
 
@@ -400,6 +402,7 @@ IMPLEMENTATION_ORDER
 POC5_PURPOSE
   운영 신호·원시 결과·사용자 피드백 축적
   ML 재개 아님
+  (2026-10-09 예외: POC5-06 PC 수동 연구 한정 — 01~04 는 ML 미포함 그대로)
   성공/실패 label 생성 아님
   기다림은 성과 해석에만 필요하며 개발을 차단하지 않음
 

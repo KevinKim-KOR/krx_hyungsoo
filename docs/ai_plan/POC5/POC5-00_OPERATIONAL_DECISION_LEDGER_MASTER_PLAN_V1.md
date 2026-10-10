@@ -413,6 +413,7 @@ OCI `market_data.sqlite` 실측(값은 출력하지 않고 건수·기간만):
 
 ```text
 POC5_PURPOSE              = 운영 신호 · 원시 결과 · 사용자 피드백 축적 (ML 재개 아님 · 성공/실패 label 없음)
+POC5_06_ML_EXCEPTION      = 2026-10-09 POC5-06 PC 수동 연구 한정(고정 Ridge 1개 · 운영 · 추천 승격 없음 · POC5-06 설계 개정 2 §10-1) · 01~04 ML 미포함 그대로
 OUTCOME_POLICY            = RAW_ONLY
 MARKET_DIRECTION_ACCURACY = NOT_DEFINED
 PRIMARY_T0                = RUNTIME_QUOTE_USED_IN_MESSAGE
@@ -652,7 +653,7 @@ user_feedback    (PC 전용) event_id · feedback_seq · helpfulness(도움됨 /
 |---|---|
 | 현행 PUSH 문구 · 시간 · 임계 · 억제 · 상한 변경 | POC5 안에서는 0 — 본문 byte · 판정 · 순서 동일 테스트로 증명. §3-1 운영 정정은 POC5 가 아니라 설계자가 지시한 POC3 정정 단계(별도 PLAN) |
 | 새로운 매수 · 매도 추천 | 0 |
-| ML 학습 · RF · XGB · LGBM | 0 |
+| ML 학습 · RF · XGB · LGBM | 0 (01~04) · 2026-10-09 POC5-06 PC 수동 연구 한정 예외 = 고정 Ridge 1개(POC5-06 설계 개정 2 §10-1 · RF · XGB · LGBM 0) |
 | outcome 을 보고 성공 기준 변경 | 해당 없음 — 성공 임계 자체가 없다(Q29 · RAW_ONLY) · 운영 결과 · 과거 수익률 계속 비열람 |
 | 누락된 과거 신호 역생성 | 0 — 과거 종목 단위 `UNLINKABLE_LEGACY` |
 | 테스트의 라이브 DB · 상태 파일 쓰기 | 0 — `_live_guard` + tmp DB · Telegram stub 기본 fixture |
@@ -667,7 +668,7 @@ user_feedback    (PC 전용) event_id · feedback_seq · helpfulness(도움됨 /
 | §12 Telegram callback · 신규 공개 API · 신규 cron | 해당 없음 — callback 없음 · 로컬 API(Q3) · cron 없음(Q2 · Q25) |
 | §12 피드백이 발송에 영향 | 해당 없음 — PC 전용 저장 · 발송 경로와 분리 |
 | §12 과거 결과를 본 뒤 기준 결정 | 해당 없음 — 성공 임계 없음(Q29 · RAW_ONLY) · 운영 결과 · 과거 수익률 계속 비열람 |
-| §12 POC5 안에서 ML 재개 | 해당 없음 — POC5_PURPOSE: ML 재개 아님 |
+| §12 POC5 안에서 ML 재개 | 해당 없음 — POC5_PURPOSE: ML 재개 아님 · 2026-10-09 예외: POC5-06 PC 수동 연구 한정(POC5-06 설계 개정 2 §10-1) |
 | §11 신규 이벤트 100% | 실행 진입 전체가 모집단 · 누락은 명시적 gap · 대조 보고(Q6) |
 | §11 운영 3종 · 폐지 1종 구분 | 원장 허용 목록 3종 · spike 제외 · OCI 상태 화면은 §3-1 정정 2 |
 

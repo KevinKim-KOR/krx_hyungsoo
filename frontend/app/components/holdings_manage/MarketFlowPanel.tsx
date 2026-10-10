@@ -5,7 +5,8 @@
 // 마운트한다). 각 매매 = '기준일(판정 근거) 종가 → 마지막 저장일 종가' 변화와 같은 두 날짜의
 // KOSPI 변화. '마지막 저장일'은 PC 에 저장된 마지막 날짜이며 오늘 시세가 아니므로 날짜를 늘 같이
 // 보인다. 자료 없음 · 비교 불가는 사유 문구 그대로 · 출처가 다르면 '출처 다름' 표시. 판정 · 추천
-// 문장 · ML 버튼은 없다(재진입 검토는 후속 단계).
+// 문장 · ML 버튼은 없다(재진입 검토는 History 의 [재진입 검토] · POC5-06). 그리기는 `MarketFlowView`
+// (재진입 검토 창이 이미 받은 시장 흐름을 같은 모양으로 그린다).
 
 import { useEffect, useState } from "react";
 import {
@@ -107,6 +108,27 @@ function seriesNames(d: MarketFlowResponse): string {
   return names.length > 0 ? names.join(" · ") : "ETF 저장 종가 · KOSPI 저장 종가";
 }
 
+export function MarketFlowView({ data }: { data: MarketFlowResponse }) {
+  return (
+    <>
+      <ul>
+        {data.events.map((ev) => (
+          <EventLine key={ev.record_id} ev={ev} />
+        ))}
+        {data.holding_period ? <PeriodLine period={data.holding_period} /> : null}
+      </ul>
+      <div className="muted hmx-small" style={{ marginTop: 6 }}>
+        계열: {seriesNames(data)} · 출처는 각 날짜 행에 저장된 출처입니다.
+      </div>
+      <ul className="muted hmx-small">
+        {data.notes.map((n) => (
+          <li key={n}>{n}</li>
+        ))}
+      </ul>
+    </>
+  );
+}
+
 export default function MarketFlowPanel({ positionId, cycleId }: Props) {
   const [data, setData] = useState<MarketFlowResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -139,26 +161,9 @@ export default function MarketFlowPanel({ positionId, cycleId }: Props) {
           {error}
         </div>
       ) : null}
-      {data ? (
-        <>
-          <ul>
-            {data.events.map((ev) => (
-              <EventLine key={ev.record_id} ev={ev} />
-            ))}
-            {data.holding_period ? <PeriodLine period={data.holding_period} /> : null}
-          </ul>
-          <div className="muted hmx-small" style={{ marginTop: 6 }}>
-            계열: {seriesNames(data)} · 출처는 각 날짜 행에 저장된 출처입니다.
-          </div>
-          <ul className="muted hmx-small">
-            {data.notes.map((n) => (
-              <li key={n}>{n}</li>
-            ))}
-          </ul>
-        </>
-      ) : null}
+      {data ? <MarketFlowView data={data} /> : null}
       <div className="muted hmx-small" style={{ marginTop: 6 }}>
-        재진입 판단을 돕는 ‘재진입 검토’(ML)는 후속 단계에서 따로 설계합니다.
+        재진입 판단을 돕는 근거 · ML 연구 추정은 이 기간의 [재진입 검토]에서 봅니다.
       </div>
     </div>
   );
