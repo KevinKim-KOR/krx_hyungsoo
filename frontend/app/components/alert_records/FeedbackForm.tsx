@@ -84,7 +84,7 @@ export default function FeedbackForm({ eventId, onSaved }: Props) {
         />
         <button
           type="button"
-          className="ar-btn-sm"
+         
           disabled={!helpfulness || saving}
           onClick={save}
         >

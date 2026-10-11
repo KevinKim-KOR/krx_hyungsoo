@@ -227,7 +227,6 @@ export default function RelativeUpsideRunCard({
           onClick={handleRun}
           disabled={running}
           style={{
-            padding: "8px 16px",
             borderRadius: 6,
             border: "none",
             backgroundColor: running ? "#9ca3af" : "#0284c7",

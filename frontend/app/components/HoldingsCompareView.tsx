@@ -288,7 +288,6 @@ export default function HoldingsCompareView({ data }: Props) {
               disabled={evidenceLoading}
               style={{
                 marginLeft: 8,
-                padding: "2px 10px",
                 borderRadius: 4,
                 border: "1px solid var(--border)",
                 cursor: evidenceLoading ? "not-allowed" : "pointer",

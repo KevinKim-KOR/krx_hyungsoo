@@ -178,7 +178,7 @@ export default function ReentryMlPanel({ positionId, cycleId, available, targetN
             선택 ETF 하나로 고정 모델(Ridge)을 한 번 학습해, 기준일 종가 대비 이후 20거래일 중 가장 낮은
             종가 변화를 추정하고 단순 기준(학습 기간 중앙값)과 과거 검증 오차를 비교합니다.
           </p>
-          <button type="button" className="hmx-btn-sm" onClick={() => void run()} disabled={running}>
+          <button type="button" onClick={() => void run()} disabled={running}>
             {running ? "계산 중…" : result ? "ML 검토 다시 실행" : "ML 검토 실행"}
           </button>
           {error ? (

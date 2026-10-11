@@ -828,14 +828,14 @@ function SelectedDetail({
       <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
         <button
           type="button"
-          className="wb-btn"
+          className="wb-btn btn-md"
           onClick={() => onNavigate("etf_exposure")}
         >
           ETF Exposure 상세 →
         </button>
         <button
           type="button"
-          className="wb-btn"
+          className="wb-btn btn-md"
           onClick={() => onNavigate("market_discovery")}
         >
           Market Discovery →

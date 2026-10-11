@@ -206,7 +206,6 @@ export default function ThreePushParamCard({
           onClick={handleApply}
           disabled={applying}
           style={{
-            padding: "8px 16px",
             borderRadius: 6,
             border: "none",
             backgroundColor: applying ? "#9ca3af" : "#0284c7",

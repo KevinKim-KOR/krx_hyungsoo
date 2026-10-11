@@ -199,15 +199,15 @@ export default function HoldingsBookSection({
       <div className="hmx-cycle-head">
         <h2 style={{ margin: 0 }}>1. 보유 종목</h2>
         <div className="hmx-row-actions">
-          <button type="button" className="hmx-btn-sm" onClick={() => setOpen({ kind: "new" })} disabled={busy}>
+          <button type="button" onClick={() => setOpen({ kind: "new" })} disabled={busy}>
             새 보유 추가
           </button>
-          <button type="button" className="hmx-btn-sm hmx-ghost" onClick={onEdit} disabled={busy}>
+          <button type="button" className="hmx-ghost" onClick={onEdit} disabled={busy}>
             입력 정정
           </button>
           <button
             type="button"
-            className="hmx-btn-sm hmx-ghost"
+            className="hmx-ghost"
             onClick={() => setOpen({ kind: "reference" })}
             disabled={busy || rows.length === 0}
           >

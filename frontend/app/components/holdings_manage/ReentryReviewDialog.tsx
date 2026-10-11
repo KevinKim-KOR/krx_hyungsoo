@@ -137,7 +137,7 @@ export default function ReentryReviewDialog({
       {onTrade ? (
         <button
           type="button"
-          className="hmx-btn-sm hmx-ghost"
+          className="hmx-ghost"
           onClick={() => onTrade(data.my_trades.position)}
         >
           {data.my_trades.position.is_open ? "매매(매매 창)" : "재매수(매매 창)"}

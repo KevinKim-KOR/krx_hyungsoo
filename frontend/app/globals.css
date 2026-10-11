@@ -127,11 +127,13 @@ button {
   background: var(--accent);
   color: white;
   border: none;
-  padding: 10px 18px;
+  min-height: 48px; /* POC5-UI-01 큰 버튼(기본) — 크기 규칙은 파일 끝 POC5-UI-01 블록 */
+  padding: 0 16px;
   border-radius: 8px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
+  line-height: 1.25;
 }
 
 button:hover:not(:disabled) {
@@ -428,8 +430,6 @@ table.holdings-table button {
   font-weight: 700;
 }
 .hm-del {
-  width: 28px;
-  height: 28px;
   border: 1px solid var(--border-soft, #e8ebf0);
   border-radius: 7px;
   background: #fff;
@@ -1065,7 +1065,6 @@ table.compact-table tr.compact-row-detail > td:first-child {
   border: none;
   color: var(--muted);
   cursor: pointer;
-  padding: 2px 4px;
   font-size: 12px;
 }
 
@@ -1464,8 +1463,6 @@ ul.reason-list li {
 
 .dashboard-exception-btn {
   flex-shrink: 0;
-  font-size: 12px;
-  padding: 3px 10px;
   border: 1px solid var(--accent);
   border-radius: 6px;
   background: #fff;
@@ -1889,8 +1886,6 @@ textarea.decision-textarea {
 
 .dashboard-flow-btn {
   margin-top: 8px;
-  padding: 6px 12px;
-  font-size: 13px;
   align-self: flex-start;
 }
 
@@ -2171,7 +2166,6 @@ textarea.decision-textarea {
 .wb-summary-cell strong { font-size: 16px; }
 
 .wb-btn {
-  font-size: 12px; padding: 3px 10px;
   border: 1px solid var(--accent); border-radius: 6px;
   background: #fff; color: var(--accent); cursor: pointer;
 }
@@ -2383,7 +2377,7 @@ textarea.decision-textarea {
 .wb-attn-warn { border-left-color: var(--warn); background: #fffaf2; }
 .wb-attn-neutral { border-left-color: var(--border); }
 .wb-attn-btn {
-  flex-shrink: 0; font-size: 12px; padding: 3px 10px;
+  flex-shrink: 0;
   border: 1px solid var(--accent); border-radius: 6px;
   background: #fff; color: var(--accent); cursor: pointer;
 }
@@ -2495,7 +2489,7 @@ textarea.decision-textarea {
 }
 .tc-maint-item:last-child { border-bottom: none; }
 .tc-btn {
-  font-size: 15px; font-weight: 600; padding: 8px 16px;
+  font-weight: 600;
   border-radius: 12px; border: 1px solid #0066cc;
   background: #0066cc; color: #ffffff; cursor: pointer;
 }
@@ -3176,7 +3170,6 @@ button.ar-ghost {
 }
 button.ar-ghost:hover:not(:disabled) { background: rgba(58, 122, 254, 0.08); }
 button.ar-ghost:disabled { background: transparent; color: var(--muted); }
-button.ar-btn-sm { padding: 5px 12px; font-size: 13px; }
 .ar-date {
   font: inherit; font-size: 14px; padding: 5px 10px;
   border: 1px solid var(--border); border-radius: 6px; background: var(--card); color: var(--fg);
@@ -3242,7 +3235,7 @@ details.ar-ledger[open] > summary { margin-bottom: 6px; }
 .hmx-dialog-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
 .hmx-dialog-head h3 { margin: 0; font-size: 17px; }
 .hmx-dialog-foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
-button.hmx-x { background: transparent; color: var(--muted); font-size: 20px; line-height: 1; padding: 2px 6px; }
+button.hmx-x { background: transparent; color: var(--muted); font-size: 20px; line-height: 1; }
 button.hmx-x:hover:not(:disabled) { background: var(--border-soft); }
 .hmx-form { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 14px; }
 .hmx-field { display: grid; grid-template-rows: 18px 38px; gap: 4px; min-width: 0; }
@@ -3282,7 +3275,6 @@ button.hmx-x:hover:not(:disabled) { background: var(--border-soft); }
 .hmx-flow ul { margin: 6px 0 0; padding-left: 18px; }
 .hmx-flow li + li { margin-top: 4px; }
 .hmx-row-actions { display: flex; gap: 6px; flex-wrap: nowrap; }
-button.hmx-btn-sm { padding: 4px 10px; font-size: 13px; }
 button.hmx-ghost { background: var(--card); color: var(--accent); border: 1px solid var(--border); }
 button.hmx-ghost:hover:not(:disabled) { background: rgba(37, 99, 235, 0.06); }
 details.hmx-closed > summary { font-size: 16px; font-weight: 600; cursor: pointer; }
@@ -3324,3 +3316,63 @@ details.hmx-closed[open] > summary { margin-bottom: 10px; }
 .hmx-ref-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 2px 0 8px; }
 .hmx-ref-row input[type="date"] { font: inherit; height: 30px; padding: 0 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--card); color: var(--fg); }
 .hmx-ref-row .hmx-error { flex-basis: 100%; }
+/* POC5-UI-01 — 버튼 크기 두 단계(설계 POC5-07 §10-3 · 사용자 결정 '큰 버튼 기본 · 큰 / 중간').
+   큰 버튼(기본) = 위 `button` 규칙: 높이 48px · 글자 16px · 좌우 16px — 실행 · 저장 · 적용 · 새로고침 · 추가 · 분석 ·
+   대화창 아래 동작(.wb-btn · .tc-btn · .dashboard-flow-btn · button.reject · button.hmx-ghost · button.ar-ghost 도 이 크기).
+   중간 버튼 = 아래 첫 규칙: 높이 40px · 글자 14px · 좌우 12px — 줄 안 History · 매매 · 정정 · 수정 · 해제 · 펼치기 · 날짜
+   이동 같은 좁은 곳의 보조 동작. 아이콘만 있는 버튼 = 그 단계 높이와 같은 너비(40 × 40).
+   색 · 위험 · 비활성 · 포커스는 각 규칙 그대로(여기서는 크기만). 메뉴 · 탭 · 선택 묶음(정렬 · 보기 · 종류 · 평가 선택) ·
+   링크형 버튼은 대상이 아니다 — 기본 크기를 걷어 내고 원래 크기를 유지한다. */
+button.btn-md,
+button.hmx-btn-sm,
+button.ar-btn-sm,
+button.link-button,
+.dashboard-exception-btn,
+.wb-attn-btn {
+  min-height: 40px;
+  padding: 0 12px;
+  font-size: 14px;
+}
+button.hmx-x,
+button.hm-del,
+button.toggle-btn {
+  width: 40px;
+  height: 40px;
+  min-height: 40px;
+  padding: 0;
+}
+.sidebar-menu-btn,
+.sidebar-group-title,
+.decision-tab-btn,
+.wb-tab,
+.wb-filter,
+.holdings-sort-seg button,
+.ar-seg button,
+.ar-fb-row button.ar-fb-btn,
+.hmx-seg button,
+.hre-quickview button,
+button[role="tab"],
+.tc-linklike,
+.hmx-rv-back {
+  min-height: 0;
+}
+.sidebar-menu-btn,
+.sidebar-group-title,
+.decision-tab-btn,
+.wb-tab,
+.wb-filter,
+.ar-seg button,
+.ar-fb-row button.ar-fb-btn,
+.hmx-seg button,
+.hre-quickview button,
+button[role="tab"] {
+  line-height: revert; /* .holdings-sort-seg button 은 자체 'font: inherit' 로 줄 높이를 이미 정한다 */ /* 기본 버튼의 줄 높이를 걷어 내고 예전처럼 부모 · 브라우저 값 */
+}
+.sidebar-menu-btn,
+.decision-tab-btn,
+button[role="tab"] {
+  font-size: 14px; /* 기본 글자 크기가 16px 로 바뀌어도 메뉴 · 탭은 그대로(예전 기본값) */
+}
+@media (max-width: 720px) {
+  .hmx-row-actions { flex-wrap: wrap; } /* 좁은 화면 버튼 줄은 줄바꿈 · 가로 넘침 없음 */
+}

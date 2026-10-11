@@ -125,14 +125,13 @@ export default function SelectedDetail({
       <section>
         <button
           type="button"
+          className="btn-md"
           onClick={onToggleExpanded}
           style={{
-            padding: "4px 8px",
             border: "1px solid var(--border)",
             borderRadius: 4,
             backgroundColor: "transparent",
             cursor: "pointer",
-            fontSize: "0.85em",
             width: "100%",
             textAlign: "left",
           }}
