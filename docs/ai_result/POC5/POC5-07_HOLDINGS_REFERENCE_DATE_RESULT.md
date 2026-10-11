@@ -1,9 +1,9 @@
 # POC5-07 개발 결과서 — HOLDINGS_REFERENCE_DATE (기존 보유의 가격 비교 기준일)
 
-작성 2026-10-11 · 갱신 2026-10-11(검증자 r1 VERIFIED · 사용자 실화면 실제 설정 기록) · 작성자: 개발자(VSCode Claude) · 수신: 검증자(Codex)
+작성 2026-10-11 · 갱신 2026-10-11(검증자 r1 VERIFIED · 설계자 RESULT PASS_TO_DEPLOY · 커밋 · PC 재기동 · 최종 화면 · 종료) · 작성자: 개발자(VSCode Claude) · 수신: 검증자(Codex)
 
 ```text
-STATUS                 = IMPLEMENTED_VERIFIED_RESULT_PASS_TO_DEPLOY — 검증자 r1 VERIFIED · 설계자 RESULT PASS_TO_DEPLOY(2026-10-11) · 실제 일괄 설정 완료(§10 · 수용 · 현재 데이터 유지) · 커밋 · push(사용자 승인) → PC 재기동 · 최종 화면 확인(시장 흐름 · 편집 표시) 전 · 아직 CLOSED 아님
+STATUS                 = IMPLEMENTED_VERIFIED_DEPLOYED_CLOSED — 검증자 r1 VERIFIED · 설계자 RESULT PASS_TO_DEPLOY(2026-10-11) · 구현 커밋 `89f90f0f` push(사용자 승인) · PC 재기동 · 최종 화면 사용자 확인 · 보유 파일 불변 개발자 확인 → 종료(§11 · 설계자 재판정 없음 · 설계 §10-2)
 DESIGNER_RESULT        = PASS_TO_DEPLOY(2026-10-11 · OUTSIDE_CHANGES ACCEPTED(§4 4건 + 과거 화면 설명 정정) · EARLY_LIVE_SETTING ACCEPTED_KEEP_CURRENT_DATA · 647줄 한계 수용 · OCI_PULL NOT_REQUIRED · 최종 화면 통과 뒤 재판정 없이 종료 · 버튼 크기 = 후속 POC5-UI-01) — 원문 = 설계서 §10 · 끝에 전달문 원문
 VERIFIER               = r1 VERIFIED(2026-10-11 · A-1 ~ A-4 통과 · B-1 ~ B-6 없음 · 위험 NONE · 범위 폭주 NONE · 검증자 격리 사본에서 관련 백엔드 280 + 독립 검증 2 · 화면 394 통과 · PROGRAM_TRUTH 과거 화면 문구 1곳은 검증자가 직접 정정 · stage)
 STEP_ID                = POC5-07 기존 보유의 가격 비교 기준일
@@ -42,7 +42,7 @@ BACKEND_FULL_REGRESSION= 3312 passed / 0 failed · exit 0 · 404.44s(2026-10-11 
 | §6-1 ~ §6-5 확인 | DONE | §8-1 표 |
 | §9-2-1 저장일 상한 = recorded_at 의 KST 날짜 · KST 자정 시험 | DONE | `holdings_book.kst_day` · `test_integrity_rules_and_kst_midnight` |
 | §9-2-2 History '실제 매수일: 미상' + '가격 비교 기준일' 함께 · purchase_date_unknown 이 기준일 항목을 숨기지 않음 | DONE | `ReferenceDateEditor` · 시장 흐름 '실제 매수일: 미상' 줄 · vitest |
-| §7 PC 재기동 · 실화면 | PARTIAL | 실제 일괄 설정 완료(2026-10-11 16:39 · §10 · 설계자 수용) · 커밋 · PC 재기동 뒤 저장된 기준일 · History · 시장 흐름 표시 최종 확인 남음 |
+| §7 PC 재기동 · 실화면 | DONE | 실제 일괄 설정(2026-10-11 16:39 · §10) · PC 재기동 · 최종 화면 사용자 확인(§11) |
 
 ## 2. 변경된 파일 목록
 
@@ -92,7 +92,7 @@ BACKEND_FULL_REGRESSION= 3312 passed / 0 failed · exit 0 · 404.44s(2026-10-11 
 ## 5. 알려진 한계 / 미완성
 
 1. **`app/holdings_market_flow.py` 647줄** — KS-10 백엔드 근접 경고(600 이상) 구간 · PLAN §2-4 목표 640 초과(7줄) · 분리 기준 650 미만이라 PLAN 대로 분리하지 않았다. 다음에 이 파일에 기능을 더하면 문구 · 상수(`REASONS` · `PERIOD_REASONS` · `NOTES` · 기준일 문구)를 먼저 분리해야 한다.
-2. **최종 화면 확인 남음** — 실제 일괄 설정은 완료(§10 · PC 보유 V2 · revision 1 · 기준잔고 32 + 기준일 32 · 설계자 수용 · 현재 데이터 유지 · 해제 · V1 복구 · 재설정 없음). 남은 것은 커밋 · PC 재기동 뒤 History 기준일 표시 · [수정/해제] 입력 · 취소 표시 · 시장 흐름 기준일 항목 확인(확인만을 위해 실제 기준일을 바꾸지 않음 · 설계 §10-2).
+2. 실제 일괄 설정 · 최종 화면 확인 모두 완료(§10 · §11). 해제는 비교 설정만 지우는 동작이며 V1 복구가 아니다(배포 전 V1 백업 `state/holdings/backup/holdings_latest_pre_POC5-05_20261009.json` 은 그대로 둔다).
 3. 화면 표시용 06 '내 거래'에는 기준일을 넣지 않았다(PLAN §2-6-5 · 판정 수용 · 06 창의 시장 흐름에는 기준일 항목이 보임).
 
 ## 6. 다음 검증자(Codex)에게 알릴 점
@@ -119,7 +119,7 @@ BACKEND_FULL_REGRESSION= 3312 passed / 0 failed · exit 0 · 404.44s(2026-10-11 
 ## 7. 사용자 확인이 필요한 항목
 
 1. **실제 일괄 설정 — 완료**(2026-10-11 16:39:27 · 2026-01-02 · 32기간 · §10). 설계자가 RESULT 전 실행을 수용했고 현재 데이터를 유지한다.
-2. **최종 화면 확인(남음)** — PC 재기동 뒤 History 의 '실제 매수일: 미상' · '가격 비교 기준일: 2026-01-02' · [수정/해제](입력 · 취소 표시만) · [시장 흐름 보기]의 '가격 비교 기준일 이후 종가 변화'(사본 실측: KODEX 200 2026-01-02 → 2026-10-08 +68.79% · KOSPI +53.75%).
+2. **최종 화면 확인 — 완료**(2026-10-11 · §11).
 
 ## 8. 검증 실측 (2026-10-11)
 
@@ -196,4 +196,15 @@ BACKEND_FULL_REGRESSION= 3312 passed / 0 failed · exit 0 · 404.44s(2026-10-11 
 - **순서**: 사용자가 검증자 VERIFIED 뒤 · 설계자 RESULT 판정 · 커밋 전에, 자동 반영 중인 PC 서버(작업 트리 코드)로 「종목 관리」 [가격 비교 기준일 설정] → [설정]을 실행했다(사용자 보고 "가격 비교 기준일 설정->설정 완료했습니다."). 설계 §7 · §9-3 순서(RESULT → 커밋 · push → PC 재기동 → 실화면)와 다르다 — 실제 설정 결과는 아래처럼 계약과 같다.
 - **개발자 읽기 전용 확인(라이브)**: `state/holdings/holdings_latest.json` = schema 2 · revision 1 · 기록 `BASELINE 32 · REFERENCE_DATE 32`(모두 `2026-01-02` · request_id 1개 · 저장 2026-10-11T16:39:27+09:00 · 기준잔고 확정 시각 같음 · virtual 0) · `holdings` 32줄 = 배포 전 V1 백업의 5필드와 같음 · History 32기간 모두 기준일 `2026-01-02` · 실제 매수일(start_date) 0건(미상 유지) · OCI 적용 기록 `OCI_APPLIED` · 현재 payload sha256 = 마지막 적용 sha256 · `pending_apply` = False(OCI 미적용 변경 없음).
 - **사용자 의견(2026-10-11)**: "화면들의 버튼 크기가 다 제각각인 것은 아쉽네요" — 이번 단계 변경 0 · 사용자 결정 = 별도 항목으로 기록(`docs/backlog/BACKLOG.md` §10 '버튼 크기 통일(전 화면)' · 실측 7가지 크기) · 설계자 결정 = 후속 **POC5-UI-01**(큰 버튼 48px 기본 · 중간 40px · 설계 §10-3) — 07 종료 조건 아님.
-- **설계자 판정(§10-2)**: RESULT 전 실제 설정 수용 · 현재 V2 데이터 유지 · 회귀 시험 구간 해시 불변과 그 뒤 정상 설정 저장은 다른 시점(위반 아님). 남은 것 = 커밋 · push(사용자 승인) → PC 재기동 → 저장된 기준일 · History · 시장 흐름 표시 확인 → 종료 기록 · 인계(재판정 · 재검증 없음).
+- **설계자 판정(§10-2)**: RESULT 전 실제 설정 수용 · 현재 V2 데이터 유지 · 회귀 시험 구간 해시 불변과 그 뒤 정상 설정 저장은 다른 시점(위반 아님). 이후 커밋 · push · PC 재기동 · 최종 화면 확인 완료 → 종료(§11).
+
+## 11. 배포 · 종료 기록 (2026-10-11)
+
+- **커밋 · push**: 구현 커밋 `89f90f0f`(`git show --stat`: `24 files changed, 2625 insertions(+), 45 deletions(-)`) · push `ba7d55db..89f90f0f main -> main`(사용자 승인 2026-10-11). OCI 실행 파일 변경 0 → OCI pull · 첫 영업일 확인 없음(설계 §10).
+- **PC 재기동**: 백엔드 새 프로세스(시작 2026-10-11 18:41:58).
+- **최종 화면(설계 §10-2)**: 사용자 확인 완료(2026-10-11) — History 기간 머리 '실제 매수일: 미상' · '가격 비교 기준일: 2026-01-02' · [수정/해제] 입력 · 취소 표시(실제 기준일 변경 없음) · 매매 없는 기간의 [시장 흐름 보기] · '가격 비교 기준일 이후 종가 변화' · 일괄 설정 창 '설정할 보유가 없습니다'.
+- **부수효과(개발자 확인)**: 최종 화면 확인 전후 `state/holdings/holdings_latest.json` · `state/holdings/holdings_apply_status_latest.json` sha256 같음 · 보유 문서 revision 1 · 기록 `BASELINE 32 · REFERENCE_DATE 32` 그대로.
+- **종료 조건(설계 §10-2)**: 코드 변경 없이 최종 화면 통과 → `IMPLEMENTED_VERIFIED_DEPLOYED_CLOSED`(설계자 · 검증자 재왕복 없음).
+- **후속**: 버튼 크기 통일 = `POC5-UI-01`(설계 §10-3 · 큰 48px 기본 · 중간 40px · 07 종료 조건 아님) · `app/holdings_market_flow.py` 647줄 — 다음 기능 추가 때 문구 · 상수 분리 먼저.
+- **인계**: `docs/handoff/POC5-07_HOLDINGS_REFERENCE_DATE_HANDOFF_2026-10-11.md`.
+

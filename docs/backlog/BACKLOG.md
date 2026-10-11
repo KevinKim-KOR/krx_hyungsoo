@@ -444,7 +444,7 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 
 
 - **사용자 제안 (2026-10-10 · `POC5-06` 종료 직후 · 설계자 판단 대기)**: "지금 보유하고 있는 종목들의 최초 거래일시를 모르니 2026-01-02로 해두면 어떨까 싶습니다." (실제 매매 내역을 더 넣어 가며 쓸 계획.) 사실 — 기존 32줄은 기준잔고(BASELINE)이고 기준잔고 · 잔고 등록(REGISTER) 기록은 수량 · 평단 두 칸만 허용(`app/holdings_book.py :: PAYLOAD_KEYS` · 다른 칸이 있으면 무결성 검사에서 손상). 방법별 의미 — (가) 기준잔고에 '기준일' 칸 추가(매수일 아님 표기 · 기록 형식 변경) / (나) 2026-01-02 매수(BUY)로 바꿔 쓰기(실제와 다른 매수 기록 · 05 시장 흐름이 그 날 종가 기준 '매수 전후 변화' 계산) / (다) 그대로 두고 앞으로의 실제 매매만 입력(현재 구조로 가능). OCI 적용 5필드 · 06 ML(D20) 영향 없음. 상세 `docs/handoff/POC5-06_MANUAL_REENTRY_REVIEW_AND_ML_EVIDENCE_HANDOFF_2026-10-10.md` §4.
-- **진행 (2026-10-11)**: 설계자가 (가)안 = **가격 비교 기준일**(REFERENCE_DATE · 실제 매수일은 미상 유지 · 2026-01-02 는 입력 제안값)으로 설계 → `POC5-07` PLAN `PASS_TO_IMPLEMENT` · 검증자 VERIFIED · 설계자 RESULT `PASS_TO_DEPLOY`(2026-10-11) · 사용자 실제 설정 완료(2026-01-02 · 32기간)(`docs/ai_design/POC5/POC5-07_HOLDINGS_REFERENCE_DATE_DESIGN_V1.md`).
+- **진행 (2026-10-11)**: 설계자가 (가)안 = **가격 비교 기준일**(REFERENCE_DATE · 실제 매수일은 미상 유지 · 2026-01-02 는 입력 제안값)으로 설계 → `POC5-07` PLAN `PASS_TO_IMPLEMENT` · 검증자 VERIFIED · 설계자 RESULT `PASS_TO_DEPLOY` · 사용자 실제 설정(2026-01-02 · 32기간) · **종료 2026-10-11(커밋 `89f90f0f` · 해소)**(`docs/ai_design/POC5/POC5-07_HOLDINGS_REFERENCE_DATE_DESIGN_V1.md`).
 ---
 
 - **항목**: account_group 라벨 병합 / 관리 UI
