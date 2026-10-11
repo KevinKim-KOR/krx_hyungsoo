@@ -3320,3 +3320,7 @@ details.hmx-closed[open] > summary { margin-bottom: 10px; }
   .hmx-rv-estimate { grid-template-columns: minmax(0, 1fr); }
   .hmx-rv-kv { grid-template-columns: 8em minmax(0, 1fr); }
 }
+/* POC5-07 History 기간 머리의 가격 비교 기준일 줄(실제 매수일 미상 · 기준일 · 같은 줄 안 수정 / 해제) */
+.hmx-ref-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 2px 0 8px; }
+.hmx-ref-row input[type="date"] { font: inherit; height: 30px; padding: 0 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--card); color: var(--fg); }
+.hmx-ref-row .hmx-error { flex-basis: 100%; }

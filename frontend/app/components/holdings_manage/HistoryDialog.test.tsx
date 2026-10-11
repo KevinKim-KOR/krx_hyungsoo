@@ -159,7 +159,8 @@ describe("보유 중 · 과거 보유 내용", () => {
     expect(within(cycle).getByText("기준잔고")).toBeInTheDocument();
     expect(within(cycle).getByText("21,385 (평단)")).toBeInTheDocument();
     expect(within(cycle).getByText(/기록 시작 뒤 매매 없음/)).toBeInTheDocument();
-    expect(within(cycle).queryByRole("button")).toBeNull(); // 정정 · 취소 · 시장 흐름 없음
+    // 정정 · 취소 · 시장 흐름 없음 — 버튼은 POC5-07 가격 비교 기준일 [수정/해제] 하나뿐
+    expect(within(cycle).getAllByRole("button").map((x) => x.textContent)).toEqual(["수정/해제"]);
     expect(screen.getByText("지난 보유 기간 없음.")).toBeInTheDocument();
   });
 });
@@ -290,7 +291,8 @@ describe("정정 전 입력 · 취소한 기록 · 입력 정정", () => {
     ).toBeInTheDocument();
     expect(sumValue(cycle, "종료")).toHaveTextContent("입력 정정으로 종료");
     expect(sumValue(cycle, "기간 수익률")).toHaveTextContent("—");
-    expect(within(cycle).queryByRole("button")).toBeNull(); // 입력 정정 · 잔고 등록 줄에는 정정 · 취소 없음
+    // 입력 정정 · 잔고 등록 줄에는 정정 · 취소 없음 — 버튼은 POC5-07 가격 비교 기준일 [수정/해제] 하나뿐
+    expect(within(cycle).getAllByRole("button").map((x) => x.textContent)).toEqual(["수정/해제"]);
   });
 
   it("종목명만 고친 입력 정정 = '종목명 정정: A → B' 만", async () => {

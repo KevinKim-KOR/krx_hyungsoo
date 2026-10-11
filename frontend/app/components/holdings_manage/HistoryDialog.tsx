@@ -160,6 +160,17 @@ export default function HistoryDialog({
               priceInfo={cy.status === "OPEN" ? (priceInfo ?? null) : null}
               actions={{ ...baseActions, onCorrect: (ev) => onCorrect(position, cy, ev) }}
               onReview={onReview ? () => onReview(cy.cycle_id) : undefined}
+              reference={
+                revision === null
+                  ? undefined
+                  : {
+                      revision,
+                      onSaved: () => {
+                        onChanged();
+                        void load();
+                      },
+                    }
+              }
             />
           ))}
           {position.is_open && closedCount === 0 ? (

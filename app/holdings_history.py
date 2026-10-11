@@ -230,6 +230,7 @@ _KIND_TEXT = {
     "BUY": "매수",
     "SELL": "매도",
     "ADJUSTMENT": "입력 정정",
+    book.REFERENCE: "가격 비교 기준일",
 }
 
 
@@ -240,6 +241,11 @@ def _related_text(doc: dict[str, Any], ids: list[str]) -> str:
     for rid in ids:
         r = by_id.get(rid)
         if r is None:
+            continue
+        if r["kind"] == book.REFERENCE:  # 매매가 아님 — 날짜 · 수량 대신 설정 값
+            parts.append(
+                f"가격 비교 기준일 {r['payload'].get('reference_date') or '해제'}"
+            )
             continue
         day = book.event_date(r) or "매수일 미상"
         qty = r["payload"].get("quantity")

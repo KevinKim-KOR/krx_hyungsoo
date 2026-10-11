@@ -6,6 +6,7 @@
 // 수익률 열 = 「보유 현황」과 같은 /holdings/enriched 값(줄별 연결 · 새 시세 조회 없음 · Q-C).
 // History · 시장 흐름은 누를 때만 조회한다(열기만으로 외부 조회 · ML 없음). POC5-06: History 기간의
 // [재진입 검토] → 검토 창이 History 자리를 대신하고 '← History' 로 돌아온다(창 위에 창 없음).
+// POC5-07: [가격 비교 기준일 설정] = 기준일 없는 기준잔고 · 잔고 등록 보유에 한 번에(ReferenceDateDialog).
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -27,6 +28,7 @@ import HistoryDialog from "./HistoryDialog";
 import ReentryReviewDialog from "./ReentryReviewDialog";
 import type { MenuKey } from "../LeftSidebar";
 import ClosedHoldings from "./ClosedHoldings";
+import ReferenceDateDialog from "./ReferenceDateDialog";
 
 const ACCOUNT_ORDER = ["일반", "ISA", "연금", "오픈뱅킹", "기타"];
 
@@ -65,6 +67,7 @@ type Open =
   | { kind: "new"; rebuy?: PositionHistory | null }
   | { kind: "history"; positionId: string }
   | { kind: "review"; positionId: string; cycleId: string }
+  | { kind: "reference" }
   | null;
 
 interface Props {
@@ -90,13 +93,23 @@ export default function HoldingsBookSection({
 }: Props) {
   const [open, setOpen] = useState<Open>(null);
   const [positions, setPositions] = useState<PositionHistory[]>([]);
+  // positions 와 같은 조회의 revision — 기준일 일괄 대상과 base_revision 을 한 읽기에서(POC5-07 §9-1).
+  const [historyRevision, setHistoryRevision] = useState<number | null>(null);
   const [priceByPos, setPriceByPos] = useState<Record<string, EnrichedHolding>>({});
 
   useEffect(() => {
     let alive = true;
     fetchTradeHistory()
-      .then((h) => alive && setPositions(h.positions))
-      .catch(() => alive && setPositions([]));
+      .then((h) => {
+        if (!alive) return;
+        setPositions(h.positions);
+        setHistoryRevision(h.revision);
+      })
+      .catch(() => {
+        if (!alive) return;
+        setPositions([]);
+        setHistoryRevision(null);
+      });
     fetchEnrichedHoldings()
       .then((r) => {
         if (!alive) return;
@@ -191,6 +204,14 @@ export default function HoldingsBookSection({
           </button>
           <button type="button" className="hmx-btn-sm hmx-ghost" onClick={onEdit} disabled={busy}>
             입력 정정
+          </button>
+          <button
+            type="button"
+            className="hmx-btn-sm hmx-ghost"
+            onClick={() => setOpen({ kind: "reference" })}
+            disabled={busy || rows.length === 0}
+          >
+            가격 비교 기준일 설정
           </button>
         </div>
       </div>
@@ -327,6 +348,14 @@ export default function HoldingsBookSection({
           onCorrect={onCorrect}
           onChanged={changed}
           onReview={(cid) => setOpen({ kind: "review", positionId: open.positionId, cycleId: cid })}
+        />
+      ) : null}
+      {open?.kind === "reference" ? (
+        <ReferenceDateDialog
+          positions={historyRevision === null ? [] : positions}
+          revision={historyRevision ?? revision}
+          onClose={close}
+          onSaved={saved}
         />
       ) : null}
       {open?.kind === "review" ? (

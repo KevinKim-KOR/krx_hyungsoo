@@ -6,13 +6,16 @@
 // 미실현(부모가 넘긴 「보유 현황」과 같은 /holdings/enriched 값 · 없으면 '—') · 누적 실현 /
 // 종료 = 매도분 원가 합계 · 기간 실현손익 · 기간 수익률. [시장 흐름 보기]는 누를 때만 조회한다
 // (한 번 펼친 뒤 접어도 다시 부르지 않는다). [재진입 검토](POC5-06)는 매매 유무와 무관하게 둔다 —
-// 부모가 검토 창을 History 자리에 연다.
+// 부모가 검토 창을 History 자리에 연다. POC5-07: 기준잔고 · 잔고 등록 기간 머리에 '실제 매수일: 미상' ·
+// '가격 비교 기준일' 줄(ReferenceDateEditor · 같은 줄 안 수정 / 해제) · 기준일이 있으면 매매가 없어도
+// [시장 흐름 보기]를 둔다('가격 비교 기준일 이후 종가 변화'를 볼 수 있게).
 
 import { useState } from "react";
 import type { HoldingCycleView } from "@/lib/api";
 import { fmtNum, fmtWon, pnlClass } from "./format";
 import HistoryEventRows, { HISTORY_COLS, HistoryHeadRow, type RowActions } from "./HistoryEventRows";
 import MarketFlowPanel from "./MarketFlowPanel";
+import ReferenceDateEditor from "./ReferenceDateEditor";
 import { dash, pct, savedAt, signedWon } from "./historyText";
 
 export interface PriceInfo {
@@ -27,6 +30,7 @@ interface Props {
   priceInfo: PriceInfo | null; // 보유 중 기간에만 넘긴다
   actions: RowActions;
   onReview?: () => void; // POC5-06 재진입 검토 창 열기
+  reference?: { revision: number; onSaved: () => void }; // POC5-07 기준일 저장 뒤 부모가 다시 읽는다
 }
 
 function Cell({ k, v, cls }: { k: string; v: string; cls?: string }) {
@@ -87,19 +91,37 @@ function CycleSummary({ cycle, priceInfo }: { cycle: HoldingCycleView; priceInfo
   );
 }
 
-export default function HistoryCycle({ positionId, cycle, priceInfo, actions, onReview }: Props) {
+export default function HistoryCycle({
+  positionId,
+  cycle,
+  priceInfo,
+  actions,
+  onReview,
+  reference,
+}: Props) {
   const [flowShown, setFlowShown] = useState(false);
   const [flowLoaded, setFlowLoaded] = useState(false);
   const open = cycle.status === "OPEN";
   const start = cycle.start_date ?? "매수일 미상";
   const head = open ? `보유 중 · ${start}` : `지난 보유 기간 · ${start} ~ ${cycle.end_date ?? "—"}`;
   const hasTrades = cycle.events.some((e) => e.kind === "BUY" || e.kind === "SELL");
+  const anchored = cycle.opened_by !== "BUY";
+  const hasFlow = hasTrades || (anchored && !!cycle.reference_date);
   return (
     <section className="hmx-cycle" aria-label={head}>
       <div className="hmx-cycle-head">
         <b>{head}</b>
         <CycleTags cycle={cycle} />
       </div>
+      {anchored && reference ? (
+        <ReferenceDateEditor
+          positionId={positionId}
+          cycleId={cycle.cycle_id}
+          value={cycle.reference_date ?? null}
+          revision={reference.revision}
+          onSaved={reference.onSaved}
+        />
+      ) : null}
       <div className="hmx-tbl-wrap">
         <table className="hmx-tbl">
           <thead>
@@ -118,9 +140,9 @@ export default function HistoryCycle({ positionId, cycle, priceInfo, actions, on
         </table>
       </div>
       <CycleSummary cycle={cycle} priceInfo={priceInfo} />
-      {hasTrades || onReview ? (
+      {hasFlow || onReview ? (
         <div className="hmx-row-actions" style={{ marginTop: 10 }}>
-          {hasTrades ? (
+          {hasFlow ? (
             <button
               type="button"
               className="hmx-btn-sm hmx-ghost"
@@ -140,7 +162,7 @@ export default function HistoryCycle({ positionId, cycle, priceInfo, actions, on
           ) : null}
         </div>
       ) : null}
-      {hasTrades && flowLoaded ? (
+      {hasFlow && flowLoaded ? (
         <div hidden={!flowShown}>
           <MarketFlowPanel positionId={positionId} cycleId={cycle.cycle_id} />
         </div>

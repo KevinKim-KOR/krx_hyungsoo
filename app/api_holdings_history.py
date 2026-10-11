@@ -3,6 +3,8 @@
 - GET  /holdings/trade-history              : position 별 보유 기간 · 기록 · 계산값(쓰기 0)
 - PUT  /holdings/trade-history              : 통합 매매 명령(매수 · 매도 · 전량매도 · 새 보유 ·
                                               잔고 등록 · 정정 · 취소) → {record, holdings, revision}
+                                              · POC5-07 action "reference_date" = 가격 비교 기준일
+                                              설정 · 수정 · 해제(대상 1 ~ 200 · 한 번 저장)
 - GET  /holdings/trade-history/market-flow  : 사용자가 누를 때만 · PC 시세 DB 읽기 전용 요약
 - GET  /holdings/trade-history/reentry-review    : POC5-06 재진입 검토 창(내 거래 · 저장된 근거) ·
                                                   학습 · 외부 조회 · 쓰기 0
@@ -22,6 +24,7 @@ from fastapi import APIRouter, Body, HTTPException, Query
 
 from app import holdings_history as history_module
 from app import holdings_history_view as view_module
+from app import holdings_reference_date as reference_module
 from app.holdings_history import HistoryConflict, HistoryInputError
 from app.holdings_store import DocumentCorrupt
 
@@ -43,6 +46,8 @@ def get_trade_history(
 @router.put("/trade-history")
 def put_trade_history(payload: dict = Body(...)) -> dict:
     try:
+        if payload.get("action") == reference_module.ACTION:
+            return reference_module.apply_reference_dates(payload)
         return history_module.apply_command(payload)
     except HistoryInputError as e:
         raise HTTPException(status_code=422, detail=str(e))

@@ -2,6 +2,8 @@
 
 설계 §2 · §8 · PLAN §2-4 · §2-8: position 별 보유 기간(현재 · 지난) · 기록 · 매도별 실현손익 ·
 기간 누적 · 정정 전 입력 · 취소 기록. 계산은 매번 records 로 다시 한다(저장하지 않음).
+POC5-07: 기간마다 가격 비교 기준일(`reference_date` · 기준잔고 · 잔고 등록 기간만 · 없으면 null) —
+매매가 아니라 사건 · 취소 목록에 넣지 않고 시장 흐름 입력에만 함께 넘긴다.
 """
 
 from __future__ import annotations
@@ -58,6 +60,7 @@ def _cycle_view(cy: dict[str, Any], by_id: dict, voids: dict) -> dict[str, Any]:
         "closed_by": cy["closed_by"],
         "start_date": cy["start_date"],
         "end_date": cy["end_date"],
+        "reference_date": cy["reference_date"],
         "has_adjustment": cy["has_adjustment"],
         "quantity": book.fmt(q),
         "cost": book.fmt(c),
@@ -149,6 +152,7 @@ def market_flow_input_of(
                 "opened_by": cy["opened_by"],
                 "status": cy["status"],
                 "events": events,
+                "reference_date": cy["reference_date"],
             }
             return pos["ticker"], cycle
     raise LookupError("보유 기간을 찾을 수 없습니다.")

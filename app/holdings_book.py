@@ -17,12 +17,16 @@
   줄을 가리킴 · 기간은 한 줄에만 · 기록 없는 줄 없음 · 종류별 내용(날짜 · 양수 십진수 ·
   매매대금 = 정확한 곱 · 정수 seq) · 정정 · 취소 연결(앞선 매매 기록 · 같은 줄 · 기간 · 한 번만 ·
   정정은 같은 종류). 하나라도 어기면 손상 — 연결이 끊긴 기록을 조용히 빼고 계산하지 않는다.
+- POC5-07 가격 비교 기준일(REFERENCE_DATE): 기준잔고 · 잔고 등록으로 시작한 기간에만 붙는 비교용
+  메타데이터 — payload = {reference_date: 날짜 | null} 한 칸 · 날짜 ≤ 저장 시각의 KST 날짜 ·
+  정정 · 취소 대상 아님. 무결성 검사는 거치되 기간 계산(replay_cycle)에는 넣지 않는다 — 수량 · 원가 ·
+  손익 · 순서 · 기간 시작 / 종료와 무관. 기간의 유효 값 = 그 기간 REFERENCE_DATE 의 저장 순서 마지막.
 """
 
 from __future__ import annotations
 
 import re
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 import math
 from decimal import Decimal, Inexact, InvalidOperation, localcontext
 from typing import Any, Optional
@@ -30,6 +34,8 @@ from typing import Any, Optional
 PREC = 40
 ANCHORS = ("BASELINE", "REGISTER")
 TRADES = ("BUY", "SELL")
+REFERENCE = "REFERENCE_DATE"  # POC5-07 가격 비교 기준일(계산 밖 메타데이터)
+_KST = timezone(timedelta(hours=9))
 
 
 class BookError(Exception):
@@ -103,7 +109,7 @@ def name_only(r: dict[str, Any]) -> bool:
 
 # ── 문서 무결성 ─────────────────────────────────────────────────────────────
 
-KINDS = ANCHORS + TRADES + ("ADJUSTMENT", "VOID")
+KINDS = ANCHORS + TRADES + ("ADJUSTMENT", "VOID", REFERENCE)
 DOC_KEYS = {"schema_version", "revision", "holdings", "personal_trade_history"}
 HIST_KEYS = {"positions", "records"}
 POSITION_KEYS = {"position_id", "ticker", "account_group", "name"}
@@ -133,6 +139,7 @@ PAYLOAD_KEYS = {
         "name",
         "before",
     },
+    REFERENCE: {"reference_date"},
     "VOID": set(),
 }
 _TIME_RE = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
@@ -191,11 +198,34 @@ def _day(v: Any) -> bool:
         return False
 
 
+def kst_day(recorded_at: Any) -> Optional[str]:
+    """저장 시각 → KST 날짜(YYYY-MM-DD). 시간대가 없거나 읽을 수 없으면 None."""
+    if not isinstance(recorded_at, str):
+        return None
+    try:
+        at = datetime.fromisoformat(recorded_at)
+    except ValueError:
+        return None
+    if at.tzinfo is None:
+        return None
+    return at.astimezone(_KST).date().isoformat()
+
+
 def _check_payload(r: dict[str, Any]) -> None:
     kind, p, rid = r["kind"], r["payload"], r["record_id"]
     if not isinstance(p, dict) or set(p) - PAYLOAD_KEYS[kind]:
         _corrupt("기록 내용 형식이 올바르지 않습니다.", rid)
     recorded_day = r["recorded_at"][:10] if isinstance(r["recorded_at"], str) else None
+    if kind == REFERENCE:
+        # 칸은 정확히 하나 · 값 = null(해제) 또는 날짜 ≤ 저장 시각의 KST 날짜(입력 'KST 오늘 이하'와
+        # 같은 날짜 축 · 설계 §9-2-1). 저장 시각을 읽을 수 없으면 손상.
+        saved = kst_day(r["recorded_at"])
+        value = p.get("reference_date")
+        if set(p) != PAYLOAD_KEYS[REFERENCE] or saved is None:
+            _corrupt("가격 비교 기준일 기록 형식이 올바르지 않습니다.", rid)
+        if value is not None and not (_day(value) and value <= saved):
+            _corrupt("가격 비교 기준일이 올바르지 않습니다(형식 · 저장일 이후).", rid)
+        return
     if kind in ANCHORS:
         _number(p, "quantity", rid)
         _number(p, "avg_buy_price", rid)
@@ -319,6 +349,15 @@ def check_document(doc: dict[str, Any]) -> None:
         used_positions.add(r["position_id"])
     if pos_ids - used_positions:
         _corrupt("기록이 없는 보유 줄이 있습니다.")
+    anchored = {
+        (r["position_id"], r["cycle_id"]) for r in records if r["kind"] in ANCHORS
+    }
+    for r in records:
+        if r["kind"] == REFERENCE and (r["position_id"], r["cycle_id"]) not in anchored:
+            _corrupt(
+                "가격 비교 기준일이 기준잔고 · 잔고 등록으로 시작한 기간이 아닌 곳을 가리킵니다.",
+                r["record_id"],
+            )
     # 계산 순서 = (날짜, seq) — 같은 기간 · 같은 날 유효 기록의 seq 가 겹치면 순서가 저장
     # 순서에 기대게 되므로 손상이다.
     slots: set[tuple] = set()
@@ -440,7 +479,8 @@ def compute(doc: dict[str, Any]) -> dict[str, Any]:
                 cycle_ids.append(r["cycle_id"])
         cycles = []
         for cid in cycle_ids:
-            rs = [r for r in mine if r["cycle_id"] == cid]
+            refs = [r for r in mine if r["cycle_id"] == cid and r["kind"] == REFERENCE]
+            rs = [r for r in mine if r["cycle_id"] == cid and r["kind"] != REFERENCE]
             kinds = {r["kind"] for r in rs}
             if not kinds & {"BASELINE", "REGISTER", "BUY"}:
                 # 시작 기록(기준잔고 · 잔고 등록 · 유효 매수)이 없는 기간 = 없는 기간(설계 §11-2:
@@ -452,7 +492,10 @@ def compute(doc: dict[str, Any]) -> dict[str, Any]:
                         [r["record_id"] for r in rs if r["kind"] == "SELL"],
                     )
                 continue
-            cycles.append({"cycle_id": cid, **replay_cycle(rs)})
+            reference = refs[-1]["payload"]["reference_date"] if refs else None
+            cycles.append(
+                {"cycle_id": cid, **replay_cycle(rs), "reference_date": reference}
+            )
         _check_cycles(cycles)
         name = current_name(pos, mine)
         out_positions.append({**pos, "name": name, "cycles": cycles})

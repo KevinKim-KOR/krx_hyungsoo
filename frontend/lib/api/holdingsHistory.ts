@@ -2,6 +2,8 @@
 //   GET  /holdings/trade-history              position 별 보유 기간 · 기록 · 계산값(쓰기 0)
 //   PUT  /holdings/trade-history              매매 명령 한 번 → 현재 보유와 이력이 같이 바뀐다
 //   GET  /holdings/trade-history/market-flow  사용자가 누를 때만 · PC 저장 종가 요약
+//   PUT  /holdings/trade-history (action "reference_date")  POC5-07 가격 비교 기준일 설정 · 수정 · 해제
+//        — 기준잔고 · 잔고 등록 기간만 · 대상 1 ~ 200 · 한 번 저장 · 수량 · 평단 · 손익 · OCI 보유 불변
 // 숫자는 백엔드가 Decimal 로 계산한 십진 문자열이다(화면 반올림은 표시용으로만 쓴다).
 // 오류 detail 은 문자열(422 입력 오류 · 409 충돌/새로고침 · 404 없음 · 500 파일/시세 DB).
 
@@ -14,7 +16,8 @@ export type TradeRecordKind =
   | "BUY"
   | "SELL"
   | "ADJUSTMENT"
-  | "VOID";
+  | "VOID"
+  | "REFERENCE_DATE"; // POC5-07 — 매매가 아님(사건 · 취소 목록에 나오지 않는다)
 
 export interface TradeRecordView {
   record_id: string;
@@ -42,6 +45,8 @@ export interface HoldingCycleView {
   closed_by: "SELL" | "ADJUSTMENT" | null;
   start_date: string | null; // null = 매수일 미상
   end_date: string | null;
+  // POC5-07 가격 비교 기준일(기준잔고 · 잔고 등록 기간만 · 매수일이 아님 · null = 없음).
+  reference_date?: string | null;
   has_adjustment: boolean;
   quantity: string;
   cost: string;
@@ -116,6 +121,34 @@ export function putTradeCommand(cmd: TradeCommand): Promise<TradeCommandResult> 
   return request<TradeCommandResult>("PUT", "/holdings/trade-history", cmd);
 }
 
+// ─── POC5-07 가격 비교 기준일 ──────────────────────────────────────────────
+
+export const DEFAULT_REFERENCE_DATE = "2026-01-02"; // 입력 제안값(자동 저장 아님 · 설계 §1)
+
+export interface ReferenceDateTarget {
+  position_id: string;
+  cycle_id: string;
+}
+
+export interface ReferenceDateCommand {
+  action: "reference_date";
+  request_id: string; // 저장 동작마다 새 UUID · 같은 내용의 재시도에는 같은 값
+  base_revision: number;
+  reference_date: string | null; // null = 해제
+  targets: ReferenceDateTarget[];
+}
+
+export interface ReferenceDateResult {
+  status: "NO_FILE" | "V1" | "V2";
+  revision: number;
+  changed: string[]; // cycle_id
+  unchanged: string[]; // 같은 값 재설정 · 미설정 해제
+}
+
+export function putReferenceDate(cmd: ReferenceDateCommand): Promise<ReferenceDateResult> {
+  return request<ReferenceDateResult>("PUT", "/holdings/trade-history", cmd);
+}
+
 // ─── 시장 흐름(저장 종가 · 정형 값 · 누를 때만) ─────────────────────────
 
 export interface MarketFlowEndpoint {
@@ -163,10 +196,23 @@ export interface MarketFlowEvent {
 export interface MarketFlowPeriod {
   reason_code: string | null; // PURCHASE_DATE_UNKNOWN · CYCLE_OPEN · NO_BUY · NO_SELL
   reason: string | null;
+  window_label?: string;
+  reference_date?: string | null; // POC5-07 — 있으면 시작 = 가격 비교 기준일
   start_basis?: MarketFlowBasis | null;
   end_basis?: MarketFlowBasis | null;
   ticker?: MarketFlowSeriesItem | null;
   market?: MarketFlowSeriesItem | null;
+}
+
+// POC5-07 '가격 비교 기준일 이후 종가 변화'(기준일 → 마지막 저장일 · 매수 · 손익 아님).
+export interface MarketFlowReference {
+  name: string;
+  reference_date: string;
+  basis: MarketFlowBasis; // basis.trade_date = 설정한 기준일
+  window_label: string;
+  latest_stored_date: string | null;
+  ticker: MarketFlowSeriesItem;
+  market: MarketFlowSeriesItem;
 }
 
 export interface MarketFlowResponse {
@@ -182,6 +228,9 @@ export interface MarketFlowResponse {
   events: MarketFlowEvent[];
   holding_period: MarketFlowPeriod | null;
   notes: string[];
+  reference_date?: string | null;
+  reference_flow?: MarketFlowReference | null;
+  reference_note?: string | null;
 }
 
 export function fetchMarketFlow(

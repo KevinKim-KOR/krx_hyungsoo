@@ -18,6 +18,9 @@
          KOSPI = NAVER_FDR · FinanceDataReader/KS11 · KRX_OPEN_API/idx_kospi_dd_trd 끼리 비교
 ```
 
+POC5-07: 가격 비교 기준일(기준잔고 · 잔고 등록 기간) → 마지막 저장일 1항목 · 실제 매도로 끝난
+기간은 기준일 → 마지막 매도 기준일(같은 규칙 · 실제 매수일은 계속 미상).
+
 변화율 = Decimal(정밀도 40) 십진 문자열(화면 반올림은 UI 몫). '마지막 저장일' 은 오늘 시세가
 아니다. 결과는 정형 값 · 정형 문장만 담는다(자유 생성 코멘트 · 모델 판단 없음).
 """
@@ -108,6 +111,9 @@ PERIOD_REASONS = {
     "NO_SELL": "매도 기록 없음 — 보유 기간 변화 계산 안 함",
 }
 
+REFERENCE_FLOW_NAME = "가격 비교 기준일 이후 종가 변화"
+REFERENCE_NOTE = "가격 비교 기준일은 종가 비교의 출발점이다 — 그날 보유 · 매수했다는 뜻이 아니며 개인 손익이 아니다."
+
 NOTES = (
     "저장 종가 비교값 — 체결단가로 계산한 개인 손익과 다르다.",
     "마지막 저장일은 PC 시세 DB 에 저장된 마지막 날짜이며 오늘 시세가 아니다.",
@@ -126,7 +132,9 @@ class MarketFlowReadError(Exception):
 # ── 입력 확인 ─────────────────────────────────────────────────────────────────
 
 
-def _validated(ticker: Any, cycle: Any) -> tuple[str, list[dict[str, str]]]:
+def _validated(
+    ticker: Any, cycle: Any
+) -> tuple[str, list[dict[str, str]], Optional[str]]:
     """호출부(이력 계산 결과)가 넘긴 기간의 형식만 본다 — 틀리면 ValueError."""
     if not isinstance(ticker, str) or not ticker.strip():
         raise ValueError("ticker")
@@ -151,7 +159,12 @@ def _validated(ticker: Any, cycle: Any) -> tuple[str, list[dict[str, str]]]:
         ):
             raise ValueError("events")
         out.append({k: ev[k] for k in ("record_id", "kind", "trade_date")})
-    return ticker.strip(), out
+    ref = cycle.get("reference_date")  # POC5-07 · 기준잔고 · 잔고 등록 기간만
+    if ref is not None and (
+        cycle["opened_by"] not in _ANCHORS or parse_date(str(ref)) is None
+    ):
+        raise ValueError("reference_date")
+    return ticker.strip(), out, ref
 
 
 # ── 기준일(운영 캘린더 · 가격표를 보지 않는다) ─────────────────────────────────
@@ -405,15 +418,11 @@ def _market_gate(reader: _Reader) -> Optional[str]:
     return None
 
 
-def _event(
-    reader: _Reader,
-    days: _BasisDays,
-    ev: dict[str, str],
-    ticker: str,
-    asset_kind: str,
-) -> dict[str, Any]:
-    """BUY · SELL 하나 — 기준일 종가 → 그 종목 마지막 저장일 종가 · 같은 두 날짜 KOSPI."""
-    basis = days.of(ev["trade_date"])
+def _since(
+    reader: _Reader, days: _BasisDays, day: str, ticker: str, asset_kind: str
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], Optional[str]]:
+    """날짜 하나의 기준일 종가 → 그 종목 마지막 저장일 종가 · 같은 두 날짜 KOSPI."""
+    basis = days.of(day)
     b = basis["basis_date"]
     gate = _ticker_gate(reader, asset_kind)
     latest = reader.latest(SERIES_TICKER, ticker) if gate is None else None
@@ -434,7 +443,20 @@ def _event(
     market = _pair(
         reader, SERIES_MARKET, ticker, _market_gate(reader), b, end_date, "NO_WINDOW"
     )
+    return basis, tick, market, latest_date
 
+
+def _event(
+    reader: _Reader,
+    days: _BasisDays,
+    ev: dict[str, str],
+    ticker: str,
+    asset_kind: str,
+) -> dict[str, Any]:
+    """BUY · SELL 하나 — 기준일 종가 → 그 종목 마지막 저장일 종가 · 같은 두 날짜 KOSPI."""
+    basis, tick, market, latest_date = _since(
+        reader, days, ev["trade_date"], ticker, asset_kind
+    )
     label = "매수 기준일" if ev["kind"] == "BUY" else "매도 기준일"
     return {
         "record_id": ev["record_id"],
@@ -442,6 +464,22 @@ def _event(
         "trade_date": ev["trade_date"],
         "basis": basis,
         "window_label": f"{label} → 마지막 저장일",
+        "latest_stored_date": latest_date,
+        "ticker": tick,
+        "market": market,
+    }
+
+
+def _reference_flow(
+    reader: _Reader, days: _BasisDays, day: str, ticker: str, asset_kind: str
+) -> dict[str, Any]:
+    """POC5-07 — 가격 비교 기준일 → 마지막 저장일(매수 · 손익 아님 · `_event` 와 같은 규칙)."""
+    basis, tick, market, latest_date = _since(reader, days, day, ticker, asset_kind)
+    return {
+        "name": REFERENCE_FLOW_NAME,
+        "reference_date": day,
+        "basis": basis,
+        "window_label": "가격 비교 기준일 → 마지막 저장일",
         "latest_stored_date": latest_date,
         "ticker": tick,
         "market": market,
@@ -457,20 +495,26 @@ def _holding_period(
     events: list[dict[str, str]],
     ticker: str,
     asset_kind: str,
+    reference: Optional[str] = None,
 ) -> dict[str, Any]:
-    """실제 매수로 시작해 종료된 기간만 — 첫 BUY 기준일 → 마지막 SELL 기준일."""
+    """종료된 기간 — 첫 BUY 기준일(기준잔고 · 잔고 등록 기간은 가격 비교 기준일) → 마지막 SELL 기준일."""
     out: dict[str, Any] = dict.fromkeys(
         ("reason_code", "reason", "start_record_id", "end_record_id")
         + ("start_basis", "end_basis", "ticker", "market")
     )
-    out.update(computed=False, window_label="첫 매수 기준일 → 마지막 매도 기준일")
+    start_label = "가격 비교 기준일" if reference else "첫 매수 기준일"
+    out.update(
+        computed=False,
+        window_label=f"{start_label} → 마지막 매도 기준일",
+        reference_date=reference,
+    )
     buys = [e for e in events if e["kind"] == "BUY"]
     sells = [e for e in events if e["kind"] == "SELL"]
-    if opened_by in _ANCHORS:
+    if opened_by in _ANCHORS and reference is None:
         code: Optional[str] = "PURCHASE_DATE_UNKNOWN"
     elif status != "CLOSED":
         code = "CYCLE_OPEN"
-    elif not buys:
+    elif not buys and reference is None:
         code = "NO_BUY"
     elif not sells:
         code = "NO_SELL"
@@ -480,8 +524,9 @@ def _holding_period(
         out.update(reason_code=code, reason=PERIOD_REASONS[code])
         return out
 
-    first, last = buys[0], sells[-1]  # 이벤트는 계산 순서(거래일 · seq)대로 온다
-    start_basis, end_basis = days.of(first["trade_date"]), days.of(last["trade_date"])
+    last = sells[-1]  # 이벤트는 계산 순서(거래일 · seq)대로 온다
+    start_day = reference if reference else buys[0]["trade_date"]
+    start_basis, end_basis = days.of(start_day), days.of(last["trade_date"])
     s, e = start_basis["basis_date"], end_basis["basis_date"]
     gates = {
         SERIES_TICKER: _ticker_gate(reader, asset_kind),
@@ -493,7 +538,7 @@ def _holding_period(
     )
     out.update(
         computed=True,
-        start_record_id=first["record_id"],
+        start_record_id=None if reference else buys[0]["record_id"],
         end_record_id=last["record_id"],
         start_basis=start_basis,
         end_basis=end_basis,
@@ -522,7 +567,7 @@ def build_market_flow(
     `MarketFlowReadError`. 형식이 틀린 입력 = `ValueError`. `connection` = 호출부가 연 읽기 전용
     연결(POC5-06 이 같은 읽기로 가격도 읽을 때 · 닫지 않는다).
     """
-    ticker, events = _validated(ticker, cycle)
+    ticker, events, reference = _validated(ticker, cycle)
     opened_by, status = cycle["opened_by"], cycle["status"]
     days = _BasisDays(calendar_dir)
     path = Path(db_path) if db_path is not None else lop.market_db_path()
@@ -537,6 +582,11 @@ def build_market_flow(
         gate = _ticker_gate(reader, asset_kind)
         latest = None if gate else reader.latest(SERIES_TICKER, ticker)
         flows = [_event(reader, days, ev, ticker, asset_kind) for ev in events]
+        ref_flow = (
+            _reference_flow(reader, days, reference, ticker, asset_kind)
+            if reference
+            else None
+        )
         period = _holding_period(
             reader,
             days,
@@ -545,6 +595,7 @@ def build_market_flow(
             events=events,
             ticker=ticker,
             asset_kind=asset_kind,
+            reference=reference,
         )
     except sqlite3.Error as exc:
         raise MarketFlowReadError(
@@ -566,6 +617,9 @@ def build_market_flow(
         "purchase_date_note": (
             PERIOD_REASONS["PURCHASE_DATE_UNKNOWN"] if unknown else None
         ),
+        "reference_date": reference,
+        "reference_flow": ref_flow,
+        "reference_note": REFERENCE_NOTE if reference else None,
         "db_present": reader.db_present,
         "asset_kind": asset_kind,
         "series": {
