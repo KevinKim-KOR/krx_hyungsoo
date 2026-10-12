@@ -5,8 +5,9 @@
 // 기존 evidence 재사용만: enriched(평가·비중·손익) + market-evidence(5일·20일·KODEX200 대비).
 // 입력·저장 기능처럼 보이지 않는다(수정 버튼·저장 없음). 위험 점수/등급/매도 문구 없음.
 // 급락 신호는 자동 조회 GET 계약 부재로 이번 Step 제외(PLAN §1.3·§6).
-// POC5-UI-02: 사용자 선택 정렬 다섯(평가 비중 · 손익률 · 5일 변화(기본) · 20일 변화 · KODEX200 대비 —
-// 화면 숫자 그대로 · 순서만 바꿈 · 재조회 0) · 원인 확인은 「데이터 상태」로 이동.
+// POC5-UI-02: 사용자 선택 정렬 네 가지(평가 비중 · 손익률 · 5일 변화(기본) · 20일 변화 — 화면 숫자 그대로 ·
+// 순서만 바꿈 · 재조회 0) · 선택 상세 맨 위 '자료 확인 안내'(그 종목의 기존 사유) · 「데이터 상태」는
+// '전체 ETF NAV·괴리율 보기' 보조 이동(설계 §11).
 // 조회는 Dashboard 와 같은 캐시 키(DASH_KEY_HOLDINGS/EVIDENCE)를 공유한다(Q6 · N+1 없음).
 
 import { useMemo, useState } from "react";
@@ -23,6 +24,7 @@ import {
   DEFAULT_EVIDENCE_SORT,
   EVIDENCE_SORT_OPTIONS,
   buildRiskEvidenceRows,
+  evidenceGuidance,
   sortEvidenceRows,
   type EvidenceSortKey,
   type RiskEvidenceRow,
@@ -169,6 +171,12 @@ export default function HoldingsRiskEvidenceSection({ onNavigate }: Props = {}) 
       quickView === "need_check" ? built.rows.filter((r) => r.need_check) : built.rows;
     return sortEvidenceRows(rows, sortKey);
   }, [built, quickView, sortKey]);
+
+  // 선택 종목의 '자료 확인 안내' — 정렬 · 빠른 보기와 무관하게 그 종목 행에서 만든다(재조회 0).
+  const selectedGuidance: string[] = useMemo(() => {
+    const row = built?.rows.find((r) => r.ticker === selected);
+    return row ? evidenceGuidance(row) : [];
+  }, [built, selected]);
 
   return (
     <section aria-labelledby="hre-h" className="hre-section card">
@@ -362,6 +370,21 @@ export default function HoldingsRiskEvidenceSection({ onNavigate }: Props = {}) 
           {selected ? (
             <div className="hre-detail">
               <h3>{selected} 상세</h3>
+              {selectedGuidance.length > 0 ? (
+                <div className="hre-detail-evidence" data-testid="hre-guidance">
+                  <div className="hre-detail-line">
+                    <span className="k">자료 확인 안내</span>
+                    <span className="v">
+                      {selectedGuidance.map((t) => (
+                        <span key={t} className="hre-guidance-item">
+                          {t}
+                          <br />
+                        </span>
+                      ))}
+                    </span>
+                  </div>
+                </div>
+              ) : null}
               <PriceChart ticker={selected} />
               <NavConstituentsDetail item={selectedEvidence} />
               {onNavigate ? (
@@ -370,7 +393,7 @@ export default function HoldingsRiskEvidenceSection({ onNavigate }: Props = {}) 
                   style={{ marginTop: 8 }}
                   onClick={() => onNavigate("data_status")}
                 >
-                  데이터 상태에서 원인 확인 →
+                  전체 ETF NAV·괴리율 보기 →
                 </button>
               ) : null}
             </div>

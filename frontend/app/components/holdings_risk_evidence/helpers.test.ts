@@ -3,7 +3,9 @@ import { describe, it, expect } from "vitest";
 import {
   DEFAULT_EVIDENCE_SORT,
   EVIDENCE_SORT_OPTIONS,
+  NO_REASON_TEXT,
   buildRiskEvidenceRows,
+  evidenceGuidance,
   lowestFiveDayRows,
   sortEvidenceRows,
   type RiskEvidenceRow,
@@ -193,12 +195,17 @@ describe("sortEvidenceRows (POC5-UI-02)", () => {
       excess_vs_kodex200_20d_pctp: 0,
       need_check: false,
       five_d_sortable: true,
+      notes: [],
+      price_missing: false,
+      calc_missing: false,
+      evidence_conflict: false,
+      flow_unavailable: false,
       ...over,
     };
   }
   const t = (rows: RiskEvidenceRow[]) => rows.map((r) => r.ticker);
 
-  it("키마다 방향 — 평가 비중만 큰 값부터, 나머지는 작은 값부터", () => {
+  it("키마다 방향 — 평가 비중만 큰 값부터, 나머지는 작은 값부터 · 정렬은 네 가지(KODEX200 대비 없음)", () => {
     const rows = [
       row("a", { market_weight_pct: 10, pnl_rate_pct: 5, return_5d_pct: 2, return_20d_pct: -1, excess_vs_kodex200_20d_pctp: 0.3 }),
       row("b", { market_weight_pct: 30, pnl_rate_pct: -5, return_5d_pct: -2, return_20d_pct: 1, excess_vs_kodex200_20d_pctp: -0.3 }),
@@ -208,14 +215,12 @@ describe("sortEvidenceRows (POC5-UI-02)", () => {
     expect(t(sortEvidenceRows(rows, "pnl_rate"))).toEqual(["b", "c", "a"]);
     expect(t(sortEvidenceRows(rows, "ret5"))).toEqual(["b", "c", "a"]);
     expect(t(sortEvidenceRows(rows, "ret20"))).toEqual(["a", "c", "b"]);
-    expect(t(sortEvidenceRows(rows, "excess"))).toEqual(["b", "c", "a"]);
     expect(DEFAULT_EVIDENCE_SORT).toBe("ret5");
     expect(EVIDENCE_SORT_OPTIONS.map(([, label]) => label)).toEqual([
       "평가 비중",
       "손익률",
       "5일 변화",
       "20일 변화",
-      "KODEX200 대비",
     ]);
   });
 
@@ -252,5 +257,88 @@ describe("sortEvidenceRows (POC5-UI-02)", () => {
       row("c", { pnl_rate_pct: -50 }),
     ];
     expect(t(sortEvidenceRows(rows, "pnl_rate"))).toEqual(["c", "a", "b"]);
+  });
+});
+
+// ── POC5-UI-02 §11-3 자료 확인 안내 ──────────────────────────────────────────
+describe("buildRiskEvidenceRows 안내 칸 · evidenceGuidance (POC5-UI-02 §11)", () => {
+  it("계좌 행의 시세 · 계산 미확인 · 계좌 간 흐름 불일치 · evidence_notes(같은 문구 한 번)를 모은다", () => {
+    const { rows } = buildRiskEvidenceRows(
+      [
+        enriched("AAA", { price_missing: true }),
+        enriched("AAA", { calc_missing: true }),
+        enriched("BBB"),
+      ],
+      [
+        { ...evItem("AAA", { return_5d_pct: -1 }), evidence_notes: ["메모 1", "공통 메모"] },
+        { ...evItem("AAA", { return_5d_pct: -2 }), evidence_notes: ["공통 메모", "메모 2"] },
+        { ...evItem("BBB"), evidence_notes: ["정상 메모"] },
+      ],
+    );
+    const a = rows.find((r) => r.ticker === "AAA")!;
+    const b = rows.find((r) => r.ticker === "BBB")!;
+    expect([a.price_missing, a.calc_missing, a.evidence_conflict]).toEqual([true, true, true]);
+    expect(a.notes).toEqual(["메모 1", "공통 메모", "메모 2"]);
+    expect(evidenceGuidance(a)).toEqual([
+      "보유 시세를 확인할 수 없습니다.",
+      "보유 평가 계산값을 확인할 수 없습니다.",
+      "같은 종목의 계좌별 단기 흐름 값(상태 · 5일 · 20일 · KODEX200 대비)이 서로 다릅니다.",
+      "메모 1",
+      "공통 메모",
+      "메모 2",
+    ]);
+    // 다른 종목의 사유가 섞이지 않는다.
+    expect([b.price_missing, b.calc_missing, b.evidence_conflict]).toEqual([false, false, false]);
+    expect(evidenceGuidance(b)).toEqual(["정상 메모"]);
+  });
+
+  it("자료 확인 필요인데 사유가 없으면 '상세 사유 정보가 제공되지 않습니다' · 정상이고 안내가 없으면 빈 목록", () => {
+    const { rows } = buildRiskEvidenceRows([enriched("CCC"), enriched("DDD")], [
+      { ...evItem("DDD"), evidence_notes: [] },
+    ]);
+    const c = rows.find((r) => r.ticker === "CCC")!; // 시장 evidence 없음 → 자료 확인 필요 · 사유 없음
+    const d = rows.find((r) => r.ticker === "DDD")!;
+    expect(c.need_check).toBe(true);
+    expect(evidenceGuidance(c)).toEqual([NO_REASON_TEXT]);
+    expect(d.need_check).toBe(false);
+    expect(evidenceGuidance(d)).toEqual([]);
+  });
+
+  it("일반 문구만 있는 자료 확인 필요(단기 흐름 partial)는 사유 미제공 문구를 먼저 · 일반 문구는 그대로", () => {
+    const { rows } = buildRiskEvidenceRows([enriched("EEE")], [
+      {
+        ...evItem("EEE", { status: "partial", return_20d_pct: null }),
+        evidence_notes: ["현재 Market Discovery 후보에 포함되어 있지 않습니다."],
+      },
+    ]);
+    const e = rows[0];
+    expect([e.need_check, e.flow_unavailable]).toEqual([true, false]);
+    expect(evidenceGuidance(e)).toEqual([
+      NO_REASON_TEXT,
+      "현재 Market Discovery 후보에 포함되어 있지 않습니다.",
+    ]);
+  });
+
+  it("단기 흐름 unavailable 은 백엔드 문구가 사유라 사유 미제공 문구를 붙이지 않는다", () => {
+    const { rows } = buildRiskEvidenceRows([enriched("FFF")], [
+      {
+        ...evItem("FFF", {
+          status: "unavailable",
+          return_5d_pct: null,
+          return_20d_pct: null,
+          excess_vs_kodex200_20d_pctp: null,
+        }),
+        evidence_notes: [
+          "현재 Market Discovery 후보에 포함되어 있지 않습니다.",
+          "단기 흐름은 데이터 부족으로 확인할 수 없습니다.",
+        ],
+      },
+    ]);
+    const f = rows[0];
+    expect([f.need_check, f.flow_unavailable]).toEqual([true, true]);
+    expect(evidenceGuidance(f)).toEqual([
+      "현재 Market Discovery 후보에 포함되어 있지 않습니다.",
+      "단기 흐름은 데이터 부족으로 확인할 수 없습니다.",
+    ]);
   });
 });

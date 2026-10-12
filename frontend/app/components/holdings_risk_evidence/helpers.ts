@@ -31,6 +31,14 @@ export interface RiskEvidenceRow {
   need_check: boolean; // 자료 확인 필요
   // 정렬 유효성: status ok & 5일 값 not null 일 때만 5일 정렬·최대 3건 대상.
   five_d_sortable: boolean;
+  // POC5-UI-02 §11 — 선택 상세 '자료 확인 안내' 조립용(이미 받은 응답 · 기존 판정만).
+  notes: string[]; // 그 종목 evidence_notes(여러 계좌면 같은 문구 한 번 · 들어온 순서)
+  price_missing: boolean; // enriched 계좌 행 중 하나라도 시세 미확인
+  calc_missing: boolean; // enriched 계좌 행 중 하나라도 평가 계산값 미확인
+  evidence_conflict: boolean; // 같은 종목 계좌 간 단기 흐름 값 · 상태 불일치(기존 판정)
+  // 단기 흐름 status = unavailable — 백엔드가 이때만 '단기 흐름은 데이터 부족으로 확인할 수 없습니다.'를
+  // evidence_notes 에 붙인다(app/holdings_market_evidence.py :: _build_evidence_notes).
+  flow_unavailable: boolean;
 }
 
 // evidence 를 ticker 별로 통합한다. 같은 ticker 가 여러 행(계좌)일 때 흐름 값이 서로 다르면
@@ -42,6 +50,7 @@ interface EvidenceByTicker {
   excess_vs_kodex200_20d_pctp: number | null;
   evidence_conflict: boolean;
   present: boolean; // 이 ticker 의 evidence item 이 존재하는가
+  notes: string[]; // 계좌 행들의 evidence_notes(같은 문구 한 번)
 }
 
 function numsEqual(a: number | null, b: number | null): boolean {
@@ -80,7 +89,14 @@ function aggregateEvidenceByTicker(
         break;
       }
     }
+    const notes: string[] = [];
+    for (const g of group) {
+      for (const n of g.evidence_notes ?? []) {
+        if (!notes.includes(n)) notes.push(n);
+      }
+    }
     out.set(ticker, {
+      notes,
       status: first.status,
       return_5d_pct: first.return_5d_pct,
       return_20d_pct: first.return_20d_pct,
@@ -134,6 +150,15 @@ export function buildRiskEvidenceRows(
 ): RiskEvidenceResult {
   const aggs = aggregateHoldingsByTicker(enriched);
   const evByTicker = aggregateEvidenceByTicker(evidenceItems);
+  // 계좌 행의 시세 · 계산 미확인(종목 통합 결과에는 둘이 합쳐져 있어 따로 모은다).
+  const missingByTicker = new Map<string, { price: boolean; calc: boolean }>();
+  for (const e of enriched) {
+    const m = missingByTicker.get(e.ticker) ?? { price: false, calc: false };
+    missingByTicker.set(e.ticker, {
+      price: m.price || !!e.price_missing,
+      calc: m.calc || !!e.calc_missing,
+    });
+  }
 
   const rows: RiskEvidenceRow[] = aggs.map((agg) => {
     const ev = evByTicker.get(agg.ticker);
@@ -153,6 +178,11 @@ export function buildRiskEvidenceRows(
       excess_vs_kodex200_20d_pctp: ev?.excess_vs_kodex200_20d_pctp ?? null,
       need_check: need,
       five_d_sortable: evSortable,
+      notes: ev?.notes ?? [],
+      price_missing: missingByTicker.get(agg.ticker)?.price ?? false,
+      calc_missing: missingByTicker.get(agg.ticker)?.calc ?? false,
+      evidence_conflict: ev?.evidence_conflict ?? false,
+      flow_unavailable: ev?.status === "unavailable",
     };
   });
 
@@ -182,7 +212,7 @@ export function lowestFiveDayRows(
 // POC5-UI-02 — 「확인 근거」 사용자 선택 정렬(POC3-05 설계 V2 229행 '사용자 선택 정렬' · UI-02 §3-1 · 판정 Q1 (a)).
 // 화면에 보이는 원래 숫자(반올림 전)로 순서만 바꾼다. 값이 없는(null · 유한수 아님) 행은 맨 뒤 · 같은 값끼리와
 // 값 없는 행끼리는 들어온 순서 그대로(안정 정렬) · 행을 빼지 않는다. 위험 순위가 아니다.
-export type EvidenceSortKey = "weight" | "pnl_rate" | "ret5" | "ret20" | "excess";
+export type EvidenceSortKey = "weight" | "pnl_rate" | "ret5" | "ret20";
 
 type SortField = keyof Pick<
   RiskEvidenceRow,
@@ -190,7 +220,6 @@ type SortField = keyof Pick<
   | "pnl_rate_pct"
   | "return_5d_pct"
   | "return_20d_pct"
-  | "excess_vs_kodex200_20d_pctp"
 >;
 
 // 키 → (행 칸 · 방향). desc = true 면 큰 값부터.
@@ -199,7 +228,6 @@ const SORT_SPEC: Record<EvidenceSortKey, { field: SortField; desc: boolean }> = 
   pnl_rate: { field: "pnl_rate_pct", desc: false },
   ret5: { field: "return_5d_pct", desc: false },
   ret20: { field: "return_20d_pct", desc: false },
-  excess: { field: "excess_vs_kodex200_20d_pctp", desc: false },
 };
 
 // 화면 버튼 순서 · 문구.
@@ -208,8 +236,9 @@ export const EVIDENCE_SORT_OPTIONS: ReadonlyArray<[EvidenceSortKey, string]> = [
   ["pnl_rate", "손익률"],
   ["ret5", "5일 변화"],
   ["ret20", "20일 변화"],
-  ["excess", "KODEX200 대비"],
 ];
+// 'KODEX200 대비 20일'(= 종목 20일 − KODEX200 20일 · 모든 종목에 같은 KODEX200 값)은 20일 변화와
+// 순서가 같아 정렬 선택에서 뺐다(설계 §11-2 · 값 표시는 그대로).
 
 export const DEFAULT_EVIDENCE_SORT: EvidenceSortKey = "ret5";
 
@@ -232,4 +261,30 @@ export function sortEvidenceRows(
       return d !== 0 ? d : a.index - b.index;
     })
     .map((x) => x.row);
+}
+
+// POC5-UI-02 §11-3 — 선택 종목 상세의 '자료 확인 안내'. 이미 받은 응답 · 기존 판정만 쓰고
+// 날짜 · 건수 · 원인을 추측해 덧붙이지 않는다. 안내가 하나도 없으면 빈 배열(영역 없음).
+// evidence_notes 에는 Market Discovery 후보 여부 · 20거래일 KODEX200 대비 · 구성종목 같은 일반 문구가
+// 늘 들어 있어, 자료 확인 필요의 사유가 되는 것은 시세 · 계산 미확인 · 계좌 불일치 · 단기 흐름 unavailable
+// 문구뿐이다. 이 넷이 없는데 자료 확인 필요면 사유 미제공 문구를 먼저 보이고 일반 문구는 그대로 둔다.
+export const NO_REASON_TEXT = "자료 확인이 필요하지만 상세 사유 정보가 제공되지 않습니다.";
+
+export function evidenceGuidance(row: RiskEvidenceRow): string[] {
+  const out: string[] = [];
+  const add = (t: string) => {
+    if (!out.includes(t)) out.push(t);
+  };
+  if (row.price_missing) add("보유 시세를 확인할 수 없습니다.");
+  if (row.calc_missing) add("보유 평가 계산값을 확인할 수 없습니다.");
+  if (row.evidence_conflict) {
+    add(
+      "같은 종목의 계좌별 단기 흐름 값(상태 · 5일 · 20일 · KODEX200 대비)이 서로 다릅니다.",
+    );
+  }
+  const hasReason =
+    row.price_missing || row.calc_missing || row.evidence_conflict || row.flow_unavailable;
+  if (row.need_check && !hasReason) add(NO_REASON_TEXT);
+  for (const n of row.notes) add(n);
+  return out;
 }

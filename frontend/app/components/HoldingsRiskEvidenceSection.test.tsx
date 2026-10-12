@@ -24,6 +24,7 @@ vi.mock("@/lib/api", async (importOriginal) => {
 
 import HoldingsRiskEvidenceSection from "./HoldingsRiskEvidenceSection";
 import type { HoldingsMarketEvidenceResponse } from "@/lib/api";
+import type { MenuKey } from "./LeftSidebar";
 
 function enrichedResult() {
   return {
@@ -194,22 +195,45 @@ describe("확인 근거 — 카드 전환 (사용자 실화면 직접 지시 202
   });
 });
 
-// ── POC5-UI-02 — 사용자 선택 정렬 · 원인 확인 이동 ────────────────────────────
+// ── POC5-UI-02 — 사용자 선택 정렬(네 가지 · 설계 §11) · 자료 확인 안내 · 전체 ETF NAV 이동 ──
 // 종목 3개: A(평가 5000 · 투자 4000 → 손익률 +25% · 비중 50%) · B(2000 · 2500 → -20% · 20%) ·
 // C(3000 · 3000 → 0% · 30% · 5일 · 20일 값 없음 = 자료 확인 필요). 응답 순서 = A, B, C.
-function enrichedThree() {
-  const row = (ticker: string, name: string, evalAmt: number, invested: number) => ({
+type EnrichedRowOver = { price_missing?: boolean; calc_missing?: boolean };
+function enrichedRow(
+  ticker: string,
+  name: string,
+  evalAmt: number,
+  invested: number,
+  over: EnrichedRowOver = {},
+) {
+  return {
     ticker, name, quantity: 1, avg_buy_price: invested, invested_amount: invested,
     current_price: evalAmt, price_asof: "2026-10-08", price_source: "naver",
     eval_amount: evalAmt, pnl_amount: evalAmt - invested,
     pnl_rate_pct: ((evalAmt - invested) / invested) * 100, buy_weight_pct: null,
     market_weight_pct: null, price_missing: false, calc_missing: false,
-  });
-  return { items: [row("A1", "에이", 5000, 4000), row("B1", "비", 2000, 2500), row("C1", "씨", 3000, 3000)] };
+    ...over,
+  };
 }
-function evidenceThree(): HoldingsMarketEvidenceResponse {
+function enrichedThree() {
+  return {
+    items: [
+      enrichedRow("A1", "에이", 5000, 4000),
+      enrichedRow("B1", "비", 2000, 2500),
+      enrichedRow("C1", "씨", 3000, 3000),
+    ],
+  };
+}
+function evItemOf(
+  ticker: string,
+  name: string,
+  r5: number | null,
+  r20: number | null,
+  ex: number | null,
+  notes: string[] = [],
+) {
   const base = evidenceResult();
-  const item = (ticker: string, name: string, r5: number | null, r20: number | null, ex: number | null) => ({
+  return {
     ...base.holdings[0],
     ticker,
     name,
@@ -220,15 +244,17 @@ function evidenceThree(): HoldingsMarketEvidenceResponse {
       return_20d_pct: r20,
       excess_vs_kodex200_20d_pctp: ex,
     },
-  });
-  return {
-    ...base,
-    holdings: [
-      item("A1", "에이", -1, -3, -1.5),
-      item("B1", "비", -3, -1, -0.5),
-      item("C1", "씨", null, null, -2),
-    ],
+    evidence_notes: notes,
   };
+}
+function evidenceThree(
+  items = [
+    evItemOf("A1", "에이", -1, -3, -1.5),
+    evItemOf("B1", "비", -3, -1, -0.5),
+    evItemOf("C1", "씨", null, null, -2),
+  ],
+): HoldingsMarketEvidenceResponse {
+  return { ...evidenceResult(), holdings: items };
 }
 function rowOrder(): string[] {
   const list = screen.getByTestId("hre-evidence-list");
@@ -236,8 +262,25 @@ function rowOrder(): string[] {
     (el) => (el.getAttribute("aria-label") ?? "").replace(" 상세 보기", ""),
   );
 }
+function guidanceItems(): string[] {
+  const box = screen.queryByTestId("hre-guidance");
+  if (!box) return [];
+  return Array.from(box.querySelectorAll(".hre-guidance-item")).map((el) => el.textContent ?? "");
+}
+async function renderAndSelect(name: string, onNavigate?: (key: MenuKey) => void) {
+  render(<HoldingsRiskEvidenceSection onNavigate={onNavigate} />);
+  await act(async () => {
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+  await act(async () => {
+    fireEvent.click(screen.getByRole("button", { name: `${name} 상세 보기` }));
+    await Promise.resolve();
+  });
+}
+const NO_REASON = "자료 확인이 필요하지만 상세 사유 정보가 제공되지 않습니다.";
 
-describe("확인 근거 — 사용자 선택 정렬 · 원인 확인 이동 (POC5-UI-02)", () => {
+describe("확인 근거 — 사용자 선택 정렬 · 자료 확인 안내 · 전체 ETF NAV 이동 (POC5-UI-02)", () => {
   beforeEach(() => {
     __resetQueryCache();
     fetchEnrichedHoldings.mockReset();
@@ -247,11 +290,12 @@ describe("확인 근거 — 사용자 선택 정렬 · 원인 확인 이동 (POC
     fetchPriceSeries.mockResolvedValue({ availability: "NO_DATA", points: [] });
   });
 
-  it("다섯 정렬 · 기본 5일 변화 · 값 없는 행은 맨 뒤 · 다시 조회하지 않는다", async () => {
+  it("네 정렬 · 기본 5일 변화 · 값 없는 행은 맨 뒤 · KODEX200 대비 값은 계속 보인다 · 다시 조회하지 않는다", async () => {
     await renderSection();
     const group = screen.getByRole("group", { name: "확인 근거 정렬 기준" });
     const labels = Array.from(group.querySelectorAll("button")).map((b) => b.textContent);
-    expect(labels).toEqual(["평가 비중", "손익률", "5일 변화", "20일 변화", "KODEX200 대비"]);
+    expect(labels).toEqual(["평가 비중", "손익률", "5일 변화", "20일 변화"]);
+    expect(screen.queryByRole("button", { name: "KODEX200 대비" })).toBeNull();
     expect(screen.getByRole("button", { name: "5일 변화" }).getAttribute("aria-pressed")).toBe("true");
     expect(rowOrder()).toEqual(["비", "에이", "씨"]); // 5일 -3 · -1 · 없음
 
@@ -259,13 +303,18 @@ describe("확인 근거 — 사용자 선택 정렬 · 원인 확인 이동 (POC
       ["평가 비중", ["에이", "씨", "비"]], // 50 · 30 · 20 (큰 값부터)
       ["손익률", ["비", "씨", "에이"]], // -20 · 0 · +25
       ["20일 변화", ["에이", "비", "씨"]], // -3 · -1 · 없음
-      ["KODEX200 대비", ["씨", "에이", "비"]], // -2 · -1.5 · -0.5 (5일이 없어도 이 값으로)
       ["5일 변화", ["비", "에이", "씨"]],
     ];
     for (const [label, order] of cases) {
       fireEvent.click(screen.getByRole("button", { name: label }));
       expect(screen.getByRole("button", { name: label }).getAttribute("aria-pressed")).toBe("true");
       expect(rowOrder()).toEqual(order);
+    }
+    // 상대 성과 값 표시는 유지 — 행마다 'KODEX200 대비 20일' 칸과 그 값.
+    const list = screen.getByTestId("hre-evidence-list");
+    expect(screen.getAllByText("KODEX200 대비 20일").length).toBeGreaterThanOrEqual(3);
+    for (const v of ["-1.50%p", "-0.50%p", "-2.00%p"]) {
+      expect(list.textContent ?? "").toContain(v);
     }
     expect(fetchEnrichedHoldings).toHaveBeenCalledTimes(1);
     expect(fetchHoldingsMarketEvidence).toHaveBeenCalledTimes(1);
@@ -292,34 +341,110 @@ describe("확인 근거 — 사용자 선택 정렬 · 원인 확인 이동 (POC
     expect(rowOrder()).toEqual(["에이", "씨", "비"]);
   });
 
-  it("정렬을 바꿔도 선택한 종목 상세는 유지된다", async () => {
-    await renderSection();
+  it("선택 종목의 evidence_notes 를 그 종목 상세에만 보인다(다른 종목 사유 섞임 없음)", async () => {
+    fetchHoldingsMarketEvidence.mockResolvedValue(
+      evidenceThree([
+        evItemOf("A1", "에이", -1, -3, -1.5, ["에이 사유 문구"]),
+        evItemOf("B1", "비", -3, -1, -0.5, ["비 사유 문구"]),
+        evItemOf("C1", "씨", null, null, -2, ["현재 Market Discovery 후보에 포함되어 있지 않습니다."]),
+      ]),
+    );
+    await renderAndSelect("에이");
+    expect(guidanceItems()).toEqual(["에이 사유 문구"]);
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "에이 상세 보기" }));
+      fireEvent.click(screen.getByRole("button", { name: "씨 상세 보기" }));
       await Promise.resolve();
     });
-    expect(screen.getByRole("heading", { name: "A1 상세" })).toBeTruthy();
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "평가 비중" }));
-      await Promise.resolve();
-    });
-    expect(screen.getByRole("heading", { name: "A1 상세" })).toBeTruthy();
+    // 씨 = 자료 확인 필요(5일 · 20일 없음)인데 일반 문구뿐 → 사유 미제공 문구를 먼저.
+    expect(guidanceItems()).toEqual([
+      NO_REASON,
+      "현재 Market Discovery 후보에 포함되어 있지 않습니다.",
+    ]);
+    expect(screen.getByTestId("hre-guidance").textContent ?? "").not.toContain("에이 사유 문구");
+    expect(screen.getByTestId("hre-guidance").textContent ?? "").not.toContain("비 사유 문구");
   });
 
-  it("원인 확인은 「데이터 상태」로 이동한다", async () => {
-    const onNavigate = vi.fn();
-    render(<HoldingsRiskEvidenceSection onNavigate={onNavigate} />);
+  it("시세 · 계산 미확인을 그 종목 상세에 보인다", async () => {
+    fetchEnrichedHoldings.mockResolvedValue({
+      items: [
+        enrichedRow("A1", "에이", 5000, 4000, { price_missing: true }),
+        enrichedRow("B1", "비", 2000, 2500, { calc_missing: true }),
+        enrichedRow("C1", "씨", 3000, 3000),
+      ],
+    });
+    await renderAndSelect("에이");
+    expect(guidanceItems()).toEqual(["보유 시세를 확인할 수 없습니다."]);
     await act(async () => {
-      await Promise.resolve();
+      fireEvent.click(screen.getByRole("button", { name: "비 상세 보기" }));
       await Promise.resolve();
     });
+    expect(guidanceItems()).toEqual(["보유 평가 계산값을 확인할 수 없습니다."]);
+  });
+
+  it("같은 종목의 계좌별 흐름 값이 다르면 그 사유를 보인다(같은 메모는 한 번)", async () => {
+    fetchEnrichedHoldings.mockResolvedValue({
+      items: [
+        enrichedRow("A1", "에이", 2500, 2000),
+        enrichedRow("A1", "에이", 2500, 2000),
+        enrichedRow("B1", "비", 2000, 2500),
+      ],
+    });
+    fetchHoldingsMarketEvidence.mockResolvedValue(
+      evidenceThree([
+        evItemOf("A1", "에이", -1, -3, -1.5, ["공통 메모"]),
+        evItemOf("A1", "에이", -2, -3, -1.5, ["공통 메모"]),
+        evItemOf("B1", "비", -3, -1, -0.5),
+      ]),
+    );
+    await renderAndSelect("에이");
+    expect(guidanceItems()).toEqual([
+      "같은 종목의 계좌별 단기 흐름 값(상태 · 5일 · 20일 · KODEX200 대비)이 서로 다릅니다.",
+      "공통 메모",
+    ]);
+  });
+
+  it("자료 확인 필요인데 사유가 없으면 '상세 사유 정보가 제공되지 않습니다' · 정상 종목은 안내 칸이 없다", async () => {
+    await renderAndSelect("씨"); // 5일 · 20일 없음 · evidence_notes 없음
+    expect(guidanceItems()).toEqual([NO_REASON]);
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "에이 상세 보기" }));
       await Promise.resolve();
     });
-    fireEvent.click(screen.getByRole("button", { name: "데이터 상태에서 원인 확인 →" }));
+    expect(screen.queryByTestId("hre-guidance")).toBeNull();
+  });
+
+  it("시장 근거 항목이 없는 종목도 사유 미제공 문구로 안내한다", async () => {
+    fetchHoldingsMarketEvidence.mockResolvedValue(
+      evidenceThree([evItemOf("A1", "에이", -1, -3, -1.5), evItemOf("B1", "비", -3, -1, -0.5)]),
+    );
+    await renderAndSelect("씨");
+    expect(guidanceItems()).toEqual([NO_REASON]);
+  });
+
+  it("정렬을 바꿔도 선택한 종목 상세와 자료 확인 안내는 유지된다 · 다시 조회하지 않는다", async () => {
+    await renderAndSelect("씨");
+    expect(screen.getByRole("heading", { name: "C1 상세" })).toBeTruthy();
+    expect(guidanceItems()).toEqual([NO_REASON]);
+    for (const label of ["평가 비중", "손익률", "20일 변화", "5일 변화"]) {
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: label }));
+        await Promise.resolve();
+      });
+      expect(screen.getByRole("heading", { name: "C1 상세" })).toBeTruthy();
+      expect(guidanceItems()).toEqual([NO_REASON]);
+    }
+    expect(fetchEnrichedHoldings).toHaveBeenCalledTimes(1);
+    expect(fetchHoldingsMarketEvidence).toHaveBeenCalledTimes(1);
+  });
+
+  it("'전체 ETF NAV·괴리율 보기 →'는 「데이터 상태」로 이동하고 다시 조회하지 않는다", async () => {
+    const onNavigate = vi.fn();
+    await renderAndSelect("에이", onNavigate);
+    fireEvent.click(screen.getByRole("button", { name: "전체 ETF NAV·괴리율 보기 →" }));
+    expect(onNavigate).toHaveBeenCalledTimes(1);
     expect(onNavigate).toHaveBeenCalledWith("data_status");
-    expect(onNavigate).not.toHaveBeenCalledWith("diagnostics");
-    expect(screen.queryByText(/진단·상태에서 원인 확인/)).toBeNull();
+    expect(screen.queryByText(/원인 확인/)).toBeNull();
+    expect(fetchEnrichedHoldings).toHaveBeenCalledTimes(1);
+    expect(fetchHoldingsMarketEvidence).toHaveBeenCalledTimes(1);
   });
 });
