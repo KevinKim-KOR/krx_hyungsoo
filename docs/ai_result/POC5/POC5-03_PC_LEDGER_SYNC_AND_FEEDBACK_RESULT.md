@@ -3,7 +3,7 @@
 작성 2026-10-07 · 갱신 2026-10-07(검증자 r1 정정 · r2 VERIFIED · 설계자 RESULT 처리 문구 반영) · 작성자: 개발자(VSCode Claude) · 수신: 검증자(Codex)
 
 ```text
-STATUS                 = IMPLEMENTED_VERIFIED_DEPLOYED — 검증자 r2 VERIFIED(2026-10-07) · 설계자 RESULT `PASS_TO_USER_CHECK`(2026-10-07) · 커밋 `4e92d0c5` · 사용자 실화면 확인(2026-10-07 · 메뉴 · 빈 화면 · 실패 표시) · 실데이터 동기화 확인(2026-10-08 10:15 · PC 사본 실행 3 · item 88 · delivery 3 · meta 8 · outcome 0 = OCI 10:13 행 수 · 평가 저장 1) · 남은 것 = 실제 가격 결과 표시(2026-10-12 08:10 이후) · STEP 미종료
+STATUS                 = IMPLEMENTED_VERIFIED_DEPLOYED_OPERATION_CONFIRMED — 실제 가격 결과 표시 확인 2026-10-12(§10) · 종료 · 설계자 종료 수용 2026-10-12(POC5-08 설계서 §13-5) · 검증자 r2 VERIFIED(2026-10-07) · 설계자 RESULT `PASS_TO_USER_CHECK`(2026-10-07) · 커밋 `4e92d0c5` · 사용자 실화면 확인(2026-10-07 · 메뉴 · 빈 화면 · 실패 표시) · 실데이터 동기화 확인(2026-10-08 10:15 · PC 사본 실행 3 · item 88 · delivery 3 · meta 8 · outcome 0 = OCI 10:13 행 수 · 평가 저장 1) · 실제 가격 결과 표시 확인(2026-10-12 · §10) · STEP 종료
 STEP_ID                = POC5-03 PC 원장 동기화 · 선택 평가(받은 알림 기록)
 DESIGNER_RESULT        = PASS_TO_USER_CHECK(2026-10-07 · EXTRA_CHANGES 5/5 · SYNC_CONFLICT_POLICY ACCEPTED · FUNCTIONAL_REWORK NONE · STEP_CLOSED NO) — 원문 = 설계서 끝
 VERIFIER               = r2 VERIFIED(2026-10-07 · A-1 ~ A-4 통과 · B-1 ~ B-6 없음 · 결과서 §7 문구 · PLAN 말미 공백은 검증자가 직접 정정) · r1 REJECTED(2026-10-07 · A-1 · A-3 · B-1 — ① 원장 기본 표 누락 · 빈 SQLite 를 정상 동기화로 처리 ② 원장 새로고침 뒤 펼친 결과 원장을 다시 읽지 않음) → 정정(§6-3) · STATE_LATEST 메뉴 위치 문구는 검증자가 직접 정정
@@ -185,3 +185,11 @@ frontend
 - staged **27** = 신규(`A`) 17 · 수정(`M`) 10 · unstaged 0
 - `??` 1 = `docs/handoff/INVESTMENT_MODEL_V2_MASTER_HANDOFF_2026-07-26.md` — 사용자 소유 · 이 작업과 무관 · stage 하지 않는다
 - 배포 경로(OCI) 파일 0 — OCI 는 `remote_export.py` 를 표준입력으로 받을 뿐 파일을 두지 않는다
+
+## 10. 실제 가격 결과 표시 확인 · 종료 기록 (2026-10-12)
+
+- **동기화**: 사용자가 PC 「받은 알림 기록」 [원장 새로고침] — `ledger_sync_attempt` 2026-10-12T13:09:21+09:00 ok=1.
+- **PC 사본 = OCI**(읽기 전용 · OCI 13:07 · PC 13:10): 실행 29 · 항목 767 · 전달 29 · `price_outcome` 458(전부 +1 MATURED) · 평가 1.
+- **화면**(사용자 확인): 10-08 「신호 결과 원장」 +1 칸 = 수익률 % · +5 · +20 = '집계 중'. 평가 없는 알림도 같은 표시다.
+- 10-08 항목 중 +1 이 아직 없는 것 = 15:40 보유 브리핑 29개(평가일 10-12 · 10-13 08:10 배치 차례 · 정상 집계 중).
+- 통과 조건(`POC5-01B` 인계 §3-2)을 충족해 **STEP 종료**(`IMPLEMENTED_VERIFIED_DEPLOYED_OPERATION_CONFIRMED`). 코드 변경 0.

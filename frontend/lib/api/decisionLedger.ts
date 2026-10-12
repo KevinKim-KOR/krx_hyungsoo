@@ -163,3 +163,157 @@ export async function postLedgerFeedback(
     input
   );
 }
+
+// ── POC5-08 알림의 ML 사후평가 ───────────────────────────────────────────────
+// [사후평가 실행] 을 눌렀을 때만 POST(PC 사본 읽기 → 연구 산출물). 화면 진입 · 상세 열기는
+// 완성된 최신 산출물 GET 만(학습 · SSH · 쓰기 0). 평가(피드백)는 표본 · 라벨 · 입력에 쓰지 않는다.
+
+export type RetroStatus =
+  | "OK"
+  | "NO_COPY"
+  | "CHECK_REQUIRED"
+  | "NO_RESULT"
+  | "ARTIFACT_UNREADABLE";
+
+export interface RetroBlock {
+  index: number;
+  days: string[];
+  start: string;
+  end: string;
+  test_rows: number;
+  test_dates: number;
+  test_groups: Record<string, number>;
+  status: "VALID" | "DATA_SHORT";
+  reason: string | null;
+  test_start?: string;
+  train_rows?: number;
+  train_dates?: number;
+  train_excluded_by_time?: number;
+  baseline_pct?: number;
+  model_mae_pp?: number;
+  baseline_mae_pp?: number;
+  unseen_categories?: Record<string, number>;
+}
+
+export interface RetroOverall {
+  test_dates: number;
+  model_mae_pp: number;
+  baseline_mae_pp: number;
+  difference_pp: number;
+  verdict: "IMPROVED" | "NO_DIFFERENCE" | "WORSE";
+  verdict_text: string;
+}
+
+export interface RetroMl {
+  status: "COMPARED" | "DATA_SHORT";
+  reason: string | null;
+  blocks: RetroBlock[];
+  overall: RetroOverall | null;
+  eligible_rows: number;
+  not_eligible: Record<string, number>;
+}
+
+export interface RetroCounts {
+  denominators: {
+    events: number;
+    items: number;
+    price_observations: number;
+    price_slots: number;
+    signal_dates: number;
+    series_recorded: number; // 결과 행이 기록된 실제 가격 계열 수
+  };
+  status_by_horizon: Record<string, Record<string, number>>;
+  delivery: {
+    dispositions: Record<string, number>;
+    delivered_items: number;
+    partial_items: number;
+    exposure: Record<string, number>;
+  };
+}
+
+export interface RetroSlotMl {
+  status: "ESTIMATED" | "NONE"; // NONE = 값 없음 + 사유(reason)
+  reason: string | null;
+  reason_text: string | null;
+  block: number | null;
+  actual_pct?: number;
+  estimate_pct?: number;
+  baseline_pct?: number;
+  abs_error_pp?: number;
+  baseline_abs_error_pp?: number;
+}
+
+export interface RetroSlot {
+  series_id: string | null;
+  horizon: number;
+  status: string;
+  status_text: string;
+  eval_date: string | null;
+  expected_eval_date: string | null;
+  t0_price: number | null;
+  t0_price_asof: string | null;
+  eval_price: number | null;
+  return_raw: number | null;
+  max_up_raw: number | null;
+  max_down_raw: number | null;
+  path_points: number | null;
+  partial_path: boolean;
+  price_basis: string | null;
+  computed_at: string | null;
+  sign: "UP" | "DOWN" | "FLAT" | null;
+  sign_text: string | null;
+  ml: RetroSlotMl | null; // +5 칸에만
+}
+
+export interface RetroItem {
+  event_id: string;
+  item_seq: number;
+  signal_date: string;
+  push_kind: string;
+  subject_kind: string;
+  subject_id: string;
+  disposition: string;
+  delivered: boolean;
+  partial: boolean;
+  slots: RetroSlot[];
+}
+
+export interface RetroResult {
+  schema: string;
+  status: RetroStatus;
+  status_text: string;
+  end_date: string | null;
+  run_id?: string;
+  created_at?: string;
+  snapshot_acquired_at?: string;
+  price_asof_date?: string;
+  copy_sync?: { last_success_at: string | null; last_failure_at: string | null };
+  summary?: RetroCounts;
+  exclusions?: Record<string, number>;
+  ml?: RetroMl;
+  feedback_summary?: { events_with_feedback: number; events_without_feedback: number };
+  problems?: string[];
+  // GET latest 만 — 지금 사본이 그 보고의 입력과 같은지(null = 확인 불가).
+  input_changed?: boolean | null;
+  input_check?: string;
+  event?: {
+    event_id: string;
+    items: RetroItem[];
+    feedback: { feedback_seq: number; helpfulness: string; feedback_at: string } | null;
+  };
+}
+
+const RETRO = "/decision-ledger/retrospective-evaluation";
+const RETRO_RUN_TIMEOUT_MS = 120_000; // 첫 실행은 학습 라이브러리를 불러온다 · 사본 전체 1회
+const RETRO_READ_TIMEOUT_MS = 30_000; // 입력 변경 확인에 사본을 한 번 읽는다
+
+export async function runRetrospective(): Promise<RetroResult> {
+  return request<RetroResult>("POST", RETRO, {}, RETRO_RUN_TIMEOUT_MS);
+}
+
+export async function fetchRetrospectiveLatest(
+  eventId?: string
+): Promise<RetroResult> {
+  const q = eventId ? `?${new URLSearchParams({ event_id: eventId })}` : "";
+  return request<RetroResult>("GET", `${RETRO}/latest${q}`, undefined, RETRO_READ_TIMEOUT_MS);
+}

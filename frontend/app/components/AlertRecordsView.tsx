@@ -10,16 +10,22 @@
 //   버튼을 눌렀을 때만이다(설계 §3).
 // - 처음 열면 날짜를 보내지 않는다 — 백엔드가 사본에서 받은 알림이 있는 가장 최근 날짜를
 //   고른다. 그 뒤 사용자가 고른 날짜는 새로고침 · 종류 변경 뒤에도 유지한다(설계 §5).
+// - POC5-08: [사후평가 실행] 은 누를 때만 POST(PC 사본 → 연구 산출물). 진입 · 새로고침 · 평가 저장 뒤에는
+//   완성된 최신 산출물 GET 만 한다(입력이 바뀌었으면 '재실행 필요' 표시 · 자동 재실행 없음).
 
 import { useEffect, useRef, useState } from "react";
 import {
   ApiRequestError,
   fetchLedgerAlerts,
+  fetchRetrospectiveLatest,
+  runRetrospective,
   syncDecisionLedger,
   type LedgerAlertList,
   type LedgerKind,
+  type RetroResult,
 } from "@/lib/api";
 import AlertCard from "./alert_records/AlertCard";
+import RetroSummary from "./alert_records/RetroSummary";
 import SignalOutcomeLedger from "./alert_records/SignalOutcomeLedger";
 import { KIND_FILTERS, fmtStamp, shiftDate } from "./alert_records/format";
 
@@ -28,6 +34,12 @@ type SyncUi =
   | { phase: "running" }
   | { phase: "done"; text: string };
 
+function failText(e: unknown): string {
+  const body = e instanceof ApiRequestError ? e.body : null;
+  if (body && typeof body === "object" && "detail" in body) return String(body.detail);
+  return e instanceof Error ? e.message : String(e);
+}
+
 export default function AlertRecordsView() {
   const [day, setDay] = useState<string | null>(null);
   const [kind, setKind] = useState<LedgerKind>("all");
@@ -35,6 +47,11 @@ export default function AlertRecordsView() {
   const [data, setData] = useState<LedgerAlertList | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [sync, setSync] = useState<SyncUi>({ phase: "idle" });
+  const [retro, setRetro] = useState<RetroResult | null>(null);
+  const [retroError, setRetroError] = useState<string | null>(null);
+  const [retroRunning, setRetroRunning] = useState(false);
+  const [retroProblem, setRetroProblem] = useState<string | null>(null);
+  const [retroTick, setRetroTick] = useState(0);
   // 기본 날짜를 받아 day 를 채울 때 같은 조회를 다시 하지 않게 한다.
   const loadedKey = useRef<string | null>(null);
 
@@ -57,7 +74,40 @@ export default function AlertRecordsView() {
     };
   }, [day, kind, tick]);
 
+  // 최신 사후평가 산출물(GET) — 진입 · 원장 새로고침 · 평가 저장 · 사후평가 실행 뒤.
+  useEffect(() => {
+    let alive = true;
+    fetchRetrospectiveLatest()
+      .then((r) => {
+        if (!alive) return;
+        setRetro(r);
+        setRetroError(null);
+      })
+      .catch((e: Error) => {
+        if (alive) setRetroError(e.message);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [tick, retroTick]);
+
   const reload = () => setTick((t) => t + 1);
+
+  const onRetro = async () => {
+    setRetroRunning(true);
+    setRetroProblem(null);
+    try {
+      const r = await runRetrospective();
+      if (r.status !== "OK") {
+        const why = r.problems?.length ? ` — ${r.problems.join(" · ")}` : "";
+        setRetroProblem(`${r.status_text}${why}`);
+      }
+    } catch (e) {
+      setRetroProblem(`실패 — ${failText(e)}`);
+    }
+    setRetroRunning(false);
+    setRetroTick((t) => t + 1);
+  };
 
   const onSync = async () => {
     setSync({ phase: "running" });
@@ -93,6 +143,9 @@ export default function AlertRecordsView() {
             onClick={onSync}
           >
             {sync.phase === "running" ? "불러오는 중..." : "원장 새로고침"}
+          </button>
+          <button type="button" disabled={retroRunning} onClick={onRetro}>
+            {retroRunning ? "사후평가 중..." : "사후평가 실행"}
           </button>
           <span className="ar-note" data-testid="sync-line">
             {!status
@@ -149,6 +202,8 @@ export default function AlertRecordsView() {
         <p className="helper">발송 완료 · 일부 전달 알림만 보입니다.</p>
       </div>
 
+      <RetroSummary data={retro} error={retroError} runProblem={retroProblem} />
+
       <div className="card">
         {loadError ? (
           <div className="message error">기록을 불러오지 못했습니다 — {loadError}</div>
@@ -161,7 +216,13 @@ export default function AlertRecordsView() {
         ) : (
           <ul className="ar-alerts">
             {data.alerts.map((a) => (
-              <AlertCard key={a.event_id} alert={a} onSaved={reload} refreshKey={tick} />
+              <AlertCard
+                key={a.event_id}
+                alert={a}
+                onSaved={reload}
+                refreshKey={tick}
+                retroKey={`${tick}:${retroTick}`}
+              />
             ))}
           </ul>
         )}

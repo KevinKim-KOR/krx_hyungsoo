@@ -3,7 +3,7 @@
 작성 2026-10-07 · 갱신 2026-10-07(검증자 r1 VERIFIED · 사용자 결정 반영) · 작성자: 개발자(VSCode Claude) · 수신: 검증자(Codex)
 
 ```text
-STATUS                 = IMPLEMENTED_VERIFIED_DEPLOYED — 검증자 r1 VERIFIED(2026-10-07) · 설계자 RESULT `PASS_TO_DEPLOY_AFTER_GATE`(2026-10-07) · 커밋 `f0711340` · **OCI pull 2026-10-07 22:19:31(사용자 · POC5-03 `4e92d0c5` 와 함께 · 배포 게이트 = 01B 첫 거래일 확인 전 — 01B 는 2026-10-08 10:13 확인 통과 · 설계자 2026-10-08 '예외 기록 · 현재 배포 유지 사후 수용 · 롤백 · 재검증 · PRIMARY 시작일 변경 없음')** · 첫 실행 2026-10-08 08:10 `no_ledger`(원장 생성 전) · 09:20 `ok` 대상 32 · INSERT 0 · 대기 111(실측) · 첫 결과 행(MATURED +1) 확인 = 2026-10-12 08:10 이후(10-09 한글날 휴장 · 운영 캘린더 실측)
+STATUS                 = IMPLEMENTED_VERIFIED_DEPLOYED_OPERATION_CONFIRMED — 첫 결과 행 확인 2026-10-12(§11 · 실제 첫 INSERT = 2026-10-09 08:10 배치 · 휴장일인 10-09 배치에서 예상 확인일(10-12)보다 먼저 생성) · 종료 · 설계자 종료 수용 2026-10-12(POC5-08 설계서 §13-5) · 검증자 r1 VERIFIED(2026-10-07) · 설계자 RESULT `PASS_TO_DEPLOY_AFTER_GATE`(2026-10-07) · 커밋 `f0711340` · **OCI pull 2026-10-07 22:19:31(사용자 · POC5-03 `4e92d0c5` 와 함께 · 배포 게이트 = 01B 첫 거래일 확인 전 — 01B 는 2026-10-08 10:13 확인 통과 · 설계자 2026-10-08 '예외 기록 · 현재 배포 유지 사후 수용 · 롤백 · 재검증 · PRIMARY 시작일 변경 없음')** · 첫 실행 2026-10-08 08:10 `no_ledger`(원장 생성 전) · 09:20 `ok` 대상 32 · INSERT 0 · 대기 111(실측) · 첫 결과 행(MATURED +1) = 2026-10-09 08:10 배치 INSERT 458(§11)
                          (배포 게이트 = POC5-01B 첫 거래일 2026-10-08 운영 확인 · 설계서 §10)
 STEP_ID                = POC5-02 가격 결과 성숙
 DESIGNER_RESULT        = PASS_TO_DEPLOY_AFTER_GATE(2026-10-07 · 보유 이력 요청 = 필요성 인정 · POC5-03 제외 · 별도 소형 설계 · 금액 · 수량은 holdings 에만) — 원문 = 설계서 끝
@@ -169,3 +169,10 @@ CONTRACT_DIFFERENCE    = 배치 status · 상태 JSON · stdout JSON · exit cod
 2. 검증자 → 설계자 RESULT 판정 → 커밋 · push(사용자 승인).
 3. OCI `git pull`(사용자) — cron · `.env` 변경 0.
 4. 첫 확인(개발자 · OCI 읽기 전용): pull 다음 거래일 08:10 · 09:20 `logs/oci_market_data_batch.log` 의 `price outcome maturity:` 줄 · 원장 `price_outcome` 행 수 · 상태별 건수 · 배치 status · exit code 가 이전과 같음.
+
+## 11. 운영 확인 · 종료 기록 (2026-10-12)
+
+- **첫 결과 행**: OCI 읽기 전용 2026-10-12 13:07 — 배치 로그 `2026-10-09 08:10:32 price outcome maturity: {'status': 'ok', 'targets': 482, 'inserted': 458, 'pending': 1003, 'by_status': {'MATURED': 458}}` · 원장 `price_outcome` 458행 = 전부 +1 MATURED(10-08 사건 · 평가일 10-08 · 계산 시각 2026-10-08T23:10 UTC = 10-09 08:10 KST · 보유 브리핑 58 · 장중 392 · 시장 8) · 대조 CLI `status=OK` ok 29 · 누락 0 · 10-08 15:40 사건의 +1(평가일 10-12)은 10-13 08:10 배치 차례 · 10-09(한글날) 실행 11회 = 모두 `skipped` · item 0.
+- **예상 확인일과 다른 점**: 인계 문서(`POC5-01B` 인계 §3)는 10-09 휴장 때문에 10-08 사건의 +1 이 10-12 08:10 에 생길 것으로 적었다. 실제로는 휴장일인 10-09 배치에서 예상 확인일(10-12)보다 먼저 생성됐다 — 10-08 종가가 10-09 08:10 배치 때 이미 시세 표에 저장돼 있었다. 평가일 · 수익률 계산 규칙(02 `_mature_target`)은 그대로이며 결함이 아니다.
+- **PC 사본 대조**: 사용자 [원장 새로고침](2026-10-12 13:09:21 성공) 뒤 PC 사본 `price_outcome` 458행 = OCI 458행 · 실행 29 · 항목 767 · 전달 29 = OCI 와 같음(읽기 전용 · `mode=ro`).
+- 통과 조건(인계 §3-1: `inserted` > 0 · `by_status` MATURED · 원장 상태별 행 수)을 충족해 **`IMPLEMENTED_VERIFIED_DEPLOYED_OPERATION_CONFIRMED` 로 종료**한다. 코드 변경 0 · OCI 쓰기 0.

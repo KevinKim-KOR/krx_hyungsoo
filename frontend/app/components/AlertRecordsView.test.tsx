@@ -18,6 +18,8 @@ const fetchLedgerAlerts = vi.fn();
 const fetchLedgerAlertDetail = vi.fn();
 const syncDecisionLedger = vi.fn();
 const postLedgerFeedback = vi.fn();
+const fetchRetrospectiveLatest = vi.fn();
+const runRetrospective = vi.fn();
 
 vi.mock("@/lib/api", async (importOriginal) => {
   const actual = await importOriginal<Record<string, unknown>>();
@@ -27,6 +29,8 @@ vi.mock("@/lib/api", async (importOriginal) => {
     fetchLedgerAlertDetail: (...a: unknown[]) => fetchLedgerAlertDetail(...a),
     syncDecisionLedger: (...a: unknown[]) => syncDecisionLedger(...a),
     postLedgerFeedback: (...a: unknown[]) => postLedgerFeedback(...a),
+    fetchRetrospectiveLatest: (...a: unknown[]) => fetchRetrospectiveLatest(...a),
+    runRetrospective: (...a: unknown[]) => runRetrospective(...a),
   };
 });
 
@@ -209,6 +213,15 @@ beforeEach(() => {
   fetchLedgerAlertDetail.mockReset();
   syncDecisionLedger.mockReset();
   postLedgerFeedback.mockReset();
+  fetchRetrospectiveLatest.mockReset();
+  runRetrospective.mockReset();
+  // POC5-08 — 사후평가 결과는 이 파일의 관심 밖: 결과 없음으로 둔다(POC5-08 화면 test 는 RetroResults.test.tsx).
+  fetchRetrospectiveLatest.mockResolvedValue({
+    schema: "alert_retro.v1",
+    status: "NO_RESULT",
+    status_text: "아직 사후평가 결과가 없습니다",
+    end_date: null,
+  });
   fetchLedgerAlerts.mockImplementation((date: string | null) =>
     Promise.resolve(list({ date: date ?? "2026-10-08" }))
   );
@@ -222,6 +235,7 @@ describe("AlertRecordsView — 받은 알림 기록", () => {
     expect(fetchLedgerAlerts).toHaveBeenCalledTimes(1);
     expect(fetchLedgerAlerts).toHaveBeenCalledWith(null, "all");
     expect(syncDecisionLedger).not.toHaveBeenCalled();
+    expect(runRetrospective).not.toHaveBeenCalled(); // POC5-08 — 진입은 최신 결과 GET 만
     expect((screen.getByLabelText("날짜") as HTMLInputElement).value).toBe("2026-10-08");
     expect(screen.getByTestId("sync-line").textContent).toBe("마지막 성공 동기화 10-08 09:37");
   });

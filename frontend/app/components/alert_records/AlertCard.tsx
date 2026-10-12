@@ -5,6 +5,7 @@
 // 상세를 불러와 보인다(설계 개정 2 §5).
 //
 // partial 의 body_text 는 분할 전 전체 생성 본문이다 — 받은 전문으로 부르지 않는다.
+// POC5-08 — 상세에 항목 · 계열별 사후평가(가격 결과 · 과거 검증 +5)를 내 평가와 따로 붙인다.
 
 import { useEffect, useState } from "react";
 import {
@@ -13,6 +14,7 @@ import {
   type LedgerAlertDetail,
 } from "@/lib/api";
 import FeedbackForm from "./FeedbackForm";
+import RetroItemRows from "./RetroItemRows";
 import {
   PUSH_KIND_LABEL,
   actionLabel,
@@ -29,9 +31,11 @@ interface Props {
   onSaved: () => void;
   // 목록을 다시 읽을 때마다 바뀐다 — 열려 있으면 상세도 다시 읽는다.
   refreshKey: number;
+  // 사후평가 결과를 다시 읽을 때마다 바뀐다(원장 새로고침 · 평가 저장 · 사후평가 실행).
+  retroKey: string;
 }
 
-export default function AlertCard({ alert, onSaved, refreshKey }: Props) {
+export default function AlertCard({ alert, onSaved, refreshKey, retroKey }: Props) {
   const [open, setOpen] = useState(false);
   const [detail, setDetail] = useState<LedgerAlertDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -86,6 +90,14 @@ export default function AlertCard({ alert, onSaved, refreshKey }: Props) {
           {error ? <div className="message error">상세를 불러오지 못했습니다 — {error}</div> : null}
           {!detail && !error ? <div className="ar-note">불러오는 중...</div> : null}
           {detail ? <DetailBody detail={detail} /> : null}
+          {detail ? (
+            <RetroItemRows
+              eventId={alert.event_id}
+              items={detail.items}
+              outcomes={detail.outcomes}
+              refreshKey={retroKey}
+            />
+          ) : null}
           {detail ? (
             <>
               <div className="ar-sec-h">내 평가 (선택)</div>

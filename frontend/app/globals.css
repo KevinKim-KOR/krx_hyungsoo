@@ -3208,6 +3208,29 @@ pre.ar-body { white-space: pre-wrap; font-family: inherit; font-size: 14px; back
 .ar-table th { font-weight: 600; color: var(--muted); font-size: 12px; }
 .ar-table td.ar-num { text-align: right; font-variant-numeric: tabular-nums; }
 .ar-table td.ar-fact { color: var(--muted); }
+/* POC5-08 「사후평가 결과」 카드 · 상세 표(사용자 확인 목업 2026-10-11) — 결과 수치에 성공 · 실패 색 없음. */
+.ar-table td.ar-dim { color: var(--muted); }
+.ar-table th.ar-num { text-align: right; }
+.ar-table.ar-fit { width: auto; min-width: min(100%, 640px); }
+.ar-retro-head { display: flex; align-items: baseline; gap: 6px 12px; flex-wrap: wrap; }
+.card .ar-retro-head h2 { margin: 0; font-size: 16px; }
+.ar-retro-ok { font-size: 13px; color: var(--muted); }
+.ar-retro-warn {
+  background: #fff7e6; border: 1px solid #f2c879; color: #8a5a00;
+  border-radius: 8px; padding: 8px 12px; font-size: 13px; margin-top: 10px;
+}
+.ar-retro-meta {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px 20px; margin: 12px 0 4px; max-width: 920px;
+}
+.ar-retro-meta div { display: flex; flex-direction: column; min-width: 0; }
+.ar-retro-meta dt { font-size: 12px; color: var(--muted); }
+.ar-retro-meta dd { margin: 0; font-size: 14px; font-variant-numeric: tabular-nums; }
+.ar-retro-counts { font-size: 14px; margin: 4px 0 12px; font-variant-numeric: tabular-nums; }
+.ar-retro-counts span { color: var(--muted); }
+.ar-retro-ml { font-size: 14px; margin: 12px 0 8px; }
+.ar-retro-notes { font-size: 12px; color: var(--muted); margin: 10px 0 0; padding-left: 18px; }
+.ar-retro-notes li { margin: 2px 0; }
 .ar-feedback { display: flex; flex-direction: column; gap: 6px; }
 .ar-fb-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .ar-fb-row button.ar-fb-btn {

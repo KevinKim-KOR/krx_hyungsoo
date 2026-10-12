@@ -8,8 +8,11 @@ PLAN `docs/ai_plan/POC5/POC5-03_PC_LEDGER_SYNC_AND_FEEDBACK_PLAN_V1.md` §2-4 ·
 - GET  /decision-ledger/alerts/{event_id}           : 원문 · item · feedback 이력 · 가격 결과(평가와 무관)
 - POST /decision-ledger/sync                        : 사용자 버튼 — OCI 읽기 전용 export 1회 → 사본 반영
 - POST /decision-ledger/alerts/{event_id}/feedback  : append-only 피드백 1행
+- POST /decision-ledger/retrospective-evaluation    : POC5-08 사후평가 1회(사본 읽기 → 연구 산출물 · 동기)
+- GET  /decision-ledger/retrospective-evaluation/latest : POC5-08 완성된 최신 산출물(+ 선택 알림 항목) · 쓰기 0
 
 동기화 API 만 SSH 를 쓴다. 조회 · 피드백은 PC 사본만 읽고 쓴다. 시장 API · Telegram · OCI 쓰기 0.
+사후평가(POC5-08)는 사본을 mode=ro 로 읽고 `state/ml/research/poc5_08/` 에만 쓴다.
 """
 
 from __future__ import annotations
@@ -17,7 +20,7 @@ from __future__ import annotations
 from typing import Literal, Optional
 
 from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.ledger_copy import store, sync, views
 
@@ -144,6 +147,11 @@ class FeedbackResponse(FeedbackRow):
     event_id: str
 
 
+class RetroRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    end_date: Optional[str] = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
+
+
 @router.get("/alerts", response_model=AlertListResponse)
 def get_alerts(
     date: Optional[str] = Query(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$"),
@@ -179,3 +187,24 @@ def post_feedback(event_id: str, req: FeedbackRequest) -> FeedbackResponse:
     except store.FeedbackError as e:
         raise HTTPException(status_code=_FEEDBACK_HTTP[e.code], detail=str(e))
     return FeedbackResponse(**saved)
+
+
+@router.post("/retrospective-evaluation")
+def post_retrospective(req: Optional[RetroRequest] = None) -> dict:
+    from app.alert_retro import report  # scikit-learn 은 누를 때만 읽는다
+
+    try:
+        return report.run(req.end_date if req else None)
+    except report.InvalidEndDate as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except report.ArtifactSaveError as e:
+        raise HTTPException(status_code=500, detail=f"{e} — 결과를 보이지 않습니다.")
+
+
+@router.get("/retrospective-evaluation/latest")
+def get_retrospective_latest(
+    event_id: Optional[str] = Query(default=None, min_length=1, max_length=64),
+) -> dict:
+    from app.alert_retro import report
+
+    return report.latest(event_id)

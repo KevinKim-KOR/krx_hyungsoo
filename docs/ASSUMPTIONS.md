@@ -49,6 +49,9 @@
   **별도 연구 계약 — POC5-06 (2026-10-09 · 한정 예외 · Q6 해결 아님)**: 02B 연구 종료(REJECT_ACCEPTED)와 운영 계약 OPEN 은 그대로다.
   > 2026-10-09 POC5-06 한정 연구 예외: 사용자가 요청한 수동 재진입 검토를 위해, 선택 ETF 하나의 기존 PC 저장 가격으로 D20(이후 20일 연구 축의 최저 종가 변화)을 고정 Ridge 모델과 학습 중앙값 기준으로 연구할 수 있다. 이는 기존 Q6 운영 위험 구간 분류나 POC4-02B/03 REJECT의 재개·통과가 아니다. ASSUMPTIONS Q6 운영 계약은 OPEN, ML_OPERATION_PROMOTION은 NOT_APPROVED, CURRENT_DEPLOYABLE_ML_MODEL은 none으로 유지한다. 자동 실행·추천 모델 채택·PUSH/PARAM 변경·주문은 허용하지 않는다. 기준 문서는 POC5-06 DESIGN V1 개정 2다.
   연구 계약: `docs/ai_design/POC5/POC5-06_MANUAL_REENTRY_REVIEW_AND_ML_EVIDENCE_DESIGN_V1.md` 개정 2 §10-1 · §4 · §5.
+  **별도 연구 계약 — POC5-08 (2026-10-11 · 한정 예외 · Q6 해결 아님)**: 02B 연구 종료(REJECT_ACCEPTED)와 운영 계약 OPEN 은 그대로다.
+  > 2026-10-11 POC5-08 연구 예외: 사용자 요청에 따라 PC에서 수동 실행하는 알림 사후평가를 구현한다. 기존 원장 스냅샷과 확정 +5 가격 결과로 고정 Ridge와 중앙값 기준을 시간 분리 비교한다. 자동·운영 ML, 추천 모델 채택, PUSH/PARAM 변경, 주문은 승인하지 않는다. CURRENT_DEPLOYABLE_ML_MODEL=none과 ML_OPERATION_PROMOTION=NOT_APPROVED를 유지한다. POC4의 REJECT나 Q6 운영 가설의 해결을 선언하지 않는다.
+  연구 계약: `docs/ai_design/POC5/POC5-08_ALERT_RETROSPECTIVE_ML_EVALUATION_DESIGN_V1.md` §2 · §5 · §6 · §12(PLAN 판정).
 - **배경**: 2026-06-06 ETF Exposure Data Unfolding 1차 — ML 방향성 2축 중
   축 2 (위험 감지 = 위험 구간 분류). 사용자 목적에 더 가까운 축이지만 본 시점
   factor / threshold / label 미확정.
