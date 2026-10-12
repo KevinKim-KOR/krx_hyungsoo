@@ -35,7 +35,7 @@ FULL_3BLOCK   = 전체 3구간 비교의 가장 이른 보고 종료일(조건�
   - `app/ledger_reports/dates.py` — `calendar` · `default_end`(KST 오늘 이전 마지막 거래일) · `validate_end` · `eval_dates`(15:30 규칙) · `parse_kst` · `at_kst`.
   - `app/ledger_reports/r1.py` — 미도래 / 도래 후 미기록 구분 방식.
 - **series 연결**: ticker 종목 = `krx_etf:` · `krx_stock:` / sector = 기록된 대표 `krx_etf:` / market = `benchmark:KOSPI` / index_group = 구성 ETF 마다.
-- **price_basis**: `KRX_ETF_UNADJUSTED|<자산 분류>` · `KRX_STOCK_UNADJUSTED|<자산 분류>` · `KRX_ETF_UNADJUSTED`(sector) · `KRX_KOSPI_INDEX`.
+- **price_basis**: `KRX_ETF_UNADJUSTED|<종목 구분 출처>` · `KRX_STOCK_UNADJUSTED|<종목 구분 출처>`(예: `etf_master_csv` · `etf_master_csv+krx_table` — `app/runtime_evidence/holdings_price_basis.py` · 2026-10-12 실데이터로 표현 정정) · `KRX_ETF_UNADJUSTED`(sector) · `KRX_KOSPI_INDEX`.
 
 ### 1-2. feature 두 숫자(키 · 부호 · 단위 · 적용 kind · 결측 · 계약 버전)
 
@@ -170,7 +170,7 @@ FULL_3BLOCK   = 전체 3구간 비교의 가장 이른 보고 종료일(조건�
 ### 2-6. 정해 둔 세부 (질문 아님 · 판정에서 바꿀 수 있음)
 
 1. 시험 구간 시작 시각 = 그 구간 ML 시험 행 중 가장 이른 `runtime_kst`(KST 시각). 시험 행이 없으면 그 구간은 DATA_SHORT.
-2. ML 대상 price_basis = `|` 앞 기본 이름이 `KRX_ETF_UNADJUSTED` · `KRX_STOCK_UNADJUSTED` 와 정확히 같음(02 가 `|자산 분류`를 붙여 기록) · 접미는 snapshot 에 그대로 남기고 feature 로 쓰지 않는다.
+2. ML 대상 price_basis = `|` 앞 기본 이름이 `KRX_ETF_UNADJUSTED` · `KRX_STOCK_UNADJUSTED` 와 정확히 같음(02 가 `|종목 구분 출처`를 붙여 기록) · 접미는 snapshot 에 그대로 남기고 feature 로 쓰지 않는다.
 3. 구조적 결측(보유 브리핑의 당일 변화 · 장중 종목의 20거래일 변화)도 설계 규칙대로 결측 표시 + 대입 — 행을 빼지 않는다.
 4. 입력 digest 에는 event 최신 평가(feedback_seq · helpfulness · feedback_at)가 들어간다 → 평가만 바뀌어도 '입력 변경'이 뜬다(설계 §7 '평가만 바뀌면 digest 변경'). 모델 수치는 같다.
 5. 조회 때의 '입력 변경' 판정을 위해 사본을 읽기 전용으로 한 번 읽는다(학습 · 산출물 쓰기 없음).

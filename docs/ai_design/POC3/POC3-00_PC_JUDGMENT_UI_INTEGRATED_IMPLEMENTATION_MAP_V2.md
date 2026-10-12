@@ -95,21 +95,21 @@
 | P-03 | 오늘의 투자 점검 대시보드 | 완료 | 결과서·STATE 문서 상태만 정정 |
 | P-04 | 좌측 메뉴 과업별 1차 재편 | **COMPLETED** | POC3-03 Navigation Information Architecture v1 · 검증자 VERIFIED · commit `bbd30a98`. route·기능·API 불변. 최종 구조 = 5그룹·9개 화면 1회 귀속(§8-1). 사용자 지시 변경 2건 설계자 승인(§8-2) |
 | P-05 | Operations Panel 통합 | **제외·폐기** | **[2026-08-01]** 독립 Operations Panel 을 신설하지 않는다. 기존 승인·알림 화면 재배치(`OCI 적용·알림`)로 역할 분리를 충족 — 판단(정보 PUSH 안내)/OCI 적용/미리보기·수동 점검을 역할별로 정리(commit `c676de3d`). 폐기 사유: 기존 화면 재배치로 충족 가능한 정리 요구를 신규 화면으로 확대한 오류. |
-| P-06 | 내가 가진 ETF의 위험 신호와 구체 이유 | **부분 완료** | **[2026-08-03]** POC3-05 로 `확인 근거` 화면(평가·5일·20일·KODEX200 대비·NAV·구성종목 evidence 표시) 구축. 급락 신호·종합 위험 구간 분류는 자동 조회 계약/근거 부재로 BACKLOG(§13). Q6 산식 선확정 금지 유지. |
+| P-06 | 내가 가진 ETF의 위험 신호와 구체 이유 | **부분 완료** | **[2026-08-03]** POC3-05 로 `확인 근거` 화면(평가·5일·20일·KODEX200 대비·NAV·구성종목 evidence 표시) 구축. 급락 신호·종합 위험 구간 분류는 자동 조회 계약/근거 부재로 BACKLOG(§13). Q6 산식 선확정 금지 유지. **[2026-10-12 POC5-UI-02 정정 · 근거 `docs/ai_result/POC5/POC5_BACKLOG_SOURCE_AUDIT_2026-10-12.md` · 설계자 PLAN 판정 §2 · §3]** 지금 구현 = 기본 하락 감지(「확인 근거」 5일 · 20일 · KODEX200 대비 · 차트 · NAV · 구성종목 + 사용자 선택 정렬 다섯 · 「오늘의 투자 점검」 최근 5거래일 변화 낮은 순 최대 3 · OCI 장중 급등락(−5/−7/−10%) · 보유 브리핑 20거래일 하락 구간 PUSH · 「받은 알림 기록」 당시 사유 · 이후 결과). **종합 위험 구간 분류 = 미구현 요구(살아 있음 · 기반 의도 §9.5 · ASSUMPTIONS Q6)** — 기존 하락 사유 표시와 종합 등급 계산을 나눠 설계 가능. 'BACKLOG(§13)'은 POC3-05 설계 절 번호(실제 BACKLOG §2). |
 | P-07 | 코스피 흐름 지속 거래일 수 | 확정 개발 | 기존 시계열·기존 국면 계약으로 제공 가능한지 사실 확인 후 |
 | P-08 | 최근 고점 대비 현재 위치 | 확정 개발 | 기존 KOSPI 시계열 재사용 가능성 확인 후 |
 | P-09 | 코스피 일간·1년 수익률 | 확정 개발 | 시장 위치 evidence 보완 Lane. 임시 숫자 금지 |
-| P-10 | 거래량 흐름 | 조건부 보류 | 저장 데이터와 판단 가치가 모두 확인될 때. 새 source 선도입 금지 |
-| P-11 | 기존 판정 기준선까지 거리 | 완료 | MA20/MA60 기반·한계 툴팁 포함 |
-| P-12 | 공격·방어 비중 | 제외·폐기 | 친구 구조 복제이며 자동 비중 판단 경계를 침범 |
-| P-13 | SuperTrend 신규 도입 | 제외·폐기 | 신규 산식·threshold 선확정 금지 |
+| P-10 | 거래량 흐름 | 조건부 보류 | 저장 데이터와 판단 가치가 모두 확인될 때. 새 source 선도입 금지 **[2026-10-12 POC5-UI-02 정정 · 근거 `docs/ai_result/POC5/POC5_BACKLOG_SOURCE_AUDIT_2026-10-12.md` · 설계자 PLAN 판정 §2 · §3]** 저장 범위 정정: ETF · KODEX200 일별 거래량 저장(`etf_daily_price.volume` · 2026-02-19~) · KOSPI 지수 거래량은 미저장. **거래량 흐름 화면 · 해석 = 미구현 요구 · 저장 자료를 「확인 근거」에 보완하는 후보**(대표 ETF 자료를 KOSPI 전체 거래량으로 표기하지 않음 · 새 판정 산식 미확정). '자료 미저장' 안내는 사실과 다름(화면 안내 카드는 판정에 따라 그대로). |
+| P-11 | 기존 판정 기준선까지 거리 | 완료 | MA20/MA60 기반·한계 툴팁 포함 **[2026-10-12 POC5-UI-02 정정 · 근거 `docs/ai_result/POC5/POC5_BACKLOG_SOURCE_AUDIT_2026-10-12.md` · 설계자 PLAN 판정 §2 · §3]** 현재 KODEX200 MA20 · MA60 기준선 대비 위치는 구현(「오늘의 투자 점검」 KOSPI 카드 · 한계 툴팁). 미래 추세 전환까지의 거리 예측과는 다른 것 — 기존 표시 유지 · 미래 전환 예측 값처럼 이름 붙이지 않음. |
+| P-12 | 공격·방어 비중 | 제외·폐기 | 친구 구조 복제이며 자동 비중 판단 경계를 침범 **[2026-10-12 POC5-UI-02 정정 · 근거 `docs/ai_result/POC5/POC5_BACKLOG_SOURCE_AUDIT_2026-10-12.md` · 설계자 PLAN 판정 §2 · §3]** 미구현 · 기존 제외 판정 기록은 둔다. 다만 **현재 포트폴리오의 분류별 구성 표시(참고용)는 자동매매 금지 때문에 불가능한 것이 아니며 설계 가능** · 권장 비중 산출은 비중 결정 기준이 필요한 별개 기능. 제외 기록이 불필요 입증은 아님 · 재검토 가능 후보(미승인). |
+| P-13 | SuperTrend 신규 도입 | 제외·폐기 | 신규 산식·threshold 선확정 금지 **[2026-10-12 POC5-UI-02 정정 · 근거 `docs/ai_result/POC5/POC5_BACKLOG_SOURCE_AUDIT_2026-10-12.md` · 설계자 PLAN 판정 §2 · §3]** 미구현 · 기존 제외 판정 기록은 둔다. 새 보조 지표 후보로 재검토 가능(입력 자료 · 산식 · 표시 의미 · 기존 지표와의 차이를 정하는 별도 범위 필요) · 제외 기록이 무용성 입증은 아님 · 미승인. |
 | P-14 | 자료 최신화 판정 기준·ⓘ 근거 표준 | 확정 개발 | VIX/data quality Lane에서 기존 상태계약 기준으로 확정 |
 | P-15 | VIX stale 결함 | 확정 개발 | POC3 Closeout 전 적재 정상화 또는 현재 판단 영역 제외 중 하나를 별도 Step에서 판정 |
 | P-16 | Workbench benchmark 비교 시계열 | 조건부 보류 | 표의 기존 초과수익만으로 실제 판단이 막힌다는 사용자 보고 시 |
 | P-17 | Dashboard 캐시 무효화 실제 컴포넌트 통합 테스트 | 확정 개발 | POC3 Flow Closeout에 포함. 신규 기능 아님 |
 | P-18 | 상태→판정→실행 전체 동선 Closeout | 확정 개발 | P-04(완료)·승인·알림 재배치(완료, P-05 폐기 대체) 이후 Closeout 필수 데이터 결함 처리 후 |
-| P-19 | Decision Outcome Ledger | 후속 개발 | First Real Decision Cycle formal PASS와 실제 판단 1건 기록 후 **[2026-09-26 POC5-00 Q27]** 선행 gate superseded — POC5 가 이어받는다(중복 원장 없음) |
-| P-20 | ML·백테스트·튜닝 | 후속 개발 | P-19 이후. factor·label·threshold는 해당 Step에서만 확정 **[2026-09-26 POC5-00 Q27]** P-19 의 선행 gate 는 superseded(원장 = POC5) |
+| P-19 | Decision Outcome Ledger | **부분 완료** | First Real Decision Cycle formal PASS와 실제 판단 1건 기록 후 **[2026-09-26 POC5-00 Q27]** 선행 gate superseded — POC5 가 이어받는다(중복 원장 없음) **[2026-10-12 POC5-UI-02 정정 · 근거 `docs/STATE_LATEST.md`(POC5-01B ~ 04 · 08 운영 확인 · POC4 `COMPLETED_RESEARCH_REJECT`) · 연구 결과서 · 대조표 §5-3]** 원장 요구분 구현: POC5-01B 운영 원장(첫 거래일 운영 확인 2026-10-08) · 02 가격 결과 성숙(첫 결과 행 2026-10-09) · 03 PC 동기화 · 선택 평가 · 04 R0 / R1 · 08 사후평가 도구. 성과 해석 · 좋은 기간 선정은 미완료. |
+| P-20 | ML·백테스트·튜닝 | 후속 개발 | P-19 이후. factor·label·threshold는 해당 Step에서만 확정 **[2026-09-26 POC5-00 Q27]** P-19 의 선행 gate 는 superseded(원장 = POC5) **[2026-10-12 POC5-UI-02 정정 · 근거 `docs/STATE_LATEST.md`(POC5-01B ~ 04 · 08 운영 확인 · POC4 `COMPLETED_RESEARCH_REJECT`) · 연구 결과서 · 대조표 §5-3]** POC4 연구 종료(COMPLETED_RESEARCH_REJECT · 02A PIT 생존편향 측정 수용 · 02B · 03 REJECT) · POC5-06 / 08 = 제한된 PC 수동 연구 도구(연구 예외) — 운영 ML 승인 · 일반 모델 고도화 완료 아님(`ML_OPERATION_PROMOTION = NOT_APPROVED`). |
 
 ---
 
@@ -159,7 +159,7 @@
 
 아래 ID는 2026-07-31 제공본 `docs/backlog/BACKLOG.md`의 출현 순서다. 같은 목적의 항목은 삭제하지 않고 canonical Lane에 귀속해 중복 개발을 막는다.
 
-판정 합계: **완료 17 · 확정 개발 3 · 후속 개발 16 · 조건부 보류 65 · 제외·폐기 4 = 105**.
+판정 합계: **완료 17 · 확정 개발 3 · 후속 개발 16 · 조건부 보류 65 · 제외·폐기 4 = 105**. (2026-07-31 판정 합계 — 이후 진행은 행별 정정 메모에 적고 이 판정 값 · 합계는 바꾸지 않는다 · 2026-10-12 POC5-UI-02)
 
 ### 6.1 ML·위험·데이터
 
@@ -168,10 +168,10 @@
 | B-001 | 상대상승 축1 이후 factor·threshold·위험 축2 | 후속 개발 | POC5 · Ledger 이후 |
 | B-002 | ML 기반 초안 생성·분석 연결 | 조건부 보류 | ML 신뢰도 합의 후에만 |
 | B-003 | 위험 evidence 급락·국면 경계 검증 | 확정 개발 | POC3-05의 핵심 입력 |
-| B-004 | 급락 기준 기간 비교 | 후속 개발 | POC3-05/POC5에서 운영·백테스트 근거로 판정 |
+| B-004 | 급락 기준 기간 비교 | 후속 개발 | POC3-05/POC5에서 운영·백테스트 근거로 판정 **[2026-10-12 POC5-UI-02 정정 · 근거 `docs/STATE_LATEST.md`(POC5-01B ~ 04 · 08 운영 확인 · POC4 `COMPLETED_RESEARCH_REJECT`) · 연구 결과서 · 대조표 §5-3]** 현행 기간(장중 −5/−7/−10% · 20거래일 하락 구간)은 구현 · +1/+5/+20 가격 결과 도구(POC5-02 · 04 · 08)도 있으나 최적 기간 비교 결론은 없음 — 미완료. |
 | B-005 | 급락 신호 UI 고도화 | 조건부 보류 | 사용자가 가격 흐름 근거 부족을 보고할 때 |
 | B-006 | 위험 지표 시계열 적재 | 후속 개발 | Q6에서 선택된 1~2개 축만 |
-| B-007 | MDD·Sharpe 계산 | 후속 개발 | POC5 백테스트 Lane |
+| B-007 | MDD·Sharpe 계산 | 후속 개발 | POC5 백테스트 Lane **[2026-10-12 POC5-UI-02 정정 · 근거 `docs/STATE_LATEST.md`(POC5-01B ~ 04 · 08 운영 확인 · POC4 `COMPLETED_RESEARCH_REJECT`) · 연구 결과서 · 대조표 §5-3]** POC4-01 연구 백테스트에 Sharpe_0rf · MDD(월말 equity 기준 · 연구용) 계산 있음. 원장의 종가 경로 최고 · 최저(extrema)와 다른 것 · 전략 · 수익률 계약 없는 운영 성과 지표는 미완료. |
 | B-008 | 구성종목 가격 시계열 source 진단 | 조건부 보류 | Exposure 또는 factor 판단을 실제로 막을 때 |
 | B-009 | Naver Mobile 안정성 추가 진단 | 조건부 보류 | schema/429/차단 실측 시 |
 | B-010 | NAV+FDR 시장가격 결합 | 조건부 보류 | source 안정성 문제 확인 시 |
@@ -207,7 +207,7 @@
 | B-035 | 중복률 임계 경고 | 조건부 보류 | 반복 노출 실측 후 기준 합의 시 |
 | B-036 | 구성종목 fuzzy 매칭 | 조건부 보류 | 실제 미스매치 시 |
 | B-037 | 시장 국면 고도화 | 후속 개발 | POC3-05 이후 Q6/POC5 |
-| B-038 | 판단 근거 저장 후속·성과 추적 | 후속 개발 | POC4 Decision Outcome Ledger로 통합 **[2026-09-26 POC5-00 Q27]** 통합 대상 = POC5 운영 원장 |
+| B-038 | 판단 근거 저장 후속·성과 추적 | 후속 개발 | POC4 Decision Outcome Ledger로 통합 **[2026-09-26 POC5-00 Q27]** 통합 대상 = POC5 운영 원장 **[2026-10-12 POC5-UI-02 정정 · 근거 `docs/STATE_LATEST.md`(POC5-01B ~ 04 · 08 운영 확인 · POC4 `COMPLETED_RESEARCH_REJECT`) · 연구 결과서 · 대조표 §5-3]** 현행 = 원장 요구분 구현(부분 완료 상당 · §6 판정 값은 7-31 기준 그대로) · B-103 과 같은 요구 — POC5 운영 원장 계약으로 흡수한 요구분 구현(P-19 와 같음). 추가 개인 원장 · 중복 DB 불필요. |
 
 ### 6.3 Holdings·Telegram·UI
 
@@ -257,12 +257,12 @@
 | B-075 | 운영 결과·snapshot·변화 기록 | 완료 | runtime history·sent registry 구축. 판단 성과는 B-038로 분리 |
 | B-076 | 비동기 universe refresh | 완료 | background 상태·SQLite 영속화 흐름으로 대체 |
 | B-077 | pykrx 가격 history 캐시 | 제외·폐기 | SQLite 적재·FDR/Naver 경로로 대체 |
-| B-078 | universe history | 후속 개발 | POC4/POC5 성과·생존편향 분석 전 |
+| B-078 | universe history | 후속 개발 | POC4/POC5 성과·생존편향 분석 전 **[2026-10-12 POC5-UI-02 정정 · 근거 `docs/STATE_LATEST.md`(POC5-01B ~ 04 · 08 운영 확인 · POC4 `COMPLETED_RESEARCH_REJECT`) · 연구 결과서 · 대조표 §5-3]** 판단 보류 — POC4-01 의 기준일별 공식 universe 자료와 남은 history 요구의 대조가 필요(이번에 완료로 처리하지 않음 · 통째로 재적재하지 않음). |
 | B-079 | ML dataset 저장 | 완료 | feature daily·market risk·training dataset 존재 |
 | B-080 | pykrx 외 fallback | 조건부 보류 | 현 source 차단 시 |
 | B-081 | Cboe VIX 과거 보정 | 조건부 보류 | FDR VIX 반복 실패·과거 구간 필요 시 |
-| B-082 | 모델 고도화·전략 백테스트 | 후속 개발 | POC5 |
-| B-083 | ETF universe 생존 편향 | 후속 개발 | POC5 성능 판정 전 보정·민감도 분석 |
+| B-082 | 모델 고도화·전략 백테스트 | 후속 개발 | POC5 **[2026-10-12 POC5-UI-02 정정 · 근거 `docs/STATE_LATEST.md`(POC5-01B ~ 04 · 08 운영 확인 · POC4 `COMPLETED_RESEARCH_REJECT`) · 연구 결과서 · 대조표 §5-3]** POC4 REJECT 기록 보존. POC5-06 / 08 도구 구현은 일반 모델 고도화 · 전략 백테스트 완료가 아님. |
+| B-083 | ETF universe 생존 편향 | 후속 개발 | POC5 성능 판정 전 보정·민감도 분석 **[2026-10-12 POC5-UI-02 정정 · 근거 `docs/STATE_LATEST.md`(POC5-01B ~ 04 · 08 운영 확인 · POC4 `COMPLETED_RESEARCH_REJECT`) · 연구 결과서 · 대조표 §5-3]** POC4-02A KRX PIT 생존편향 측정(MEASURED_ACCEPTED · 연구)은 있음. 과거 시장 전체 성능 판단 전 보정 계약은 유지 — 해결 완료 아님 · 현재 수집 원장을 다시 만드는 사유 아님. |
 | B-084 | 2014-04-07 이전 시계열 | 조건부 보류 | 백테스트에 실질 필요할 때 |
 
 ### 6.5 운영 질문·가드·seed·후속
@@ -287,7 +287,7 @@
 | B-100 | spike all-unavailable test fixture | 완료 | Telegram Spike closeout에서 해소 |
 | B-101 | PUSH2 금지문구 substring test | 완료 | Telegram Spike closeout에서 해소 |
 | B-102 | 저빈도 scheduler 운영 | 완료 | Market/Holdings/Spike OCI ACTIVE |
-| B-103 | Decision Outcome Ledger | 후속 개발 | B-038과 통합 · First Real Decision Cycle PASS 후 **[2026-09-26 POC5-00 Q27]** 선행 gate superseded — POC5 가 이어받는다 |
+| B-103 | Decision Outcome Ledger | 후속 개발 | B-038과 통합 · First Real Decision Cycle PASS 후 **[2026-09-26 POC5-00 Q27]** 선행 gate superseded — POC5 가 이어받는다 **[2026-10-12 POC5-UI-02 정정 · 근거 `docs/STATE_LATEST.md`(POC5-01B ~ 04 · 08 운영 확인 · POC4 `COMPLETED_RESEARCH_REJECT`) · 연구 결과서 · 대조표 §5-3]** 현행 = 원장 요구분 구현(부분 완료 상당 · §6 판정 값은 7-31 기준 그대로) · 원장 요구분 구현(P-19 와 같음 · POC5-01B ~ 04 · 08). |
 | B-104 | Universe·ML·factor·PC UI 품질 개선 | 후속 개발 | umbrella 항목. B-082·B-085·B-097로 실행 분할 |
 | B-105 | Dashboard 캐시 무효화 통합 테스트 | 확정 개발 | POC3-07 Closeout |
 

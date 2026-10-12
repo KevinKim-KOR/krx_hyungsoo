@@ -178,3 +178,58 @@ export function lowestFiveDayRows(
     })
     .slice(0, limit);
 }
+
+// POC5-UI-02 — 「확인 근거」 사용자 선택 정렬(POC3-05 설계 V2 229행 '사용자 선택 정렬' · UI-02 §3-1 · 판정 Q1 (a)).
+// 화면에 보이는 원래 숫자(반올림 전)로 순서만 바꾼다. 값이 없는(null · 유한수 아님) 행은 맨 뒤 · 같은 값끼리와
+// 값 없는 행끼리는 들어온 순서 그대로(안정 정렬) · 행을 빼지 않는다. 위험 순위가 아니다.
+export type EvidenceSortKey = "weight" | "pnl_rate" | "ret5" | "ret20" | "excess";
+
+type SortField = keyof Pick<
+  RiskEvidenceRow,
+  | "market_weight_pct"
+  | "pnl_rate_pct"
+  | "return_5d_pct"
+  | "return_20d_pct"
+  | "excess_vs_kodex200_20d_pctp"
+>;
+
+// 키 → (행 칸 · 방향). desc = true 면 큰 값부터.
+const SORT_SPEC: Record<EvidenceSortKey, { field: SortField; desc: boolean }> = {
+  weight: { field: "market_weight_pct", desc: true },
+  pnl_rate: { field: "pnl_rate_pct", desc: false },
+  ret5: { field: "return_5d_pct", desc: false },
+  ret20: { field: "return_20d_pct", desc: false },
+  excess: { field: "excess_vs_kodex200_20d_pctp", desc: false },
+};
+
+// 화면 버튼 순서 · 문구.
+export const EVIDENCE_SORT_OPTIONS: ReadonlyArray<[EvidenceSortKey, string]> = [
+  ["weight", "평가 비중"],
+  ["pnl_rate", "손익률"],
+  ["ret5", "5일 변화"],
+  ["ret20", "20일 변화"],
+  ["excess", "KODEX200 대비"],
+];
+
+export const DEFAULT_EVIDENCE_SORT: EvidenceSortKey = "ret5";
+
+export function sortEvidenceRows(
+  rows: RiskEvidenceRow[],
+  key: EvidenceSortKey,
+): RiskEvidenceRow[] {
+  const { field, desc } = SORT_SPEC[key];
+  return rows
+    .map((row, index) => ({ row, index }))
+    .sort((a, b) => {
+      const va = a.row[field];
+      const vb = b.row[field];
+      const ha = va !== null && Number.isFinite(va);
+      const hb = vb !== null && Number.isFinite(vb);
+      if (!ha && !hb) return a.index - b.index;
+      if (!ha) return 1;
+      if (!hb) return -1;
+      const d = desc ? (vb as number) - (va as number) : (va as number) - (vb as number);
+      return d !== 0 ? d : a.index - b.index;
+    })
+    .map((x) => x.row);
+}

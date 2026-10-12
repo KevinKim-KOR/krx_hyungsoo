@@ -66,7 +66,7 @@ export default function MainPanel() {
       view = <HoldingsManageView onNavigate={setActive} />;
       break;
     case "holdings_evidence":
-      // "확인 근거" — 오늘 먼저 볼 ETF와 수치 근거 (읽기 전용).
+      // "확인 근거" — 보유 ETF의 수치와 확인 근거 (읽기 전용 · 사용자 선택 정렬 · POC5-UI-02).
       view = <HoldingsEvidenceView onNavigate={setActive} />;
       break;
     case "approval":

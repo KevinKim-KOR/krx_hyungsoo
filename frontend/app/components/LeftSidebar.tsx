@@ -76,7 +76,7 @@ export const MENU_GROUPS: MenuGroup[] = [
     items: [
       { key: "holdings", label: "보유 현황", hint: "평가 현황 / 시세 갱신" },
       { key: "holdings_manage", label: "종목 관리", hint: "입력 / 수정 / 저장 / OCI 적용" },
-      { key: "holdings_evidence", label: "확인 근거", hint: "오늘 먼저 볼 ETF와 근거" },
+      { key: "holdings_evidence", label: "확인 근거", hint: "보유 ETF의 수치와 확인 근거" },
     ],
   },
   // 2026-08-05 POC3-07 §5.4·§10.1: "승인·알림" → "승인·적용" 역할 축소

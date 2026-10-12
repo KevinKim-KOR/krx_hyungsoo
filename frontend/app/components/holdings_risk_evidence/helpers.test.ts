@@ -1,8 +1,12 @@
 // POC3-05 보유 ETF 확인 근거 헬퍼 test — 순수 변환 로직.
 import { describe, it, expect } from "vitest";
 import {
+  DEFAULT_EVIDENCE_SORT,
+  EVIDENCE_SORT_OPTIONS,
   buildRiskEvidenceRows,
   lowestFiveDayRows,
+  sortEvidenceRows,
+  type RiskEvidenceRow,
 } from "./helpers";
 import type { EnrichedHolding, HoldingsMarketEvidenceItem } from "@/lib/api";
 
@@ -172,5 +176,81 @@ describe("lowestFiveDayRows (Q5)", () => {
       [evItem("069500", { status: "unavailable", return_5d_pct: null })],
     );
     expect(lowestFiveDayRows(res.rows, 3)).toEqual([]);
+  });
+});
+
+// ── POC5-UI-02 sortEvidenceRows ───────────────────────────────────────────────
+describe("sortEvidenceRows (POC5-UI-02)", () => {
+  function row(ticker: string, over: Partial<RiskEvidenceRow> = {}): RiskEvidenceRow {
+    return {
+      ticker,
+      name: ticker,
+      eval_amount: 1000,
+      market_weight_pct: 10,
+      pnl_rate_pct: 0,
+      return_5d_pct: 0,
+      return_20d_pct: 0,
+      excess_vs_kodex200_20d_pctp: 0,
+      need_check: false,
+      five_d_sortable: true,
+      ...over,
+    };
+  }
+  const t = (rows: RiskEvidenceRow[]) => rows.map((r) => r.ticker);
+
+  it("키마다 방향 — 평가 비중만 큰 값부터, 나머지는 작은 값부터", () => {
+    const rows = [
+      row("a", { market_weight_pct: 10, pnl_rate_pct: 5, return_5d_pct: 2, return_20d_pct: -1, excess_vs_kodex200_20d_pctp: 0.3 }),
+      row("b", { market_weight_pct: 30, pnl_rate_pct: -5, return_5d_pct: -2, return_20d_pct: 1, excess_vs_kodex200_20d_pctp: -0.3 }),
+      row("c", { market_weight_pct: 20, pnl_rate_pct: 0, return_5d_pct: 0, return_20d_pct: 0, excess_vs_kodex200_20d_pctp: 0.1 }),
+    ];
+    expect(t(sortEvidenceRows(rows, "weight"))).toEqual(["b", "c", "a"]);
+    expect(t(sortEvidenceRows(rows, "pnl_rate"))).toEqual(["b", "c", "a"]);
+    expect(t(sortEvidenceRows(rows, "ret5"))).toEqual(["b", "c", "a"]);
+    expect(t(sortEvidenceRows(rows, "ret20"))).toEqual(["a", "c", "b"]);
+    expect(t(sortEvidenceRows(rows, "excess"))).toEqual(["b", "c", "a"]);
+    expect(DEFAULT_EVIDENCE_SORT).toBe("ret5");
+    expect(EVIDENCE_SORT_OPTIONS.map(([, label]) => label)).toEqual([
+      "평가 비중",
+      "손익률",
+      "5일 변화",
+      "20일 변화",
+      "KODEX200 대비",
+    ]);
+  });
+
+  it("값 없는 행은 어느 키에서나 맨 뒤 · 값 없는 행끼리와 같은 값끼리는 들어온 순서", () => {
+    // 들어온 순서를 종목코드 역순으로 둔다 — 종목코드 순으로 동률을 깨는 변이(옛 lowestFiveDayRows 규칙)를 잡는다.
+    const rows = [
+      row("n2", { return_5d_pct: null, market_weight_pct: null }),
+      row("y", { return_5d_pct: 1, market_weight_pct: 5 }),
+      row("n1", { return_5d_pct: null, market_weight_pct: null }),
+      row("x", { return_5d_pct: 1, market_weight_pct: 5 }),
+      row("z", { return_5d_pct: -1, market_weight_pct: 9 }),
+    ];
+    expect(t(sortEvidenceRows(rows, "ret5"))).toEqual(["z", "y", "x", "n2", "n1"]);
+    expect(t(sortEvidenceRows(rows, "weight"))).toEqual(["z", "y", "x", "n2", "n1"]);
+  });
+
+  it("반올림하면 같아지는 값도 원래 숫자로 · 행 수 · 입력 배열 불변 · 자료 확인 필요 행도 값으로 정렬", () => {
+    // 화면 표시(소수 둘째 자리)로는 둘 다 1.23 — 표시값으로 정렬하면 들어온 순서(p, q)가 남는다.
+    const rows = [
+      row("p", { return_5d_pct: 1.2349 }),
+      row("q", { return_5d_pct: 1.2341, need_check: true, five_d_sortable: false }),
+    ];
+    const before = t(rows);
+    const out = sortEvidenceRows(rows, "ret5");
+    expect(t(out)).toEqual(["q", "p"]);
+    expect(out).toHaveLength(2);
+    expect(t(rows)).toEqual(before);
+  });
+
+  it("유한수가 아닌 값(NaN)도 값 없는 행처럼 맨 뒤 — 다른 행 순서를 깨지 않는다", () => {
+    const rows = [
+      row("a", { pnl_rate_pct: 0 }),
+      row("b", { pnl_rate_pct: Number.NaN }),
+      row("c", { pnl_rate_pct: -50 }),
+    ];
+    expect(t(sortEvidenceRows(rows, "pnl_rate"))).toEqual(["c", "a", "b"]);
   });
 });

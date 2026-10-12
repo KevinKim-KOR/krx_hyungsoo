@@ -732,6 +732,8 @@ describe("TodayInvestmentCheckView", () => {
     const judgment = screen.getByLabelText("오늘 내가 확인할 것");
     // backend coverage.need_check=1 을 그대로 표시.
     expect(within(judgment).getByText(/자료 확인 필요 1건/)).toBeInTheDocument();
+    // 목록이 없으면 '최대 3개' 설명도 없다(POC5-UI-02 §2).
+    expect(within(judgment).queryByText(/최대 3개/)).toBeNull();
   });
 
   it("§6.4: Evidence 조회 실패여도 성공한 보유 종목 수는 확인 불가로 덮이지 않는다", async () => {
@@ -806,5 +808,9 @@ describe("TodayInvestmentCheckView", () => {
     // backend 가 준 순서 그대로: 타이거나스닥(-8) 이 코덱스200(-1) 보다 먼저.
     const text = judgment.textContent ?? "";
     expect(text.indexOf("타이거나스닥")).toBeLessThan(text.indexOf("코덱스200"));
+    // POC5-UI-02 §2: 선정 기준 설명은 '최근 5거래일 변화' 한 줄로 한정(위험 등급 · 매도 표현 없음).
+    expect(within(judgment).getByText("최근 5거래일 변화가 낮은 보유 ETF부터 최대 3개")).toBeInTheDocument();
+    expect(text).toContain("보유 ETF의 수치와 확인 근거는");
+    expect(text).not.toMatch(/위험 등급|매도/);
   });
 });

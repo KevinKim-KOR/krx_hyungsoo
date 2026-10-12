@@ -5,6 +5,8 @@
 // 기존 evidence 재사용만: enriched(평가·비중·손익) + market-evidence(5일·20일·KODEX200 대비).
 // 입력·저장 기능처럼 보이지 않는다(수정 버튼·저장 없음). 위험 점수/등급/매도 문구 없음.
 // 급락 신호는 자동 조회 GET 계약 부재로 이번 Step 제외(PLAN §1.3·§6).
+// POC5-UI-02: 사용자 선택 정렬 다섯(평가 비중 · 손익률 · 5일 변화(기본) · 20일 변화 · KODEX200 대비 —
+// 화면 숫자 그대로 · 순서만 바꿈 · 재조회 0) · 원인 확인은 「데이터 상태」로 이동.
 // 조회는 Dashboard 와 같은 캐시 키(DASH_KEY_HOLDINGS/EVIDENCE)를 공유한다(Q6 · N+1 없음).
 
 import { useMemo, useState } from "react";
@@ -18,7 +20,11 @@ import {
 import { useSharedQuery } from "@/lib/api/queryCache";
 import { DASH_KEY_HOLDINGS, DASH_KEY_EVIDENCE } from "@/lib/api/dashboardKeys";
 import {
+  DEFAULT_EVIDENCE_SORT,
+  EVIDENCE_SORT_OPTIONS,
   buildRiskEvidenceRows,
+  sortEvidenceRows,
+  type EvidenceSortKey,
   type RiskEvidenceRow,
 } from "./holdings_risk_evidence/helpers";
 import PriceChart from "./workbench/PriceChart";
@@ -133,6 +139,7 @@ export default function HoldingsRiskEvidenceSection({ onNavigate }: Props = {}) 
   );
 
   const [quickView, setQuickView] = useState<QuickView>("all");
+  const [sortKey, setSortKey] = useState<EvidenceSortKey>(DEFAULT_EVIDENCE_SORT);
   const [selected, setSelected] = useState<string | null>(null);
 
   // 선택 ticker 의 evidence item (NAV·구성종목 선택 상세용). 통합 전 원본 item 에서
@@ -158,9 +165,10 @@ export default function HoldingsRiskEvidenceSection({ onNavigate }: Props = {}) 
 
   const shownRows: RiskEvidenceRow[] = useMemo(() => {
     if (!built) return [];
-    if (quickView === "need_check") return built.rows.filter((r) => r.need_check);
-    return built.rows;
-  }, [built, quickView]);
+    const rows =
+      quickView === "need_check" ? built.rows.filter((r) => r.need_check) : built.rows;
+    return sortEvidenceRows(rows, sortKey);
+  }, [built, quickView, sortKey]);
 
   return (
     <section aria-labelledby="hre-h" className="hre-section card">
@@ -217,6 +225,27 @@ export default function HoldingsRiskEvidenceSection({ onNavigate }: Props = {}) 
             >
               자료 확인 필요 ({built.coverage.need_check})
             </button>
+          </div>
+
+          {/* POC5-UI-02 — 「보유 현황」 정렬과 같은 양식(선택 묶음 · UI-01 크기 예외). */}
+          <div className="holdings-sortbar">
+            <span className="holdings-sortbar-label">정렬</span>
+            <div className="holdings-sort-seg" role="group" aria-label="확인 근거 정렬 기준">
+              {EVIDENCE_SORT_OPTIONS.map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  className={sortKey === key ? "on" : ""}
+                  aria-pressed={sortKey === key}
+                  onClick={() => setSortKey(key)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <span className="holdings-sortbar-hint">
+              {sortKey === "weight" ? "큰 값부터" : "작은 값부터"} · 값이 없는 종목은 맨 뒤
+            </span>
           </div>
 
           {/* 2026-08-15 사용자 실화면 직접 지시 — 8컬럼 표 → 하이브리드 행.
@@ -339,9 +368,9 @@ export default function HoldingsRiskEvidenceSection({ onNavigate }: Props = {}) 
                 <button
                   type="button"
                   style={{ marginTop: 8 }}
-                  onClick={() => onNavigate("diagnostics")}
+                  onClick={() => onNavigate("data_status")}
                 >
-                  진단·상태에서 원인 확인 →
+                  데이터 상태에서 원인 확인 →
                 </button>
               ) : null}
             </div>

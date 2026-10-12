@@ -104,7 +104,7 @@ export default function HoldingsView({ onNavigate }: Props) {
       <h1 id="holdings-h">보유 현황</h1>
       <p className="subtitle">
         저장된 보유 종목의 평가 현황입니다. 종목 입력·수정은 &lsquo;종목 관리&rsquo;,
-        오늘 먼저 볼 ETF와 근거는 &lsquo;확인 근거&rsquo; 화면에서 확인합니다.
+        보유 ETF의 수치와 확인 근거는 &lsquo;확인 근거&rsquo; 화면에서 확인합니다.
       </p>
 
       <div className="card">

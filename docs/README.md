@@ -58,7 +58,7 @@ npm run dev   # http://localhost:3000
 2. **보유 종목 저장** → JSON 파일(`state/holdings/holdings_latest.json`) 에 저장
 3. **저장된 보유 종목으로 초안 만들기** → PENDING_APPROVAL run 생성
 4. **승인 (Approve)** → DELIVERING 진입 → 백엔드가 OCI 측 inbox 로 SCP 전송
-5. OCI 측 `daily_ops.sh` (cron 09:05 KST 또는 수동 1회 실행) 가 inbox 를 소비 → Telegram 발송 → outbox 에 결과 기록
+5. OCI 측 `daily_ops.sh` (POC1 당시 cron 09:05 KST 또는 수동 1회 실행) 가 inbox 를 소비 → Telegram 발송 → outbox 에 결과 기록 — **2026-10-12 정정: 이 POC1 승인 inbox 경로는 LEGACY 다. 지금 OCI crontab 에 `daily_ops` · inbox 처리는 없고(러너 11 · 배치 2 = 13), 정식 발송은 OCI 러너(`scripts/run_three_push_runtime_oci.py`)가 한다. 승인 화면 진입도 「개발·실험용」뿐(`docs/PROGRAM_TRUTH.md` §11).**
 6. 로컬 UI 가 12초 간격 polling 또는 수동 새로고침으로 outbox 결과 확인 → COMPLETED/FAILED 표시
 
 샘플 입력은 메인 화면 가장 아래 **"개발/테스트용 — 운영 입력 아님"** 접힘 섹션에서 사용. 운영 흐름과 분리.
@@ -89,8 +89,8 @@ npm run dev   # http://localhost:3000
 - `lib/api.ts` — FastAPI 호출 유틸 + holdings/runs API
 
 ### OCI (`deploy/oci/`)
-- `daily_ops.sh` — cron 09:05 KST 메인 엔트리. POC1 Step 3 분기로 inbox consumer 호출
-- `poc1_consume_inbox.sh` — inbox 소비 + Telegram 발송 + outbox 작성
+- `daily_ops.sh` — (LEGACY · 2026-10-12 정정) POC1 당시 cron 09:05 KST 메인 엔트리 · POC1 Step 3 분기로 inbox consumer 호출. 지금 OCI crontab 에 없음
+- `poc1_consume_inbox.sh` — (LEGACY) inbox 소비 + Telegram 발송 + outbox 작성 · `daily_ops.sh` 단계로만 존재
 
 ### 운영 스크립트 (루트)
 - `start.bat` / `stop.bat` — ASCII 전용. 포트 3000/8000 정확 매칭 종료

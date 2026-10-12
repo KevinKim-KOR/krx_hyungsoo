@@ -21,6 +21,8 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 
 **본 canonical BACKLOG 본문(아래 §1~)에는 조건부 보류 65개만 유지**한다. 전체 105개 분류·귀속 이력은 통합지도 V2 §6과 Git 이력에서 보존한다.
 
+**등록 항목 수 (2026-10-12 · `POC5-UI-02` 정리 뒤 · `grep -c "^- \*\*항목\*\*"`)**: **62**(2026-09-07 판 55 → 10-01 ~ 10-11 추가 6 → 10-12 01B 누락 1줄 보완 1). 해소 · 닫음(대체됨 · LEGACY) 항목도 기록으로 보존하므로 **등록 건수는 남은 개발 건수가 아니다**. 위 '65개' · 아래 '남은 항목 55' 는 당시 기록.
+
 전체 항목의 최신 상태와 담당 Lane 은 다음 문서를 **단일 기준**으로 한다.
 
 `docs/ai_design/POC3/POC3-00_PC_JUDGMENT_UI_INTEGRATED_IMPLEMENTATION_MAP_V2.md`
@@ -89,8 +91,11 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 "지금 제공하기로 되어 있는데 동작하지 않는 것" 이라 원장에서 분리한다.**
 근거: `docs/handoff/BACKLOG_RECONCILIATION_V2_CONCLUSION.md` §4 (검증자 VERIFIED · 커밋 `a22ddae5`).
 
-**현재 열린 결함: 3건** (`DEF-FDR-TIMEOUT` · `DEF-COMPUTE-TOPN-ASOF-HISTORICAL` ·
-`DEF-KOSPI-BENCHMARK-VALUE-ASOF-INTEGRITY`).
+**결함 상태 (2026-10-12 · `POC5-UI-02` 정정 · 근거 `docs/ai_result/POC5/POC5_BACKLOG_SOURCE_AUDIT_2026-10-12.md`)** — 이 절에 등재된 결함만의 상태다(자료 전체의 결함 개수가 아니다):
+`DEF-FDR-TIMEOUT` = OCI 배치 경로 해소(`POC3-02D-OPS-03` · 2026-10-01 배포 · 10-02 운영 확인) · **PC 수동 갱신 경로 잔여(조건부 후속 · 멈춤 관측 0)** ·
+`DEF-COMPUTE-TOPN-ASOF-HISTORICAL` = 열림(재검토 트리거 미도래 · 운영 호출부는 `asof` 미사용) ·
+`DEF-KOSPI-BENCHMARK-VALUE-ASOF-INTEGRITY` = **해소**(`POC3-OPS-02B-1` `988b0494`).
+(이전 표기 '현재 열린 결함: 3건'은 2026-09-07 기준.)
 `DEF-PRICE-EQUITY-REFRESH` 는 **2026-09-06 오등재로 철회**됐다 (운영은 정상).
 `DEF-ML-CHAIN` 은 **2026-08-25 해소**됐다.
 
@@ -194,7 +199,7 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 
 **등재**: 2026-09-07 · 설계자 확정 (POC3-OPS-01B-GATE 판정문). **발견 Step**: `POC3-OPS-01B-GATE`.
 
-- 상태: BACKLOG (**열림**)
+- 상태: **해소**(`POC3-OPS-02B-1` `988b0494` · 2026-10-12 · `POC5-UI-02` 상태 정정 — 아래는 등재 당시 기록)
 - 문제 (4개 층위 · 설계자 확정 범위 2026-09-07):
 
   | # | 층위 | 내용 |
@@ -239,6 +244,17 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
   가 2026-08-20 **1,171종목 · 140.4초** 실행(성공 1171 / 실패 0).
 - **사용자 영향**: hang 관측 이력은 없으나 **1,171종목 순차 호출이라 한 종목이 멈추면
   시장 갱신 전체가 멈춘다.** 방어 수단이 어느 계층에도 없다.
+- **정정 (2026-10-12 · `POC5-UI-02` · 근거 `docs/ai_result/POC5/POC5_BACKLOG_SOURCE_AUDIT_2026-10-12.md`)**: OCI 08:10 배치 = **보호됨** — `app/three_push_runtime/market_data_batch.py :: fdr_request_timeout`
+  (요청 20초) · 가격 단계 상한 180초 · 사용처 `scripts/run_oci_market_data_batch.py:238`(FDR 가격) · `:282`(미국 3종 · VIX).
+  **PC 수동 갱신(「요즘 잘 오르는 ETF」 `POST /market/refresh` → `app/market_refresh_service.py` · 약 1,188종목 직렬) ·
+  PC 수동 스크립트(`scripts/refresh_market_timeseries.py`)는 보호 0 = 잔여.** 정상 갱신 실측 362.6초(2026-10-10 · 실패 0) ·
+  멈춤 관측 0. 설계자 결정(`POC5-UI-02` 설계 §6-1): **조건부 후속** — 실제 멈춤 · 반복 지연이 생기거나 그 조회 경로를 고칠
+  필요가 있을 때 최소 보완(외부 가격 조회의 응답 대기 timeout · 다시 실행 가능하게). 갱신 횟수 · 버튼 사용 시간 제한 ·
+  전체 작업 강제 종료 상한 · 상시 감시 · 자동 재기동은 하지 않는다. 위 '호출자 3곳' 인용은 2026-08 기준이다 — 지금
+  `market_benchmark_store.py` 에는 FDR 호출이 없고(OPS-03 `7feddf2c` 에서 `market_benchmark_batch.py` 로 이동),
+  FDR 을 부르는 곳은 `app/market_data_fdr.py`(← `market_refresh_service.py` · `three_push_runtime/market_data_batch.py` ·
+  `market_benchmark_batch.py`) · `market_timeseries_naver_yahoo_adapter.py` · `kospi_history_closeout.py` ·
+  `scripts/_market_refresh/vix_ingest.py` 다(OCI 보호는 앞의 배치 경유 호출에만 적용).
 
 ---
 
@@ -273,6 +289,7 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 - **보류 사유**: 현재 message_text + UniverseRefreshPanel ⚠ 1줄만 노출. 가격 흐름 evidence 미제공.
 - **보류된 위험**: Telegram 만으로 급락 근거 식별 어려움.
 - **재검토 트리거**: 사용자가 급락 후보의 가격 흐름 UI 명시 요청 시.
+- **정리 (2026-10-12 · `POC5-UI-02` · 닫음 — 대체됨 · 근거 `docs/ai_result/POC5/POC5_BACKLOG_SOURCE_AUDIT_2026-10-12.md`)**: 원문이 말한 message_text 경로(PUSH-3 `spike_or_falling_alert`)는 폐지(cron 0). 지금 급락 근거는 「장중 급등락」 PUSH 본문(전일 대비 · 고점 대비) · 「받은 알림 기록」 당시 상태 · 이후 결과 · 「확인 근거」 수치 · 차트로 대체됐다. 알림 항목 → 가격 차트 연결은 신규 과제로 만들지 않는다.
 
 ---
 
@@ -280,6 +297,7 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 - **보류 사유**: 자동 조회 가능한 안정적 GET 계약 부재. 신규 API·저장 계약으로 범위 확대되어 POC3-05 확인 근거 화면에서 제외.
 - **보류된 위험**: 보유 ETF 와 Universe 급락 후보의 일치 여부를 확인 근거 화면에서 자동 확인 불가.
 - **재검토 트리거**: latest 저장 계약이 마련되고 실제 운영에서 일치 확인 필요성이 반복 입증될 때.
+- **정리 (2026-10-12 · `POC5-UI-02` · 닫음 — 대체됨 · 근거 `docs/ai_result/POC5/POC5_BACKLOG_SOURCE_AUDIT_2026-10-12.md`)**: GET 경로는 제거돼 있고(`app/api_universe.py:9`) 이를 쓰던 PUSH-3 는 폐지. '보유 ETF 가 급락 신호에 걸렸는가'는 장중 급등락 알림 + 원장 item 의 보유 여부 `held` 로 저장 · 조회된다. `held` 화면 표시는 신규 과제로 만들지 않는다.
 
 ---
 
@@ -287,6 +305,15 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 - **보류 사유**: 운영·Outcome 근거 없이 위험 구간(저위험/고위험 등)을 정의할 수 없음. POC3-05 는 표시·정렬만 하고 위험 판정·저장 rank 를 만들지 않는다.
 - **보류된 위험**: 확인 순서는 줄여주지만 위험 수준을 정량 비교하지 못함.
 - **재검토 트리거**: First Real Decision Cycle 과 Decision Outcome Ledger 에 실제 사례가 누적될 때.
+- **정리 (2026-10-12 · `POC5-UI-02` PLAN 판정 §2 · §3)**: **미구현 요구로 유지**(기반 의도 §9.5 · ASSUMPTIONS Q6 — 위험 구간 분류는 프로젝트 목표). 지금 구현된 것은 기본 하락 감지(「확인 근거」 5일 · 20일 · KODEX200 대비 · 차트 · NAV · 「오늘의 투자 점검」 최대 3 · 장중 급등락 · 보유 브리핑 20거래일 하락 PUSH · 「받은 알림 기록」)이며 종합 위험 감지 완료가 아니다. 기존 하락 사유를 화면에 명확히 보이는 일과 새 종합 등급 계산을 나눠 설계할 수 있다 · 모든 외부 자료를 기다리는 일괄 조건은 두지 않는다 · ML 연구(POC4 · 06 · 08)의 종료 · 반려를 이 요구의 불필요 판정으로 보지 않는다.
+
+---
+
+- **항목**: 장중 급등 평가 오류 회차를 `mark_absent_entries` 가 '회복'으로 기록하는 관찰 (`POC5-01B` · 2026-10-12 · `POC5-UI-02` 등재 누락 보완)
+- **관찰**: 기존 `sector_signal_state.mark_absent_entries` 는 급등 관측이 빈 회차(급등 평가 오류 `surge_error`)에 보유 급등 entry 를 `SIGNAL_ABSENT`(회복)로 기록한다 — 관측에 없고 `unevaluable` 에도 없기 때문(`intraday_alert_flow.py` 의 `_unevaluable_tickers` 는 급등 예외를 넣지 않음). 원장은 그 회차의 '상태 없음' 행을 평가 불가로 둔다(원장과 다름 · 기존 동작). 근거 `docs/ai_result/POC5/POC5-01B_OPERATIONAL_DECISION_EVENT_LEDGER_RESULT.md` §5-4 · 설계자 01B RESULT 판정(설계서 끝 · 'BACKLOG 한 줄' 지시 — 01B 인계에 빠져 있었다).
+- **보류 사유**: PUSH 억제 동작을 바꾸는 일이라 01B 범위가 아니었고, 설계자가 고치지 않는 판단을 수용했다. 억제 동작은 고치지 않는다.
+- **보류된 위험**: 오류 회차 뒤 같은 종목이 다음 회차에 회복 → 재진입처럼 기록 · 발송될 수 있다.
+- **재검토 트리거**: 실제 `surge_error` 회차가 발생할 때.
 
 ---
 
@@ -405,7 +432,8 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 - **근거 정정 (2026-08-24)**: `etf_master` 에 **`category` 컬럼은 존재**한다(`app/market_data_store.py:25` `category TEXT`). DB 실측 **1,171행 전부 값 보유 · 고유값 `1`~`7`**. **미완료인 것은 컬럼이 아니라 코드 → 사용자 표시 라벨 매핑**이다.
 - **보류 사유**: FDR Category 컬럼이 정수 코드. 라벨 매핑 미정의.
 - **보류된 위험**: 섹터 / 테마 발굴 시 Category 활용 불가.
-- **재검토 트리거**: TOP N 화면 구현 STEP 진입 시.
+- **재검토 트리거**: ETF명 · 사업군 분류만으로 부족하다는 실제 사용 필요가 생길 때(2026-10-12 · `POC5-UI-02` 통일 — 통합지도 B-032 와 같게 · 이전 'TOP N 화면 구현 STEP 진입 시'는 이미 지났고 요구 0).
+- **정정 (2026-10-12 · `POC5-UI-02`)**: 컬럼 위치는 지금 `app/market_data_store.py:28`. 값은 쓰기만 하고 읽는 코드 · 화면 0. 정수 1~7 의 의미는 미확인 유지.
 
 ---
 
@@ -445,12 +473,14 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 
 - **사용자 제안 (2026-10-10 · `POC5-06` 종료 직후 · 설계자 판단 대기)**: "지금 보유하고 있는 종목들의 최초 거래일시를 모르니 2026-01-02로 해두면 어떨까 싶습니다." (실제 매매 내역을 더 넣어 가며 쓸 계획.) 사실 — 기존 32줄은 기준잔고(BASELINE)이고 기준잔고 · 잔고 등록(REGISTER) 기록은 수량 · 평단 두 칸만 허용(`app/holdings_book.py :: PAYLOAD_KEYS` · 다른 칸이 있으면 무결성 검사에서 손상). 방법별 의미 — (가) 기준잔고에 '기준일' 칸 추가(매수일 아님 표기 · 기록 형식 변경) / (나) 2026-01-02 매수(BUY)로 바꿔 쓰기(실제와 다른 매수 기록 · 05 시장 흐름이 그 날 종가 기준 '매수 전후 변화' 계산) / (다) 그대로 두고 앞으로의 실제 매매만 입력(현재 구조로 가능). OCI 적용 5필드 · 06 ML(D20) 영향 없음. 상세 `docs/handoff/POC5-06_MANUAL_REENTRY_REVIEW_AND_ML_EVIDENCE_HANDOFF_2026-10-10.md` §4.
 - **진행 (2026-10-11)**: 설계자가 (가)안 = **가격 비교 기준일**(REFERENCE_DATE · 실제 매수일은 미상 유지 · 2026-01-02 는 입력 제안값)으로 설계 → `POC5-07` PLAN `PASS_TO_IMPLEMENT` · 검증자 VERIFIED · 설계자 RESULT `PASS_TO_DEPLOY` · 사용자 실제 설정(2026-01-02 · 32기간) · **종료 2026-10-11(커밋 `89f90f0f` · 해소)**(`docs/ai_design/POC5/POC5-07_HOLDINGS_REFERENCE_DATE_DESIGN_V1.md`).
+- **상태 (2026-10-12 · `POC5-UI-02` 정리)**: 사용자 요구분(매수 시점 · 금액 기록 · 기존 보유 기준일) 해소. 목표가 등 요구하지 않은 필드는 완료가 아니다(별도 요구 시 새 항목). 등록은 보존한다.
 ---
 
 - **항목**: account_group 라벨 병합 / 관리 UI
 - **보류 사유**: 라벨 자유 입력. 병합 UI 미구현.
 - **보류된 위험**: 라벨 파편화로 그룹 통계 왜곡.
 - **재검토 트리거**: 라벨 파편화 실측 시.
+- **정리 (2026-10-12 · `POC5-UI-02` · 화면 파편화 요구 해소 · 근거 `docs/ai_result/POC5/POC5_BACKLOG_SOURCE_AUDIT_2026-10-12.md`)**: 화면 입력은 선택 목록이다(「종목 관리」 입력 정정 · [새 보유 추가] · POC3-08 이후 — '자유 입력' 보류 사유는 사실이 아님). 실측 라벨 3종(일반 · ISA · 오픈뱅킹 · 모두 목록 안 · 파편화 0). 백엔드 문자열 규칙(빈 값 → '일반' · 30자 초과 거부 · 허용 목록 없음)은 그대로 둔다.
 
 ---
 
@@ -466,6 +496,7 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 - **부분 해소 (2026-10-09 · `POC5-05`)**: PC 보유 문서는 줄 ID(`position_id`) · 보유 기간 ID(`cycle_id`)로 식별한다(평단이 바뀌어도 그대로). OCI 적용 payload 는 기존 5필드 그대로라 OCI 쪽 식별은 변화 없음.
 - **보류된 위험**: 다중 계좌 시 row 식별 깨짐.
 - **재검토 트리거**: 다중 계좌 운영 또는 동일 ticker 분할 관리 시.
+- **정리 (2026-10-12 · `POC5-UI-02` · 근거 `docs/ai_result/POC5/POC5_BACKLOG_SOURCE_AUDIT_2026-10-12.md`)**: 원 요구(같은 종목 다중 계좌의 줄 식별 충돌)는 **PC 보유 문서 안에서 해소**(실측 줄 32 · 계좌 3 · 같은 종목+같은 계좌 중복 0 · 「종목 관리」 행 키 = `position_id`). OCI 적용 payload · draft · 원장의 식별자는 원 요구 밖이며 완료로 보지 않는다.
 
 ---
 
@@ -575,8 +606,9 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 
 - **항목**: app/api.py 라우터 분리
 - **보류 사유**: 2026-08-16 실측 **632 라인**(직전 기록 557). KS-10 트리거 (700+ 라인) 여전히 미달. 라우터는 이미 `app/api_*.py` 18개 파일로 분리돼 있고 본 항목은 잔여 `app/api.py` 를 더 쪼갤지의 문제다.
+- **정정 (2026-10-12 · `POC5-UI-02` · 측정)**: `app/api.py` **582줄** · `include_router` **20** · POC5-05 에서 `/holdings` 를 `api_holdings.py` 로 옮겼다(644 → 582). 기준은 KS-10(`docs/KILL_SWITCHES.md` — 백엔드 핵심 모듈 650줄 초과 · 600 근접)과 맞춘다(위 '700+'는 옛 표기). 추가 분리 불필요.
 - **보류된 위험**: 추가 endpoint 누적 시 단일 파일 비대.
-- **재검토 트리거**: 700 라인 초과 시 또는 신규 endpoint 추가 작업 시.
+- **재검토 트리거**: 650 라인 초과(KS-10) 시 또는 신규 endpoint 추가 작업 시(2026-10-12 기준 정정 · 이전 '700 라인').
 
 ---
 
@@ -608,6 +640,7 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 - **보류 사유**: 현재 POC 운영. 고도화 미수행.
 - **보류된 위험**: orphan run 누적 또는 polling 비효율.
 - **재검토 트리거**: POC 운영 안정화 후 또는 orphan 실측 시.
+- **정리 (2026-10-12 · `POC5-UI-02` · LEGACY 로 닫음 · 근거 `docs/ai_result/POC5/POC5_BACKLOG_SOURCE_AUDIT_2026-10-12.md`)**: 승인 → DELIVERING → SCP inbox 흐름은 「개발·실험용」(DIAGNOSTIC)에서만 진입한다. 폴링(12초 × 30회) · 시간 초과 안내는 이미 있고 PC `state/runs` DELIVERING 0. 코드는 삭제 · 복원하지 않는다.
 
 ---
 
@@ -622,6 +655,7 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 - **보류 사유**: inbox 적체 처리 미구현.
 - **보류된 위험**: inbox 적체 발생 시 운영 단절.
 - **재검토 트리거**: inbox 적체 실측 시.
+- **정리 (2026-10-12 · `POC5-UI-02` · LEGACY 로 닫음)**: OCI crontab(2026-10-12 읽기 전용 확인 · 작업 13 = 러너 11 · 배치 2)에 `daily_ops` · inbox 처리 0. 소비 스크립트 `deploy/oci/poc1_consume_inbox.sh` 는 `deploy/oci/daily_ops.sh` 단계로만 존재한다 — 운영 경로 아님. 코드는 삭제 · 복원하지 않는다.
 
 ---
 
@@ -633,9 +667,10 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 
 ---
 
+- **항목**: **(설계자 판단 요청 · 2026-10-04 등재 → 2026-10-06 `POC3-02D-OPS-04` Q7 (b) 답변 완료)** PC 「OCI 운영·적용」의 '현재 운영 기준 적용'은 OCI 의 **JSON 파일만** 바꾸고, OCI 러너가 실제로 읽는 **활성 PARAM(DB)은 바꾸지 않는다**. 화면의 'OCI 반영' 표시가 OCI 러너의 실제 PARAM 을 뜻하지 않는다.
 - **처리 (2026-10-06 · `POC3-02D-OPS-04` 항목 6 · 커밋 `a308353c` · OPS-04 종료 2026-10-07)**: 설계자 Q7 b — 화면이 '전달'(② 카드 · 버튼 `현재 기준 OCI 전달`)과 '활성'(① `운영 기준 활성` 행 · OCI 러너가 쓰는 유효값 14개와 PC 운영 기준 비교 · 버전 ID 가 달라도 값이 같으면 일치)을 나눠 보인다. 자동 활성화 · 새 원격 쓰기는 하지 않았다 — **남은 것 = 아래 'PC 에서 OCI PARAM 자동 활성화'**(설계서 §7 BACKLOG).
 - **처리 (2026-10-07 · `POC5-01B` · 저장소 코드 · OCI 미배포)**: 원장 `evaluation_run.param_id` = 러너가 실제로 읽은 DB 활성 PARAM(record `param_id` · `runner_preflight.load_param_and_check_slot` 의 `read_active_param_dict`)이다. JSON 버전 ID 는 원장에 남지 않는다 — 원장은 실제 판정 PARAM 을 기록한다. JSON 과의 값 차이(유효값 14개)만 「OCI 운영·적용」 ① `운영 기준 활성` 행이 보이고, 버전 ID 만 다르면 ① 행도 「일치」 라 이 항목의 ID 불일치는 원장 · 화면 어디에도 남지 않는다. 재검토 트리거 'POC5-01B 설계' 는 도달했다. 남은 위험은 아래 '보류된 위험' 그대로다.
-- **항목**: **(설계자 판단 요청 · 2026-10-04 등재)** PC 「OCI 운영·적용」의 '현재 운영 기준 적용'은 OCI 의 **JSON 파일만** 바꾸고, OCI 러너가 실제로 읽는 **활성 PARAM(DB)은 바꾸지 않는다**. 화면의 'OCI 반영' 표시가 OCI 러너의 실제 PARAM 을 뜻하지 않는다.
+- **정리 (2026-10-12 · `POC5-UI-02`)**: 판단 요청은 답변됐다(위 처리 2줄 · 이전에는 이 블록 첫머리에서 '항목' 줄보다 앞에 있어, `grep` 으로 항목 단위를 나누면 바로 위 항목에 붙은 것처럼 잡혔다 — '항목' 줄 아래로 옮김 · 내용 변경 0). 남은 요구는 아래 'PC 에서 OCI PARAM 자동 활성화' 하나로 본다(보류 유지). 아래 관찰 근거 · 선택지는 등재 당시 기록.
 - **관찰 근거(2026-10-04 · 코드 읽기 + OCI 읽기 전용 확인)**:
   - 적용 API `POST /apply`(`app/api_three_push_param.py:306` `apply_param_to_oci`)는 ① PC DB 에 새 PARAM 생성 · 활성(`_create_approved_manual_seed_param` · `:226` · `activated_by="api_param_apply"`) + PC JSON 기록 ② `scripts/sync_three_push_runtime_param.py` 로 OCI 에 JSON 을 scp(`.tmp`) → `mv`(`:153-166`) ③ `scripts/verify_three_push_param_oci.py` 로 **JSON 만** 검사(파싱 · 스키마 · 필드 · 허용값 · `:74`)한다. OCI DB 를 건드리는 단계가 없다.
   - OCI 러너는 `read_active_param_dict`(`app/runtime_param_store.py:369`)로 DB 활성 포인터 → version → 값만 읽는다. 주석 그대로 "JSON fallback 코드 경로 없음"(`:379`). OCI DB 활성 포인터를 바꾸는 경로는 OCI 에서 `scripts/create_three_push_runtime_param.py`(`activated_by="create_script_approve"` · `:111`)나 컷오버 seed(`scripts/run_runtime_state_db_cutover.py`)를 직접 돌리는 것뿐이다.
@@ -743,7 +778,8 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 - **항목**: 보유/외부 후보 비율 가변화 (현재는 10/10 고정)
 - **보류 사유**: 첫 승인 세션에서는 고정 비율로 단순성 확보. 운영 데이터 축적 후 재검토.
 - **보류된 위험**: 사용자 포트폴리오 변화 시 후보 비율이 실제 관심도와 어긋날 수 있음.
-- **재검토 트리거**: Telegram Contentful Controlled Send v1 완료 후 1회전 운영 데이터 확보 시.
+- **재검토 트리거**: seed 재생성(propose)이 필요할 때(2026-10-12 · `POC5-UI-02` 정정 — 이전 트리거 'Telegram Contentful Controlled Send v1 완료 후 1회전 운영 데이터 확보 시'의 PUSH-3 는 폐지).
+- **정정 (2026-10-12 · `POC5-UI-02`)**: 10/10 유지(`app/universe_bootstrap/proposal.py:28-30`). 비율은 수동 CLI 제안 단계(`scripts/run_universe_seed_bootstrap.py propose`)에서만 쓰인다.
 
 ---
 

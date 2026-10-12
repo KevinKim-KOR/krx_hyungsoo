@@ -91,12 +91,16 @@ export default function JudgmentQueueSection({
           ) : null}
         </div>
         <p className="tc-muted tc-small">
-          보유 평가는 &lsquo;보유 현황&rsquo;, 오늘 먼저 볼 ETF와 수치 근거는 &lsquo;확인
+          보유 평가는 &lsquo;보유 현황&rsquo;, 보유 ETF의 수치와 확인 근거는 &lsquo;확인
           근거&rsquo;에서 확인합니다.
         </p>
 
-        {/* POC3-06 §6.3·§7.1 — 오늘 먼저 볼 보유 ETF 최대 3건 (공통 요약, 5일 낮은 순).
-            backend PUSH 와 동일 규칙(lowestFiveDayRows = select_top_holdings). */}
+        {/* POC3-06 §6.3·§7.1 — 오늘 먼저 볼 보유 ETF 최대 3건(공통 요약 · 최근 5거래일 변화 낮은 순 ·
+            backend select_top_holdings). OCI 보유 브리핑은 20거래일 하락 구간과 자료 확인 불가
+            (DATA_UNAVAILABLE_OR_STALE)로 고르므로(select_holdings) 기준이 다르다(POC5-UI-02 §2). */}
+        {topHoldings.length > 0 ? (
+          <p className="tc-muted tc-small">최근 5거래일 변화가 낮은 보유 ETF부터 최대 3개</p>
+        ) : null}
         {topHoldings.length > 0 ? (
           <ul className="tc-today-holdings">
             {topHoldings.map((r) => (

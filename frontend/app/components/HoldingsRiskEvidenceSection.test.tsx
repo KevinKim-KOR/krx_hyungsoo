@@ -193,3 +193,133 @@ describe("확인 근거 — 카드 전환 (사용자 실화면 직접 지시 202
     expect(container.textContent ?? "").not.toContain("확인됨");
   });
 });
+
+// ── POC5-UI-02 — 사용자 선택 정렬 · 원인 확인 이동 ────────────────────────────
+// 종목 3개: A(평가 5000 · 투자 4000 → 손익률 +25% · 비중 50%) · B(2000 · 2500 → -20% · 20%) ·
+// C(3000 · 3000 → 0% · 30% · 5일 · 20일 값 없음 = 자료 확인 필요). 응답 순서 = A, B, C.
+function enrichedThree() {
+  const row = (ticker: string, name: string, evalAmt: number, invested: number) => ({
+    ticker, name, quantity: 1, avg_buy_price: invested, invested_amount: invested,
+    current_price: evalAmt, price_asof: "2026-10-08", price_source: "naver",
+    eval_amount: evalAmt, pnl_amount: evalAmt - invested,
+    pnl_rate_pct: ((evalAmt - invested) / invested) * 100, buy_weight_pct: null,
+    market_weight_pct: null, price_missing: false, calc_missing: false,
+  });
+  return { items: [row("A1", "에이", 5000, 4000), row("B1", "비", 2000, 2500), row("C1", "씨", 3000, 3000)] };
+}
+function evidenceThree(): HoldingsMarketEvidenceResponse {
+  const base = evidenceResult();
+  const item = (ticker: string, name: string, r5: number | null, r20: number | null, ex: number | null) => ({
+    ...base.holdings[0],
+    ticker,
+    name,
+    short_term_momentum: {
+      ...base.holdings[0].short_term_momentum,
+      status: (r5 === null ? "partial" : "ok") as "partial" | "ok",
+      return_5d_pct: r5,
+      return_20d_pct: r20,
+      excess_vs_kodex200_20d_pctp: ex,
+    },
+  });
+  return {
+    ...base,
+    holdings: [
+      item("A1", "에이", -1, -3, -1.5),
+      item("B1", "비", -3, -1, -0.5),
+      item("C1", "씨", null, null, -2),
+    ],
+  };
+}
+function rowOrder(): string[] {
+  const list = screen.getByTestId("hre-evidence-list");
+  return Array.from(list.querySelectorAll('[role="button"]')).map(
+    (el) => (el.getAttribute("aria-label") ?? "").replace(" 상세 보기", ""),
+  );
+}
+
+describe("확인 근거 — 사용자 선택 정렬 · 원인 확인 이동 (POC5-UI-02)", () => {
+  beforeEach(() => {
+    __resetQueryCache();
+    fetchEnrichedHoldings.mockReset();
+    fetchHoldingsMarketEvidence.mockReset();
+    fetchEnrichedHoldings.mockResolvedValue(enrichedThree());
+    fetchHoldingsMarketEvidence.mockResolvedValue(evidenceThree());
+    fetchPriceSeries.mockResolvedValue({ availability: "NO_DATA", points: [] });
+  });
+
+  it("다섯 정렬 · 기본 5일 변화 · 값 없는 행은 맨 뒤 · 다시 조회하지 않는다", async () => {
+    await renderSection();
+    const group = screen.getByRole("group", { name: "확인 근거 정렬 기준" });
+    const labels = Array.from(group.querySelectorAll("button")).map((b) => b.textContent);
+    expect(labels).toEqual(["평가 비중", "손익률", "5일 변화", "20일 변화", "KODEX200 대비"]);
+    expect(screen.getByRole("button", { name: "5일 변화" }).getAttribute("aria-pressed")).toBe("true");
+    expect(rowOrder()).toEqual(["비", "에이", "씨"]); // 5일 -3 · -1 · 없음
+
+    const cases: Array<[string, string[]]> = [
+      ["평가 비중", ["에이", "씨", "비"]], // 50 · 30 · 20 (큰 값부터)
+      ["손익률", ["비", "씨", "에이"]], // -20 · 0 · +25
+      ["20일 변화", ["에이", "비", "씨"]], // -3 · -1 · 없음
+      ["KODEX200 대비", ["씨", "에이", "비"]], // -2 · -1.5 · -0.5 (5일이 없어도 이 값으로)
+      ["5일 변화", ["비", "에이", "씨"]],
+    ];
+    for (const [label, order] of cases) {
+      fireEvent.click(screen.getByRole("button", { name: label }));
+      expect(screen.getByRole("button", { name: label }).getAttribute("aria-pressed")).toBe("true");
+      expect(rowOrder()).toEqual(order);
+    }
+    expect(fetchEnrichedHoldings).toHaveBeenCalledTimes(1);
+    expect(fetchHoldingsMarketEvidence).toHaveBeenCalledTimes(1);
+    // 방향 안내 — 평가 비중만 큰 값부터.
+    fireEvent.click(screen.getByRole("button", { name: "평가 비중" }));
+    expect(document.querySelector(".holdings-sortbar-hint")?.textContent).toBe(
+      "큰 값부터 · 값이 없는 종목은 맨 뒤",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "손익률" }));
+    expect(document.querySelector(".holdings-sortbar-hint")?.textContent).toBe(
+      "작은 값부터 · 값이 없는 종목은 맨 뒤",
+    );
+    // 정렬 이름에 위험 · 순위 표현이 없다.
+    expect(group.textContent ?? "").not.toMatch(/위험|순위/);
+  });
+
+  it("빠른 보기 '자료 확인 필요'와 함께 동작한다(행을 빼지 않고 걸러진 행만 정렬)", async () => {
+    await renderSection();
+    fireEvent.click(screen.getByRole("button", { name: /자료 확인 필요 \(1\)/ }));
+    expect(rowOrder()).toEqual(["씨"]);
+    fireEvent.click(screen.getByRole("button", { name: "평가 비중" }));
+    expect(rowOrder()).toEqual(["씨"]);
+    fireEvent.click(screen.getByRole("button", { name: "전체" }));
+    expect(rowOrder()).toEqual(["에이", "씨", "비"]);
+  });
+
+  it("정렬을 바꿔도 선택한 종목 상세는 유지된다", async () => {
+    await renderSection();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "에이 상세 보기" }));
+      await Promise.resolve();
+    });
+    expect(screen.getByRole("heading", { name: "A1 상세" })).toBeTruthy();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "평가 비중" }));
+      await Promise.resolve();
+    });
+    expect(screen.getByRole("heading", { name: "A1 상세" })).toBeTruthy();
+  });
+
+  it("원인 확인은 「데이터 상태」로 이동한다", async () => {
+    const onNavigate = vi.fn();
+    render(<HoldingsRiskEvidenceSection onNavigate={onNavigate} />);
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "에이 상세 보기" }));
+      await Promise.resolve();
+    });
+    fireEvent.click(screen.getByRole("button", { name: "데이터 상태에서 원인 확인 →" }));
+    expect(onNavigate).toHaveBeenCalledWith("data_status");
+    expect(onNavigate).not.toHaveBeenCalledWith("diagnostics");
+    expect(screen.queryByText(/진단·상태에서 원인 확인/)).toBeNull();
+  });
+});
