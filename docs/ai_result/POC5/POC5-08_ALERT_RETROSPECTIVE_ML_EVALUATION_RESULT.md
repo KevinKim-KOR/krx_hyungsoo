@@ -3,7 +3,7 @@
 작성 2026-10-11 · 작성자: 개발자(VSCode Claude) · 수신: 검증자(Codex)
 
 ```text
-STATUS                 = IMPLEMENTED_VERIFIED — 검증자 r2 VERIFIED(2026-10-12 · 위험 NONE · 범위 폭주 NONE) · 설계자 RESULT PASS_TO_DEPLOY(2026-10-12) · 다음 = 사용자 승인 커밋 · push → PC 재기동 → 실화면 → 종료
+STATUS                 = IMPLEMENTED_VERIFIED_DEPLOYED_CLOSED — 검증자 r2 VERIFIED(2026-10-12 · 위험 NONE · 범위 폭주 NONE) · 설계자 RESULT PASS_TO_DEPLOY(2026-10-12) · 커밋 `f1951812` push(사용자 승인) · PC 재기동 · 실화면 사용자 확인 · 종료(§10 · 설계자 재판정 없음 · 설계서 §13-6)
 DESIGNER_RESULT        = PASS_TO_DEPLOY(2026-10-12 · CODE_REWORK NONE · REVERIFY 불필요 · 결측 표시 열 0/1 비표준화 = 고정 recipe 확정 · 지시문 외 변경 5건 수용 · §5 한계 수용 · POC5-02 · 03 종료 수용 · OCI_PULL 불필요) — 원문 = 설계서 §13 · 끝에 전달문 원문
 VERIFIER               = r1 REJECTED(시각 형식 검사 · 실행 시각 자정 대체 · §6-3 수정) → r2 VERIFIED(A-1 ~ A-4 통과 · B-1 ~ B-6 없음 · 독립 확인 관련 회귀 235 · 추가 재현 5 · 정적 검사 통과 · 결과서 시험 건수 문구는 검증자가 직접 정정)
 STEP_ID                = POC5-08 알림의 ML 사후평가
@@ -200,3 +200,21 @@ BACKEND_FULL_REGRESSION= 3387 passed / 0 failed · exit 0 · 403.47s(2026-10-12 
 ## 9. git 상태
 
 커밋 전 · 변경 파일은 경로를 하나씩 지정해 stage(사용자 소유 untracked `docs/handoff/INVESTMENT_MODEL_V2_MASTER_HANDOFF_2026-07-26.md` 만 제외). 보고 직전 `git status --short --untracked-files=all` 실측은 보고 메시지에 인용한다.
+
+## 10. 배포 · 실화면 · 종료 기록 (2026-10-12)
+
+- **커밋 · push**: `f1951812`(27파일 · POC5-02 · 03 종료 기록 포함 · 사용자 승인) → origin/main. OCI pull 없음(OCI 실행 파일 변경 0).
+- **PC 재기동**: 사용자 · 백엔드 `uvicorn app.api:app --host 127.0.0.1 --port 8000` 시작 13:27:04.
+- **실화면**(사용자 확인 2026-10-12): 「받은 알림 기록」 [사후평가 실행] 1회(13:27:20) → 「사후평가 결과」 카드 · 10-08 알림 [자세히 보기] 의 사후평가 표 · 「가격 결과 세부」 · 추가 표시 항목(생성 시각 · 대상에서 뺀 항목 줄) 확인 · 평상시 노란 경고 줄 없음.
+- **산출물**(개발자 읽기 확인): `state/ml/research/poc5_08/20261012T132720892170_6b622a76/` = `report.json` · `input_snapshot.json` 2개.
+  - 신호 기간 끝 2026-10-08 · 가격 관측 기준일 2026-10-08 · 사본 읽은 시각 · 생성 시각 13:27:20 · 사본 동기화 10-12 13:09:21
+  - 알림 11 · 항목 482 · 가격 관측 487 · 신호일 1 · 결과 기록 계열 61
+  - +1 성숙 458 · 미도래 29(15:40 보유 브리핑) · +5 / +20 미도래 487
+  - 대상에서 뺀 항목 = 신호 기간 끝 뒤 285(10-12 알림) · 평가 있는 알림 1 / 없음 10
+  - ML 자료 부족 · 대상 0행(+5 미성숙 479 · 이번 ML 범위 밖 8) · 세 구간 모두 '시험 행 없음'
+  - report 의 입력 digest = snapshot digest · 실행 0.054초 · scikit-learn 1.9.0 · numpy 2.4.6
+  - 직후 `GET …/latest` = 같은 run · `input_changed=False` · '입력 변경 없음'
+  - 개인값 · 메모 · action 문자열 0(정확 문자열 검사) · `values_json` 은 recipe 설명문 1줄뿐
+- **사본 불변**: 실행 뒤 PC 사본 실행 29 · 항목 767 · 가격 결과 458 · 평가 1 · 마지막 동기화 13:09:21 — 실행 전과 같다(읽기 전용 경로 `mode=ro`).
+- 위 숫자는 재기동 전 같은 사본으로 한 읽기 전용 시험 실행(scratchpad)과 같다.
+- 같은 코드의 실화면 통과로 **`IMPLEMENTED_VERIFIED_DEPLOYED_CLOSED` 로 종료**한다(설계자 재판정 · 검증자 재검증 없음 · 설계서 §13-6). 인계 = `docs/handoff/POC5-08_ALERT_RETROSPECTIVE_ML_EVALUATION_HANDOFF_2026-10-12.md`.
