@@ -31,6 +31,10 @@ from pathlib import Path
 from typing import Callable, Optional
 
 from app.etf_nav_service import refresh_nav_universe
+from app.holdings_equity_refresh import (
+    HOLDINGS_EQUITY_STEP_FAILED_TEXT,
+    refresh_holdings_equity_prices,
+)
 from app.market_benchmark_store import (
     KOSPI_SOURCE,
     KospiFetcher,
@@ -322,6 +326,20 @@ def _execute_refresh_job(
     except Exception as e:  # noqa: BLE001 — background thread 보호
         error_summary = f"refresh_unexpected: {type(e).__name__}: {e}"
 
+    # POC5-10 — 보유 개별주 가격(ETF 단계 뒤 · KOSPI 단계 앞). 'KOSPI 행이 마지막 기록'인 기존
+    # '마지막 refresh'(`latest_refresh_log()` · 화면 · 연결 ID)를 바꾸지 않으려는 순서다. 실패해도
+    # 전체 갱신 상태(완료 · 실패)는 ETF 결과대로 두고, 한국어 문구만 error_summary 끝에 붙인다.
+    try:
+        holdings_equity_msg = refresh_holdings_equity_prices(
+            refresh_id=refresh_id,
+            end_date=end_date_for_prices,
+            db_path=db_path,
+            price_fetcher=price_fetcher,
+        )
+    except Exception:  # noqa: BLE001 — 로그 기록 실패까지 thread 안에서 격리
+        logger.exception("holdings equity price step failed")
+        holdings_equity_msg = HOLDINGS_EQUITY_STEP_FAILED_TEXT
+
     # KOSPI benchmark — 실패해도 전체 refresh 흐름을 중단시키지 않는다
     # (지시문 §4.4). 별도 log row 로 결과 보존, in-memory state 에는 노출 X.
     # POC3-02D-OPS-03 확정 계약 9 — 자료원 KRX `idx/kospi_dd_trd`(OCI 08:10 배치와 같은
@@ -380,6 +398,10 @@ def _execute_refresh_job(
     elapsed = time.perf_counter() - t0
     finished = _utcnow()
     success_overall = universe_ok and (price_success > 0 or price_attempted == 0)
+    # POC5-10 — 보유 개별주 단계 문구는 기존(ETF · KOSPI) 요약 뒤에 붙인다(그 판정은 그대로).
+    error_summary = (
+        " · ".join(x for x in (error_summary, holdings_equity_msg) if x) or None
+    )
 
     with _service.lock:
         _service.state.status = "completed" if success_overall else "failed"

@@ -471,9 +471,14 @@ def table_exists(table: str, db_path: Path = DEFAULT_DB_PATH) -> bool:
         return cur.fetchone() is not None
 
 
+# POC5-10 — PC 갱신의 보유 개별주 단계 요약 행 출처. '마지막 전체 갱신' 조회에서 뺀다.
+HOLDINGS_EQUITY_PRICE_LOG_SOURCE = "FinanceDataReader/holdings-equity-prices"
+
+
 def latest_refresh_log(
     source: Optional[str] = None,
     db_path: Path = DEFAULT_DB_PATH,
+    exclude_source: Optional[str] = None,
 ) -> Optional[dict]:
     with _connection(db_path) as con:
         if source:
@@ -483,6 +488,14 @@ def latest_refresh_log(
                 "FROM market_refresh_log WHERE source = ? "
                 "ORDER BY created_at DESC, rowid DESC LIMIT 1",
                 (source,),
+            )
+        elif exclude_source:
+            cur = con.execute(
+                "SELECT run_id, source, asof, attempted_count, success_count, "
+                "fail_count, runtime_seconds, error_summary, created_at "
+                "FROM market_refresh_log WHERE source != ? "
+                "ORDER BY created_at DESC, rowid DESC LIMIT 1",
+                (exclude_source,),
             )
         else:
             cur = con.execute(

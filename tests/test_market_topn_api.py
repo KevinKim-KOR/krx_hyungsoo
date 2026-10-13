@@ -587,6 +587,11 @@ def test_refresh_job_logs_stale_kospi_as_failure_without_failing_refresh(
         return original(**kwargs)
 
     monkeypatch.setattr(api_market_topn, "start_refresh_job", inline_start)
+    # POC5-10 — 갱신 작업에 보유 개별주 단계가 더해졌다. 이 시험은 KOSPI 사유만 보므로
+    # 유효한 빈 보유(파일 있음 · 0행 = '대상 없음')를 둔다(파일 없음 = 읽기 실패 문구가 붙음).
+    from app import holdings as holdings_module
+
+    holdings_module.save([])
 
     res = api_client.post("/market/refresh")
     assert res.status_code == 200

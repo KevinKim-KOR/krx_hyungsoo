@@ -62,7 +62,8 @@ type RefreshUiState =
   | { kind: "idle" }
   | { kind: "starting" }
   | { kind: "running"; refreshId: string | null }
-  | { kind: "completed"; refreshId: string | null }
+  // POC5-10 — 완료여도 확인할 사유(예: 보유 개별주 가격 갱신 실패)가 있으면 note 로 보인다.
+  | { kind: "completed"; refreshId: string | null; note: string | null }
   | { kind: "failed"; message: string }
   | { kind: "cooldown"; cooldownRemainingSeconds: number };
 
@@ -171,6 +172,7 @@ function RefreshControlCard({
       statusLine = (
         <div className="message info">
           갱신 완료. 최신 SQLite 기준으로 TOP N 을 재로드했습니다.
+          {state.note ? ` 확인 필요: ${state.note}` : ""}
         </div>
       );
       break;
@@ -324,7 +326,11 @@ export default function MarketDiscoveryView({
       }
       if (status.status === "completed") {
         stopPolling();
-        setRefreshUi({ kind: "completed", refreshId: status.refresh_id ?? null });
+        setRefreshUi({
+          kind: "completed",
+          refreshId: status.refresh_id ?? null,
+          note: status.error_summary ?? null,
+        });
         // 갱신 성공 시에만 Dashboard 의 시장 읽기 무효화 (failed 분기는 무효화
         // 안 함 — §4.5 "변경 실패 시 무효화 금지").
         for (const k of MARKET_INVALIDATION_KEYS) invalidateQueries(k);
@@ -720,7 +726,11 @@ function TopControlsRow({
       <span className="helper">갱신 중... ({refreshUi.kind === "running" ? (refreshUi.refreshId ?? "-") : "starting"})</span>
     );
   } else if (refreshUi.kind === "completed") {
-    refreshMessage = <span className="helper">갱신 완료.</span>;
+    refreshMessage = (
+      <span className="helper">
+        갱신 완료.{refreshUi.note ? ` 확인 필요: ${refreshUi.note}` : ""}
+      </span>
+    );
   } else if (refreshUi.kind === "failed") {
     refreshMessage = <span className="helper" style={{ color: "var(--danger)" }}>실패: {refreshUi.message}</span>;
   } else if (refreshUi.kind === "cooldown") {
