@@ -440,6 +440,28 @@ def fetch_price_volume_history(
         ]
 
 
+def fetch_recent_price_rows(
+    ticker: str,
+    *,
+    limit: int,
+    db_path: Path = DEFAULT_DB_PATH,
+) -> list[tuple[str, float, Optional[float], str]]:
+    """최근 저장 가격 행 (date, close, volume, source) — 최신순 (POC5-09).
+
+    행 조건은 `fetch_price_history` 와 같다(close 가 null/0 이하인 행 제외). 그래서
+    i 번째 행 날짜 = 단기 흐름 계산의 `series[-(i+1)]` 날짜다. volume 은 저장값 그대로
+    (null · 무한대 등 유효성 판단은 호출자 · 여기서 int 로 바꾸다 오류를 내지 않는다).
+    """
+    with _connection(db_path) as con:
+        cur = con.execute(
+            "SELECT date, close, volume, source FROM etf_daily_price "
+            "WHERE ticker = ? AND close IS NOT NULL AND close > 0 "
+            "ORDER BY date DESC LIMIT ?",
+            (ticker, limit),
+        )
+        return [(r[0], float(r[1]), r[2], r[3]) for r in cur.fetchall()]
+
+
 def table_exists(table: str, db_path: Path = DEFAULT_DB_PATH) -> bool:
     with _connection(db_path) as con:
         cur = con.execute(

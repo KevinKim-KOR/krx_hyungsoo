@@ -46,6 +46,8 @@ from app.market_refresh_service import (
     start_refresh_job,
 )
 from app.market_topn import DEFAULT_BASIS, DEFAULT_N, DEFAULT_ORDER, compute_topn
+from app.short_term_momentum import KODEX200_TICKER
+from app.stored_volume_evidence import build_stored_volume_evidence
 
 # 기존 테스트가 api_market_topn._merge_relative_upside_score /
 # api_market_topn.MarketCandidate 를 직접 참조하므로 모듈 속성으로 노출.
@@ -150,6 +152,10 @@ def get_market_topn_latest(
         ),
         # 2026-07-03 Market Risk Reference v1 — SQLite 만 read (외부 호출 X).
         market_risk_reference=build_market_risk_reference_payload(DEFAULT_DB_PATH),
+        # POC5-09 — 저장 거래량 관찰값(SQLite read 만 · 새 수집 0).
+        kodex200_stored_volume=build_stored_volume_evidence(
+            KODEX200_TICKER, db_path=DEFAULT_DB_PATH
+        ),
     )
 
 

@@ -2395,6 +2395,15 @@ textarea.decision-textarea {
 @media (max-width: 900px) {
   .wb-detail-grid { grid-template-columns: repeat(2, 1fr); }
 }
+/* POC5-09 — 저장 거래량 칸(StoredVolumeBlock). 네 칸은 .wb-detail-grid 그대로 · 좁은 열은 2 × 2. */
+.wb-detail-grid.svb-2 { grid-template-columns: repeat(2, 1fr); }
+.svb-head {
+  display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap;
+  font-size: 0.85rem; font-weight: 600; margin-bottom: 6px;
+}
+.svb-k { color: var(--muted); font-size: 12px; }
+.svb-v { font-weight: 600; font-variant-numeric: tabular-nums; }
+.svb-src { color: var(--muted); font-size: 12px; margin-top: 6px; }
 
 /* ── POC3-01 오늘의 투자 점검 (Today Investment Check) ──────────────────────
    설계서 §8 디자인 기준 (Apple 방향 차용): 넓은 여백 · 큰 핵심 정보 · 명확한 계층 ·

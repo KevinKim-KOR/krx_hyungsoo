@@ -18,10 +18,11 @@ type BlockedMetric = { name: string; badge: string; reason: string };
 const KOSPI_IN_DEV: BlockedMetric[] = [];
 
 const KOSPI_NOT_IN_STEP: BlockedMetric[] = [
+  // POC5-09 판정 §9-3 — KOSPI 지수 거래량은 미저장(KODEX200 거래량은 위 KOSPI 카드 · ETF 한 종목 값).
   {
-    name: "거래량 흐름",
-    badge: "이번 단계 미도입",
-    reason: "현재 거래량 자료를 저장하지 않아 표시할 수 없습니다. 신규 수집이 필요해 이번 단계에서는 넣지 않습니다.",
+    name: "KOSPI 지수 거래량",
+    badge: "미제공",
+    reason: "KOSPI 지수 거래량은 미저장입니다. 표시되는 KODEX200 거래량은 ETF 한 종목의 값입니다.",
   },
   {
     name: "공격·방어 비중",

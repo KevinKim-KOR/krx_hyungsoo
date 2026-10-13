@@ -200,6 +200,7 @@ describe("sortEvidenceRows (POC5-UI-02)", () => {
       calc_missing: false,
       evidence_conflict: false,
       flow_unavailable: false,
+      price_dates: null,
       ...over,
     };
   }
@@ -342,3 +343,85 @@ describe("buildRiskEvidenceRows 안내 칸 · evidenceGuidance (POC5-UI-02 §11)
     ]);
   });
 });
+
+// ── POC5-09 판정 §9-4 — 가격 흐름 기준일 · 비교 기간 사유 ──────────────────────
+describe("evidenceGuidance 가격 기준일 사유 (POC5-09)", () => {
+  const basis = {
+    reference_date: "2026-10-08",
+    reference_ticker: "069500",
+    kodex200_start_date_5d: "2026-09-30",
+    kodex200_start_date_20d: "2026-09-07",
+    date_mismatch: [{ ticker: "000660", name: "SK하이닉스", end_date: "2026-08-12" }],
+  };
+  const MD = "현재 Market Discovery TOP 10 후보에 포함되어 있지 않습니다.";
+
+  function rowFor(
+    stm: Parameters<typeof evItem>[1],
+    priceDates: HoldingsMarketEvidenceItem["price_dates"],
+  ) {
+    const { rows } = buildRiskEvidenceRows(
+      [enriched("000660")],
+      [{ ...evItem("000660", stm), evidence_notes: [MD], price_dates: priceDates }],
+    );
+    return rows[0];
+  }
+
+  it("기준일 불일치 — 실제 날짜 사유를 맨 위에 · 사유 미제공 문구 없음 · 일반 문구 유지", () => {
+    const r = rowFor(
+      {
+        status: "unavailable",
+        return_5d_pct: null,
+        return_20d_pct: null,
+        excess_vs_kodex200_20d_pctp: null,
+      },
+      {
+        end_date: "2026-08-12",
+        start_date_5d: "2026-08-05",
+        start_date_20d: "2026-07-14",
+        comparison: "date_mismatch",
+      },
+    );
+    expect(r.need_check).toBe(true);
+    expect(r.price_dates?.end_date).toBe("2026-08-12");
+    expect(evidenceGuidance(r, basis)).toEqual([
+      "저장 가격 기준일: 2026-08-12 / PC 비교 기준일: 2026-10-08 — 기준일이 달라 현재 비교에 사용하지 않습니다.",
+      MD,
+    ]);
+  });
+
+  it("비교 기간 불일치 — 다른 기간만 실제 날짜로 · 둘 다 같으면 일반 기간 문구", () => {
+    const pd = (s5: string, s20: string) => ({
+      end_date: "2026-10-08",
+      start_date_5d: s5,
+      start_date_20d: s20,
+      comparison: "window_mismatch" as const,
+    });
+    const stm = { status: "partial" as const, excess_vs_kodex200_20d_pctp: null };
+    expect(evidenceGuidance(rowFor(stm, pd("2026-09-30", "2026-09-04")), basis)).toEqual([
+      "KODEX200 대비 20일: 종목 비교 기간 2026-09-04 ~ 2026-10-08 / KODEX200 비교 기간 2026-09-07 ~ 2026-10-08 — 기간이 달라 비교값을 비워 두었습니다.",
+      MD,
+    ]);
+    expect(evidenceGuidance(rowFor(stm, pd("2026-09-29", "2026-09-04")), basis)).toHaveLength(3);
+    expect(evidenceGuidance(rowFor(stm, pd("2026-09-30", "2026-09-07")), basis)).toEqual([
+      "KODEX200 비교 기간이 종목과 달라 일부 비교값을 비워 두었습니다.",
+      MD,
+    ]);
+  });
+
+  it("기준일이 같은 정상 행은 날짜 사유 없음 · 응답에 price_dates 가 없으면 기존 안내 그대로", () => {
+    const ok = rowFor(
+      {},
+      {
+        end_date: "2026-10-08",
+        start_date_5d: "2026-09-30",
+        start_date_20d: "2026-09-07",
+        comparison: "ok",
+      },
+    );
+    expect(evidenceGuidance(ok, basis)).toEqual([MD]);
+    const none = rowFor({}, undefined);
+    expect(none.price_dates).toBeNull();
+    expect(evidenceGuidance(none, null)).toEqual([MD]);
+  });
+});
+

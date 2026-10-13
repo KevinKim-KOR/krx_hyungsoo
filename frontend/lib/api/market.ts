@@ -165,6 +165,27 @@ export interface MarketTopNResponse {
   relative_upside_score_user_notice?: string | null;
   // 2026-07-03 Market Risk Reference v1 — KODEX200 + VIX 일별 맥락.
   market_risk_reference?: MarketRiskReference | null;
+  // POC5-09 — KODEX200 한 종목의 저장 거래량 관찰값(KOSPI 지수 거래량 아님).
+  kodex200_stored_volume?: StoredVolumeEvidence | null;
+}
+
+// POC5-09 — 저장 거래량 확인 근거(backend app/stored_volume_evidence.py · 두 응답 공용).
+// 거래량 단위 = 주. 평균 = 기준일을 뺀 바로 앞 20개 저장일이 모두 유효할 때만.
+export interface StoredVolumeEvidence {
+  ticker: string;
+  status: "ok" | "no_price_data";
+  asof_date: string | null;
+  source: string | null;
+  volume: number | null;
+  window_size: number;
+  window_start_date: string | null;
+  window_end_date: string | null;
+  window_date_count: number;
+  valid_count: number;
+  avg_prev20: number | null;
+  avg_status: "ok" | "insufficient";
+  ratio: number | null;
+  ratio_status: "ok" | "volume_missing" | "avg_insufficient" | "avg_zero";
 }
 
 export interface MarketRiskRecentPoint {

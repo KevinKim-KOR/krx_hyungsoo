@@ -4,7 +4,8 @@
 //
 // 저장된 KOSPI close 시계열(market_benchmark_daily_price)만 SVG 선으로 그린다.
 // - NO_DATA/UNAVAILABLE 은 빈 정상 차트로 위장하지 않고 사유 표시.
-// - BUY/SELL 마커·예측선·목표가 없음. 거래량은 미저장이라 이 차트에 없음(§4.1 Q5).
+// - BUY/SELL 마커·예측선·목표가 없음. KOSPI 지수 거래량은 미저장이라 이 차트에 없음(§4.1 Q5) ·
+//   KODEX200 거래량은 KospiHeadline 의 'KODEX200 거래량' 칸(POC5-09).
 // - 최상단 대표 정보 — 장식 배경이 아니라 흐름을 읽을 수 있는 크기(§4.1 차트 구성).
 // - POC3-02D-OPS-03 확정 계약 9 ⑥ — 차트도 KOSPI 카드와 **같은 판정 · 같은 배지 · 같은 기준
 //   줄**을 단다(PLAN STEP 5-5). 판정은 부모가 이미 받은 `/market/topn/latest` 의 KOSPI

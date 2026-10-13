@@ -3,7 +3,7 @@
 // - 급락(falling) 관련 열·빠른보기 없음(이번 Step 제외).
 // - 읽기 전용(값 수정·저장 버튼 없음). N+1 없음(2 endpoint 단일 조회).
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, act, fireEvent } from "@testing-library/react";
+import { render, screen, act, fireEvent, within } from "@testing-library/react";
 import { __resetQueryCache } from "@/lib/api/queryCache";
 
 const fetchEnrichedHoldings = vi.fn();
@@ -444,6 +444,140 @@ describe("확인 근거 — 사용자 선택 정렬 · 자료 확인 안내 · �
     expect(onNavigate).toHaveBeenCalledTimes(1);
     expect(onNavigate).toHaveBeenCalledWith("data_status");
     expect(screen.queryByText(/원인 확인/)).toBeNull();
+    expect(fetchEnrichedHoldings).toHaveBeenCalledTimes(1);
+    expect(fetchHoldingsMarketEvidence).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ── POC5-09 — 가격 흐름 기준일 · 저장 거래량 (판정 §9-4 · 설계 §3 · §5) ─────────────
+const REF = "2026-10-08";
+function volumeOf(ticker: string, asof: string, volume: number, avg: number) {
+  return {
+    ticker,
+    status: "ok" as const,
+    asof_date: asof,
+    source: "FinanceDataReader",
+    volume,
+    window_size: 20,
+    window_start_date: "2026-09-07",
+    window_end_date: "2026-10-07",
+    window_date_count: 20,
+    valid_count: 20,
+    avg_prev20: avg,
+    avg_status: "ok" as const,
+    ratio: volume / avg,
+    ratio_status: "ok" as const,
+  };
+}
+function datesOf(end: string, comparison: "ok" | "date_mismatch") {
+  return comparison === "ok"
+    ? { end_date: end, start_date_5d: "2026-09-30", start_date_20d: "2026-09-07", comparison }
+    : { end_date: end, start_date_5d: "2026-08-05", start_date_20d: "2026-07-14", comparison };
+}
+function evidenceWithBasis(): HoldingsMarketEvidenceResponse {
+  const a = evItemOf("A1", "에이", -1, -3, -1.5, ["에이 메모"]);
+  const b = evItemOf("B1", "비", -3, -1, -0.5);
+  // C1 = 기준일이 달라 backend 응답 사본이 값을 비운 종목(status unavailable).
+  const c = evItemOf("C1", "씨", null, null, null, ["씨 메모"]);
+  c.short_term_momentum = { ...c.short_term_momentum, status: "unavailable" as "partial" };
+  return {
+    ...evidenceThree([
+      { ...a, price_dates: datesOf(REF, "ok"), stored_volume: volumeOf("A1", REF, 1500000, 1000000) },
+      { ...b, price_dates: datesOf(REF, "ok") },
+      {
+        ...c,
+        price_dates: datesOf("2026-08-12", "date_mismatch"),
+        stored_volume: volumeOf("C1", "2026-08-12", 4204301, 6174143.2),
+      },
+    ]),
+    price_basis: {
+      reference_date: REF,
+      reference_ticker: "069500",
+      kodex200_start_date_5d: "2026-09-30",
+      kodex200_start_date_20d: "2026-09-07",
+      date_mismatch: [{ ticker: "C1", name: "씨", end_date: "2026-08-12" }],
+    },
+  };
+}
+function rowEl(name: string): HTMLElement {
+  return screen.getByRole("button", { name: `${name} 상세 보기` });
+}
+
+describe("확인 근거 — 가격 흐름 기준일 · 저장 거래량 (POC5-09)", () => {
+  beforeEach(() => {
+    __resetQueryCache();
+    fetchEnrichedHoldings.mockReset();
+    fetchHoldingsMarketEvidence.mockReset();
+    fetchEnrichedHoldings.mockResolvedValue(enrichedThree());
+    fetchHoldingsMarketEvidence.mockResolvedValue(evidenceWithBasis());
+    fetchPriceSeries.mockResolvedValue({ availability: "NO_DATA", points: [] });
+  });
+
+  it("목록 위 기준 줄 · 기준일이 다른 행은 세 칸 '—' + 자료 확인 필요 · 정렬 맨 뒤", async () => {
+    await renderSection();
+    expect(screen.getByTestId("hre-price-basis").textContent).toBe(
+      "가격 흐름(5일 · 20일 · KODEX200 대비) 기준: PC 저장 가격 기준일 2026-10-08 · KODEX200 20일 비교 기간 2026-09-07 ~ 2026-10-08. 기준일이 다른 1종목은 현재 비교에서 뺐습니다: 씨(저장 가격 기준일 2026-08-12).",
+    );
+    const c = rowEl("씨");
+    expect(Array.from(c.querySelectorAll(".wb-hmetrics .v")).map((e) => e.textContent)).toEqual([
+      "—",
+      "—",
+      "—",
+    ]);
+    expect(within(c).getByText("자료 확인 필요")).toBeTruthy();
+    // 정상 행은 원래 값 그대로.
+    expect(rowEl("에이").textContent).toContain("-1.00%");
+    expect(rowOrder()).toEqual(["비", "에이", "씨"]);
+    fireEvent.click(screen.getByRole("button", { name: "20일 변화" }));
+    expect(rowOrder()).toEqual(["에이", "비", "씨"]);
+  });
+
+  it("기준일이 다른 종목 상세: 실제 날짜 사유 · 가격 흐름 기준 · 과거 저장 거래량 · NAV 유지", async () => {
+    await renderAndSelect("씨");
+    expect(guidanceItems()).toEqual([
+      "저장 가격 기준일: 2026-08-12 / PC 비교 기준일: 2026-10-08 — 기준일이 달라 현재 비교에 사용하지 않습니다.",
+      "씨 메모",
+    ]);
+    expect(screen.getByTestId("hre-price-flow").textContent).toBe(
+      "가격 흐름 기준기준일 2026-08-12 · 5일 2026-08-05 ~ 2026-08-12 · 20일 2026-07-14 ~ 2026-08-12",
+    );
+    const vol = screen.getByTestId("stored-volume");
+    expect(vol.textContent).toContain("씨 거래량");
+    expect(vol.textContent).toContain("과거 저장 자료 · PC 비교 기준일은 2026-10-08");
+    expect(Array.from(vol.querySelectorAll(".svb-v")).map((e) => e.textContent)).toEqual([
+      "2026-08-12",
+      "4,204,301주",
+      "6,174,143.20주",
+      "0.68배",
+    ]);
+    expect(screen.getByText("NAV · 괴리율")).toBeTruthy();
+  });
+
+  it("정상 종목 상세: 날짜 사유 없음 · 거래량 4칸 · 과거 표시 없음 · 출처 줄", async () => {
+    await renderAndSelect("에이");
+    expect(guidanceItems()).toEqual(["에이 메모"]);
+    expect(screen.getByTestId("hre-price-flow").textContent).toContain(
+      "기준일 2026-10-08 · 5일 2026-09-30 ~ 2026-10-08 · 20일 2026-09-07 ~ 2026-10-08",
+    );
+    const vol = screen.getByTestId("stored-volume");
+    expect(Array.from(vol.querySelectorAll(".svb-v")).map((e) => e.textContent)).toEqual([
+      "2026-10-08",
+      "1,500,000주",
+      "1,000,000.00주",
+      "1.50배",
+    ]);
+    expect(vol.textContent).not.toContain("과거 저장 자료");
+    expect(vol.querySelector(".svb-src")?.textContent).toBe(
+      "출처 FinanceDataReader · 비교 구간 2026-09-07 ~ 2026-10-07 · 유효 20/20",
+    );
+    expect(vol.querySelector(".wb-detail-grid")?.className).toBe("wb-detail-grid");
+  });
+
+  it("거래량 필드가 없으면 '거래량 자료 없음'만 · 차트 · NAV 는 그대로 · 다시 조회하지 않는다", async () => {
+    await renderAndSelect("비");
+    expect(screen.getByTestId("stored-volume").textContent).toContain("거래량 자료 없음");
+    expect(screen.getByText("NAV · 괴리율")).toBeTruthy();
+    expect(fetchPriceSeries).toHaveBeenCalled();
     expect(fetchEnrichedHoldings).toHaveBeenCalledTimes(1);
     expect(fetchHoldingsMarketEvidence).toHaveBeenCalledTimes(1);
   });

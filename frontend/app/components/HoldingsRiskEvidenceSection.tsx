@@ -8,6 +8,8 @@
 // POC5-UI-02: 사용자 선택 정렬 네 가지(평가 비중 · 손익률 · 5일 변화(기본) · 20일 변화 — 화면 숫자 그대로 ·
 // 순서만 바꿈 · 재조회 0) · 선택 상세 맨 위 '자료 확인 안내'(그 종목의 기존 사유) · 「데이터 상태」는
 // '전체 ETF NAV·괴리율 보기' 보조 이동(설계 §11).
+// POC5-09: 가격 흐름 기준 줄(PC 저장 가격 기준일) · 기준일이 다른 종목은 5일 · 20일 · KODEX200 대비 '—'
+// (backend 응답 사본이 값을 비움) · 상세에 실제 날짜 사유 · 가격 흐름 기준 · 저장 거래량(판정 §9-4).
 // 조회는 Dashboard 와 같은 캐시 키(DASH_KEY_HOLDINGS/EVIDENCE)를 공유한다(Q6 · N+1 없음).
 
 import { useMemo, useState } from "react";
@@ -30,6 +32,9 @@ import {
   type RiskEvidenceRow,
 } from "./holdings_risk_evidence/helpers";
 import PriceChart from "./workbench/PriceChart";
+import StoredVolumeBlock from "./StoredVolumeBlock";
+import { priceBasisLine, priceFlowLine } from "@/lib/priceBasis";
+import { VOLUME_HELP } from "@/lib/storedVolume";
 // 손익·수익률 방향 색은 ETF 비교하기와 같은 함수를 쓴다 — 국내 관례 전환 시
 // 한 곳만 고치면 두 화면이 함께 바뀐다.
 import { directionColor } from "./workbench/helpers";
@@ -46,6 +51,10 @@ function fmtPctp(v: number | null): string {
   if (v === null) return "자료 확인 필요";
   const s = v >= 0 ? "+" : "";
   return `${s}${v.toFixed(2)}%p`;
+}
+// POC5-09 — 기준일이 PC 비교 기준일과 달라 현재 비교에서 뺀 행은 값 칸을 '—'로 둔다(판정 §9-4-2).
+function stale(r: RiskEvidenceRow): boolean {
+  return r.price_dates?.comparison === "date_mismatch";
 }
 function fmtMoney(v: number | null): string {
   if (v === null) return "자료 확인 필요";
@@ -172,11 +181,27 @@ export default function HoldingsRiskEvidenceSection({ onNavigate }: Props = {}) 
     return sortEvidenceRows(rows, sortKey);
   }, [built, quickView, sortKey]);
 
-  // 선택 종목의 '자료 확인 안내' — 정렬 · 빠른 보기와 무관하게 그 종목 행에서 만든다(재조회 0).
-  const selectedGuidance: string[] = useMemo(() => {
-    const row = built?.rows.find((r) => r.ticker === selected);
-    return row ? evidenceGuidance(row) : [];
-  }, [built, selected]);
+  // POC5-09 — PC 비교 기준일 · 기준일이 달라 현재 비교에서 뺀 종목(응답 선택 필드).
+  const basis =
+    evidence.phase === "success" ? (evidence.data.price_basis ?? null) : null;
+
+  // 선택 종목 행 — 정렬 · 빠른 보기와 무관하게 전체 행에서 찾는다(재조회 0).
+  const selectedRow: RiskEvidenceRow | null = useMemo(
+    () => built?.rows.find((r) => r.ticker === selected) ?? null,
+    [built, selected],
+  );
+  // 선택 종목의 '자료 확인 안내'.
+  const selectedGuidance: string[] = useMemo(
+    () => (selectedRow ? evidenceGuidance(selectedRow, basis) : []),
+    [selectedRow, basis],
+  );
+  const selectedFlowLine: string | null = selectedRow?.price_dates?.end_date
+    ? priceFlowLine(
+        selectedRow.price_dates.end_date,
+        selectedRow.price_dates.start_date_5d,
+        selectedRow.price_dates.start_date_20d,
+      )
+    : null;
 
   return (
     <section aria-labelledby="hre-h" className="hre-section card">
@@ -216,6 +241,11 @@ export default function HoldingsRiskEvidenceSection({ onNavigate }: Props = {}) 
               {built.coverage.need_check}
             </span>
           </div>
+          {basis ? (
+            <p className="helper" data-testid="hre-price-basis">
+              {priceBasisLine(basis)}
+            </p>
+          ) : null}
 
           {/* 빠른 보기 — 전체 / 자료 확인 필요 (급락 신호 빠른보기 없음) */}
           <div className="hre-quickview">
@@ -335,7 +365,7 @@ export default function HoldingsRiskEvidenceSection({ onNavigate }: Props = {}) 
                         className="v"
                         style={{ color: directionColor(r.return_5d_pct) }}
                       >
-                        {fmtPct(r.return_5d_pct)}
+                        {stale(r) ? "—" : fmtPct(r.return_5d_pct)}
                       </span>
                     </div>
                     <div className="wb-hm-cell">
@@ -344,7 +374,7 @@ export default function HoldingsRiskEvidenceSection({ onNavigate }: Props = {}) 
                         className="v"
                         style={{ color: directionColor(r.return_20d_pct) }}
                       >
-                        {fmtPct(r.return_20d_pct)}
+                        {stale(r) ? "—" : fmtPct(r.return_20d_pct)}
                       </span>
                     </div>
                   </div>
@@ -356,7 +386,7 @@ export default function HoldingsRiskEvidenceSection({ onNavigate }: Props = {}) 
                         color: directionColor(r.excess_vs_kodex200_20d_pctp),
                       }}
                     >
-                      {fmtPctp(r.excess_vs_kodex200_20d_pctp)}
+                      {stale(r) ? "—" : fmtPctp(r.excess_vs_kodex200_20d_pctp)}
                     </span>
                   </div>
                 </div>
@@ -370,22 +400,40 @@ export default function HoldingsRiskEvidenceSection({ onNavigate }: Props = {}) 
           {selected ? (
             <div className="hre-detail">
               <h3>{selected} 상세</h3>
-              {selectedGuidance.length > 0 ? (
-                <div className="hre-detail-evidence" data-testid="hre-guidance">
-                  <div className="hre-detail-line">
-                    <span className="k">자료 확인 안내</span>
-                    <span className="v">
-                      {selectedGuidance.map((t) => (
-                        <span key={t} className="hre-guidance-item">
-                          {t}
-                          <br />
-                        </span>
-                      ))}
-                    </span>
-                  </div>
+              {selectedGuidance.length > 0 || selectedFlowLine ? (
+                <div className="hre-detail-evidence">
+                  {selectedGuidance.length > 0 ? (
+                    <div className="hre-detail-line" data-testid="hre-guidance">
+                      <span className="k">자료 확인 안내</span>
+                      <span className="v">
+                        {selectedGuidance.map((t) => (
+                          <span key={t} className="hre-guidance-item">
+                            {t}
+                            <br />
+                          </span>
+                        ))}
+                      </span>
+                    </div>
+                  ) : null}
+                  {selectedFlowLine ? (
+                    <div className="hre-detail-line" data-testid="hre-price-flow">
+                      <span className="k">가격 흐름 기준</span>
+                      <span className="v">{selectedFlowLine}</span>
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
               <PriceChart ticker={selected} />
+              <div className="hre-detail-evidence">
+                <StoredVolumeBlock
+                  title={`${selectedRow?.name ?? selected} 거래량`}
+                  ev={selectedEvidence?.stored_volume}
+                  help={VOLUME_HELP}
+                  columns={4}
+                  headClassName="svb-head"
+                  referenceDate={basis?.reference_date}
+                />
+              </div>
               <NavConstituentsDetail item={selectedEvidence} />
               {onNavigate ? (
                 <button

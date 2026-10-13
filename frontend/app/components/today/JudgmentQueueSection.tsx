@@ -13,6 +13,8 @@ import type {
 } from "@/lib/api";
 import type { MenuKey } from "../LeftSidebar";
 import { fmtPct } from "./todayHelpers";
+import { describeMismatched } from "@/lib/priceBasis";
+import { aggregateHoldingsByTicker } from "../holdings_compare/helpers";
 
 // ── §4.2 판단 큐 (오늘 내가 확인할 것) ───────────────────────────────────────
 export default function JudgmentQueueSection({
@@ -40,6 +42,19 @@ export default function JudgmentQueueSection({
     evidence.phase === "success" ? evidence.data.judgment_summary ?? null : null;
   const needCheckCount = summary?.holdings?.coverage?.need_check ?? null;
   const topHoldings = summary?.holdings?.top_holdings ?? [];
+  // POC5-09 — 최대 3개는 backend 가 PC 비교 기준일에 맞는 후보로 다시 고른 결과(app/pc_price_basis.py).
+  // 기준일이 달라 뺀 종목은 자료 확인 사유로 따로 보인다(정상 · 안전 판정 아님 · 판정 §9-4-3).
+  const basis =
+    evidence.phase === "success" ? (evidence.data.price_basis ?? null) : null;
+  const mismatched = basis?.date_mismatch ?? [];
+  // POC5-09 설계 §10-2-2 — 최대 3개의 비중 · 손익은 「확인 근거」와 같은 종목 합산
+  // (aggregateHoldingsByTicker · 전체 계좌 평가 합 ÷ 전체 보유 평가 합 · (평가 합 − 매입 합) ÷ 매입 합).
+  // backend 요약의 비중 · 손익은 같은 종목의 첫 계좌 값이라 쓰지 않는다. 선정 · 순서 · 5일 · 20일 ·
+  // KODEX200 대비는 backend 요약 그대로. 보유 조회 전 · 실패면 비중 · 손익을 보이지 않는다.
+  const aggByTicker =
+    holdings.phase === "success"
+      ? new Map(aggregateHoldingsByTicker(holdings.data.items).map((a) => [a.ticker, a]))
+      : null;
   const candCount =
     market.phase === "success" && market.data.status === "ok"
       ? market.data.candidates.length
@@ -99,28 +114,40 @@ export default function JudgmentQueueSection({
             backend select_top_holdings). OCI 보유 브리핑은 20거래일 하락 구간과 자료 확인 불가
             (DATA_UNAVAILABLE_OR_STALE)로 고르므로(select_holdings) 기준이 다르다(POC5-UI-02 §2). */}
         {topHoldings.length > 0 ? (
-          <p className="tc-muted tc-small">최근 5거래일 변화가 낮은 보유 ETF부터 최대 3개</p>
+          <p className="tc-muted tc-small">
+            최근 5거래일 변화가 낮은 보유 ETF부터 최대 3개
+            {basis?.reference_date ? ` · PC 저장 가격 기준일 ${basis.reference_date}` : ""}
+          </p>
         ) : null}
         {topHoldings.length > 0 ? (
           <ul className="tc-today-holdings">
-            {topHoldings.map((r) => (
-              <li key={r.ticker}>
-                <span className="tc-th-name">{r.name ?? r.ticker}</span>{" "}
-                <span className="tc-muted tc-small">
-                  5일 {fmtPct(r.return_5d_pct)} · 20일 {fmtPct(r.return_20d_pct)} ·
-                  KODEX200 대비 {fmtPct(r.excess_vs_kodex200_20d_pctp)}
-                  {r.market_weight_pct != null
-                    ? ` · 비중 ${r.market_weight_pct.toFixed(1)}%`
-                    : ""}
-                  {r.pnl_rate_pct != null ? ` · 손익 ${fmtPct(r.pnl_rate_pct)}` : ""}
-                </span>
-              </li>
-            ))}
+            {topHoldings.map((r) => {
+              const agg = aggByTicker?.get(r.ticker) ?? null;
+              return (
+                <li key={r.ticker}>
+                  <span className="tc-th-name">{r.name ?? r.ticker}</span>{" "}
+                  <span className="tc-muted tc-small">
+                    5일 {fmtPct(r.return_5d_pct)} · 20일 {fmtPct(r.return_20d_pct)} ·
+                    KODEX200 대비 {fmtPct(r.excess_vs_kodex200_20d_pctp)}
+                    {agg?.market_weight_pct != null
+                      ? ` · 비중 ${agg.market_weight_pct.toFixed(1)}%`
+                      : ""}
+                    {agg?.pnl_rate_pct != null ? ` · 손익 ${fmtPct(agg.pnl_rate_pct)}` : ""}
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         ) : holdCount != null && holdCount > 0 ? (
           <p className="tc-muted tc-small">
             5일 흐름을 계산할 수 있는 보유 ETF가 없어 먼저 볼 종목을 정할 수 없습니다.
             &lsquo;확인 근거&rsquo;에서 자료 상태를 확인하세요.
+          </p>
+        ) : null}
+        {mismatched.length > 0 ? (
+          <p className="tc-muted tc-small" data-testid="tc-price-mismatch">
+            가격 기준일이 달라 이 비교에서 뺀 보유: {describeMismatched(mismatched)} — 자료
+            확인 필요
           </p>
         ) : null}
 

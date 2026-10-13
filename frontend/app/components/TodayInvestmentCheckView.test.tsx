@@ -263,20 +263,25 @@ describe("TodayInvestmentCheckView", () => {
     expect(text).not.toContain("개발 중");
   });
 
-  it("AC-13: 거래량·공격방어·SuperTrend 는 이번 단계 미도입으로 남는다", async () => {
+  it("AC-13: KOSPI 지수 거래량은 미제공 · 공격방어 · SuperTrend 는 이번 단계 미도입으로 남는다", async () => {
     await renderView();
     const detail = screen.getByLabelText("코스피 상세 (개발 중)");
-    // 이번 단계 미도입 부류만 남는다 (개발 중 4항목 제거됨).
-    expect(within(detail).getByText("거래량 흐름")).toBeInTheDocument();
+    // POC5-09 판정 §9-3 — 거래량 항목 = 'KOSPI 지수 거래량' · '미제공'.
+    expect(within(detail).getByText("KOSPI 지수 거래량")).toBeInTheDocument();
+    expect(within(detail).getByText("미제공")).toBeInTheDocument();
+    expect(within(detail).queryByText("거래량 흐름")).toBeNull();
     expect(within(detail).getByText("공격·방어 비중")).toBeInTheDocument();
     expect(within(detail).getByText(/SuperTrend/)).toBeInTheDocument();
     expect(within(detail).queryByText("일간 등락률")).toBeNull();
     expect(within(detail).queryByText("1년 수익률")).toBeNull();
-    // 거래량 미저장 사유는 hover 툴팁(title)로 제공.
+    // 사유는 hover 툴팁(title) — KOSPI 지수 거래량 미저장 · KODEX200 거래량은 ETF 한 종목 값.
     const volInfo = within(detail).getByRole("note", {
-      name: /거래량 자료를 저장하지 않아/,
+      name: /KOSPI 지수 거래량은 미저장입니다/,
     });
-    expect(volInfo).toHaveAttribute("title", expect.stringContaining("저장하지 않아"));
+    expect(volInfo).toHaveAttribute(
+      "title",
+      "KOSPI 지수 거래량은 미저장입니다. 표시되는 KODEX200 거래량은 ETF 한 종목의 값입니다.",
+    );
   });
 
   it("§4.4 board: 개발 중 + 이번 단계 미도입 기능을 모두 기록한다", async () => {

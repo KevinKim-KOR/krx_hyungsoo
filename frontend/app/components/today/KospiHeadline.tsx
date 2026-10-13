@@ -9,6 +9,8 @@ import type { QueryState } from "@/lib/api/queryCache";
 import type { MarketTopNResponse } from "@/lib/api";
 import { KOSPI_SOURCE_LINE } from "@/lib/kospiStatus";
 import KospiChart from "./KospiChart";
+import StoredVolumeBlock from "../StoredVolumeBlock";
+import { KODEX200_VOLUME_HELP } from "@/lib/storedVolume";
 import { KospiStatusBadges, KospiStatusLines } from "../KospiStatusNote";
 import {
   fmtKstDate,
@@ -135,6 +137,19 @@ export default function KospiHeadline({ market }: { market: QueryState<MarketTop
               ⓘ 이 값의 한계
             </span>
           </div>
+
+          {/* POC5-09 — KODEX200 한 종목의 저장 거래량(KOSPI 지수 거래량 아님 · 자기 기준일). */}
+          {market.phase === "success" ? (
+            <div className="tc-stat-block tc-divider">
+              <StoredVolumeBlock
+                title="KODEX200 거래량"
+                ev={market.data.kodex200_stored_volume}
+                help={KODEX200_VOLUME_HELP}
+                columns={2}
+                headClassName="tc-label"
+              />
+            </div>
+          ) : null}
 
           {/* 설계자 RESULT STEP 4-2 — 공식 자료원 표시(KRX 약관 제10조③). 차트 · 수익률을
               합친 이 카드에 한 줄(기준일과 같은 줄). */}

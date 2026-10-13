@@ -5,6 +5,7 @@
 
 import { request } from "./core";
 import type { Run } from "./runApproval";
+import type { StoredVolumeEvidence } from "./market";
 
 // ─── POC2 Step 1: holdings ───────────────────────────────────────────
 
@@ -227,6 +228,36 @@ export interface HoldingsMarketEvidenceItem {
   constituents_overlap: HoldingsMarketEvidenceConstituentsOverlap;
   nav_discount: HoldingsMarketEvidenceNavDiscount;
   evidence_notes: string[];
+  // POC5-09 — PC 화면 응답 사본의 선택 필드(backend app/pc_price_basis.py).
+  price_dates?: HoldingsMarketEvidencePriceDates | null;
+  stored_volume?: StoredVolumeEvidence | null;
+}
+
+// POC5-09 — 가격 흐름의 실제 계산 기준일 · 비교 기간 시작일과 현재 비교 가능성.
+// date_mismatch = 기준일이 PC 비교 기준일과 달라 5일 · 20일 · KODEX200 대비를 비움.
+// window_mismatch = 기준일은 같으나 KODEX200 비교 기간이 달라 그 대비값만 비움.
+export type PriceComparison = "ok" | "date_mismatch" | "window_mismatch" | "unavailable";
+
+export interface HoldingsMarketEvidencePriceDates {
+  end_date: string | null;
+  start_date_5d: string | null;
+  start_date_20d: string | null;
+  comparison: PriceComparison;
+}
+
+export interface PriceBasisMismatch {
+  ticker: string;
+  name: string | null;
+  end_date: string | null;
+}
+
+// PC 비교 기준일 = KODEX200 최신 저장 가격 날짜(단기 흐름 비교 계열).
+export interface PriceBasis {
+  reference_date: string | null;
+  reference_ticker: string;
+  kodex200_start_date_5d: string | null;
+  kodex200_start_date_20d: string | null;
+  date_mismatch: PriceBasisMismatch[];
 }
 
 export interface HoldingsMarketEvidenceSummary {
@@ -281,6 +312,8 @@ export interface HoldingsMarketEvidenceResponse {
   holdings: HoldingsMarketEvidenceItem[];
   // POC3-06 §6.1 additive — 공통 판단 요약(backend 단일 결과).
   judgment_summary?: JudgmentSummary | null;
+  // POC5-09 — PC 비교 기준일 · 기준일이 달라 현재 비교에서 뺀 종목.
+  price_basis?: PriceBasis | null;
   warnings: string[];
 }
 

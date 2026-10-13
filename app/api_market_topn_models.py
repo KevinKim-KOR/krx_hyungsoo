@@ -6,6 +6,8 @@ from typing import Optional
 
 from pydantic import BaseModel
 
+from app.stored_volume_evidence import StoredVolumeEvidence
+
 
 class MarketTopNEntry(BaseModel):
     # 결측은 None 통과, 강제 변환 / 0·"" / 0.0 fallback 절대 금지 — Frontend 가 "-" 표시.
@@ -276,6 +278,9 @@ class MarketTopNResponse(BaseModel):
     # 2026-07-03 Market Risk Reference v1 — 최상위 신규 필드 (지시문 §7).
     # 항상 존재하며, 데이터 부재 시 availability="unavailable" 로 응답.
     market_risk_reference: Optional[MarketRiskReference] = None
+    # POC5-09 — KODEX200 한 종목의 저장 거래량 관찰값(PC 「오늘의 투자 점검」 · 선택 필드).
+    # KOSPI 지수 거래량이 아니다.
+    kodex200_stored_volume: Optional[StoredVolumeEvidence] = None
 
 
 class MarketRefreshResponse(BaseModel):

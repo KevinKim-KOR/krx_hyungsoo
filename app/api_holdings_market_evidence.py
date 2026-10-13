@@ -30,6 +30,11 @@ from app.holdings_market_evidence import (
 )
 from app.market_data_store import DEFAULT_DB_PATH as MARKET_DB_PATH
 from app.market_topn import DEFAULT_BASIS, DEFAULT_N, DEFAULT_ORDER, compute_topn
+from app.pc_price_basis import apply_pc_price_basis, load_recent_price_rows
+from app.stored_volume_evidence import (
+    StoredVolumeEvidence,
+    compute_stored_volume_evidence,
+)
 
 router = APIRouter()
 
@@ -104,6 +109,15 @@ class NavDiscountPayload(BaseModel):
     message: Optional[str] = None
 
 
+class PriceDates(BaseModel):
+    # 실제 계산 이력의 기준일 · 비교 기간 시작일(pc_price_basis).
+    end_date: Optional[str] = None
+    start_date_5d: Optional[str] = None
+    start_date_20d: Optional[str] = None
+    # ok / date_mismatch / window_mismatch / unavailable
+    comparison: str
+
+
 class HoldingEvidenceItem(BaseModel):
     ticker: str
     name: str
@@ -116,6 +130,24 @@ class HoldingEvidenceItem(BaseModel):
     constituents_overlap: ConstituentsOverlapPayload
     nav_discount: NavDiscountPayload
     evidence_notes: list[str] = []
+    # POC5-09 — PC 화면용 선택 필드(이 응답 사본에만 · 공유 builder 결과에는 없음).
+    price_dates: Optional[PriceDates] = None
+    stored_volume: Optional[StoredVolumeEvidence] = None
+
+
+class PriceBasisMismatch(BaseModel):
+    ticker: str
+    name: Optional[str] = None
+    end_date: Optional[str] = None
+
+
+class PriceBasis(BaseModel):
+    # PC 비교 기준일 = KODEX200 최신 저장 가격 날짜(단기 흐름 비교 계열).
+    reference_date: Optional[str] = None
+    reference_ticker: str
+    kodex200_start_date_5d: Optional[str] = None
+    kodex200_start_date_20d: Optional[str] = None
+    date_mismatch: list[PriceBasisMismatch] = []
 
 
 class EvidenceSummary(BaseModel):
@@ -148,6 +180,8 @@ class HoldingsMarketEvidenceResponse(BaseModel):
     # 2026-08-04 POC3-06 §6.1 — 공통 판단 요약(backend 단일 계산 결과). Dashboard·PUSH
     # 가 이 동일 객체를 표시한다. composer 가 만든 dict 를 그대로 통과(중첩 구조 보존).
     judgment_summary: Optional[dict[str, Any]] = None
+    # POC5-09 — PC 비교 기준일 · 기준일이 달라 현재 비교에서 뺀 종목(선택 필드).
+    price_basis: Optional[PriceBasis] = None
     warnings: list[str] = []
 
 
@@ -200,13 +234,20 @@ def get_holdings_market_evidence_latest() -> HoldingsMarketEvidenceResponse:
         order=DEFAULT_ORDER,
     )
 
-    evidence = build_holdings_market_evidence(
+    shared = build_holdings_market_evidence(
         holdings=loaded,
         topn_payload=topn_payload,
         market_quotes=relevant_quotes,
         db_path=MARKET_DB_PATH,
         holdings_asof=holdings_asof,
     )
+
+    # POC5-09 — PC 화면용 사본: 가격 흐름 기준일 정정 · 최대 3개 재선정(공유 builder
+    # 결과는 PUSH · 초안이 쓰므로 그대로) + 저장 거래량. 같은 최근 행 읽기를 둘이 쓴다.
+    rows_by_ticker = load_recent_price_rows(
+        [h["ticker"] for h in shared.get("holdings", [])], db_path=MARKET_DB_PATH
+    )
+    evidence = apply_pc_price_basis(shared, rows_by_ticker)
 
     return HoldingsMarketEvidenceResponse(
         status=evidence["status"],
@@ -215,7 +256,16 @@ def get_holdings_market_evidence_latest() -> HoldingsMarketEvidenceResponse:
         market_asof=evidence.get("market_asof"),
         market_context=_to_market_context_response(evidence.get("market_context")),
         summary=EvidenceSummary(**evidence["summary"]),
-        holdings=[HoldingEvidenceItem(**h) for h in evidence.get("holdings", [])],
+        holdings=[
+            HoldingEvidenceItem(
+                **h,
+                stored_volume=compute_stored_volume_evidence(
+                    h["ticker"], rows_by_ticker[h["ticker"]]
+                ),
+            )
+            for h in evidence.get("holdings", [])
+        ],
         judgment_summary=evidence.get("judgment_summary"),
+        price_basis=PriceBasis(**evidence["price_basis"]),
         warnings=list(evidence.get("warnings") or []),
     )

@@ -26,10 +26,11 @@ const DEV_IN_PROGRESS: DevItem[] = [
 ];
 
 const DEV_NOT_IN_STEP: DevItem[] = [
+  // POC5-09 판정 §9-3 — 저장 거래량 관찰값 제공(이름 · 배지 · 설명 확정 · 자리는 그대로).
   {
-    name: "거래량 흐름",
-    badge: "이번 단계 미도입",
-    desc: "거래량 자료 미저장 — 신규 수집 필요.",
+    name: "저장 거래량 확인 근거",
+    badge: "일부 제공",
+    desc: "저장 거래량과 직전 20개 저장일 평균 대비를 제공합니다. 종목 상세와 KODEX200 영역에서 확인합니다. 종합 위험 분류에는 아직 반영하지 않습니다.",
   },
   {
     name: "공격·방어 비중",
@@ -51,9 +52,9 @@ function DevList({ items }: { items: DevItem[] }) {
           {d.name}{" "}
           <span
             className={
-              d.badge === "개발 중"
-                ? "tc-badge tc-badge-dev"
-                : "tc-badge tc-badge-off"
+              d.badge === "이번 단계 미도입"
+                ? "tc-badge tc-badge-off"
+                : "tc-badge tc-badge-dev"
             }
           >
             {d.badge}
