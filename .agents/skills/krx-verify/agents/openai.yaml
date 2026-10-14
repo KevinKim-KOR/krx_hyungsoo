@@ -1,0 +1,6 @@
+interface:
+  display_name: "KRX 구현 검증"
+  short_description: "설계·결과서·Git 변경을 대조하고 검증 기준과 문서 정정을 기록합니다"
+  default_prompt: "$krx-verify 스킬로 이번 개발 결과를 검증하고 한국어로 판정을 보고해 주세요."
+policy:
+  allow_implicit_invocation: true
