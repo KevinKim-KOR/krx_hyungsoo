@@ -2,7 +2,7 @@
 // 한 종목에 이익 계좌와 손실 계좌가 함께 있을 때 두 화면 값이 같고, backend 요약의 첫 계좌 값은
 // 쓰지 않는다. 선정 · 순서 · 5일 · 20일 · KODEX200 대비는 backend 요약 그대로.
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, act } from "@testing-library/react";
+import { render, screen, act, fireEvent } from "@testing-library/react";
 import { __resetQueryCache, type QueryState } from "@/lib/api/queryCache";
 import type {
   EnrichedHoldingsResult,
@@ -96,6 +96,8 @@ describe("최대 3개 비중 · 손익 = 종목 합산 (POC5-09 설계 §10-2-2)
         onNavigate={() => undefined}
       />,
     );
+    // POC5-UI-03 — 20일 · KODEX200 대비 · 손익은 종목별 '수치 더보기'(기본 접힘). 펼친 뒤 확인한다.
+    screen.getAllByRole("button", { name: /수치 더보기$/ }).forEach((b) => fireEvent.click(b));
     const weight = `비중 ${KODEX_WEIGHT.toFixed(1)}%`;
     const pnl = `손익 +${KODEX_PNL.toFixed(2)}%`;
     const today = screen.getByLabelText("오늘 내가 확인할 것").textContent ?? "";
@@ -106,7 +108,10 @@ describe("최대 3개 비중 · 손익 = 종목 합산 (POC5-09 설계 §10-2-2)
     // backend 요약의 첫 계좌 값은 쓰지 않는다 · 5일 · 20일 · KODEX200 대비는 그대로.
     expect(today).not.toContain("비중 9.0%");
     expect(today).not.toContain("-2.87%");
-    expect(today).toContain("5일 -3.56% · 20일 -4.67% · KODEX200 대비 +0.00%");
+    expect(today).toContain("5일 -3.56%");
+    expect(today).toContain("20일 -4.67% · KODEX200 대비 +0.00%");
+    // 0 은 값이다 — 'KODEX200 대비 자료 없음' 안내를 내지 않는다.
+    expect(today).not.toContain("자료 없음");
 
     render(<HoldingsRiskEvidenceSection />);
     await act(async () => {
@@ -127,6 +132,8 @@ describe("최대 3개 비중 · 손익 = 종목 합산 (POC5-09 설계 §10-2-2)
         onNavigate={() => undefined}
       />,
     );
+    // 값이 '없다'를 보는 시험은 펼친 상태에서 본다(UI-03 판정 §3).
+    screen.getAllByRole("button", { name: /수치 더보기$/ }).forEach((b) => fireEvent.click(b));
     const today = screen.getByLabelText("오늘 내가 확인할 것").textContent ?? "";
     expect(today).toContain("KODEX 200");
     expect(today).not.toMatch(/비중|손익 /);

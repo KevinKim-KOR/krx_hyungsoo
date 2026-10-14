@@ -3,7 +3,7 @@
 // 같은 생성기를 쓰는지, 상태별 배지 · 기준 줄 · 사유 줄이 확정 문구와 같은지,
 // 기술 토큰 · KODEX200 축 지연이 화면에 나오지 않는지 본다.
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, within, fireEvent } from "@testing-library/react";
 import type { MarketContext, MarketContextKospi, MarketTopNResponse } from "@/lib/api";
 import type { QueryState } from "@/lib/api/queryCache";
 
@@ -219,6 +219,7 @@ describe("kospiStatusView — 상태별 확정 문구", () => {
 describe("두 화면이 같은 생성기를 쓴다", () => {
   it("「오늘의 투자 점검」 KOSPI 카드 — 지연 상태", () => {
     render(<KospiHeadline market={marketState(STALE)} />);
+    fireEvent.click(screen.getByRole("button", { name: "시장 수치와 거래량 펼치기" })); // UI-03 접힌 시장 칸
     const card = screen.getByLabelText("KOSPI 현재 위치");
     const label = within(card).getByText(/코스피 수익률·위치/);
     expect(within(label).getByText("기준일 지연")).toHaveClass("kospi-badge", "warn");
@@ -229,6 +230,7 @@ describe("두 화면이 같은 생성기를 쓴다", () => {
 
   it("「오늘의 투자 점검」 KOSPI 카드 — 정상은 값 + 기준일만", () => {
     render(<KospiHeadline market={marketState(OK)} />);
+    fireEvent.click(screen.getByRole("button", { name: "시장 수치와 거래량 펼치기" })); // UI-03 접힌 시장 칸
     const card = screen.getByLabelText("KOSPI 현재 위치");
     expect(card.textContent).toContain("1개월");
     expect(card.textContent).toContain("KOSPI 기준일 2026-09-28");
@@ -239,9 +241,16 @@ describe("두 화면이 같은 생성기를 쓴다", () => {
   it("「오늘의 투자 점검」 KOSPI 카드 — 불러오는 중은 '확인 중'", () => {
     render(<KospiHeadline market={{ phase: "loading" }} />);
     const card = screen.getByLabelText("KOSPI 현재 위치");
-    expect(card.textContent).toContain("확인 중");
-    expect(card.textContent).not.toContain("아직 평가되지 않음");
-    expect(card.querySelector(".kospi-badge")).toBeNull();
+    // UI-03 — '없다' 확인은 접힌 칸을 편 뒤에도 본다(판정 §3).
+    for (const step of ["접힘", "펼침"]) {
+      if (step === "펼침") {
+        fireEvent.click(screen.getByRole("button", { name: "시장 수치와 거래량 펼치기" }));
+      }
+      expect(within(card).getByTestId("tc-kospi-daily").textContent).toContain("확인 중");
+      expect(card.textContent).not.toContain("아직 평가되지 않음");
+      expect(card.querySelector(".kospi-badge")).toBeNull();
+    }
+    expect(card.querySelectorAll(".kospi-status-loading").length).toBeGreaterThan(1);
   });
 
   it("「요즘 잘 오르는 ETF」 시장 배경 — 같은 문구 · KOSPI 영문 경고만 숨김", () => {
@@ -277,6 +286,7 @@ describe("두 화면이 같은 생성기를 쓴다", () => {
       today_is_trading_day: true,
     };
     const { unmount } = render(<KospiHeadline market={marketState(kospi)} />);
+    fireEvent.click(screen.getByRole("button", { name: "시장 수치와 거래량 펼치기" })); // UI-03 접힌 시장 칸
     const today = screen.getByLabelText("KOSPI 현재 위치");
     expect(within(today).getByText("수집 결과 없음")).toHaveClass("kospi-badge", "warn");
     expect(today.textContent).toContain(shown);
@@ -297,6 +307,7 @@ describe("두 화면이 같은 생성기를 쓴다", () => {
 
   it("두 화면의 상태 줄 텍스트가 같다", () => {
     const { unmount } = render(<KospiHeadline market={marketState(STALE)} />);
+    fireEvent.click(screen.getByRole("button", { name: "시장 수치와 거래량 펼치기" })); // UI-03 접힌 시장 칸
     const a = document.querySelector("[data-kospi-state]")?.textContent;
     unmount();
     render(<MarketContextCard ctx={ctxWith(STALE)} />);

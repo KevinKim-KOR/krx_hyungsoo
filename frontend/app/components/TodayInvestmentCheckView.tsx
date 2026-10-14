@@ -17,11 +17,13 @@
 // - §4.3 자료 업데이트 필요 (정비 큐): 자료 최신성/미수집/실패 + 경량 갱신(Q7:
 //   저장값 재조회 + holdings/market/refresh) + 항목별 대량 갱신 화면 이동(Q8).
 // - §4.4 개발 중인 판단 기능: 미구현 기능을 숨기지 않고 정직하게 표시.
+// - POC5-UI-03 정보 배치: 「코스피 상세 지표」 · 「개발 중인 판단 기능」은 화면 아래
+//   「현재 제공 범위와 남은 기능」 한 묶음(기본 접힘 · 항목 · 배지 · 설명 그대로).
 //
 // 데이터: 모두 기존 경로 재사용 + POC3-01 KOSPI 시계열 read 확장. 신규 산식/소스 없음.
 // Dashboard 와 같은 조회 조건은 같은 캐시 키 공유(화면 왕복 재조회 방지).
 
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import {
   fetchMarketTopnLatest,
   type MarketTopNResponse,
@@ -33,7 +35,7 @@ import {
   type NavDiscountLatestResponse,
   refreshMarket,
 } from "@/lib/api";
-import { useSharedQuery } from "@/lib/api/queryCache";
+import { useSharedQuery, type QueryState } from "@/lib/api/queryCache";
 import {
   DASH_KEY_MARKET,
   DASH_KEY_HOLDINGS,
@@ -56,6 +58,36 @@ import { useLightRefreshState } from "./today/useLightRefreshState";
 
 interface Props {
   onNavigate: (key: MenuKey) => void;
+}
+
+// POC5-UI-03 — 두 안내 구역(코스피 상세 지표 · 개발 중인 판단 기능)을 화면 아래 한 묶음으로.
+// 기본 접힘 · 화면 안 상태만(저장소 · 설정 없음). 요구사항 폐기 · 기능 삭제가 아니다(설계 §4).
+function ScopeSection({ market }: { market: QueryState<MarketTopNResponse> }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <section className="tc-card" aria-label="현재 제공 범위와 남은 기능">
+      <div className="tc-fold-head">
+        <h2 className="tc-h2" style={{ marginBottom: 0 }}>
+          현재 제공 범위와 남은 기능
+        </h2>
+        <button
+          type="button"
+          className="btn-md tc-fold-btn"
+          aria-expanded={open}
+          aria-label={open ? "현재 제공 범위와 남은 기능 접기" : "현재 제공 범위와 남은 기능 펼치기"}
+          onClick={() => setOpen((v) => !v)}
+        >
+          {open ? "접기" : "펼치기"}
+        </button>
+      </div>
+      {open ? (
+        <div className="tc-fold-body">
+          <KospiDetailSection market={market} />
+          <InDevelopmentSection />
+        </div>
+      ) : null}
+    </section>
+  );
 }
 
 export default function TodayInvestmentCheckView({ onNavigate }: Props) {
@@ -116,9 +148,9 @@ export default function TodayInvestmentCheckView({ onNavigate }: Props) {
       </header>
 
       {/* §4.1: 코스피 대표 영역은 최상단 전체 폭 (사용자 요청 "가로로 제일 길게").
-          코스피 헤드라인 + 상세 지표를 위에 붙이고, 그 아래 판단 큐 + 정비 큐 2열. */}
+          POC5-UI-03 — 코스피 헤드라인(시장 수치와 거래량은 카드 안에서 펼침) → 판단 큐 + 정비 큐 2열
+          → 맨 아래 「현재 제공 범위와 남은 기능」(코스피 상세 지표 · 개발 중인 판단 기능 묶음). */}
       <KospiHeadline market={market} />
-      <KospiDetailSection market={market} />
 
       <div className="tc-queue-grid">
         <JudgmentQueueSection
@@ -136,7 +168,7 @@ export default function TodayInvestmentCheckView({ onNavigate }: Props) {
         />
       </div>
 
-      <InDevelopmentSection />
+      <ScopeSection market={market} />
     </div>
   );
 }

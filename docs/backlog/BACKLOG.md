@@ -97,6 +97,8 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 `DEF-KOSPI-BENCHMARK-VALUE-ASOF-INTEGRITY` = **해소**(`POC3-OPS-02B-1` `988b0494`).
 (이전 표기 '현재 열린 결함: 3건'은 2026-09-07 기준.)
 `DEF-PRICE-EQUITY-REFRESH` = **재개 (2026-10-13 · `POC5-09` 설계 §9-4)** — PC 화면 영향(아래 절 머리) · 화면 오용 정정 = `POC5-09`(검증자 VERIFIED · 실화면 확인 · 종료 2026-10-13) · **수집 원인 = `POC5-10` 해소(검증자 r2 VERIFIED · 실제 수집 2026-10-13: 3종목 08-12 → 10-13 · 08-13 이후 39행 · 현재 비교 복귀)** → 결함 닫음. (2026-09-06 철회는 운영 PUSH 기준 판단 · 운영은 지금도 정상.)
+`DEF-PC-VIX-REFRESH-MISSING` = **열림 (2026-10-14 · `POC5-UI-03` PLAN 설계 밖 발견 · 대응 `POC5-11` PLAN 제출)** — PC 갱신에 VIX 단계 없음 · PC VIX 기준일 2026-09-11.
+`DEF-MARKET-CONTEXT-ASOF-MEANING` = **열림 (2026-10-14 · 같은 발견 · 대응 `POC5-11`)** — `market_context.asof` 이름(KODEX200 기준일 · 계약 ⑤)과 값(저장 가격 표 전체 최신일)이 다름 · 오늘 화면 이름은 `POC5-UI-03` 에서 '저장 가격 최신일'로 임시 정정.
 `DEF-ML-CHAIN` 은 **2026-08-25 해소**됐다.
 
 ### ~~DEF-ML-CHAIN — ML feature/evidence 생성 체인 미작동~~ → **해소 (2026-08-25)**
@@ -262,6 +264,36 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
   `scripts/_market_refresh/vix_ingest.py` 다(OCI 보호는 앞의 배치 경유 호출에만 적용).
 
 ---
+
+### DEF-PC-VIX-REFRESH-MISSING — PC 갱신에 VIX(시장 불안 지표) 단계가 없음
+
+**등재**: 2026-10-14 · **발견**: `POC5-UI-03` 전체 화면 목업 기록 응답(PLAN §5-1) · **대응**: `POC5-11` PC 시장 자료 갱신 연결 · 기준일 정정(설계자 확정 2026-10-14 · PLAN 제출 · 구현 미승인).
+
+- 상태: **열림** — 실제 수집 확인 뒤 닫는다(설계자 판정 §4).
+- 사실(2026-10-14 · 코드 · 기록 응답)
+  - PC 시장 DB VIX 기준일은 2026-09-11 이고, KODEX200 은 2026-10-13 이다.
+  - PC 갱신(`app/market_refresh_service.py`)에는 VIX 단계가 없다(`grep -i vix` 0건).
+  - VIX 갱신(`app/market_benchmark_batch.py :: refresh_vix`)을 부르는 곳은 OCI 08:10 배치(`scripts/run_oci_market_data_batch.py:283`)와 수동 명령(`scripts/refresh_market_timeseries.py vix`)뿐이다.
+- 사용자 영향
+  - 「오늘의 투자 점검」 「자료 최신화 필요」에 '시장 불안 지표가 오래되었습니다 (기준일 2026-09-11)'가 남는다.
+  - 그 항목의 [시장 자료 업데이트로] → 갱신을 눌러도 풀리지 않는다.
+- OCI 운영(PUSH)은 영향이 없다(OCI 배치는 VIX 를 받음 · OCI VIX 날짜는 이번에 확인하지 않음).
+
+### DEF-MARKET-CONTEXT-ASOF-MEANING — `market_context.asof` 의 이름과 값이 다름
+
+**등재**: 2026-10-14 · **발견**: `POC5-UI-03` PLAN 검토 · **대응**: `POC5-11`(PC 화면 API 만 · OCI · PUSH 불변).
+
+- 상태: **열림** — 정정 · 실화면 확인 뒤 닫는다.
+- 이름과 값
+  - 코드 주석 계약 ⑤(`app/market_regime.py:449`)는 `market_context.asof` 를 'KODEX200 기준일'(`asof_source = "KODEX200"`)로 정했다.
+  - 실제 값은 `compute_topn` 의 `asof_iso` = `etf_daily_price` 전체 `MAX(date)`(`app/market_topn_helpers.py :: _latest_date_in_db` · 종목 · 종가 조건 없음 · POC5-10 이후 보유 개별주 행 포함)다.
+  - 이 값은 `compute_market_context` 안에서 계산에 쓰이지 않는 표시 메타다.
+- 사용자 영향
+  - 「오늘의 투자 점검」 기존 시장 판정 줄이 이 값을 '기준일'로 보였다.
+  - `POC5-UI-03` 에서 이름을 '저장 가격 최신일(저장된 전체 종목 기준)'으로 고쳤다(값 그대로 · 임시).
+- 범위 밖(기록만)
+  - OCI 근거 문장 'KODEX200 최근 수익률 ({asof} 기준)'(`app/runtime_evidence/market_discovery.py:61`)도 최상위 `asof`(전체 최신일)를 쓴다.
+  - 판정상 OCI · PUSH 불변이라 이번에 바꾸지 않는다.
 
 ### 승격 시점 원문 (참고 보존)
 

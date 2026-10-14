@@ -1,7 +1,7 @@
 // POC5-09 — 「오늘의 투자 점검」: KODEX200 거래량 칸 · 최대 3개 기준일 · 기준일이 달라 뺀 보유 ·
 // 두 안내 카드의 거래량 문구(판정 §9-3 · §9-4-3). 부모가 받은 응답만 표시한다(추가 조회 없음).
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, within, act } from "@testing-library/react";
+import { render, screen, within, act, fireEvent } from "@testing-library/react";
 import { __resetQueryCache, type QueryState } from "@/lib/api/queryCache";
 import type {
   EnrichedHoldingsResult,
@@ -116,6 +116,8 @@ async function renderHeadline(m: QueryState<MarketTopNResponse>) {
   await act(async () => {
     await Promise.resolve();
   });
+  // POC5-UI-03 — KODEX200 거래량은 '시장 수치와 거래량'(기본 접힘) 안에 있다.
+  fireEvent.click(screen.getByRole("button", { name: "시장 수치와 거래량 펼치기" }));
 }
 
 describe("「오늘의 투자 점검」 저장 거래량 · 가격 기준일 (POC5-09)", () => {
@@ -163,6 +165,9 @@ describe("「오늘의 투자 점검」 저장 거래량 · 가격 기준일 (PO
     expect(screen.getByTestId("tc-price-mismatch").textContent).toBe(
       "가격 기준일이 달라 이 비교에서 뺀 보유: 삼성전자 · SK하이닉스 · 삼성SDI(저장 가격 기준일 2026-08-12) — 자료 확인 필요",
     );
+    // UI-03 — '없다' 확인은 종목별 수치를 편 뒤에도 본다(판정 §3).
+    screen.getAllByRole("button", { name: /수치 더보기$/ }).forEach((b) => fireEvent.click(b));
+    expect(screen.getByLabelText("오늘 내가 확인할 것").textContent).toContain("20일 -11.76%");
     const text = screen.getByLabelText("오늘 내가 확인할 것").textContent ?? "";
     expect(text).not.toMatch(/정상|안전|위험 경보/);
   });

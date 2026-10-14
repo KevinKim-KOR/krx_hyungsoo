@@ -153,6 +153,20 @@ beforeEach(() => {
   primeAll();
 });
 
+// POC5-UI-03 — 접기(시장 수치와 거래량 · 수치 더보기 · 현재 제공 범위와 남은 기능 · 모두 보기)를
+// 모두 편다. 이 파일의 시험은 펼친 상태(예전처럼 모든 값이 그려진 상태)에서 확인한다. 값이 '없다'를
+// 보는 시험(AC-7 · §3.1 등)이 접힌 칸 때문에 아무것도 보지 않고 통과하지 않게 한다(판정 §3).
+// 접힌 기본 상태는 `today/TodayFolds.test.tsx` 가 따로 본다.
+function expandAll() {
+  for (let i = 0; i < 10; i++) {
+    const closed = document.querySelectorAll<HTMLButtonElement>(
+      'button.tc-fold-btn[aria-expanded="false"]',
+    );
+    if (closed.length === 0) return;
+    closed.forEach((b) => fireEvent.click(b));
+  }
+}
+
 async function renderView() {
   const onNavigate = vi.fn();
   render(<TodayInvestmentCheckView onNavigate={onNavigate} />);
@@ -167,11 +181,14 @@ async function renderView() {
     expect(screen.queryByText(/불러오는 중/)).toBeNull();
   });
   // 시장 조회가 실제로 **반영**됐는지 확인한다. `KospiHeadline` 은 로딩 표시가
-  // 없어서 위 대기만으로는 부족하다. 기존 시장 판정 줄의 ` · 기준일 YYYY-MM-DD`
-  // 는 시장 응답이 반영돼야 나오고, 어느 fixture 에서도 통하는 앵커다.
+  // 없어서 위 대기만으로는 부족하다. 펼친 기존 시장 판정 줄의 ` · 저장 가격 최신일
+  // YYYY-MM-DD` 는 시장 응답이 반영돼야 나오고, 어느 fixture 에서도 통하는 앵커다
+  // (UI-03 판정 Q1 — 예전 이름 '기준일').
   // (POC3-02D-OPS-03 설계자 RESULT STEP 4-3 — '마지막 자료 기준일' 은 이제 KOSPI
   // 기준일이라 KOSPI 기준일이 없는 fixture 에서는 나오지 않아 앵커로 쓰지 않는다.)
-  await screen.findByText(/· 기준일 \d{4}-\d{2}-\d{2}/);
+  expandAll();
+  await screen.findByText(/· 저장 가격 최신일 \d{4}-\d{2}-\d{2}/);
+  expandAll(); // 앵커 뒤에 그려진 최대 3개 행의 '수치 더보기'까지.
   return { onNavigate };
 }
 
@@ -255,7 +272,8 @@ describe("TodayInvestmentCheckView", () => {
     const headline = screen.getByLabelText("KOSPI 현재 위치");
     const text = headline.textContent ?? "";
     // 일간·1년·최근 1년 고점 대비 실제값 (개발 중 자리표시자 아님).
-    expect(text).toContain("일간");
+    // UI-03 — 일간은 기본 화면 '코스피 일간 변화' 칸의 값(fixture -1.5%).
+    expect(screen.getByTestId("tc-kospi-daily").textContent).toContain("-1.50%");
     expect(text).toContain("최근 1년 고점 대비");
     // 흐름 지속 거래일 수 실제값.
     expect(text).toContain("12거래일째");
@@ -817,5 +835,88 @@ describe("TodayInvestmentCheckView", () => {
     expect(within(judgment).getByText("최근 5거래일 변화가 낮은 보유 ETF부터 최대 3개")).toBeInTheDocument();
     expect(text).toContain("보유 ETF의 수치와 확인 근거는");
     expect(text).not.toMatch(/위험 등급|매도/);
+  });
+});
+
+// ── POC5-UI-03 — 기본 접힘 화면(전체) ────────────────────────────────────────
+describe("POC5-UI-03 「오늘의 투자 점검」 기본 화면 · 아래 묶음 · 0건 카드", () => {
+  async function renderFolded() {
+    render(<TodayInvestmentCheckView onNavigate={vi.fn()} />);
+    await waitFor(() => {
+      expect(screen.queryByText(/불러오는 중/)).toBeNull();
+    });
+    // 시장 응답 반영 앵커 = 기본 화면 일간 변화 값(fixture -1.5%).
+    await screen.findByText("-1.50%");
+  }
+
+  it("배치 — KOSPI 카드 바로 아래 두 큐 · 맨 아래 「현재 제공 범위와 남은 기능」(기본 접힘)", async () => {
+    await renderFolded();
+    const headline = screen.getByLabelText("KOSPI 현재 위치");
+    expect(headline.nextElementSibling).toHaveClass("tc-queue-grid");
+    const scope = screen.getByLabelText("현재 제공 범위와 남은 기능");
+    expect(scope.parentElement?.lastElementChild).toBe(scope);
+    for (const name of ["시장 수치와 거래량 펼치기", "현재 제공 범위와 남은 기능 펼치기"]) {
+      const b = screen.getByRole("button", { name });
+      expect(b).toHaveAttribute("aria-expanded", "false");
+      expect(b).toHaveClass("btn-md");
+    }
+    // 접힌 칸은 그리지 않는다.
+    expect(screen.queryByLabelText("코스피 상세 (개발 중)")).toBeNull();
+    expect(screen.queryByLabelText("개발 중인 판단 기능")).toBeNull();
+    expect(screen.queryByText("KOSPI 지수 거래량")).toBeNull();
+    expect(screen.queryByText("하락장")).toBeNull();
+  });
+
+  it("아래 묶음을 펼치면 두 안내 구역의 항목 · 배지 · 설명이 모두 그대로", async () => {
+    await renderFolded();
+    fireEvent.click(screen.getByRole("button", { name: "현재 제공 범위와 남은 기능 펼치기" }));
+    const detail = screen.getByLabelText("코스피 상세 (개발 중)");
+    expect(within(detail).getByRole("heading", { name: "코스피 상세 지표" })).toBeInTheDocument();
+    for (const [name, badge] of [
+      ["KOSPI 지수 거래량", "미제공"],
+      ["공격·방어 비중", "이번 단계 미도입"],
+      ["추세 전환선 (SuperTrend)", "이번 단계 미도입"],
+    ]) {
+      const row = within(detail).getByText(name).closest("span") as HTMLElement;
+      expect(row.textContent).toContain(badge);
+      expect(within(row).getByRole("note")).toHaveAttribute("title");
+    }
+    const board = screen.getByLabelText("개발 중인 판단 기능");
+    expect(within(board).getByRole("heading", { name: "개발 중인 판단 기능" })).toBeInTheDocument();
+    for (const [name, badge, desc] of [
+      ["내가 가진 ETF의 위험 신호", "개발 중", "보유 ETF 중 먼저 점검할 종목과 그 이유를 찾는 기능."],
+      ["시장 흐름 전환까지의 거리", "개발 중", "현재는 KODEX200 기준선 대비 위치만 참고로 제공합니다."],
+      ["저장 거래량 확인 근거", "일부 제공", "종합 위험 분류에는 아직 반영하지 않습니다."],
+      ["공격·방어 비중", "이번 단계 미도입", "매매 비중 판단 표시는 이번 단계 범위 밖."],
+      ["추세 전환선 (SuperTrend)", "이번 단계 미도입", "신규 추세 전환 지표 — 후속 위험 신호 단계에서 검토."],
+    ]) {
+      const li = within(board).getByText(name).closest("li") as HTMLElement;
+      expect(li.textContent).toContain(badge);
+      expect(li.textContent).toContain(desc);
+    }
+    fireEvent.click(screen.getByRole("button", { name: "현재 제공 범위와 남은 기능 접기" }));
+    expect(screen.queryByLabelText("개발 중인 판단 기능")).toBeNull();
+  });
+
+  it("판정 Q2 — 자료 문제 0건이어도 「자료 최신화 필요」 카드 · '최신' 한 줄 · 업데이트 버튼은 그대로", async () => {
+    fetchEnrichedHoldings.mockResolvedValue({
+      items: [{ ticker: "069500", name: "KODEX200", price_missing: false }],
+    });
+    fetchHoldingsMarketEvidence.mockResolvedValue(
+      evidenceOk({ evidence_unavailable_count: 0, constituents_unavailable_count: 0 }),
+    );
+    fetchMarketTopnLatest.mockResolvedValue(
+      marketOk({
+        market_risk_reference: {
+          kodex200: { availability: "available", as_of_date: "2026-07-24", recent_20d_series: [] },
+          vix: { availability: "available", as_of_date: "2026-07-24", recent_20d_series: [] },
+        },
+      }),
+    );
+    await renderFolded();
+    const maint = screen.getByLabelText("자료 최신화 필요");
+    expect(maint.textContent).toContain("0건");
+    expect(maint.textContent).toContain("보유 종목 현재가는 최신 상태입니다");
+    expect(within(maint).getByRole("button", { name: "업데이트" })).toBeInTheDocument();
   });
 });

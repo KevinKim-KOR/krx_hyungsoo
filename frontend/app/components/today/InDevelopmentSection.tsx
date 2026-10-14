@@ -68,8 +68,9 @@ function DevList({ items }: { items: DevItem[] }) {
 
 export default function InDevelopmentSection() {
   return (
-    <section className="tc-card" aria-label="개발 중인 판단 기능">
-      <h2 className="tc-h2">개발 중인 판단 기능</h2>
+    // POC5-UI-03 — 「현재 제공 범위와 남은 기능」 묶음 안 하위 구역(카드 테두리 · 제목 단계만 바뀜).
+    <section className="tc-sub tc-divider" aria-label="개발 중인 판단 기능">
+      <h3 className="tc-h3">개발 중인 판단 기능</h3>
       <p className="tc-muted tc-small" style={{ marginBottom: 12 }}>
         이번 화면에 넣기로 했으나 아직 없는 기능과, 이번 단계에서는 넣지 않기로 한
         기능을 모두 기록합니다. 값이 없어 숨긴 것이 아니라 앞으로 만들 목록입니다.

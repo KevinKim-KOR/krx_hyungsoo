@@ -2505,10 +2505,20 @@ textarea.decision-textarea {
 .tc-btn:hover { background: #0055aa; }
 .tc-btn:disabled { background: var(--border); border-color: var(--border); color: var(--muted); cursor: default; }
 .tc-btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
-/* POC3-06 — 오늘 먼저 볼 보유 ETF 최대 3건 목록. */
-.tc-today-holdings { margin: 8px 0; padding-left: 18px; }
-.tc-today-holdings li { margin-bottom: 4px; font-size: 14px; }
+/* POC3-06 — 오늘 먼저 볼 보유 ETF 최대 3건 목록.
+   POC5-UI-03 — 한 줄 = 이름 · 5일 · 비중 · [수치 더보기]. 값 칸은 행마다 같은 폭(정렬) · 이름은 단어 단위
+   줄바꿈(긴 한 단어만 안에서 끊음). 20일 · KODEX200 대비 · 손익은 펼친 줄. */
 .tc-th-name { font-weight: 600; }
+.tc-top-list { list-style: none; margin: 8px 0; padding-left: 0; display: flex; flex-direction: column; }
+.tc-top-list > li { border-bottom: 1px solid var(--border); padding: 6px 0; }
+.tc-top-list > li:last-child { border-bottom: none; }
+.tc-top-row {
+  display: grid; grid-template-columns: minmax(0, 1fr) 5.8em 5.2em auto;
+  gap: 10px; align-items: center; font-size: 15px;
+}
+.tc-top-row .tc-th-name { word-break: keep-all; overflow-wrap: anywhere; }
+.tc-top-v { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.tc-top-more { padding: 4px 0 2px; }
 .tc-btn-link {
   background: transparent; color: #0066cc; border: 1px solid var(--border);
   white-space: nowrap;
@@ -2545,9 +2555,30 @@ textarea.decision-textarea {
   gap: 20px;
   align-items: start;
 }
+/* POC5-UI-03 — 오른쪽 열 · 펼친 시장 칸 목록은 들여쓰기 없이(값 줄이 글자 중간에서 끊기지 않게). */
+.tc-headline-stats .tc-list-plain,
+.tc-market-detail .tc-list-plain { padding-left: 0; word-break: keep-all; }
+.tc-big-value { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+/* POC5-UI-03 — 접기 버튼(중간 버튼 40px = button.btn-md · 링크형 색) · 펼친 시장 칸 3열 · 아래 묶음 머리. */
+.tc-fold-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+button.tc-fold-btn {
+  background: transparent; color: #0066cc; border: 1px solid var(--border);
+  border-radius: 12px; font-weight: 600; cursor: pointer; white-space: nowrap;
+}
+button.tc-fold-btn:hover { background: #f0f4f8; }
+.tc-market-detail {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px; margin-top: 16px; align-items: start;
+  word-break: keep-all; overflow-wrap: anywhere; /* 날짜 · 괄호 설명이 글자 중간에서 끊기지 않게 */
+}
+.tc-fold-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.tc-fold-body { margin-top: 16px; }
+.tc-h3 { font-size: 17px; font-weight: 600; margin-bottom: 8px; }
+.tc-mismatch p + p { margin-top: 4px; }
 @media (max-width: 1100px) {
   .tc-headline-grid { grid-template-columns: 1fr; }
   .tc-queue-grid { grid-template-columns: 1fr; }
+  .tc-market-detail { grid-template-columns: 1fr; }
 }
 /* AC-11: 한계 설명 등 hover 툴팁 마커. 기본은 짧게, 상세는 title/aria 로. */
 .tc-info {

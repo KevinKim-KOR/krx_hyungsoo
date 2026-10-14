@@ -65,9 +65,10 @@ export default function KospiDetailSection({
   market: QueryState<MarketTopNResponse>;
 }) {
   void market; // 현재는 모두 미제공 — 향후 시계열 파생 시 market 사용.
+  // POC5-UI-03 — 「현재 제공 범위와 남은 기능」 묶음 안 하위 구역(카드 테두리 · 제목 단계만 바뀜).
   return (
-    <section className="tc-card" aria-label="코스피 상세 (개발 중)">
-      <h2 className="tc-h2">코스피 상세 지표</h2>
+    <section className="tc-sub" aria-label="코스피 상세 (개발 중)">
+      <h3 className="tc-h3">코스피 상세 지표</h3>
       <p className="tc-muted tc-small" style={{ marginBottom: 10 }}>
         아래 항목은 값이 없어 숨긴 것이 아니라, 아직 제공하지 않는 상태를 그대로
         표시한 것입니다.
