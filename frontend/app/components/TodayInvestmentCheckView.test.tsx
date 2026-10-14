@@ -909,7 +909,13 @@ describe("POC5-UI-03 「오늘의 투자 점검」 기본 화면 · 아래 묶�
       marketOk({
         market_risk_reference: {
           kodex200: { availability: "available", as_of_date: "2026-07-24", recent_20d_series: [] },
-          vix: { availability: "available", as_of_date: "2026-07-24", recent_20d_series: [] },
+          vix: {
+            availability: "available",
+            as_of_date: "2026-07-24",
+            recent_20d_series: [],
+            // POC5-12 — 서버 판정 fresh(경고 없음)
+            freshness: { state: "fresh", compare_date: "2026-07-24", weekdays_behind: 0 },
+          },
         },
       }),
     );

@@ -20,6 +20,7 @@ from app.api_market_topn_models import (
     MarketRiskRecentPoint,
     MarketRiskReference,
     MarketRiskVix,
+    MarketRiskVixFreshness,
     MarketTopNEntry,
     NavDiscountPayload,
     ShortTermMomentumPayload,
@@ -414,13 +415,22 @@ def market_context_to_model(raw: Optional[dict]) -> Optional[MarketContextRespon
 # 2026-07-03 Market Risk Reference v1 (지시문 §7).
 
 
+def _now_utc() -> datetime:
+    """POC5-12 — VIX 최신성 판정의 조회 시각(시험에서 바꿔 끼움)."""
+    return datetime.now(timezone.utc)
+
+
 def build_market_risk_reference_payload(db_path: Path) -> MarketRiskReference:
     """SQLite 만 read 하여 KODEX200 + VIX evidence 를 API 응답 모델로 변환.
 
     외부 시세 호출 X. 지시문 §7 계약: 최상위 필드로 항상 존재하며 데이터
     부재 시 availability="unavailable".
+
+    POC5-12 — PC 화면 응답(`GET /market/topn/latest`)만 VIX 에 선택 필드 `freshness` 를 붙인다
+    (미국 동부 마감 기준 · `app/pc_vix_refresh.vix_freshness` · 공유 builder 무변경).
     """
     from app.market_risk_reference_service import build_market_risk_reference
+    from app.pc_vix_refresh import vix_freshness
 
     evidence = build_market_risk_reference(db_path=db_path)
 
@@ -448,5 +458,8 @@ def build_market_risk_reference_payload(db_path: Path) -> MarketRiskReference:
             recent_20d_series=_to_points(evidence.vix.recent_20d_series),
             series_first_date=evidence.vix.series_first_date,
             series_last_date=evidence.vix.series_last_date,
+            freshness=MarketRiskVixFreshness(
+                **vix_freshness(evidence.vix.as_of_date, _now_utc())
+            ),
         ),
     )

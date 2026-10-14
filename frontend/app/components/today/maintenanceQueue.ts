@@ -11,6 +11,7 @@ import type {
   NavDiscountLatestResponse,
 } from "@/lib/api";
 import { kospiStatusText, kospiStatusView } from "@/lib/kospiStatus";
+import { vixFreshnessNotice } from "@/lib/vixFreshness";
 import type { MenuKey } from "../LeftSidebar";
 
 // ── §4.3 정비 큐 항목 (자료 상태) ────────────────────────────────────────────
@@ -52,25 +53,19 @@ export function collectMaintenance(
     }
   }
 
-  // VIX stale (시장 불안 지표가 오래됨) — 시장 응답의 risk reference 로 판정.
+  // VIX 최신성 — POC5-12 PC 서버의 미국 장 마감 기준 판정(vix.freshness)만 읽는다.
   if (market.phase === "success") {
     const risk = market.data.market_risk_reference;
     const vix = risk?.vix;
-    const kodex = risk?.kodex200;
-    if (
-      vix?.availability === "available" &&
-      kodex?.availability === "available" &&
-      vix.as_of_date &&
-      kodex.as_of_date &&
-      vix.as_of_date < kodex.as_of_date
-    ) {
+    const vixNotice = vixFreshnessNotice(vix);
+    if (vixNotice) {
       // 시장 불안 지표(VIX) 갱신은 전체 시장 자료 수집 필요 → heavy.
       list.push({
-        text: `시장 불안 지표가 오래되었습니다 (기준일 ${vix.as_of_date})`,
+        text: vixNotice.text,
         kind: "heavy",
         target: "market_discovery",
         actionLabel: "시장 자료 업데이트로",
-        reason: `시장 불안 지표(VIX)의 기준일(${vix.as_of_date})이 시장 기준일(${kodex.as_of_date})보다 이전입니다. 두 기준일을 비교해 더 이전이면 오래된 것으로 봅니다.`,
+        reason: vixNotice.reason,
       });
     }
     if (vix?.availability === "unavailable") {

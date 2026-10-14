@@ -24,6 +24,10 @@ from typing import Optional
 from app.market_data_store import DEFAULT_DB_PATH, _ensure_initialized  # noqa: F401
 
 REFRESH_SCOPE = "market_data"
+# POC5-12 — 같은 표의 다른 줄: 전체 갱신에서 VIX 만 실패했을 때의 'VIX 다시 받기' 표식 · 결과.
+# 상태값: needed(필요) · running · completed(다시 받기 성공 · needed 아님) · failed(다시 받기 실패 ·
+# needed) · cleared(최근 전체 갱신에서 VIX 성공이거나 다른 단계도 실패 — needed 아님). 스키마 변경 없음.
+VIX_RETRY_SCOPE = "vix_retry"
 
 
 @dataclass
@@ -68,7 +72,9 @@ _COLS = (
 )
 
 
-def read_state(db_path: Path = DEFAULT_DB_PATH) -> Optional[MarketRefreshStateRow]:
+def read_state(
+    db_path: Path = DEFAULT_DB_PATH, *, scope: str = REFRESH_SCOPE
+) -> Optional[MarketRefreshStateRow]:
     """단일 행 조회. DB 파일 또는 행 자체가 없으면 None.
 
     DB 파일이 없을 때는 init_db 를 강제 호출하지 않는다 — 본 함수는 read-only.
@@ -81,7 +87,7 @@ def read_state(db_path: Path = DEFAULT_DB_PATH) -> Optional[MarketRefreshStateRo
         cur = con.execute(
             f"SELECT {', '.join(_COLS)} FROM market_refresh_state "
             "WHERE refresh_scope = ?",
-            (REFRESH_SCOPE,),
+            (scope,),
         )
         row = cur.fetchone()
     finally:
@@ -95,11 +101,12 @@ def write_state(
     state: MarketRefreshStateRow,
     *,
     db_path: Path = DEFAULT_DB_PATH,
+    scope: str = REFRESH_SCOPE,
 ) -> None:
     """단일 행 upsert. updated_at 은 호출 시각으로 강제 설정."""
     _ensure_initialized(db_path)
     payload = (
-        REFRESH_SCOPE,
+        scope,
         state.refresh_id,
         state.last_success_asof_date,
         state.last_success_at,
@@ -163,6 +170,7 @@ def normalize_running_to_failed(
     *,
     db_path: Path = DEFAULT_DB_PATH,
     summary: str = "interrupted_before_finish",
+    scope: str = REFRESH_SCOPE,
 ) -> bool:
     """재시작 시 SQLite 에 남아 있는 running 상태를 failed 로 정규화.
 
@@ -172,18 +180,18 @@ def normalize_running_to_failed(
 
     return: 정규화가 실행됐으면 True, 대상 행이 없거나 running 이 아니면 False.
     """
-    current = read_state(db_path=db_path)
+    current = read_state(db_path=db_path, scope=scope)
     if current is None or current.last_attempt_status != "running":
         return False
     now = _utcnow_iso()
     current.last_attempt_status = "failed"
     current.last_attempt_finished_at = now
     current.last_error_summary = summary
-    write_state(current, db_path=db_path)
+    write_state(current, db_path=db_path, scope=scope)
     return True
 
 
-def clear_state(db_path: Path = DEFAULT_DB_PATH) -> None:
+def clear_state(db_path: Path = DEFAULT_DB_PATH, *, scope: str = REFRESH_SCOPE) -> None:
     """테스트 격리용 — market_refresh_state 단일 행 제거.
 
     DB 파일이 아직 존재하지 않으면 no-op (init_db 강제 호출 X) —
@@ -195,7 +203,7 @@ def clear_state(db_path: Path = DEFAULT_DB_PATH) -> None:
     try:
         con.execute(
             "DELETE FROM market_refresh_state WHERE refresh_scope = ?",
-            (REFRESH_SCOPE,),
+            (scope,),
         )
         con.commit()
     finally:

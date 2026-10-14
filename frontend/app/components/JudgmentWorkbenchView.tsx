@@ -29,6 +29,7 @@ import {
   WB_KEY_NAV,
 } from "@/lib/api/dashboardKeys";
 import type { MenuKey } from "./LeftSidebar";
+import { vixFreshnessNotice } from "@/lib/vixFreshness";
 import PriceChart from "./workbench/PriceChart";
 import { HoldingTable } from "./workbench/HoldingTable";
 import {
@@ -622,18 +623,11 @@ function AttentionTab({
   }
 
   if (cand.phase === "success") {
-    const risk = cand.data.market_risk_reference;
-    const vix = risk?.vix;
-    const kodex = risk?.kodex200;
-    if (
-      vix?.availability === "available" &&
-      kodex?.availability === "available" &&
-      vix.as_of_date &&
-      kodex.as_of_date &&
-      vix.as_of_date < kodex.as_of_date
-    ) {
+    // POC5-12 — VIX 최신성은 PC 서버의 미국 장 마감 기준 판정(vix.freshness)만 읽는다.
+    const vixNotice = vixFreshnessNotice(cand.data.market_risk_reference?.vix);
+    if (vixNotice) {
       rows.push({
-        text: `VIX stale — 기준일 ${vix.as_of_date} (시장 ${kodex.as_of_date}보다 이전)`,
+        text: vixNotice.text,
         kind: "warn",
         action: "diagnostics",
         actionLabel: "진단·상태 확인",

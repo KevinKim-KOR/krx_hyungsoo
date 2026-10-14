@@ -203,6 +203,20 @@ export interface MarketRiskKodex200 {
   series_last_date?: string | null;
 }
 
+// POC5-12 — VIX 최신성 판정(PC 서버 · 미국 장 마감 기준 · 조회 시각). 화면은 미국 마감 ·
+// 서머타임을 다시 계산하지 않고 이 값만 읽는다. 필드가 없으면 추측하지 않는다(기준일 확인 필요).
+export type VixFreshnessState =
+  | "fresh"
+  | "one_weekday_behind"
+  | "update_check"
+  | "date_check";
+
+export interface MarketRiskVixFreshness {
+  state: VixFreshnessState;
+  compare_date?: string | null; // E — 미국 장 마감 기준 비교일(토 · 일은 직전 금요일)
+  weekdays_behind?: number | null; // L — D 다음 날부터 E 까지의 평일 수
+}
+
 export interface MarketRiskVix {
   availability: "available" | "unavailable";
   as_of_date?: string | null;
@@ -212,6 +226,7 @@ export interface MarketRiskVix {
   recent_20d_series: MarketRiskRecentPoint[];
   series_first_date?: string | null;
   series_last_date?: string | null;
+  freshness?: MarketRiskVixFreshness | null; // POC5-12 선택 필드
 }
 
 export interface MarketRiskReference {
@@ -222,6 +237,22 @@ export interface MarketRiskReference {
 export interface MarketTopNRequestOptions extends MarketTopNFilterOptions {
   basis?: MarketBasis;
   order?: MarketOrder;
+}
+
+// POC5-12 — 같은 주소의 시장 TOP N GET 은 끝날 때까지 같은 요청을 공유한다(개발 모드 이중
+// 실행 · 두 화면이 겹쳐 열릴 때 서버 계산 1회). 성공 · 실패 · 시간 초과 뒤 바로 지운다(보관
+// 캐시 · 자동 재조회 없음).
+const inflightTopn = new Map<string, Promise<MarketTopNResponse>>();
+
+// 갱신 · 'VIX 다시 받기'가 끝난 뒤 다시 읽기는 그 전에 보낸 요청에 붙지 않고 새로 보낸다
+// (갱신 전에 보낸 요청의 결과를 '다시 읽은 결과'로 보이지 않게 · 이미 기다리는 쪽은 자기 요청 그대로).
+export function forgetMarketTopnInflight(): void {
+  inflightTopn.clear();
+}
+
+// 테스트용: 진행 중 공유 초기화(vitest.setup 에서 매 테스트 전에 부른다).
+export function __resetMarketTopnInflight(): void {
+  inflightTopn.clear();
 }
 
 export function fetchMarketTopnLatest(
@@ -247,17 +278,26 @@ export function fetchMarketTopnLatest(
     "exclude_futures",
     String(options.excludeFutures ?? DEFAULT_MARKET_TOPN_FILTERS.exclude_futures),
   );
-  return request<MarketTopNResponse>(
+  const path = `/market/topn/latest?${params.toString()}`;
+  const existing = inflightTopn.get(path);
+  if (existing) return existing;
+  const shared: Promise<MarketTopNResponse> = request<MarketTopNResponse>(
     "GET",
-    `/market/topn/latest?${params.toString()}`,
-  );
+    path,
+  ).finally(() => {
+    if (inflightTopn.get(path) === shared) inflightTopn.delete(path);
+  });
+  inflightTopn.set(path, shared);
+  return shared;
 }
 
 export type MarketRefreshStartStatus =
   | "accepted"
   | "running"
   | "skipped_cooldown"
-  | "failed_to_start";
+  | "failed_to_start"
+  | "not_needed" // POC5-12 scope=vix — 다시 받을 VIX 실패 기록 없음(실행 0)
+  | "vix_retry_running"; // POC5-12 — 'VIX 다시 받기'가 도는 중이라 거절(refresh_id = 그 재시도 id)
 
 export interface MarketRefreshStartResponse {
   status: MarketRefreshStartStatus;
@@ -266,11 +306,16 @@ export interface MarketRefreshStartResponse {
   cooldown_remaining_seconds: number;
 }
 
-export function postMarketRefresh(): Promise<MarketRefreshStartResponse> {
+// POC5-12 — scope "vix": 전체 갱신에서 VIX 만 실패했을 때 VIX 단계만 다시 받는다(같은 경로).
+export type MarketRefreshScope = "vix";
+
+export function postMarketRefresh(
+  scope?: MarketRefreshScope,
+): Promise<MarketRefreshStartResponse> {
   // FDR 수집은 background — POST 자체는 즉시 응답이라 짧은 timeout.
   return request<MarketRefreshStartResponse>(
     "POST",
-    "/market/refresh",
+    scope ? `/market/refresh?scope=${scope}` : "/market/refresh",
     undefined,
     15000,
   );
@@ -296,6 +341,18 @@ export interface MarketRefreshStatusResponse {
   runtime_seconds?: number | null;
   error_summary?: string | null;
   cooldown_remaining_seconds: number;
+  vix_retry?: MarketRefreshVixRetry | null; // POC5-12 선택 필드
+}
+
+// POC5-12 — 'VIX 다시 받기' 표식 · 결과(전체 갱신 상태와 섞지 않는 별도 행).
+export interface MarketRefreshVixRetry {
+  needed: boolean;
+  status?: "needed" | "running" | "completed" | "failed" | "cleared" | null;
+  refresh_id?: string | null;
+  started_at?: string | null;
+  finished_at?: string | null;
+  error_summary?: string | null;
+  vix_as_of_date?: string | null;
 }
 
 export function fetchMarketRefreshStatus(): Promise<MarketRefreshStatusResponse> {

@@ -625,3 +625,52 @@ describe("REJECT Closeout — 참고점수 비활성", () => {
     expect(order()).toEqual([...TRIO].reverse());
   });
 });
+
+// POC5-12 — VIX 최신성은 서버 판정(vix.freshness)만 읽는다(판정 Q1 · 세 화면 같은 판정).
+describe("Workbench — VIX 최신성 (POC5-12)", () => {
+  async function openAttention() {
+    await screen.findByText("KODEX 200");
+    fireEvent.click(screen.getByRole("tab", { name: /확인 필요/ }));
+  }
+
+  function withVix(vix: Record<string, unknown>) {
+    const c = candOk();
+    return {
+      ...c,
+      market_risk_reference: {
+        ...c.market_risk_reference,
+        vix: { ...c.market_risk_reference.vix, ...vix },
+      },
+    };
+  }
+
+  it("update_check 문구 · 옛 '(시장 …보다 이전)' 없음", async () => {
+    fetchMarketTopnLatest.mockResolvedValue(
+      withVix({ freshness: { state: "update_check", compare_date: "2026-07-24", weekdays_behind: 15 } }),
+    );
+    render(<JudgmentWorkbenchView onNavigate={vi.fn()} />);
+    await openAttention();
+    expect(
+      await screen.findByText("VIX 자료 업데이트 확인 필요(기준일 2026-07-03)"),
+    ).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/VIX stale|보다 이전/);
+  });
+
+  it("fresh 는 VIX 항목 없음(KODEX200 날짜가 더 늦어도)", async () => {
+    fetchMarketTopnLatest.mockResolvedValue(
+      withVix({ freshness: { state: "fresh", compare_date: "2026-07-03", weekdays_behind: 0 } }),
+    );
+    render(<JudgmentWorkbenchView onNavigate={vi.fn()} />);
+    await openAttention();
+    await screen.findByText(/구성종목 비교 불가/); // 다른 확인 항목은 보인다
+    expect(document.body.textContent).not.toMatch(/VIX 자료 업데이트|VIX 기준일 확인|VIX stale/);
+  });
+
+  it("판정 필드 없음 → 'VIX 기준일 확인 필요'(추측 안 함)", async () => {
+    render(<JudgmentWorkbenchView onNavigate={vi.fn()} />);
+    await openAttention();
+    expect(
+      await screen.findByText("VIX 기준일 확인 필요(기준일 2026-07-03)"),
+    ).toBeInTheDocument();
+  });
+});

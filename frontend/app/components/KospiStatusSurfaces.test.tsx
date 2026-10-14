@@ -370,13 +370,18 @@ describe("설계자 RESULT STEP 4 · PLAN STEP 7-4 — 정비 큐 KOSPI 항목(V
       topn(ctxWith(STALE_T2), {
         market_risk_reference: {
           kodex200: { availability: "available", as_of_date: "2026-09-29" },
-          vix: { availability: "available", as_of_date: "2026-09-20" },
+          vix: {
+            availability: "available",
+            as_of_date: "2026-09-20",
+            // POC5-12 — 서버 판정(vix_freshness 실제 계산값)
+            freshness: { state: "update_check", compare_date: "2026-09-29", weekdays_behind: 7 },
+          },
         },
       }),
     );
     expect(got).toHaveLength(2);
     const [vix, kospi] = got;
-    expect(vix.text).toContain("시장 불안 지표가 오래되었습니다");
+    expect(vix.text).toBe("VIX 자료 업데이트 확인 필요(기준일 2026-09-20)");
     expect(kospi.text).toContain("KOSPI");
     expect({ kind: kospi.kind, target: kospi.target, actionLabel: kospi.actionLabel }).toEqual({
       kind: vix.kind,

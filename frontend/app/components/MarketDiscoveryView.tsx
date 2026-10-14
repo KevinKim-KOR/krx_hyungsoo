@@ -18,13 +18,11 @@ import {
   DEFAULT_MARKET_ORDER,
   DEFAULT_MARKET_TOPN_FILTERS,
   fetchMarketRefreshStatus,
-  fetchMarketTopnLatest,
   postMarketRefresh,
   type MarketBasis,
   type MarketOrder,
   type MarketRefreshStartResponse,
   type MarketRefreshStatusResponse,
-  type MarketTopNFilterOptions,
   type MarketTopNResponse,
 } from "@/lib/api";
 import { invalidateQueries, useSharedQuery } from "@/lib/api/queryCache";
@@ -51,12 +49,9 @@ import UniverseRefreshPanel from "./UniverseRefreshPanel";
 //   기존 "default"(표) → "card"(기본) + "table" 로 분리.
 type CompareViewMode = "card" | "table" | "holdings_compare";
 import TransferToAISessionsCard from "./TransferToAISessionsCard";
+import { useMarketVixRetry, type VixButton } from "./useMarketVixRetry";
+import { useMarketTopnLoad } from "./useMarketTopnLoad";
 import TransferToETFExposureCard from "./TransferToETFExposureCard";
-
-type LoadState =
-  | { phase: "loading" }
-  | { phase: "error"; message: string }
-  | { phase: "ready"; data: MarketTopNResponse };
 
 type RefreshUiState =
   | { kind: "idle" }
@@ -143,11 +138,13 @@ function RefreshControlCard({
   onStart,
   disabled,
   cooldownRemainingSeconds,
+  vix,
 }: {
   state: RefreshUiState;
   onStart: () => void;
   disabled: boolean;
   cooldownRemainingSeconds: number;
+  vix: VixButton;
 }) {
   let statusLine: React.ReactNode = null;
   switch (state.kind) {
@@ -195,10 +192,16 @@ function RefreshControlCard({
         <button type="button" onClick={onStart} disabled={disabled}>
           {state.kind === "running" || state.kind === "starting"
             ? "갱신 중..."
-            : "최신 시장 데이터 갱신"}
+            : (vix.label ?? "최신 시장 데이터 갱신")}
         </button>
       </div>
-      {statusLine}
+      {vix.line ? (
+        <div className={vix.line.error ? "message error" : "message info"}>
+          {vix.line.text}
+        </div>
+      ) : (
+        statusLine
+      )}
       {cooldownRemainingSeconds > 0 && state.kind !== "cooldown" ? (
         <div className="helper" style={{ marginTop: 4 }}>
           (cooldown {fmtCooldown(cooldownRemainingSeconds)} 남음 — 그 사이 클릭은
@@ -223,15 +226,6 @@ const DEFAULT_FILTER_UI: FilterUiState = {
   excludeFutures: DEFAULT_MARKET_TOPN_FILTERS.exclude_futures,
 };
 
-function toOptions(s: FilterUiState): MarketTopNFilterOptions {
-  return {
-    excludeInverse: s.excludeInverse,
-    excludeLeveraged: s.excludeLeveraged,
-    excludeSynthetic: s.excludeSynthetic,
-    excludeFutures: s.excludeFutures,
-  };
-}
-
 // 2026-06-08 — FilterCard 제거 (사용자 요청: 후보 정제 옵션 별도 카드 삭제,
 // TopControlsRow 가 갱신 버튼 옆에 체크박스를 함께 배치).
 
@@ -249,11 +243,12 @@ interface MarketDiscoveryViewProps {
 export default function MarketDiscoveryView({
   onNavigate,
 }: MarketDiscoveryViewProps = {}) {
-  const [state, setState] = useState<LoadState>({ phase: "loading" });
   const [refreshUi, setRefreshUi] = useState<RefreshUiState>({ kind: "idle" });
   const [filters, setFilters] = useState<FilterUiState>(DEFAULT_FILTER_UI);
   const [basis, setBasis] = useState<MarketBasis>(DEFAULT_MARKET_BASIS);
   const [order, setOrder] = useState<MarketOrder>(DEFAULT_MARKET_ORDER);
+  // POC5-12 — 시장 TOP N 조회 · 순번 · 받은 화면 유지 · 최신 입력으로 다시 읽기(hook).
+  const { state, reloadError, reloadLatest } = useMarketTopnLoad(filters, basis, order, describeError);
   // 2026-08-16 — RelativeUpsideRunCard 를 ML 실험 메뉴로 옮기면서 이 화면이 들고 있던
   // 결과·오류 상태(lift state up)도 함께 제거했다. 카드가 없으므로 참조도 없다.
   // 2026-06-21 보유와 비교 보기 모드 (지시문 §4.1).
@@ -273,19 +268,7 @@ export default function MarketDiscoveryView({
   const [selectedCandidate, setSelectedCandidate] = useState<string | null>(null);
   const pollTickRef = useRef<number>(0);
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  // loadTopn 은 현재 filters + basis + order state 를 캡처해서 fetch.
-  // 모든 핸들러는 state 변경만 — useEffect 가 단일 fetch 트리거 (B-6 NOTE 반영).
-  const loadTopn = useCallback(() => {
-    setState({ phase: "loading" });
-    fetchMarketTopnLatest(10, { ...toOptions(filters), basis, order })
-      .then((data) => setState({ phase: "ready", data }))
-      .catch((e) => setState({ phase: "error", message: describeError(e) }));
-  }, [filters, basis, order]);
-
-  useEffect(() => {
-    loadTopn();
-  }, [loadTopn]);
+  const pollGenRef = useRef(0); // POC5-12 — 멈춘 뒤 온 이전 상태 응답은 버린다(새 갱신 확인을 끊지 않게)
 
   const handleFiltersChange = useCallback((next: FilterUiState) => {
     setFilters(next);
@@ -307,6 +290,7 @@ export default function MarketDiscoveryView({
   );
 
   const stopPolling = useCallback(() => {
+    pollGenRef.current += 1;
     if (pollTimerRef.current !== null) {
       clearInterval(pollTimerRef.current);
       pollTimerRef.current = null;
@@ -318,8 +302,19 @@ export default function MarketDiscoveryView({
     return () => stopPolling();
   }, [stopPolling]);
 
+  const vixRetry = useMarketVixRetry({
+    fullRefreshBusy: refreshUi.kind === "starting" || refreshUi.kind === "running",
+    onRetrySucceeded: () => {
+      for (const k of MARKET_INVALIDATION_KEYS) invalidateQueries(k);
+      reloadLatest();
+    },
+  });
+  const absorbVixStatus = vixRetry.absorbStatus;
+  const takeOverVixRetry = vixRetry.takeOver;
+
   const applyStatus = useCallback(
     (status: MarketRefreshStatusResponse) => {
+      absorbVixStatus(status);
       if (status.status === "running") {
         setRefreshUi({ kind: "running", refreshId: status.refresh_id ?? null });
         return;
@@ -334,7 +329,7 @@ export default function MarketDiscoveryView({
         // 갱신 성공 시에만 Dashboard 의 시장 읽기 무효화 (failed 분기는 무효화
         // 안 함 — §4.5 "변경 실패 시 무효화 금지").
         for (const k of MARKET_INVALIDATION_KEYS) invalidateQueries(k);
-        loadTopn();
+        reloadLatest();
         return;
       }
       if (status.status === "failed") {
@@ -357,11 +352,12 @@ export default function MarketDiscoveryView({
       stopPolling();
       setRefreshUi({ kind: "idle" });
     },
-    [stopPolling, loadTopn],
+    [stopPolling, reloadLatest, absorbVixStatus],
   );
 
   const startPolling = useCallback(() => {
     stopPolling();
+    const gen = pollGenRef.current;
     pollTimerRef.current = setInterval(async () => {
       pollTickRef.current += 1;
       if (pollTickRef.current > POLL_MAX_TICKS) {
@@ -392,8 +388,10 @@ export default function MarketDiscoveryView({
       }
       try {
         const status = await fetchMarketRefreshStatus();
+        if (gen !== pollGenRef.current) return;
         applyStatus(status);
       } catch (e) {
+        if (gen !== pollGenRef.current) return;
         stopPolling();
         setRefreshUi({ kind: "failed", message: describeError(e) });
       }
@@ -402,11 +400,17 @@ export default function MarketDiscoveryView({
 
   const handleStartRefresh = useCallback(async () => {
     setRefreshUi({ kind: "starting" });
+    const gen = pollGenRef.current; // 화면을 떠나면 올라간다(POST 응답이 늦어도 상태 확인을 새로 열지 않음)
     let started: MarketRefreshStartResponse;
     try {
       started = await postMarketRefresh();
     } catch (e) {
       setRefreshUi({ kind: "failed", message: describeError(e) });
+      return;
+    }
+    if (gen !== pollGenRef.current) return;
+    if (takeOverVixRetry(started)) {
+      setRefreshUi({ kind: "idle" }); // POC5-12 — 'VIX 다시 받기'가 도는 중이라 거절됨 → 그 진행을 보인다
       return;
     }
     if (started.status === "accepted" || started.status === "running") {
@@ -422,10 +426,13 @@ export default function MarketDiscoveryView({
       return;
     }
     setRefreshUi({ kind: "failed", message: started.message });
-  }, [startPolling]);
+  }, [startPolling, takeOverVixRetry]);
 
   const buttonDisabled =
-    refreshUi.kind === "starting" || refreshUi.kind === "running";
+    refreshUi.kind === "starting" ||
+    refreshUi.kind === "running" ||
+    vixRetry.running;
+  const onStartButton = vixRetry.vixMode ? vixRetry.start : handleStartRefresh;
 
   const roleBanner = (
     <div className="role-banner">
@@ -454,7 +461,8 @@ export default function MarketDiscoveryView({
         {roleBanner}
         <RefreshControlCard
           state={refreshUi}
-          onStart={handleStartRefresh}
+          onStart={onStartButton}
+          vix={vixRetry.button}
           disabled={buttonDisabled}
           cooldownRemainingSeconds={0}
         />
@@ -482,7 +490,8 @@ export default function MarketDiscoveryView({
         {roleBanner}
         <RefreshControlCard
           state={refreshUi}
-          onStart={handleStartRefresh}
+          onStart={onStartButton}
+          vix={vixRetry.button}
           disabled={buttonDisabled}
           cooldownRemainingSeconds={cooldown}
         />
@@ -504,7 +513,8 @@ export default function MarketDiscoveryView({
         {roleBanner}
         <RefreshControlCard
           state={refreshUi}
-          onStart={handleStartRefresh}
+          onStart={onStartButton}
+          vix={vixRetry.button}
           disabled={buttonDisabled}
           cooldownRemainingSeconds={cooldown}
         />
@@ -527,7 +537,8 @@ export default function MarketDiscoveryView({
         {roleBanner}
         <RefreshControlCard
           state={refreshUi}
-          onStart={handleStartRefresh}
+          onStart={onStartButton}
+          vix={vixRetry.button}
           disabled={buttonDisabled}
           cooldownRemainingSeconds={cooldown}
         />
@@ -553,9 +564,16 @@ export default function MarketDiscoveryView({
       {/* 2026-06-08 UI 정리 라운드 4 (사용자 요청) — TopControlsRow 카드 안에서
           최신 시장 데이터 갱신 + 필터 (1행) / AI Sessions·ETF Exposure 버튼 (2행)
           을 모두 같은 카드 안에 묶어서 표시. 별도 카드 분리 X. */}
+      {reloadError ? (
+        <div className="message error">
+          시장 자료를 다시 불러오지 못해 이전에 받은 자료(기준일 {fmt(data.asof)})를
+          표시합니다: {reloadError}
+        </div>
+      ) : null}
       <TopControlsRow
         refreshUi={refreshUi}
-        onStartRefresh={handleStartRefresh}
+        onStartRefresh={onStartButton}
+        vix={vixRetry.button}
         refreshDisabled={buttonDisabled}
         cooldownRemainingSeconds={cooldown}
         filters={filters}
@@ -702,6 +720,7 @@ function CompareViewTabs({
 function TopControlsRow({
   refreshUi,
   onStartRefresh,
+  vix,
   refreshDisabled,
   cooldownRemainingSeconds,
   filters,
@@ -712,6 +731,7 @@ function TopControlsRow({
 }: {
   refreshUi: RefreshUiState;
   onStartRefresh: () => void;
+  vix: VixButton;
   refreshDisabled: boolean;
   cooldownRemainingSeconds: number;
   filters: FilterUiState;
@@ -721,7 +741,13 @@ function TopControlsRow({
   transferETFExposure: React.ReactNode;
 }) {
   let refreshMessage: React.ReactNode = null;
-  if (refreshUi.kind === "starting" || refreshUi.kind === "running") {
+  if (vix.line) {
+    refreshMessage = (
+      <span className="helper" style={vix.line.error ? { color: "var(--danger)" } : undefined}>
+        {vix.line.text}
+      </span>
+    );
+  } else if (refreshUi.kind === "starting" || refreshUi.kind === "running") {
     refreshMessage = (
       <span className="helper">갱신 중... ({refreshUi.kind === "running" ? (refreshUi.refreshId ?? "-") : "starting"})</span>
     );
@@ -759,7 +785,7 @@ function TopControlsRow({
         <button type="button" onClick={onStartRefresh} disabled={refreshDisabled}>
           {refreshUi.kind === "running" || refreshUi.kind === "starting"
             ? "갱신 중..."
-            : "최신 시장 데이터 갱신"}
+            : (vix.label ?? "최신 시장 데이터 갱신")}
         </button>
         <div
           className="market-topn-filter-row"

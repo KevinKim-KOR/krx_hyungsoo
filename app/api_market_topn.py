@@ -6,6 +6,9 @@
   · single-flight + 6h cooldown 가드.
 - GET  /market/refresh/status   신규 — 현재/마지막 refresh 상태.
 
+POC5-12 — `POST /market/refresh?scope=vix` 는 전체 갱신에서 VIX 만 실패했을 때 VIX 단계만 다시
+받는다(대상 없으면 not_needed · 알 수 없는 scope 는 422). 상태 응답에 선택 필드 `vix_retry`.
+
 namespace 결정 (2026-05-18, 설계자 직접 확인 후 환원):
 - 지시문 §5.2 는 `/market/refresh` / `/market/refresh/status` 그대로 사용.
 - 기존 `app/api.py` 의 holdings naver 시세 갱신 endpoint 는 `/holdings/market/refresh`
@@ -17,7 +20,7 @@ SQLite 만이 시장 데이터의 단일 SSOT.
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Query
 
@@ -26,6 +29,7 @@ from app.api_market_topn_models import (  # noqa: F401 — MarketCandidate re-ex
     MarketLatestRefresh,
     MarketRefreshResponse,
     MarketRefreshStatusResponse,
+    MarketRefreshVixRetry,
     MarketTopNFilters,
     MarketTopNResponse,
 )
@@ -45,6 +49,7 @@ from app.market_refresh_service import (
     get_state_snapshot,
     start_refresh_job,
 )
+from app.market_refresh_vix_retry import get_vix_retry_snapshot, start_vix_retry_job
 from app.market_topn import DEFAULT_BASIS, DEFAULT_N, DEFAULT_ORDER, compute_topn
 from app.short_term_momentum import KODEX200_TICKER
 from app.stored_volume_evidence import build_stored_volume_evidence
@@ -165,12 +170,23 @@ def get_market_topn_latest(
 
 
 @router.post("/market/refresh", response_model=MarketRefreshResponse)
-def post_market_refresh() -> MarketRefreshResponse:
-    """FDR 수집을 background job 으로 시작. 동시 1건 + 6h cooldown 가드."""
-    result = start_refresh_job(
-        db_path=DEFAULT_DB_PATH,
-        cooldown_hours=DEFAULT_COOLDOWN_HOURS,
-    )
+def post_market_refresh(
+    scope: Optional[Literal["vix"]] = Query(None),
+) -> MarketRefreshResponse:
+    """FDR 수집을 background job 으로 시작. 동시 1건 + 6h cooldown 가드.
+
+    POC5-12 `scope=vix`: VIX 만 실패한 표식이 있을 때 VIX 단계만(대기 시간과 무관).
+    """
+    if scope == "vix":
+        result = start_vix_retry_job(
+            db_path=DEFAULT_DB_PATH,
+            cooldown_hours=DEFAULT_COOLDOWN_HOURS,
+        )
+    else:
+        result = start_refresh_job(
+            db_path=DEFAULT_DB_PATH,
+            cooldown_hours=DEFAULT_COOLDOWN_HOURS,
+        )
     return MarketRefreshResponse(
         status=result.status,
         refresh_id=result.refresh_id,
@@ -201,4 +217,9 @@ def get_market_refresh_status() -> MarketRefreshStatusResponse:
         runtime_seconds=snap.runtime_seconds,
         error_summary=snap.error_summary,
         cooldown_remaining_seconds=snap.cooldown_remaining_seconds,
+        vix_retry=_vix_retry_model(get_vix_retry_snapshot(DEFAULT_DB_PATH)),
     )
+
+
+def _vix_retry_model(snap: Optional[dict]) -> Optional[MarketRefreshVixRetry]:
+    return None if snap is None else MarketRefreshVixRetry(**snap)

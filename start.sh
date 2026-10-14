@@ -26,8 +26,11 @@ if [ ! -x ".venv/bin/python" ]; then
     exit 1
 fi
 echo "[1/3] Starting FastAPI backend on port 8000..."
+#    POC5-12 — 코드 수정 자동 다시 읽기는 앱이 읽는 app · scripts 만 감시한다(감시 범위가 없으면
+#    .venv · node_modules · state 까지 0.25초마다 훑어 CPU 를 계속 쓴다).
 nohup .venv/bin/python -m uvicorn app.api:app \
-    --host 127.0.0.1 --port 8000 --reload > "$BACKEND_LOG" 2>&1 &
+    --host 127.0.0.1 --port 8000 --reload --reload-dir app --reload-dir scripts \
+    > "$BACKEND_LOG" 2>&1 &
 
 # 2. Next.js frontend (port 3000)
 #    NEXT_PUBLIC_API_BASE 는 frontend/.env.local 이 단일 소스.

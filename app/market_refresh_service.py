@@ -54,12 +54,14 @@ from app.market_data_store import (
     log_refresh,
 )
 from app.market_refresh_state_store import (
+    VIX_RETRY_SCOPE,
     MarketRefreshStateRow,
     clear_state,
     normalize_running_to_failed,
     read_state,
     write_state,
 )
+from app.market_refresh_vix_retry import sync_vix_retry_after_full_refresh
 
 DEFAULT_COOLDOWN_HOURS = 6
 
@@ -168,6 +170,10 @@ def _hydrate_from_sqlite(db_path: Path) -> None:
     - last_success_at / last_success_asof_date 도 in-memory 미러에 반영.
     """
     normalize_running_to_failed(db_path=db_path)
+    # POC5-12 — 끝나기 전에 서버가 다시 켜진 'VIX 다시 받기'는 실패(다시 누를 수 있음)로 둔다.
+    normalize_running_to_failed(
+        db_path=db_path, summary=VIX_STEP_FAILED_TEXT, scope=VIX_RETRY_SCOPE
+    )
     row = read_state(db_path=db_path)
     if row is None:
         _service.state = RefreshState()
@@ -249,6 +255,7 @@ def reset_state_for_testing(db_path: Path = DEFAULT_DB_PATH) -> None:
         _service.last_success_asof_date = None
         _service.loaded_for_db = str(db_path.resolve())
     clear_state(db_path=db_path)
+    clear_state(db_path=db_path, scope=VIX_RETRY_SCOPE)
 
 
 def get_state_snapshot(
@@ -345,6 +352,9 @@ def _execute_refresh_job(
     # (지시문 §4.4). 별도 log row 로 결과 보존, in-memory state 에는 노출 X.
     # POC3-02D-OPS-03 확정 계약 9 — 자료원 KRX `idx/kospi_dd_trd`(OCI 08:10 배치와 같은
     # 함수). log source 는 화면 상태가 읽는 `KOSPI_SOURCE` 와 같아야 한다.
+    kospi_ok = (
+        False  # POC5-12 — 예외 경로는 error_summary 를 남기지 않으므로 따로 둔다.
+    )
     try:
         kospi_result = refresh_kospi_benchmark(
             end_date=end_date_for_prices,
@@ -353,6 +363,7 @@ def _execute_refresh_job(
         )
         kospi_status = kospi_result.get("status", "failed")
         kospi_error = kospi_result.get("error")
+        kospi_ok = kospi_status == "ok"
         log_refresh(
             run_id=f"kospi-benchmark-{refresh_id}",
             source=KOSPI_SOURCE,
@@ -396,11 +407,15 @@ def _execute_refresh_job(
     # Naver `etfItemList.nhn` 1회 호출로 전체 ETF universe NAV / 시장가격 / 괴리율
     # 일괄 upsert. per-ticker N회 호출 패턴은 폐기. 실패는 전체 refresh 흐름
     # 중단 X (지시문 §5.4 / §9 제약). summary artifact 도 함께 생성.
+    # POC5-12 — 'VIX 만 실패' 판단에 NAV 실제 결과를 쓴다(예외 없음 · status == "ok" 일 때만 성공).
+    # NAV 수집 방식 · 전체 갱신 completed/failed 판정은 그대로다.
+    nav_ok = False
     try:
         nav_summary = refresh_nav_universe(
             asof=end_date_for_prices.isoformat(),
             db_path=db_path,
         )
+        nav_ok = getattr(nav_summary, "status", None) == "ok"
         _write_nav_refresh_summary(nav_summary)
     except Exception:  # noqa: BLE001 — NAV 실패도 thread 안에서 격리
         pass
@@ -408,6 +423,16 @@ def _execute_refresh_job(
     elapsed = time.perf_counter() - t0
     finished = _utcnow()
     success_overall = universe_ok and (price_success > 0 or price_attempted == 0)
+    # POC5-12 — 다른 단계(ETF 목록 · 가격 · KOSPI 사유 · 보유 개별주 · NAV)가 실제로 실패하지 않았고
+    # VIX 만 실패했는지(이 갱신의 결과로만 판단 · 문구 · 현재 VIX 날짜로 추측하지 않음).
+    vix_only_failure = (
+        success_overall
+        and error_summary is None
+        and holdings_equity_msg is None
+        and kospi_ok
+        and nav_ok
+        and vix_msg is not None
+    )
     # POC5-10 — 보유 개별주 단계 문구는 기존(ETF · KOSPI) 요약 뒤에 붙인다(그 판정은 그대로).
     # POC5-11 — VIX 문구는 그 뒤.
     error_summary = (
@@ -431,6 +456,14 @@ def _execute_refresh_job(
         # 성공/실패 모두 SQLite 영속화. 실패 경로는 last_success_* 를
         # 건드리지 않으므로 마지막 정상 성공 기록은 그대로 유지된다.
         _persist_current_state(db_path)
+        # POC5-12 — 'VIX 다시 받기' 표식은 가장 최근 전체 갱신 결과에 맞춘다.
+        sync_vix_retry_after_full_refresh(
+            db_path,
+            vix_only_failure=vix_only_failure,
+            refresh_id=refresh_id,
+            finished=finished,
+            vix_msg=vix_msg,
+        )
 
     # 시장 데이터 갱신 **성공 후** 장중 설정 재계산 (설계자 §10-3(2)).
     # 별도 cron 을 만들지 않는 대신 여기에 건다. lock 밖에서 돌린다 —
@@ -487,6 +520,16 @@ def start_refresh_job(
                 refresh_id=_service.state.refresh_id,
                 message="시장 데이터 갱신이 이미 진행 중입니다.",
                 cooldown_remaining_seconds=cd,
+            )
+        # POC5-12 — 'VIX 다시 받기'가 도는 중이면 전체 갱신도 시작하지 않는다(같은 잠금).
+        # 상태값을 따로 둔다 — 화면이 이것을 전체 갱신 진행으로 읽고 '갱신 완료'로 보이지 않게.
+        vix_row = read_state(db_path=db_path, scope=VIX_RETRY_SCOPE)
+        if vix_row is not None and vix_row.last_attempt_status == "running":
+            return StartResult(
+                status="vix_retry_running",
+                refresh_id=vix_row.refresh_id,
+                message="VIX 다시 받기가 진행 중입니다.",
+                cooldown_remaining_seconds=_cooldown_remaining_seconds(cooldown_hours),
             )
         cd = _cooldown_remaining_seconds(cooldown_hours)
         if cd > 0:

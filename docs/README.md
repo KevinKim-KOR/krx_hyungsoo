@@ -37,7 +37,9 @@ stop.bat    # 두 포트 정확 매칭 종료
 .venv/Scripts/pip install -r requirements.txt
 
 # 기동 (.env 의 OCI_SSH_TARGET 등은 자동 로드됨)
-.venv/Scripts/python -m uvicorn app.api:app --host 127.0.0.1 --port 8000 --reload
+# 코드 수정 자동 다시 읽기는 app · scripts 만 감시한다(감시 범위가 없으면 .venv · node_modules ·
+# state 까지 계속 훑어 CPU 를 쓴다 · start.sh / start.bat 과 같음 · POC5-12)
+.venv/Scripts/python -m uvicorn app.api:app --host 127.0.0.1 --port 8000 --reload --reload-dir app --reload-dir scripts
 ```
 
 #### 2) Next.js 프론트엔드

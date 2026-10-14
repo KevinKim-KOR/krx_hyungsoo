@@ -45,6 +45,49 @@ def last_settled_us_date(now_utc: datetime) -> date:
     return now_et.date() - timedelta(days=1)
 
 
+def vix_freshness(as_of_date: Optional[str], now_utc: datetime) -> dict:
+    """POC5-12 — VIX 최신성 판정(설계 §2 · 미국 동부 마감 기준 · KODEX200 날짜는 쓰지 않음).
+
+    E = `last_settled_us_date(now)` 이고, 토 · 일이면 직전 금요일이다(달력 없음 · 평일만).
+    L = 저장 기준일 D 다음 날부터 E 까지의 평일 수다.
+
+    | 판정 | 조건 |
+    |---|---|
+    | fresh | D = E |
+    | one_weekday_behind | L = 1(공개 지연 · 평일 휴장 여유) |
+    | update_check | L ≥ 2 |
+    | date_check | 날짜 없음 · 해석 불가 · D > E |
+    """
+    compare = last_settled_us_date(now_utc)
+    while compare.weekday() >= 5:
+        compare -= timedelta(days=1)
+    out = {
+        "state": "date_check",
+        "compare_date": compare.isoformat(),
+        "weekdays_behind": None,
+    }
+    if not as_of_date:
+        return out
+    try:
+        as_of = date.fromisoformat(as_of_date)
+    except ValueError:
+        return out
+    if as_of > compare:
+        return out
+    behind = sum(
+        1
+        for i in range(1, (compare - as_of).days + 1)
+        if (as_of + timedelta(days=i)).weekday() < 5
+    )
+    state = (
+        "fresh"
+        if behind == 0
+        else "one_weekday_behind" if behind == 1 else "update_check"
+    )
+    out.update(state=state, weekdays_behind=behind)
+    return out
+
+
 def refresh_pc_vix(*, db_path: Path, now_utc: datetime) -> Optional[str]:
     """VIX 를 받아 저장한다. 성공이면 None, 실패면 한국어 문구(완료 사유 끝에 붙일 것)."""
     max_date = last_settled_us_date(now_utc)

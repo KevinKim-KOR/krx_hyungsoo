@@ -50,9 +50,11 @@ function marketOk(overrides: Record<string, unknown> = {}) {
       },
       vix: {
         availability: "available",
-        as_of_date: "2026-07-03", // 시장보다 이전 → stale
+        as_of_date: "2026-07-03",
         close: 17.25,
         recent_20d_series: [],
+        // POC5-12 — 서버 판정(미국 장 마감 기준 · vix_freshness 실제 계산값)
+        freshness: { state: "update_check", compare_date: "2026-07-24", weekdays_behind: 15 },
       },
     },
     ...overrides,
@@ -166,15 +168,16 @@ describe("DashboardView — 결측 정직성", () => {
 });
 
 describe("DashboardView — VIX stale · 예외 · 일부 실패", () => {
-  it("VIX 는 소수점 둘째 자리로 표시하고 stale 을 분리 표시한다", async () => {
+  it("VIX 는 소수점 둘째 자리로 표시하고 최신성 안내를 분리 표시한다 (POC5-12 서버 판정)", async () => {
     render(<DashboardView onNavigate={vi.fn()} />);
     fireEvent.click(screen.getByText("시장 상태 불러오기"));
     const marketCard = (await screen.findByText("시장 상태")).closest(".card")!;
     await waitFor(() => {
       const txt = (marketCard as HTMLElement).textContent ?? "";
-      // VIX close 17.25 (둘째 자리) + stale 표시가 시장 카드 안에.
+      // VIX close 17.25 (둘째 자리) + 업데이트 확인 안내가 시장 카드 안에.
       expect(txt).toMatch(/17\.25/);
-      expect(txt).toMatch(/stale/);
+      expect(txt).toMatch(/업데이트 확인 필요/);
+      expect(txt).not.toMatch(/stale/);
     });
   });
 
@@ -271,5 +274,52 @@ describe("DashboardView — VIX stale · 예외 · 일부 실패", () => {
       await screen.findByText(/시장 국면: KODEX200 benchmark data is insufficient\./),
     ).toBeInTheDocument();
     expect(screen.queryByText(/KOSPI benchmark/)).not.toBeInTheDocument();
+  });
+});
+
+// POC5-12 — 「개발·실험용」 예외 목록 · 시장 카드 VIX 줄도 서버 판정만 읽는다(판정 Q1).
+describe("DashboardView — VIX 최신성 (POC5-12)", () => {
+  function withFreshness(freshness: Record<string, unknown> | null) {
+    const m = marketOk();
+    return {
+      ...m,
+      market_risk_reference: {
+        ...m.market_risk_reference,
+        vix: { ...m.market_risk_reference.vix, freshness },
+      },
+    };
+  }
+
+  it("update_check: 예외 문구 · 옛 '(시장 …보다 이전)' 없음", async () => {
+    render(<DashboardView onNavigate={vi.fn()} />);
+    fireEvent.click(screen.getByText("시장 상태 불러오기"));
+    expect(
+      await screen.findByText("VIX 자료 업데이트 확인 필요(기준일 2026-07-03)"),
+    ).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/VIX stale|보다 이전/);
+  });
+
+  it("fresh: 예외 · 카드 안내 모두 없음", async () => {
+    fetchMarketTopnLatest.mockResolvedValue(
+      withFreshness({ state: "fresh", compare_date: "2026-07-03", weekdays_behind: 0 }),
+    );
+    render(<DashboardView onNavigate={vi.fn()} />);
+    fireEvent.click(screen.getByText("시장 상태 불러오기"));
+    const marketCard = (await screen.findByText("시장 상태")).closest(".card")!;
+    await waitFor(() => expect((marketCard as HTMLElement).textContent).toMatch(/17\.25/));
+    expect(document.body.textContent).not.toMatch(
+      /VIX 자료 업데이트|VIX 기준일 확인|⚠ 업데이트 확인 필요|⚠ 기준일 확인 필요|stale/,
+    );
+  });
+
+  it("판정 필드 없음: 'VIX 기준일 확인 필요' · 카드 '⚠ 기준일 확인 필요'", async () => {
+    fetchMarketTopnLatest.mockResolvedValue(withFreshness(null));
+    render(<DashboardView onNavigate={vi.fn()} />);
+    fireEvent.click(screen.getByText("시장 상태 불러오기"));
+    expect(
+      await screen.findByText("VIX 기준일 확인 필요(기준일 2026-07-03)"),
+    ).toBeInTheDocument();
+    const marketCard = screen.getByText("시장 상태").closest(".card")!;
+    expect((marketCard as HTMLElement).textContent).toMatch(/⚠ 기준일 확인 필요/);
   });
 });

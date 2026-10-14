@@ -220,6 +220,16 @@ class MarketRiskKodex200(BaseModel):
     series_last_date: Optional[str] = None
 
 
+class MarketRiskVixFreshness(BaseModel):
+    """POC5-12 — PC 화면 응답만 · 미국 동부 마감 기준 VIX 최신성(app/pc_vix_refresh.vix_freshness)."""
+
+    state: str  # fresh / one_weekday_behind / update_check / date_check
+    compare_date: Optional[str] = (
+        None  # 비교일 E(미국 마감 기준 · 주말이면 직전 금요일)
+    )
+    weekdays_behind: Optional[int] = None  # D 다음 날 ~ E 평일 수 · date_check 면 None
+
+
 class MarketRiskVix(BaseModel):
     availability: str
     as_of_date: Optional[str] = None
@@ -229,6 +239,7 @@ class MarketRiskVix(BaseModel):
     recent_20d_series: list[MarketRiskRecentPoint] = []
     series_first_date: Optional[str] = None
     series_last_date: Optional[str] = None
+    freshness: Optional[MarketRiskVixFreshness] = None  # POC5-12 선택 필드
 
 
 class MarketRiskReference(BaseModel):
@@ -284,10 +295,24 @@ class MarketTopNResponse(BaseModel):
 
 
 class MarketRefreshResponse(BaseModel):
-    status: str  # accepted / running / skipped_cooldown / failed_to_start
+    # accepted / running / skipped_cooldown / failed_to_start / not_needed(POC5-12 scope=vix 대상 없음)
+    # / vix_retry_running(POC5-12 'VIX 다시 받기' 실행 중이라 거절 · refresh_id = 그 재시도 id)
+    status: str
     refresh_id: Optional[str] = None
     message: str
     cooldown_remaining_seconds: int = 0
+
+
+class MarketRefreshVixRetry(BaseModel):
+    """POC5-12 — 'VIX 다시 받기' 표식 · 결과(market_refresh_state 의 vix_retry 행)."""
+
+    needed: bool
+    status: Optional[str] = None  # needed / running / completed / failed / cleared
+    refresh_id: Optional[str] = None
+    started_at: Optional[str] = None
+    finished_at: Optional[str] = None
+    error_summary: Optional[str] = None
+    vix_as_of_date: Optional[str] = None  # 다시 받기 뒤 VIX 저장 기준일
 
 
 class MarketRefreshStatusResponse(BaseModel):
@@ -303,3 +328,4 @@ class MarketRefreshStatusResponse(BaseModel):
     runtime_seconds: Optional[float] = None
     error_summary: Optional[str] = None
     cooldown_remaining_seconds: int = 0
+    vix_retry: Optional[MarketRefreshVixRetry] = None  # POC5-12 선택 필드

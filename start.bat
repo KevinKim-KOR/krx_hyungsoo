@@ -15,7 +15,7 @@ timeout /t 1 >nul
 
 rem 1. FastAPI backend (port 8000)
 echo [1/3] Starting FastAPI backend on port 8000...
-start "POC1 Backend" cmd /k ".\.venv\Scripts\python.exe -m uvicorn app.api:app --host 127.0.0.1 --port 8000 --reload"
+start "POC1 Backend" cmd /k ".\.venv\Scripts\python.exe -m uvicorn app.api:app --host 127.0.0.1 --port 8000 --reload --reload-dir app --reload-dir scripts"
 
 rem 2. Next.js frontend (port 3000)
 rem    NEXT_PUBLIC_API_BASE comes from frontend/.env.local (single source of truth).

@@ -34,6 +34,7 @@ import {
   DASH_KEY_NAV,
 } from "@/lib/api/dashboardKeys";
 import type { MenuKey } from "./LeftSidebar";
+import { vixFreshnessNotice, type VixFreshnessNotice } from "@/lib/vixFreshness";
 import { isKospiWarning } from "./MarketContextCard";
 
 interface Props {
@@ -118,16 +119,11 @@ function collectExceptions(
     }
     const risk = market.data.market_risk_reference;
     const vix = risk?.vix;
-    const kodex = risk?.kodex200;
-    if (
-      vix?.availability === "available" &&
-      kodex?.availability === "available" &&
-      vix.as_of_date &&
-      kodex.as_of_date &&
-      vix.as_of_date < kodex.as_of_date
-    ) {
+    // POC5-12 — VIX 최신성은 PC 서버의 미국 장 마감 기준 판정(vix.freshness)만 읽는다.
+    const vixNotice = vixFreshnessNotice(vix);
+    if (vixNotice) {
       list.push({
-        text: `VIX stale — 기준일 ${vix.as_of_date} (시장 ${kodex.as_of_date}보다 이전)`,
+        text: vixNotice.text,
         action: "diagnostics",
         actionLabel: "진단·상태 확인",
       });
@@ -373,12 +369,12 @@ function MarketCardBody({
       ) : (
         <div style={{ color: "var(--muted)" }}>KODEX200: 확인 불가</div>
       )}
-      {/* VIX — 별도 기준일 + stale 분리 (§4.2) */}
+      {/* VIX — 별도 기준일 + 최신성 분리 (§4.2 · POC5-12 미국 장 마감 기준 판정) */}
       {risk?.vix?.availability === "available" ? (
         <VixLine
           vixClose={risk.vix.close ?? null}
           vixAsof={risk.vix.as_of_date ?? null}
-          marketAsof={risk.kodex200?.as_of_date ?? null}
+          notice={vixFreshnessNotice(risk.vix)}
         />
       ) : (
         <div style={{ color: "var(--muted)" }}>VIX: 확인 불가</div>
@@ -390,22 +386,22 @@ function MarketCardBody({
 function VixLine({
   vixClose,
   vixAsof,
-  marketAsof,
+  notice,
 }: {
   vixClose: number | null;
   vixAsof: string | null;
-  marketAsof: string | null;
+  notice: VixFreshnessNotice | null;
 }) {
-  const isStale = !!(vixAsof && marketAsof && vixAsof < marketAsof);
+  // POC5-12 — 국내 시장 기준일과 비교하지 않는다(서버의 미국 장 마감 기준 판정만).
   return (
     <div>
       <span style={{ color: "var(--muted)" }}>VIX: </span>
       <span>{vixClose != null ? vixClose.toFixed(2) : "-"}</span>
       <span style={{ color: "var(--muted)" }}> (기준일 {fmtKstDate(vixAsof)})</span>
-      {isStale && (
+      {notice && (
         <span style={{ color: "var(--warn)", fontWeight: 600, fontSize: 12 }}>
           {" "}
-          ⚠ stale — 현재 시장값 아님
+          ⚠ {notice.state === "update_check" ? "업데이트 확인 필요" : "기준일 확인 필요"}
         </span>
       )}
     </div>
