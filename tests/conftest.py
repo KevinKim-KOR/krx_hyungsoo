@@ -624,3 +624,19 @@ def _block_live_krx_api(monkeypatch):
     monkeypatch.setattr(krx_sync, "_default_fetcher", _blocked)
     monkeypatch.setattr(krx_sync, "_default_kospi_fetcher", _blocked)
     monkeypatch.setattr(krx_sync, "_default_stock_fetcher", _blocked)
+
+
+@pytest.fixture(autouse=True)
+def _neutral_pc_vix_step(monkeypatch):
+    """POC5-11 — PC 갱신 서비스의 VIX 단계를 기본으로 '성공 · 문구 없음' stub 으로 바꾼다.
+
+    VIX 단계를 연결하자 stub 없는 기존 서비스 시험이 실제 Yahoo(FDR `VIX`)로 나가거나,
+    완료 사유(`error_summary`) 정확 비교가 깨질 수 있었다. 서비스 모듈 속성
+    `market_refresh_service.refresh_pc_vix` 만 바꾼다 — VIX 경계 시험
+    (`tests/test_pc_vix_refresh.py`)은 진짜 `app.pc_vix_refresh.refresh_pc_vix` 를 되돌려 놓고
+    가짜 수집기(`FinanceDataReader.DataReader`)만 쓴다(설계자 판정 §4 '기본 stub 이 경계 시험을
+    가리지 않게').
+    """
+    from app import market_refresh_service
+
+    monkeypatch.setattr(market_refresh_service, "refresh_pc_vix", lambda **_: None)

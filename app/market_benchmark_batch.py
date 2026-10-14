@@ -115,8 +115,12 @@ _KOSPI_RECORD_KEYS = (
 )
 
 
-def refresh_vix(*, db_path=None) -> dict[str, Any]:
-    """VIX 갱신. 기존 `scripts/_market_refresh/vix_ingest.run_vix_ingest` 재사용."""
+def refresh_vix(*, db_path=None, max_date: Optional[date] = None) -> dict[str, Any]:
+    """VIX 갱신. 기존 `scripts/_market_refresh/vix_ingest.run_vix_ingest` 재사용.
+
+    `max_date` — POC5-11 PC 수동 갱신만 넘긴다(그 뒤 날짜는 저장 안 함). None(기본 · OCI 배치)이면
+    예전 호출 그대로다.
+    """
     try:
         from scripts._market_refresh.vix_ingest import run_vix_ingest
     except Exception as e:  # noqa: BLE001
@@ -126,7 +130,11 @@ def refresh_vix(*, db_path=None) -> dict[str, Any]:
             from app.market_benchmark_store import DEFAULT_DB_PATH
 
             db_path = DEFAULT_DB_PATH
-        rc = run_vix_ingest(db_path)
+        rc = (
+            run_vix_ingest(db_path)
+            if max_date is None
+            else run_vix_ingest(db_path, max_date=max_date)
+        )
     except Exception as e:  # noqa: BLE001
         return _result("failed", error=f"{type(e).__name__}: {str(e)[:200]}")
     try:

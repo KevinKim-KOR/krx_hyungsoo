@@ -58,7 +58,7 @@ const VOL_OK: StoredVolumeEvidence = {
   ratio_status: "ok",
 } as StoredVolumeEvidence;
 
-// 세 날짜를 일부러 다르게 둔다: KOSPI 10-12 · 저장 가격 최신일(market_context.asof) 10-14 ·
+// 세 날짜를 일부러 다르게 둔다: KOSPI 10-12 · 판정 줄(market_context.asof) 10-14 ·
 // KODEX200 유효 가격 최신 행(market_risk_reference.kodex200.as_of_date) 10-13.
 function ctx(over: Partial<MarketContext> = {}, kospi: MarketContextKospi = KOSPI_OK): MarketContext {
   return {
@@ -163,22 +163,21 @@ describe("KOSPI 카드 — 기본 화면 · 시장 수치와 거래량 펼치기
     expect(within(c).queryByTestId("tc-market-detail")).toBeNull();
   });
 
-  it("세 날짜가 다르면 각자 실제 필드 — KODEX200 기준일 · 저장 가격 최신일 · KOSPI 기준일 (판정 Q1)", async () => {
+  it("세 날짜가 다르면 각자 실제 필드 — 기준선 옆 · 판정 줄 · KOSPI 기준일 (UI-03 · POC5-11 판정 Q1)", async () => {
     await renderHeadline(market());
     const c = card();
     expect(within(c).getByTestId("tc-kodex200-date").textContent).toBe(" · 기준일 2026-10-13");
     expect(c.textContent).toContain("마지막 자료 기준일 2026-10-12");
     expect(c.textContent).not.toContain("2026-10-14");
     fireEvent.click(marketToggle());
-    expect(within(c).getByTestId("tc-stored-latest-date").textContent).toBe(
-      " · 저장 가격 최신일 2026-10-14 (저장된 전체 종목 기준)",
-    );
-    // '저장 가격 최신일'을 KODEX200 기준일로 부르지 않는다.
-    expect(c.textContent).not.toContain("기준일 2026-10-14");
-    expect(c.textContent).not.toMatch(/KODEX200 기준일/);
+    // 판정 줄 = market_context.asof 그대로(POC5-11 부터 PC 화면 API 가 KODEX200 이력 끝 날짜로 준다).
+    expect(within(c).getByTestId("tc-regime-date").textContent).toBe(" · KODEX200 기준일 2026-10-14");
+    expect(c.textContent).not.toContain("저장 가격 최신일");
+    // 기준선 옆 날짜는 그대로 market_risk_reference(10-13) — 판정 줄 값으로 바꾸지 않는다.
+    expect(within(c).getByTestId("tc-kodex200-date").textContent).toBe(" · 기준일 2026-10-13");
   });
 
-  it("KODEX200 날짜가 없으면 '기준일 확인 불가' — 저장 가격 최신일 · KOSPI 날짜로 대신하지 않음", async () => {
+  it("KODEX200 날짜가 없으면 '기준일 확인 불가' — 판정 줄 날짜 · KOSPI 날짜로 대신하지 않음", async () => {
     for (const ref of [
       undefined,
       {

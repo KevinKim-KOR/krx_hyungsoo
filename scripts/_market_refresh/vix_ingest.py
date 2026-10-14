@@ -19,8 +19,13 @@ from pathlib import Path
 from typing import Optional
 
 
-def run_vix_ingest(db_path: Path) -> int:
-    """VIX ingestion 실행. 반환값 = CLI exit code (0 ok, 2 error/conflict)."""
+def run_vix_ingest(db_path: Path, max_date: Optional[date] = None) -> int:
+    """VIX ingestion 실행. 반환값 = CLI exit code (0 ok, 2 error/conflict).
+
+    `max_date`(POC5-11 · PC 수동 갱신만 넘김): 이 날짜보다 뒤 행은 저장하지 않는다(진행 중인
+    미국 세션 값이 확정 종가처럼 저장돼 다음 증분에서 다시 고쳐지지 않는 것을 막음).
+    None(기본 · CLI · OCI 배치)이면 예전 동작 그대로다.
+    """
     import FinanceDataReader as fdr
 
     from app.market_benchmark_store import (
@@ -49,6 +54,19 @@ def run_vix_ingest(db_path: Path) -> int:
     if start > end:
         print(f"[vix] already up to date -- latest={latest}")
         return 0
+    if max_date is not None and start > max_date:
+        print(
+            f"[vix] already up to date -- latest={latest} (settled through {max_date})"
+        )
+        return 0
+    if max_date is not None and not any(
+        (start + timedelta(days=i)).weekday() < 5
+        for i in range((max_date - start).days + 1)
+    ):
+        # 주말만 남았다(새 미국 거래일 없음) — 조회하면 빈 응답이 실패(rc 2)로 잡힌다.
+        # 요일만 본다(거래일 달력 없음 · 미국 평일 휴장은 남는다).
+        print(f"[vix] no new weekday through {max_date} -- latest={latest}")
+        return 0
 
     try:
         df = fdr.DataReader("VIX", start, end)
@@ -76,6 +94,15 @@ def run_vix_ingest(db_path: Path) -> int:
         except (TypeError, ValueError):
             continue
         rows.append((dt, close))
+
+    if max_date is not None and rows:
+        settled = [(dt, close) for dt, close in rows if dt <= max_date.isoformat()]
+        if not settled:
+            print(
+                f"[vix] no settled rows yet (fetched={len(rows)}, settled through {max_date})"
+            )
+            return 0
+        rows = settled
 
     if not rows:
         print("[vix] no valid rows after filter", file=sys.stderr)

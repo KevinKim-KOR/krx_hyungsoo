@@ -181,13 +181,13 @@ async function renderView() {
     expect(screen.queryByText(/불러오는 중/)).toBeNull();
   });
   // 시장 조회가 실제로 **반영**됐는지 확인한다. `KospiHeadline` 은 로딩 표시가
-  // 없어서 위 대기만으로는 부족하다. 펼친 기존 시장 판정 줄의 ` · 저장 가격 최신일
+  // 없어서 위 대기만으로는 부족하다. 펼친 기존 시장 판정 줄의 ` · KODEX200 기준일
   // YYYY-MM-DD` 는 시장 응답이 반영돼야 나오고, 어느 fixture 에서도 통하는 앵커다
-  // (UI-03 판정 Q1 — 예전 이름 '기준일').
+  // (POC5-11 판정 Q1 — 예전 이름 '기준일' → UI-03 '저장 가격 최신일' → 'KODEX200 기준일').
   // (POC3-02D-OPS-03 설계자 RESULT STEP 4-3 — '마지막 자료 기준일' 은 이제 KOSPI
   // 기준일이라 KOSPI 기준일이 없는 fixture 에서는 나오지 않아 앵커로 쓰지 않는다.)
   expandAll();
-  await screen.findByText(/· 저장 가격 최신일 \d{4}-\d{2}-\d{2}/);
+  await screen.findByText(/· KODEX200 기준일 \d{4}-\d{2}-\d{2}/);
   expandAll(); // 앵커 뒤에 그려진 최대 3개 행의 '수치 더보기'까지.
   return { onNavigate };
 }

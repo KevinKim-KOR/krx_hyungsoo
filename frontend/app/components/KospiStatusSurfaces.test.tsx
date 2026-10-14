@@ -250,13 +250,13 @@ describe("설계자 RESULT STEP 4-2 · 4-3 — 「오늘의 투자 점검」 KOS
     expect(foot.textContent).toBe(`마지막 자료 기준일 2026-09-28 · ${KRX_SOURCE}`);
     expect(card.textContent).not.toContain("마지막 자료 기준일 2026-09-21");
     expect(within(card).getAllByText(new RegExp(KRX_SOURCE.replace(/[()]/g, "\\$&")))).toHaveLength(1);
-    // POC5-UI-03 판정 Q1 — 시장 판정 줄의 날짜(market_context.asof = 저장된 전체 종목 표 최신일)는
-    // 'KODEX200 기준일'이 아니라 '저장 가격 최신일'(펼친 칸). KODEX200 기준선 날짜로 쓰지 않는다.
+    // POC5-11 판정 Q1 — 시장 판정 줄(펼친 칸)의 날짜 = `KODEX200 기준일 D`(market_context.asof ·
+    // PC 화면 API 는 KODEX200 이력 끝 날짜). 이 날짜는 판정 줄에만 있고 '마지막 자료 기준일'로 쓰지 않는다.
     fireEvent.click(within(card).getByRole("button", { name: "시장 수치와 거래량 펼치기" }));
     expect(
-      within(card).getByText("· 저장 가격 최신일 2026-09-21 (저장된 전체 종목 기준)", { exact: false }),
+      within(card).getByText("· KODEX200 기준일 2026-09-21", { exact: false }),
     ).toBeInTheDocument();
-    expect(card.textContent).not.toContain("기준일 2026-09-21");
+    expect(within(card).getAllByText(/2026-09-21/)).toHaveLength(1);
     // 펼친 뒤에도 출처 줄은 카드 전체에 한 줄 · 마지막 자료 기준일은 KOSPI 날짜 그대로.
     expect(within(card).getAllByText(new RegExp(KRX_SOURCE.replace(/[()]/g, "\\$&")))).toHaveLength(1);
     expect(card.textContent).not.toContain("마지막 자료 기준일 2026-09-21");

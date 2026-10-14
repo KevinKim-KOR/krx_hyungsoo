@@ -82,11 +82,17 @@ def compute_topn(
     exclude_synthetic: bool = True,
     exclude_futures: bool = True,
     kospi_today_kst: Optional[str] = None,
+    market_asof_from_kodex200: bool = False,
 ) -> dict:
     """SQLite etf_daily_price 기준 일간 / 1개월 / 3개월 TOP N 산출.
 
     `kospi_today_kst` — POC3-02D-OPS-03 확정 계약 9. 화면 API 만 넘긴다(KOSPI 최신성 =
     기대 T-1). 없으면 KOSPI 판정은 예전 그대로다(과거 재현 호출부 무변경).
+
+    `market_asof_from_kodex200` — POC5-11(설계자 판정 Q1). PC 화면 API 만 True 를 넘긴다.
+    True 면 `market_context.asof`(계약 ⑤ 'KODEX200 기준일')를 판정 · 지속일 · 기준선과 같은
+    읽기의 069500 유효 이력 마지막 날짜로 둔다(이력 없으면 None). 기본 False 는 예전 그대로
+    (전체 최신일 `asof_iso`) — 최상위 `asof` · 후보 기간 계산 · 다른 호출자 출력은 늘 그대로다.
 
     DB 부재 시 status="missing". DB 가 있어도 가격 데이터 없음/필수 테이블 부재면
     각각 status="empty"/"invalid". 본 함수는 외부 fetch / write 없음 — SQLite read only.
@@ -310,7 +316,11 @@ def compute_topn(
     kodex200_history = fetch_price_history(KODEX200_TICKER, db_path=db_path)
     kospi_history = fetch_benchmark_history(KOSPI_ID, db_path=db_path)
     market_context = compute_market_context(
-        asof=asof_iso,
+        asof=(
+            (kodex200_history[-1][0] if kodex200_history else None)
+            if market_asof_from_kodex200
+            else asof_iso
+        ),
         kodex200_history=kodex200_history,
         kospi_history=kospi_history if kospi_history else None,
         kospi_today_kst=kospi_today_kst,

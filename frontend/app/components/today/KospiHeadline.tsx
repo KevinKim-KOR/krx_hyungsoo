@@ -163,8 +163,9 @@ export default function KospiHeadline({ market }: { market: QueryState<MarketTop
           </div>
 
           {/* 기존 시장 판정 — KODEX200 지표로 계산. 코스피와 합치지 않음(§3.1).
-              UI-03 판정 Q1 — 이 줄의 날짜(market_context.asof)는 저장된 전체 종목 표의 최신일이라
-              'KODEX200 기준일'이 아니라 '저장 가격 최신일'로 부른다(응답 · 계산은 그대로). */}
+              POC5-11 판정 Q1 — 이 줄의 날짜(market_context.asof)는 PC 화면 API 에서 판정 · 지속일 ·
+              기준선과 같은 읽기의 069500 유효 이력 마지막 날짜다('KODEX200 기준일' · 계약 ⑤).
+              (UI-03 에서 잠시 '저장 가격 최신일'로 부름 — 그때 값은 저장된 전체 종목 표 최신일.) */}
           <div className="tc-stat-block">
             <div className="tc-label">
               기존 시장 판정 참고{" "}
@@ -186,9 +187,9 @@ export default function KospiHeadline({ market }: { market: QueryState<MarketTop
                   <span className="tc-muted tc-small"> · 지속일 자료 없음</span>
                 )}
                 {ctx.asof && (
-                  <span className="tc-muted tc-small" data-testid="tc-stored-latest-date">
+                  <span className="tc-muted tc-small" data-testid="tc-regime-date">
                     {" "}
-                    · 저장 가격 최신일 {fmtKstDate(ctx.asof)} (저장된 전체 종목 기준)
+                    · KODEX200 기준일 {fmtKstDate(ctx.asof)}
                   </span>
                 )}
                 <p className="tc-muted tc-small" style={{ marginTop: 4 }}>

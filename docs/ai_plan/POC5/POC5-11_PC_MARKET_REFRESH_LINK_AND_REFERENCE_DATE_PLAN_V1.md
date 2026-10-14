@@ -4,7 +4,7 @@
 근거: 설계자 판정 `POC5-UI-03_PLAN_DECISION_AND_PC_MARKET_REFERENCE_FOLLOWUP_2026-10-14.md` §4(원문 = `docs/ai_design/POC5/POC5-UI-03_TODAY_SCREEN_INFORMATION_HIERARCHY_DESIGN_V1.md` §9 · 별도 설계서 없음)
 
 ```text
-STATUS   = PLAN 제출 — 설계자 판정 대기(구현 미승인 · UI-03 커밋 뒤 착수)
+STATUS   = PLAN 확정 — 설계자 PASS(2026-10-14 · Q1~Q4 = (a) · (b) · (a) · (a) · 재제출 없음 · 판정 원문 docs/ai_design/POC5/POC5-11_PC_MARKET_REFRESH_LINK_AND_REFERENCE_DATE_PLAN_DECISION_2026-10-14.md) → 판정 반영 §6 → 구현
 SCOPE    = PC 갱신 서비스에 기존 refresh_vix 연결 · PC 화면 API 의 시장 판정 날짜를 실제 쓴 KODEX200 자료에서 · 같은 단계에서 오늘 화면 판정 줄 이름 정정
            공유 수집 함수 · OCI 배치 · PUSH · DB 스키마 · 의존성 변경 0
 QUESTION = 4건(§4)
@@ -135,3 +135,45 @@ QUESTION = 4건(§4)
   - 후보 수익률 `basis_end_date` 는 `asof_iso` 이지만, 끝값은 종목마다 자기 마지막 행이다(추정 · 라벨 차이).
   - 한국 시각 00:00~05:00(겨울 06:00)에 갱신하면 진행 중인 미국 세션 VIX 값이 저장될 수 있다(추정 · Yahoo 조회 끝이 로컬 자정). 다음 실행은 저장 최신일 다음 날부터라 다시 고쳐지지 않는다.
 - 첫 실행은 2026-09-12 이후 약 한 달 치 VIX 를 한 번에 받는다(추정 · 라이브 DB 미조회).
+
+## 6. 설계자 판정 반영 (2026-10-14 · PASS · 재제출 없음)
+
+- **Q1 (a)**: 오늘 화면 펼친 판정 줄 이름은 `· KODEX200 기준일 D` 다(UI-03 '저장 가격 최신일 …'을 대신함).
+  - 날짜는 이미 읽은 069500 유효 이력(`fetch_price_history` · close > 0 · 국면 · 지속일 · 기준선과 같은 읽기)의 마지막 행이다. 이력이 없으면 None 이다.
+  - 키워드 인자는 기본 False 이고, PC `GET /market/topn/latest` 만 True 를 넘긴다.
+  - 최상위 `asof` · 후보 기간 계산 · `_latest_date_in_db` · 다른 호출자 출력은 그대로다.
+- **Q2 (b)**: VIX 호출을 기존 `fdr_request_timeout()`(20초)으로 감싼다.
+  - 제한하는 것은 그 블록 안 `requests` 호출(FDR Yahoo `^VIX` 조회 1회 · timeout 인자 없는 호출)의 연결 대기 20초 · 응답 바이트 사이 무응답 20초다. 조회 1회 전체 시간 · DNS 조회 · 전체 갱신 시간의 상한이 아니다.
+  - 정상 · 예외 · timeout 뒤 원래 함수로 되돌아가는지 본다.
+  - 실패해도 NAV 단계 · 작업 종료가 이어지고, running 에 남지 않아 다음 갱신을 할 수 있어야 한다.
+- **Q3 (a)**: 완료 사유 끝에 `시장 불안 지표(VIX)를 갱신하지 못했습니다` 를 붙인다.
+  - 서버 로그에는 status · exit_code · error · as_of_date 중 있는 값을 남긴다. error 가 없어도 실패는 실패다.
+  - 새 기록 행 · 상태 파일은 만들지 않는다.
+- **Q4 (a)**: 기존 VIX 지연 판정을 그대로 둔다.
+  - 실제 수집 뒤 아래를 결과서에 함께 기록한다. 수집 연결 해소와 경고 판정 해소는 나눠 적는다.
+    - VIX 저장 날짜
+    - KODEX200 날짜
+    - 수집 status
+    - 경고 잔류 여부
+  - 새 해외 거래일 달력 · '두 날짜가 같아야 정상' 규칙 · 자동 재시도는 만들지 않는다.
+- **§3 미확정 자료(진행 중 미국 세션) 저장 가능성**: 코드로 대조하고, fixture 로 실제 가능성을 확인한다.
+  - 가능하면 PC 호출 범위에서만 미확정 날짜를 뺀다(공유 기본 동작 불변 · 갱신 시간대 제한 없음).
+  - 공유 기본 동작 변경이나 달력이 필요하면 그 충돌만 보고한다.
+- **관찰 항목**: 후보 `basis_end_date` · OCI 근거 날짜는 별도 관찰로만 적는다(해소 아님). BACKLOG 에 중복 등록하지 않는다.
+- **검사**(판정 §4): 서비스 기본 stub 이 새 VIX 경계 시험을 가리지 않게 한다.
+  - 성공 · 이미 최신 · 충돌 · 예외 · timeout 에서 저장 · 사유 · 작업 종료를 본다.
+  - DB 경로 전달 · 기존 기록 보존 · 실패 뒤 다음 실행을 본다.
+  - D1 / D2 날짜를 본다.
+  - 069500 이력이 없을 때 날짜 대체 없음 · 국면 · 지속일 · 기준선 보존을 본다.
+  - 화면 이름을 본다.
+  - 필수 검사는 한 차례 한다. 실제 확인은 사용자 갱신 1회이고, 결함 2건은 그 뒤 닫는다.
+- **구현 중 보충(2026-10-14 · 이 PLAN 의 SCOPE · §1 '공유 함수 · OCI 파일 변경 0' 정정)**
+  - 판정 §3 보완으로 공유 VIX 함수 두 곳에 선택 인자 `max_date` 를 더했다.
+    - `scripts/_market_refresh/vix_ingest.py :: run_vix_ingest(db_path, max_date=None)`
+    - `app/market_benchmark_batch.py :: refresh_vix(*, db_path=None, max_date=None)`
+  - 기본 None 이면 예전 코드 경로 그대로다. `refresh_vix` 는 그때 `run_vix_ingest(db_path)` 를 인자 하나로 부른다.
+  - OCI 배치 · CLI 는 이 인자를 넘기지 않는다(OCI 동작 불변).
+  - `max_date` 가 있을 때만 두 가지가 더해진다(독립 검토 반영).
+    - 그 뒤 날짜 행을 저장하지 않는다.
+    - 저장 최신일 다음 날부터 `max_date` 까지가 주말뿐이면 조회하지 않고 '이미 최신'으로 끝낸다. 요일만 보고 달력은 쓰지 않는다.
+  - VIX 단계는 서비스 안이 아니라 새 모듈 `app/pc_vix_refresh.py` 에 뒀다(POC5-10 방식 · 서비스 기본 stub 이 경계 시험을 가리지 않게).

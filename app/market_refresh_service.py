@@ -31,6 +31,7 @@ from pathlib import Path
 from typing import Callable, Optional
 
 from app.etf_nav_service import refresh_nav_universe
+from app.pc_vix_refresh import VIX_STEP_FAILED_TEXT, refresh_pc_vix
 from app.holdings_equity_refresh import (
     HOLDINGS_EQUITY_STEP_FAILED_TEXT,
     refresh_holdings_equity_prices,
@@ -382,6 +383,15 @@ def _execute_refresh_job(
         except Exception:  # noqa: BLE001
             pass
 
+    # POC5-11 — VIX(시장 불안 지표 · KOSPI 뒤 · NAV 앞). OCI 08:10 배치와 같은 수집 함수 ·
+    # 조회 대기 20초 · 미국 마감 전 날짜 제외(`app/pc_vix_refresh.py`). 실패해도 다른 단계 결과 ·
+    # 최종 판정은 그대로이고 한국어 문구만 완료 사유 끝에 붙인다. 기록 행 없음(로그만).
+    try:
+        vix_msg = refresh_pc_vix(db_path=db_path, now_utc=_utcnow())
+    except Exception:  # noqa: BLE001 — VIX 실패도 thread 안에서 격리
+        logger.exception("PC VIX step failed")
+        vix_msg = VIX_STEP_FAILED_TEXT
+
     # NAV / 괴리율 수집 (2026-06-08 Naver Universe Integration — 지시문 §5.4).
     # Naver `etfItemList.nhn` 1회 호출로 전체 ETF universe NAV / 시장가격 / 괴리율
     # 일괄 upsert. per-ticker N회 호출 패턴은 폐기. 실패는 전체 refresh 흐름
@@ -399,8 +409,10 @@ def _execute_refresh_job(
     finished = _utcnow()
     success_overall = universe_ok and (price_success > 0 or price_attempted == 0)
     # POC5-10 — 보유 개별주 단계 문구는 기존(ETF · KOSPI) 요약 뒤에 붙인다(그 판정은 그대로).
+    # POC5-11 — VIX 문구는 그 뒤.
     error_summary = (
-        " · ".join(x for x in (error_summary, holdings_equity_msg) if x) or None
+        " · ".join(x for x in (error_summary, holdings_equity_msg, vix_msg) if x)
+        or None
     )
 
     with _service.lock:
