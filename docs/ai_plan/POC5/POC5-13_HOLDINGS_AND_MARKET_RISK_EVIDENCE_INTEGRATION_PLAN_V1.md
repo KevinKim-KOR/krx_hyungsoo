@@ -4,7 +4,7 @@
 근거: `docs/ai_design/POC5/POC5-13_HOLDINGS_AND_MARKET_RISK_EVIDENCE_INTEGRATION_DESIGN_V1.md`(V1)
 
 ```text
-STATUS   = PLAN CONDITIONAL_PASS(설계자 2026-10-14 · Q1 (b) · Q2 (b) · Q3 (a) · Q4 (a) · 판정 원문 docs/ai_design/POC5/POC5-13_HOLDINGS_AND_MARKET_RISK_EVIDENCE_INTEGRATION_PLAN_DECISION_2026-10-14.md) → 판정 반영 §7 · 수정 목업 → 사용자 확인(§8 · 2026-10-15) → 구현 완료 · 결과서 docs/ai_result/POC5/POC5-13_HOLDINGS_AND_MARKET_RISK_EVIDENCE_INTEGRATION_RESULT.md → 검증자 r1 VERIFIED(2026-10-15) → 커밋 · push(2026-10-15)
+STATUS   = PLAN CONDITIONAL_PASS(설계자 2026-10-14 · Q1 (b) · Q2 (b) · Q3 (a) · Q4 (a) · 판정 원문 docs/ai_design/POC5/POC5-13_HOLDINGS_AND_MARKET_RISK_EVIDENCE_INTEGRATION_PLAN_DECISION_2026-10-14.md) → 판정 반영 §7 · 수정 목업 → 사용자 확인(§8 · 2026-10-15) → 구현 완료 · 결과서 docs/ai_result/POC5/POC5-13_HOLDINGS_AND_MARKET_RISK_EVIDENCE_INTEGRATION_RESULT.md → 검증자 r1 VERIFIED(2026-10-15) → 커밋 · push(2026-10-15) → 설계자 RESULT PASS · 종료(2026-10-15)
 SCOPE    = PC 근거 응답 사본에 선택 필드 1개(종목별 20거래일 하락 구간) · 작은 조립 함수 · 「확인 근거」 요약 블록 · 보기 선택 · 배지 · 상세 줄 ·
            「오늘의 투자 점검」 요약 한 줄
            새 API 경로 · DB · 원장 쓰기 · 외부 수집 · OCI · PUSH · PARAM 변경 0 · MarketDiscoveryView.tsx 변경 0

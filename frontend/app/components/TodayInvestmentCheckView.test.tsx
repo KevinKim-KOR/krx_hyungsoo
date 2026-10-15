@@ -884,7 +884,12 @@ describe("POC5-UI-03 「오늘의 투자 점검」 기본 화면 · 아래 묶�
     const board = screen.getByLabelText("개발 중인 판단 기능");
     expect(within(board).getByRole("heading", { name: "개발 중인 판단 기능" })).toBeInTheDocument();
     for (const [name, badge, desc] of [
-      ["내가 가진 ETF의 위험 신호", "개발 중", "보유 ETF 중 먼저 점검할 종목과 그 이유를 찾는 기능."],
+      // POC5-13 RESULT 판정 §4 — 이미 제공하는 범위를 '부분 제공'으로 표시(종합 위험 구간 분류는 미제공).
+      [
+        "내가 가진 ETF의 위험 신호",
+        "부분 제공",
+        "시장 국면과 PC 하락 구간·평가 비중을 제공합니다. 종합 위험 구간 분류는 아직 제공하지 않습니다.",
+      ],
       ["시장 흐름 전환까지의 거리", "개발 중", "현재는 KODEX200 기준선 대비 위치만 참고로 제공합니다."],
       ["저장 거래량 확인 근거", "일부 제공", "종합 위험 분류에는 아직 반영하지 않습니다."],
       ["공격·방어 비중", "이번 단계 미도입", "매매 비중 판단 표시는 이번 단계 범위 밖."],
@@ -894,6 +899,9 @@ describe("POC5-UI-03 「오늘의 투자 점검」 기본 화면 · 아래 묶�
       expect(li.textContent).toContain(badge);
       expect(li.textContent).toContain(desc);
     }
+    const risk = within(board).getByText("내가 가진 ETF의 위험 신호").closest("li") as HTMLElement;
+    expect(risk.textContent).not.toContain("개발 중");
+    expect(risk.textContent).not.toContain("먼저 점검할 종목과 그 이유를 찾는 기능");
     fireEvent.click(screen.getByRole("button", { name: "현재 제공 범위와 남은 기능 접기" }));
     expect(screen.queryByLabelText("개발 중인 판단 기능")).toBeNull();
   });

@@ -5,7 +5,7 @@
 결함: `DEF-HOLDINGS-EVIDENCE-MULTIROW-VALUATION`(BACKLOG · 2026-10-14 등록)
 
 ```text
-STATUS   = PLAN PASS(설계자 2026-10-15 · Q1 (a) A + C · Q2 (b) OCI 과거 발송 기록 확인 안 함 · Q3 (a) 기록만 · 판정 원문 docs/ai_design/POC5/POC5-14_HOLDINGS_EVIDENCE_MULTIROW_VALUATION_FIX_PLAN_DECISION_2026-10-15.md) → 판정 반영 §5 → 구현 → 검증자 r1 VERIFIED(2026-10-15) · 결과서 docs/ai_result/POC5/POC5-14_HOLDINGS_EVIDENCE_MULTIROW_VALUATION_FIX_RESULT.md
+STATUS   = PLAN PASS(설계자 2026-10-15 · Q1 (a) A + C · Q2 (b) OCI 과거 발송 기록 확인 안 함 · Q3 (a) 기록만 · 판정 원문 docs/ai_design/POC5/POC5-14_HOLDINGS_EVIDENCE_MULTIROW_VALUATION_FIX_PLAN_DECISION_2026-10-15.md) → 판정 반영 §5 → 구현 → 검증자 r1 VERIFIED(2026-10-15) · 결과서 docs/ai_result/POC5/POC5-14_HOLDINGS_EVIDENCE_MULTIROW_VALUATION_FIX_RESULT.md → 커밋 · push(2026-10-15) → 설계자 RESULT PASS · 종료(2026-10-15)
 SCOPE    = 공유 보유 근거 builder 의 행 짝짓기 · 요약(composer)의 종목 합산 — PC 코드만 · 새 ID · DB · API 경로 0
            OCI 정기 알림(보유 브리핑 · 보유 위험 · 시장 브리핑) 경로는 이 builder 를 쓰지 않음(§1-3)
 ```

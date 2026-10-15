@@ -11,10 +11,11 @@
 type DevItem = { name: string; badge: string; desc: string };
 
 const DEV_IN_PROGRESS: DevItem[] = [
+  // POC5-13 RESULT 판정 §4 — 제목 · 자리는 그대로 · 배지 '개발 중' → '부분 제공' · 설명 지정 문구(종합 위험 구간 분류는 미제공).
   {
     name: "내가 가진 ETF의 위험 신호",
-    badge: "개발 중",
-    desc: "보유 ETF 중 먼저 점검할 종목과 그 이유를 찾는 기능.",
+    badge: "부분 제공",
+    desc: "시장 국면과 PC 하락 구간·평가 비중을 제공합니다. 종합 위험 구간 분류는 아직 제공하지 않습니다.",
   },
   {
     name: "시장 흐름 전환까지의 거리",
