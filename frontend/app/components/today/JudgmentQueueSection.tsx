@@ -183,7 +183,8 @@ export default function JudgmentQueueSection({
   const mismatched = basis?.date_mismatch ?? [];
   // POC5-09 설계 §10-2-2 — 최대 3개의 비중 · 손익은 「확인 근거」와 같은 종목 합산
   // (aggregateHoldingsByTicker · 전체 계좌 평가 합 ÷ 전체 보유 평가 합 · (평가 합 − 매입 합) ÷ 매입 합).
-  // backend 요약의 비중 · 손익은 같은 종목의 첫 계좌 값이라 쓰지 않는다. 선정 · 순서 · 5일 · 20일 ·
+  // backend 요약의 비중 · 손익은 쓰지 않는다(POC5-14 전에는 같은 종목 여러 줄에 마지막 줄 값이 복사된 첫 줄 값 ·
+  // 지금은 backend 도 종목 합산). 선정 · 순서 · 5일 · 20일 ·
   // KODEX200 대비는 backend 요약 그대로. 보유 조회 전 · 실패면 비중 · 손익을 보이지 않는다.
   const aggByTicker =
     holdings.phase === "success"

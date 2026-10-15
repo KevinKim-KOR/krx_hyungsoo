@@ -100,6 +100,7 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 `DEF-PC-VIX-REFRESH-MISSING` = **해소 (2026-10-14 · `POC5-11` · 검증자 VERIFIED · 사용자 갱신 1회 · VIX 09-11 → 10-13 · 22행)** — 수집 연결 해소. 정비 큐 VIX 지연 경고는 기존 판정(`vix < kodex`) 한계로 남음(별도 기록 · 아래 절) → **`POC5-12` 에서 미국 장 마감 기준 판정으로 정정 · 해소(2026-10-14 · 검증자 r2 VERIFIED · 사용자 화면 확인: 「자료 최신화 필요」 VIX 경고 줄 없음)**.
 `DEF-PC-MARKET-SCREEN-SLOW-LOAD` = **해소 (2026-10-14 · `POC5-12` · 검증자 r2 VERIFIED · 사용자 화면 확인 "금방 뜹니다. 예전보다 더 빨라졌네요")** — 「요즘 잘 오르는 ETF」 첫 조회가 화면 10초 제한을 넘어 '요청 시간 초과'(아래 절).
 `DEF-MARKET-CONTEXT-ASOF-MEANING` = **해소(PC 화면) (2026-10-14 · `POC5-11` · 검증자 VERIFIED · 실제 응답 `market_context.asof` = KODEX200 유효 최신 10-14)** — OCI 근거 문장 · 후보 끝 날짜 라벨은 관찰로 남음(아래 절) — `market_context.asof` 이름(KODEX200 기준일 · 계약 ⑤)과 값(저장 가격 표 전체 최신일)이 다름 · 오늘 화면 이름은 `POC5-UI-03` 에서 '저장 가격 최신일'로 임시 정정.
+`DEF-HOLDINGS-EVIDENCE-MULTIROW-VALUATION` = **수정 · 검증자 r1 VERIFIED · 설계자 RESULT 대기 (2026-10-15 · `POC5-14` · 설계자 PLAN PASS · A 위치 짝짓기 + C 요약 종목 합산 · 실제 PC 응답 정정 확인)** — 공유 보유 근거 builder 가 같은 종목 여러 줄에 마지막 줄 평가값을 복사(아래 절).
 `DEF-ML-CHAIN` 은 **2026-08-25 해소**됐다.
 
 ### ~~DEF-ML-CHAIN — ML feature/evidence 생성 체인 미작동~~ → **해소 (2026-08-25)**
@@ -326,6 +327,30 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
   - 개발자 측정: 화면 한 번 열 때 시장 TOP N GET 2 → 1 · 응답 2.6 ~ 2.7초 → 1.25초 · 파일 감시 CPU(60초 · 빈 앱 · 같은 조건) 47.66초 → 3.17초.
   - 다시 켠 뒤(2026-10-14 18:00 `./start.sh` · 새 감시 범위 · ps 실측): 사용자 서버 파일 감시 CPU 60초 44.96초 → 5.26초 · 시장 메뉴 열기 시장 TOP N GET 1건 · 1.18 ~ 1.19초(20:25).
   - 닫는 조건: 사용자가 다시 켠 뒤 일반 화면에서 시간 초과가 반복되지 않음. 그래도 10초를 넘는 정상 응답이 남으면 PLAN §3 보완 4(나눠 재기 · 시장 GET 화면 제한 20초).
+
+### DEF-HOLDINGS-EVIDENCE-MULTIROW-VALUATION — 공유 보유 근거 builder 의 같은 종목 여러 줄 평가값
+
+**등재**: 2026-10-14 · **발견**: `POC5-13` PLAN 조사(PLAN §6) · **판정**: 설계자 `POC5-13` PLAN 판정 Q4 (a) — 별도 정정 · `POC5-14` 짧은 PLAN(조사 · PLAN 까지)
+
+- 상태: **수정 · 검증자 r1 VERIFIED(2026-10-15) · 설계자 RESULT 대기** (2026-10-15 · `POC5-14` · 판정 `docs/ai_design/POC5/POC5-14_HOLDINGS_EVIDENCE_MULTIROW_VALUATION_FIX_PLAN_DECISION_2026-10-15.md`) — builder 위치 짝짓기(A) + 요약 종목 합산(C). OCI 정기 알림 경로 불변. OCI 과거 발송 여부는 확인하지 않음(판정 Q2 — 수정 조건에서 제외).
+- 사실(코드 확인 2026-10-14)
+  - `app/holdings_market_evidence.py:478-479` `enriched_by_ticker = {e.ticker: e for e in enriched_list}` — 종목마다 마지막 줄만 남는다.
+  - `:556-557` 같은 종목의 모든 보유 줄에 그 값(평가금액 · 평가 손익률)을 넣는다.
+  - 실제 보유 32줄 · 29종목 중 069500(3줄) · 367760(2줄)이 해당한다.
+- 이 값을 읽는 곳(실제 출력에 실리는지는 POC5-14 조사에서 구분): `market_summary_composer.py`(judgment_summary 최대 3개 비중 · 합계 · 자료 확인 기준) · `runtime_evidence/holdings_evidence.py:192`(런타임 근거 줄 '평가수익률 · 평가금액') · 초안.
+- 조사(2026-10-14 · `docs/ai_plan/POC5/POC5-14_HOLDINGS_EVIDENCE_MULTIROW_VALUATION_FIX_PLAN_V1.md`)
+  - OCI 정기 알림 3종은 이 builder 를 쓰지 않는다(본문 영향 없음 · 코드 확인).
+  - 잘못된 값이 본문에 실리는 곳은 「개발·실험용」 수동 PC 보유 초안 메시지(LEGACY 수신함 경로) 하나다. PC 실행 기록 156건 중 본문 0건이고, OCI 발송 여부는 확인 안 함이다.
+  - 요약(composer)도 종목 합산이 아니라 첫 줄만 쓴다. 그래서 builder 행 짝짓기와 요약 종목 합산을 함께 고치는 안(A + C)을 권장한다.
+  - 실제 보유 기준으로 요약 합계가 1,273,695원 적고, 최대 3개 비중이 부풀려진다(0.4 → 0.5 · 10.1 → 11.1 · 4.5 → 4.9%). 화면에는 보이지 않는다.
+  - 정정 확인(2026-10-15 · 실제 PC 응답 GET · 읽기 전용): 줄별 평가 = 정상 줄별 값 · 요약 합계 14,134,755원 = 정상 · 최대 3개 비중 0.4 · 10.1 · 4.5% = 정상 · coverage 29/0/29 그대로.
+- 범위 밖 관찰(판정 Q3 (a) — 기록만 · 추가 개발 대상으로 자동 승격하지 않음)
+  - `app/runtime_evidence/privacy_detector.py` 두 가지(2026-10-15 서술 정정 · POC5-14 검토)
+    - `_hints_by_ticker`(`:106-116`)는 같은 종목 마지막 줄만 본다. 정기 3종 경로에서는 근거 payload 를 넘기지 않아 닿지 않는다.
+    - 쉼표가 든 숫자('1,500,000')를 찾지 못한다(`has_numeric_word` · `:41`). **정기 보유 브리핑마다 도는 개인정보 검사 경로에 있다**(`holdings_selection_flow.py:315` · `:344`). 지금 본문은 금액 숫자를 넣지 않아(`holdings_selection_render.py:7`) 사용자 영향은 없다.
+  - 근거 응답 `summary.total_holdings_count` 는 보유 줄 수(예 32)이고 화면 '내가 가진 ETF N개'는 고유 종목 수(29)다 — 단위 차이일 뿐 계산 결함 아님(의미는 PROGRAM_TRUTH API 표에 적음 · 응답 키 · 값 변경 없음).
+  - 결정 초안 미리보기(`app/api_decision_draft_preview.py:135-136`)가 builder 에 없는 키(`data_quality` · `overlap`)를 읽어 늘 비어 있다(builder 키는 `constituents_overlap`) — 별도 기능 연결 문제.
+- PC 「오늘의 투자 점검」 최대 3개의 비중 · 손익은 POC5-09 부터 종목 합산 값으로 바꿔 보인다. POC5-13 비중 계산은 정상 `GET /holdings/enriched` 종목 합산 값만 쓴다.
 
 ### 승격 시점 원문 (참고 보존)
 

@@ -1,6 +1,7 @@
 // POC5-09 설계 §10-2-2 — 「오늘의 투자 점검」 최대 3개의 비중 · 손익 = 「확인 근거」와 같은 종목 합산.
-// 한 종목에 이익 계좌와 손실 계좌가 함께 있을 때 두 화면 값이 같고, backend 요약의 첫 계좌 값은
-// 쓰지 않는다. 선정 · 순서 · 5일 · 20일 · KODEX200 대비는 backend 요약 그대로.
+// 한 종목에 이익 계좌와 손실 계좌가 함께 있을 때 두 화면 값이 같고, backend 요약의 비중 · 손익(이 시험에서는
+// 일부러 다른 값)은 쓰지 않는다. 선정 · 순서 · 5일 · 20일 · KODEX200 대비는 backend 요약 그대로.
+// (POC5-14 전 backend 요약 값은 마지막 줄 값이 복사된 첫 줄 값이었고, 지금은 backend 도 종목 합산이다.)
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, act, fireEvent } from "@testing-library/react";
 import { __resetQueryCache, type QueryState } from "@/lib/api/queryCache";
@@ -63,7 +64,7 @@ function evidence(): HoldingsMarketEvidenceResponse {
       market_position: { available: true },
       holdings: {
         available: true,
-        // backend 요약의 비중 · 손익 = 첫 계좌(손실 계좌) 값 — 화면에 나오면 안 된다.
+        // backend 요약의 비중 · 손익 — 일부러 화면 합산과 다른 값(손실 계좌 값) · 화면에 나오면 안 된다.
         top_holdings: [
           {
             ticker: "069500", name: "KODEX 200", eval_amount: 223400,
@@ -105,7 +106,7 @@ describe("최대 3개 비중 · 손익 = 종목 합산 (POC5-09 설계 §10-2-2)
     expect(pnl).toBe("손익 +10.05%");
     expect(today).toContain(weight);
     expect(today).toContain(pnl);
-    // backend 요약의 첫 계좌 값은 쓰지 않는다 · 5일 · 20일 · KODEX200 대비는 그대로.
+    // backend 요약의 비중 · 손익은 쓰지 않는다 · 5일 · 20일 · KODEX200 대비는 그대로.
     expect(today).not.toContain("비중 9.0%");
     expect(today).not.toContain("-2.87%");
     expect(today).toContain("5일 -3.56%");
@@ -123,7 +124,7 @@ describe("최대 3개 비중 · 손익 = 종목 합산 (POC5-09 설계 §10-2-2)
     expect(card.textContent).toContain(`+${KODEX_PNL.toFixed(2)}%`);
   });
 
-  it("보유 조회 전 · 실패면 비중 · 손익을 보이지 않는다(첫 계좌 값으로 대신하지 않음)", () => {
+  it("보유 조회 전 · 실패면 비중 · 손익을 보이지 않는다(backend 요약 값으로 대신하지 않음)", () => {
     render(
       <JudgmentQueueSection
         market={MARKET}

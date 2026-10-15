@@ -89,7 +89,8 @@ def _build_holding_evidence_lines(
 ) -> tuple[list[str], list[str], Optional[str]]:
     """(확인된 근거, 주의·미확인, target_as_of_date) 조립.
 
-    holding 은 build_holdings_market_evidence 응답 items 중 한 건 (dict).
+    holding 은 api_decision_draft_preview 가 만든 한 종목 dict 다 — 평가 비중 · 손익은 정상 보유 평가의
+    종목 합산(`_aggregate_enriched_by_ticker`), 단기 흐름은 build_holdings_market_evidence 응답 항목에서 온다.
     """
     confirmed: list[str] = []
     warnings: list[str] = []

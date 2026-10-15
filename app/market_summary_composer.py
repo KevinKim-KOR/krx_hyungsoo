@@ -34,6 +34,53 @@ def _stm_return_5d(item: dict) -> Optional[float]:
     return v if isinstance(v, (int, float)) else None
 
 
+def _ticker_valuations(evidence_holdings: list[dict]) -> dict[str, dict]:
+    """POC5-14 — 같은 종목 여러 줄(계좌)을 한 종목으로 합친다(DEF-HOLDINGS-EVIDENCE-MULTIROW-VALUATION).
+
+    평가 = 줄 평가금액 합(한 줄이라도 없으면 None) · 매입 = Σ 수량 × 평균매입단가(계산 불가면 None) ·
+    손익률 = (평가 − 매입) ÷ 매입 × 100(매입이 None · 0 이하면 None). 줄 손익률 평균 · 반올림 역산 없음.
+    한 줄 종목은 그 줄 값을 그대로 쓴다(기존 단일 계좌 값 불변 · 반올림 전 평가로 계산된 손익률).
+    화면 aggregateHoldingsByTicker · 결정 초안 미리보기 _aggregate_enriched_by_ticker 와 같은 규칙.
+    """
+    acc: dict[str, dict] = {}
+    for it in evidence_holdings:
+        ticker = it.get("ticker") if isinstance(it, dict) else None
+        if not ticker:
+            continue
+        h = it.get("holding") or {}
+        a = acc.setdefault(
+            ticker, {"ev": 0.0, "inv": 0.0, "ev_ok": True, "inv_ok": True, "rows": []}
+        )
+        a["rows"].append(h)
+        ev, q, p = h.get("evaluation_amount"), h.get("quantity"), h.get("avg_buy_price")
+        if isinstance(ev, (int, float)):
+            a["ev"] += ev
+        else:
+            a["ev_ok"] = False
+        if isinstance(q, (int, float)) and isinstance(p, (int, float)):
+            a["inv"] += q * p
+        else:
+            a["inv_ok"] = False
+    out: dict[str, dict] = {}
+    for ticker, a in acc.items():
+        if len(a["rows"]) == 1:
+            only = a["rows"][0]
+            out[ticker] = {
+                "eval_amount": only.get("evaluation_amount"),
+                "pnl_rate_pct": only.get("pnl_rate_pct"),
+            }
+            continue
+        ev = a["ev"] if a["ev_ok"] else None
+        inv = a["inv"] if a["inv_ok"] else None
+        pnl = (
+            round((ev - inv) / inv * 100.0, 2)
+            if ev is not None and inv is not None and inv > 0
+            else None
+        )
+        out[ticker] = {"eval_amount": ev, "pnl_rate_pct": pnl}
+    return out
+
+
 def select_top_holdings(
     evidence_holdings: list[dict], limit: int = TOP_HOLDINGS_LIMIT
 ) -> list[dict]:
@@ -43,7 +90,8 @@ def select_top_holdings(
     - status=ok 이고 return_5d_pct 가 유효(숫자)인 ticker 만 대상.
     - return_5d_pct 오름차순, 동률은 ticker 오름차순.
     - 최대 N 건.
-    - 중복 ticker 는 첫 등장만 유지(evidence 는 이미 ticker 단위).
+    - 중복 ticker(같은 종목 여러 줄 · 계좌)는 첫 등장 위치로 한 번만 선정 · 정렬하고, 평가 · 비중 · 손익은
+      종목 합산 값을 쓴다(POC5-14 · 예전에는 첫 줄 값).
     위험 점수·rank·signal 을 만들지 않는다 — 표시 정렬일 뿐이다.
     """
     # 평가 비중(§4.4·AC-7) = 이 ticker 평가금액 / 전체 유효 평가금액 합. 기존 저장값
@@ -70,11 +118,12 @@ def select_top_holdings(
             sortable.append(it)
 
     sortable.sort(key=lambda it: (_stm_return_5d(it), it.get("ticker") or ""))
+    valuations = _ticker_valuations(evidence_holdings)
     out: list[dict] = []
     for it in sortable[:limit]:
         stm = it.get("short_term_momentum") or {}
-        holding = it.get("holding") or {}
-        eval_amount = holding.get("evaluation_amount")
+        val = valuations.get(it.get("ticker")) or {}
+        eval_amount = val.get("eval_amount")
         market_weight = None
         if isinstance(eval_amount, (int, float)) and total_eval > 0:
             market_weight = round(eval_amount / total_eval * 100.0, 1)
@@ -84,7 +133,7 @@ def select_top_holdings(
                 "name": it.get("name"),
                 "eval_amount": eval_amount,
                 "market_weight_pct": market_weight,
-                "pnl_rate_pct": holding.get("pnl_rate_pct"),
+                "pnl_rate_pct": val.get("pnl_rate_pct"),
                 "return_5d_pct": stm.get("return_5d_pct"),
                 "return_20d_pct": stm.get("return_20d_pct"),
                 "excess_vs_kodex200_20d_pctp": stm.get("excess_vs_kodex200_20d_pctp"),
@@ -147,19 +196,30 @@ def summarize_holdings(evidence_holdings: Optional[list[dict]]) -> dict:
     total = 0
     need = 0
     seen: set[str] = set()
+    valuations = _ticker_valuations(evidence_holdings)
     for it in evidence_holdings:
         ticker = it.get("ticker") if isinstance(it, dict) else None
         if not ticker or ticker in seen:
             continue
         seen.add(ticker)
         total += 1
-        ev = (it.get("holding") or {}).get("evaluation_amount")
+        # POC5-14 — 판정 규칙은 그대로 · 평가 · 손익 · 비중은 종목 합산 값(화면 computeNeedCheck 와 같은 입력).
+        val = valuations[ticker]
+        ev = val["eval_amount"]
         weight = (
             round(ev / total_eval * 100.0, 1)
             if isinstance(ev, (int, float)) and total_eval > 0
             else None
         )
-        if _need_check(it, market_weight=weight):
+        merged = {
+            **it,
+            "holding": {
+                **(it.get("holding") or {}),
+                "evaluation_amount": ev,
+                "pnl_rate_pct": val["pnl_rate_pct"],
+            },
+        }
+        if _need_check(merged, market_weight=weight):
             need += 1
     return {
         "available": True,

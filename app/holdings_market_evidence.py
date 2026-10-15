@@ -476,7 +476,12 @@ def build_holdings_market_evidence(
     """
     market_quotes = market_quotes or {}
     enriched_list = enrich_holdings(holdings, market_quotes)
-    enriched_by_ticker = {e.ticker: e for e in enriched_list}
+    # POC5-14 — 보유 줄과 평가 줄을 같은 위치끼리 짝짓는다(종목 키 사전은 같은 종목 여러 줄에 마지막
+    # 줄 값을 복사했다 · DEF-HOLDINGS-EVIDENCE-MULTIROW-VALUATION). 어긋나면 실패 — 대체하지 않는다.
+    if len(enriched_list) != len(holdings) or any(
+        e.source_index != i for i, e in enumerate(enriched_list)
+    ):
+        raise ValueError("enrich_holdings 결과가 보유 줄과 1:1 로 맞지 않습니다")
 
     topn_status = topn_payload.get("status") or "missing"
     topn_basis = topn_payload.get("basis")
@@ -509,8 +514,7 @@ def build_holdings_market_evidence(
     }
 
     holdings_out: list[dict[str, Any]] = []
-    for h in holdings:
-        e = enriched_by_ticker.get(h.ticker)
+    for h, e in zip(holdings, enriched_list):
         matched_candidate = candidates_by_ticker.get(h.ticker)
         topn_match = _build_topn_match(h.ticker, topn_status, topn_basis, candidates)
         returns_payload, excess_payload = _build_returns_and_excess(matched_candidate)
