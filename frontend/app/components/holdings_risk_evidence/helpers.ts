@@ -10,6 +10,7 @@ import type {
   EnrichedHolding,
   HoldingsMarketEvidenceItem,
   HoldingsMarketEvidencePriceDates,
+  HoldingsDeclineBand,
   PriceBasis,
 } from "@/lib/api";
 import {
@@ -49,6 +50,8 @@ export interface RiskEvidenceRow {
   flow_unavailable: boolean;
   // POC5-09 — 가격 흐름의 실제 계산 기준일 · 비교 기간 · 현재 비교 가능성(첫 계좌 항목 · 종목 단위 값).
   price_dates: HoldingsMarketEvidencePriceDates | null;
+  // POC5-13 — PC 20저장일 하락 구간(첫 계좌 항목 · 계좌 간 흐름 값이 다르면 null = 판정하지 않음).
+  decline_band: HoldingsDeclineBand | null;
 }
 
 // evidence 를 ticker 별로 통합한다. 같은 ticker 가 여러 행(계좌)일 때 흐름 값이 서로 다르면
@@ -62,6 +65,7 @@ interface EvidenceByTicker {
   present: boolean; // 이 ticker 의 evidence item 이 존재하는가
   notes: string[]; // 계좌 행들의 evidence_notes(같은 문구 한 번)
   price_dates: HoldingsMarketEvidencePriceDates | null;
+  decline_band: HoldingsDeclineBand | null;
 }
 
 function numsEqual(a: number | null, b: number | null): boolean {
@@ -109,6 +113,7 @@ function aggregateEvidenceByTicker(
     out.set(ticker, {
       notes,
       price_dates: group[0].price_dates ?? null,
+      decline_band: group[0].decline_band ?? null,
       status: first.status,
       return_5d_pct: first.return_5d_pct,
       return_20d_pct: first.return_20d_pct,
@@ -196,6 +201,7 @@ export function buildRiskEvidenceRows(
       evidence_conflict: ev?.evidence_conflict ?? false,
       flow_unavailable: ev?.status === "unavailable",
       price_dates: ev?.price_dates ?? null,
+      decline_band: ev && !ev.evidence_conflict ? ev.decline_band : null,
     };
   });
 

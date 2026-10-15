@@ -118,6 +118,17 @@ class PriceDates(BaseModel):
     comparison: str
 
 
+class DeclineBand(BaseModel):
+    # POC5-13 — 20저장일 하락 구간(pc_price_basis · 경계 = OCI classify_decline).
+    judgeable: bool
+    # D10_PLUS / D8_10 / D5_8 · 구간 밖이거나 판정 안 함이면 None
+    state: Optional[str] = None
+    label: Optional[str] = None
+    return_20d_pct_1dp: Optional[float] = None
+    # date_mismatch / insufficient_history / invalid_value · 판정했으면 None
+    unjudged_reason: Optional[str] = None
+
+
 class HoldingEvidenceItem(BaseModel):
     ticker: str
     name: str
@@ -133,6 +144,8 @@ class HoldingEvidenceItem(BaseModel):
     # POC5-09 — PC 화면용 선택 필드(이 응답 사본에만 · 공유 builder 결과에는 없음).
     price_dates: Optional[PriceDates] = None
     stored_volume: Optional[StoredVolumeEvidence] = None
+    # POC5-13 — PC 화면용 선택 필드(이 응답 사본에만).
+    decline_band: Optional[DeclineBand] = None
 
 
 class PriceBasisMismatch(BaseModel):

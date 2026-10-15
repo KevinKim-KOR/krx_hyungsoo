@@ -201,6 +201,7 @@ describe("sortEvidenceRows (POC5-UI-02)", () => {
       evidence_conflict: false,
       flow_unavailable: false,
       price_dates: null,
+      decline_band: null,
       ...over,
     };
   }

@@ -231,6 +231,19 @@ export interface HoldingsMarketEvidenceItem {
   // POC5-09 — PC 화면 응답 사본의 선택 필드(backend app/pc_price_basis.py).
   price_dates?: HoldingsMarketEvidencePriceDates | null;
   stored_volume?: StoredVolumeEvidence | null;
+  // POC5-13 — PC 20저장일 하락 구간(경계 = OCI 보유 알림 함수 · PC 저장 종가 기준 · 선택 필드).
+  decline_band?: HoldingsDeclineBand | null;
+}
+
+// POC5-13 — judgeable=false 면 구간을 판정하지 않은 종목(기준일이 다르거나 이력 부족 · 값 없음).
+// judgeable=true · state=null 은 '구간 밖'이다(판정 안 함과 다름).
+export interface HoldingsDeclineBand {
+  judgeable: boolean;
+  state: "D10_PLUS" | "D8_10" | "D5_8" | null;
+  label: string | null;
+  return_20d_pct_1dp: number | null;
+  // 판정하지 않은 이유(PC 응답 사본) — date_mismatch · insufficient_history · invalid_value
+  unjudged_reason?: "date_mismatch" | "insufficient_history" | "invalid_value" | null;
 }
 
 // POC5-09 — 가격 흐름의 실제 계산 기준일 · 비교 기간 시작일과 현재 비교 가능성.

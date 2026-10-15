@@ -105,9 +105,11 @@ describe("보유 ETF 확인 근거 (POC3-05 B)", () => {
     const text = container.textContent ?? "";
     expect(text).not.toContain("급락");
     expect(text).not.toContain("주의 신호");
-    // 빠른 보기는 전체 / 자료 확인 필요 두 개만.
+    // 빠른 보기는 전체 / 하락 구간 / 자료 확인 필요 세 개(POC5-13 '하락 구간' 추가 · 급락 보기 없음).
     expect(screen.getByRole("button", { name: "전체" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /하락 구간/ })).toBeTruthy();
     expect(screen.getByRole("button", { name: /자료 확인 필요/ })).toBeTruthy();
+    expect(document.querySelectorAll(".hre-quickview button")).toHaveLength(3);
   });
 
   it("N+1 없음: 조회는 목록 endpoint 2종뿐이고 ticker 인자 호출이 없다", async () => {

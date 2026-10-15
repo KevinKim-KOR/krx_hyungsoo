@@ -10,6 +10,8 @@
 // '전체 ETF NAV·괴리율 보기' 보조 이동(설계 §11).
 // POC5-09: 가격 흐름 기준 줄(PC 저장 가격 기준일) · 기준일이 다른 종목은 5일 · 20일 · KODEX200 대비 '—'
 // (backend 응답 사본이 값을 비움) · 상세에 실제 날짜 사유 · 가격 흐름 기준 · 저장 거래량(판정 §9-4).
+// POC5-13: 목록 위 요약(시장 국면 · PC 최근 20저장일 하락 구간 · 판정 범위) · 보기 '하락 구간' ·
+// 이름 옆 구간 배지(파란 계열) · 상세 'PC 20저장일 하락 구간' 줄. 구간 판정은 backend 응답 사본이 한다.
 // 조회는 Dashboard 와 같은 캐시 키(DASH_KEY_HOLDINGS/EVIDENCE)를 공유한다(Q6 · N+1 없음).
 
 import { useMemo, useState } from "react";
@@ -31,6 +33,11 @@ import {
   type EvidenceSortKey,
   type RiskEvidenceRow,
 } from "./holdings_risk_evidence/helpers";
+import {
+  buildDeclineSummary,
+  declineDetailText,
+} from "./holdings_risk_evidence/declineSummary";
+import DeclineSummaryBlock from "./holdings_risk_evidence/DeclineSummaryBlock";
 import PriceChart from "./workbench/PriceChart";
 import StoredVolumeBlock from "./StoredVolumeBlock";
 import { priceBasisLine, priceFlowLine } from "@/lib/priceBasis";
@@ -40,7 +47,7 @@ import { VOLUME_HELP } from "@/lib/storedVolume";
 import { directionColor } from "./workbench/helpers";
 import type { MenuKey } from "./LeftSidebar";
 
-type QuickView = "all" | "need_check";
+type QuickView = "all" | "decline" | "need_check";
 
 function fmtPct(v: number | null): string {
   if (v === null) return "자료 확인 필요";
@@ -176,10 +183,24 @@ export default function HoldingsRiskEvidenceSection({ onNavigate }: Props = {}) 
 
   const shownRows: RiskEvidenceRow[] = useMemo(() => {
     if (!built) return [];
+    // POC5-13 — '하락 구간' 보기 = PC 20저장일 하락 구간에 든 종목(받은 자료로 거름 · 정렬 유지).
     const rows =
-      quickView === "need_check" ? built.rows.filter((r) => r.need_check) : built.rows;
+      quickView === "need_check"
+        ? built.rows.filter((r) => r.need_check)
+        : quickView === "decline"
+          ? built.rows.filter((r) => r.decline_band?.state)
+          : built.rows;
     return sortEvidenceRows(rows, sortKey);
   }, [built, quickView, sortKey]);
+
+  // POC5-13 — 시장 국면 + 보유 하락 구간 요약(오늘 화면 띠와 같은 조립 함수).
+  const declineSummary = useMemo(
+    () =>
+      built && evidence.phase === "success"
+        ? buildDeclineSummary(built.rows, evidence.data)
+        : null,
+    [built, evidence],
+  );
 
   // POC5-09 — PC 비교 기준일 · 기준일이 달라 현재 비교에서 뺀 종목(응답 선택 필드).
   const basis =
@@ -246,8 +267,9 @@ export default function HoldingsRiskEvidenceSection({ onNavigate }: Props = {}) 
               {priceBasisLine(basis)}
             </p>
           ) : null}
+          {declineSummary ? <DeclineSummaryBlock s={declineSummary} /> : null}
 
-          {/* 빠른 보기 — 전체 / 자료 확인 필요 (급락 신호 빠른보기 없음) */}
+          {/* 빠른 보기 — 전체 / 하락 구간 / 자료 확인 필요 (POC5-13 · 급락 신호 빠른보기 없음) */}
           <div className="hre-quickview">
             <button
               type="button"
@@ -255,6 +277,13 @@ export default function HoldingsRiskEvidenceSection({ onNavigate }: Props = {}) 
               onClick={() => setQuickView("all")}
             >
               전체
+            </button>
+            <button
+              type="button"
+              className={quickView === "decline" ? "active" : ""}
+              onClick={() => setQuickView("decline")}
+            >
+              하락 구간 ({declineSummary?.inBand ?? 0})
             </button>
             <button
               type="button"
@@ -316,11 +345,16 @@ export default function HoldingsRiskEvidenceSection({ onNavigate }: Props = {}) 
                   <div className="wb-hrow-top">
                     <div className="wb-hrow-name">
                       <span className="hre-name">{r.name ?? r.ticker}</span>
-                      {r.need_check && (
+                      {r.decline_band?.label || r.need_check ? (
                         <span className="wb-hbadges">
-                          <span className="wb-hb warn">자료 확인 필요</span>
+                          {r.decline_band?.label ? (
+                            <span className="wb-hb band">{r.decline_band.label}</span>
+                          ) : null}
+                          {r.need_check ? (
+                            <span className="wb-hb warn">자료 확인 필요</span>
+                          ) : null}
                         </span>
-                      )}
+                      ) : null}
                     </div>
                     <div className="wb-hrow-pnl">
                       <span
@@ -400,7 +434,7 @@ export default function HoldingsRiskEvidenceSection({ onNavigate }: Props = {}) 
           {selected ? (
             <div className="hre-detail">
               <h3>{selected} 상세</h3>
-              {selectedGuidance.length > 0 || selectedFlowLine ? (
+              {selectedGuidance.length > 0 || selectedFlowLine || selectedRow ? (
                 <div className="hre-detail-evidence">
                   {selectedGuidance.length > 0 ? (
                     <div className="hre-detail-line" data-testid="hre-guidance">
@@ -412,6 +446,14 @@ export default function HoldingsRiskEvidenceSection({ onNavigate }: Props = {}) 
                             <br />
                           </span>
                         ))}
+                      </span>
+                    </div>
+                  ) : null}
+                  {selectedRow ? (
+                    <div className="hre-detail-line" data-testid="hre-decline-band">
+                      <span className="k">PC 20저장일 하락 구간</span>
+                      <span className="v">
+                        {declineDetailText(selectedRow, basis)}
                       </span>
                     </div>
                   ) : null}

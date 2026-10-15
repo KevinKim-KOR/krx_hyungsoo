@@ -16,16 +16,27 @@
   맞는 유효 후보'). 비운 KODEX200 대비 20일 메모는 빠진다.
 - 최대 3개 · 자료 확인 필요 건수는 고친 사본으로 기존 `summarize_holdings` 를 다시
   불러 만든다(날짜가 맞는 후보 안에서 기존 5일 · 동점 규칙으로 채움).
+- POC5-13 — 종목마다 20저장일 하락 구간(`decline_band`)을 붙인다. 경계 · 반올림 · 상태 코드는
+  OCI 보유 알림의 `classify_decline(normalize_pct(...))` 를 그대로 쓰고, 이름만 PC 전용이다
+  (판정 §7 Q1 (b) · 공유 `DECLINE_STATE_LABEL` 은 그대로).
 """
 
 from __future__ import annotations
 
 import copy
+import math
 from pathlib import Path
 from typing import Any, Iterable, Optional
 
 from app.market_data_store import DEFAULT_DB_PATH, fetch_recent_price_rows
 from app.market_summary_composer import summarize_holdings
+from app.runtime_evidence.holdings_selection import (
+    STATE_D5_8,
+    STATE_D8_10,
+    STATE_D10_PLUS,
+    classify_decline,
+    normalize_pct,
+)
 from app.short_term_momentum import (
     KODEX200_TICKER,
     MIN_TRADING_DAYS_FOR_OK,
@@ -43,6 +54,16 @@ COMPARISON_OK = "ok"
 COMPARISON_DATE_MISMATCH = "date_mismatch"
 COMPARISON_WINDOW_MISMATCH = "window_mismatch"
 COMPARISON_UNAVAILABLE = "unavailable"
+
+# POC5-13 — PC 화면 전용 구간 이름(판정 §7 Q1 (b)). '20저장일' = 저장 종가 21개로 얻은 20구간.
+PC_DECLINE_LABEL = {
+    STATE_D10_PLUS: "PC 20저장일 하락 10% 이상",
+    STATE_D8_10: "PC 20저장일 하락 8~10%",
+    STATE_D5_8: "PC 20저장일 하락 5~8%",
+}
+UNJUDGED_DATE_MISMATCH = "date_mismatch"
+UNJUDGED_INSUFFICIENT_HISTORY = "insufficient_history"
+UNJUDGED_INVALID_VALUE = "invalid_value"
 
 _FLOW_KEYS = (
     "return_5d_pct",
@@ -169,6 +190,43 @@ def _normalize_item(item: dict, mine_rows: list, bench_rows: list) -> str:
     return comparison
 
 
+def _decline_band(stm: dict, comparison: str) -> dict[str, Any]:
+    """POC5-13 — 이 사본의 20저장일 값으로 하락 구간을 정한다(판정 §7 Q2 (b)).
+
+    판정 = 종료일 검사 통과(date_mismatch 아님) · status ok · 20저장일 값이 유한한 숫자.
+    20일 시작일만 KODEX200 과 다른 종목(window_mismatch)도 자기 값으로 판정한다.
+    판정 안 함(judgeable False · 이유 코드)은 '구간 밖'(judgeable True · state None)과 다르다.
+    """
+    out: dict[str, Any] = {
+        "judgeable": False,
+        "state": None,
+        "label": None,
+        "return_20d_pct_1dp": None,
+        "unjudged_reason": None,
+    }
+    value = stm.get("return_20d_pct")
+    if comparison == COMPARISON_DATE_MISMATCH:
+        out["unjudged_reason"] = UNJUDGED_DATE_MISMATCH
+    elif stm.get("status") != "ok":
+        out["unjudged_reason"] = UNJUDGED_INSUFFICIENT_HISTORY
+    elif (
+        isinstance(value, bool)
+        or not isinstance(value, (int, float))
+        or not math.isfinite(value)
+    ):
+        out["unjudged_reason"] = UNJUDGED_INVALID_VALUE
+    else:
+        pct = normalize_pct(float(value))
+        state = classify_decline(pct)
+        out.update(
+            judgeable=True,
+            state=state,
+            label=PC_DECLINE_LABEL.get(state) if state else None,
+            return_20d_pct_1dp=pct,
+        )
+    return out
+
+
 def apply_pc_price_basis(evidence: dict, rows_by_ticker: RowsByTicker) -> dict:
     """builder 결과의 깊은 사본에 가격 기준일 정정을 적용해 돌려준다(원본 불변).
 
@@ -191,6 +249,7 @@ def apply_pc_price_basis(evidence: dict, rows_by_ticker: RowsByTicker) -> dict:
             "start_date_20d": mine["start"][20],
             "comparison": comparison,
         }
+        item["decline_band"] = _decline_band(item["short_term_momentum"], comparison)
         if comparison == COMPARISON_DATE_MISMATCH and ticker not in seen:
             seen.add(ticker)
             mismatched.append(

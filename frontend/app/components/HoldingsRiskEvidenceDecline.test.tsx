@@ -1,0 +1,251 @@
+// POC5-13 — 「확인 근거」 시장 국면 + PC 최근 20저장일 하락 구간: 요약 블록 · 보기 '하락 구간' · 구간 배지 ·
+// 상세 줄. 받은 두 응답(보유 평가 · 근거)만 쓴다(추가 조회 0). 비중은 정상 보유 평가 응답의 종목 합산이다.
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, act, fireEvent, within } from "@testing-library/react";
+import { __resetQueryCache } from "@/lib/api/queryCache";
+import type { HoldingsDeclineBand, HoldingsMarketEvidenceResponse } from "@/lib/api";
+
+const fetchEnrichedHoldings = vi.fn();
+const fetchHoldingsMarketEvidence = vi.fn();
+const fetchBenchmarkSeries = vi.fn();
+const fetchPriceSeries = vi.fn();
+
+vi.mock("@/lib/api", async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+  return {
+    ...actual,
+    fetchEnrichedHoldings: (...a: unknown[]) => fetchEnrichedHoldings(...a),
+    fetchHoldingsMarketEvidence: (...a: unknown[]) => fetchHoldingsMarketEvidence(...a),
+    fetchBenchmarkSeries: (...a: unknown[]) => fetchBenchmarkSeries(...a),
+    fetchPriceSeries: (...a: unknown[]) => fetchPriceSeries(...a),
+  };
+});
+
+import HoldingsRiskEvidenceSection from "./HoldingsRiskEvidenceSection";
+
+function enrichedRow(ticker: string, name: string, evalAmt: number | null, invested: number) {
+  return {
+    ticker, name, quantity: 1, avg_buy_price: invested, invested_amount: invested,
+    current_price: evalAmt, price_asof: "2026-10-14", price_source: "naver",
+    eval_amount: evalAmt, pnl_amount: evalAmt === null ? null : evalAmt - invested,
+    pnl_rate_pct: null, buy_weight_pct: null, market_weight_pct: null,
+    price_missing: evalAmt === null, calc_missing: evalAmt === null,
+  };
+}
+// 에이 두 계좌(3000 + 1000) · 비 2000 · 씨 3000 · 디 1000 → 합 10,000(에이 40% · 비 20% · 씨 30% · 디 10%).
+function enriched(over: { bEval?: number | null } = {}) {
+  return {
+    items: [
+      enrichedRow("A1", "에이", 3000, 3000),
+      enrichedRow("A1", "에이", 1000, 1000),
+      enrichedRow("B1", "비", over.bEval === undefined ? 2000 : over.bEval, 2000),
+      enrichedRow("C1", "씨", 3000, 3000),
+      enrichedRow("D1", "디", 1000, 1000),
+    ],
+  };
+}
+
+const LABEL = { D10_PLUS: "PC 20저장일 하락 10% 이상", D8_10: "PC 20저장일 하락 8~10%", D5_8: "PC 20저장일 하락 5~8%" };
+function band(state: HoldingsDeclineBand["state"], v: number | null, reason: HoldingsDeclineBand["unjudged_reason"] = null): HoldingsDeclineBand {
+  return { judgeable: reason === null, state, label: state ? LABEL[state] : null, return_20d_pct_1dp: v, unjudged_reason: reason };
+}
+function evItem(
+  ticker: string, name: string, r5: number | null, r20: number | null, decline: HoldingsDeclineBand,
+  comparison: "ok" | "date_mismatch" | "window_mismatch" = "ok",
+) {
+  const ok = comparison !== "date_mismatch";
+  const wm = comparison === "window_mismatch"; // 20일 시작일만 KODEX200 과 다름 → 20일 대비만 비움
+  return {
+    ticker, name,
+    // 근거 응답의 평가금액은 일부러 다르게(화면 비중이 이 값을 쓰면 시험이 깨진다).
+    holding: { quantity: 1, avg_buy_price: 1, evaluation_amount: 777_777, pnl_rate_pct: 77 },
+    topn_match: { status: "unavailable", rank: null, basis: null, candidate_name: null },
+    returns: { status: "ok", one_month_return_pct: 1, three_month_return_pct: 2 },
+    excess_return: { status: "ok", vs_kodex200_1m_pctp: 1, vs_kodex200_3m_pctp: 2 },
+    short_term_momentum: {
+      status: ok ? "ok" : "unavailable", return_5d_pct: r5, return_10d_pct: r5, return_20d_pct: r20,
+      excess_vs_kodex200_5d_pctp: ok ? 0 : null, excess_vs_kodex200_10d_pctp: ok ? 0 : null,
+      excess_vs_kodex200_20d_pctp: ok && !wm ? 0 : null,
+    },
+    constituents_overlap: { status: "ok", overlap_with_market_core: [] },
+    nav_discount: { status: "ok", source: null, asof: null, nav: null, market_price: null, discount_rate_pct: null, flag: null, message: null },
+    evidence_notes: [],
+    price_dates: {
+      end_date: ok ? "2026-10-14" : "2026-08-12",
+      start_date_5d: ok ? "2026-10-07" : "2026-08-05",
+      start_date_20d: wm ? "2026-09-12" : ok ? "2026-09-15" : "2026-07-15",
+      comparison,
+    },
+    decline_band: decline,
+  };
+}
+function evidence(bComparison: "ok" | "window_mismatch" = "ok"): HoldingsMarketEvidenceResponse {
+  return {
+    status: "ok", asof: "2026-10-14", holdings_asof: "2026-10-14", market_asof: "2026-10-14",
+    market_context: null,
+    summary: {
+      total_holdings_count: 5, matched_topn_count: 0, not_in_current_topn_count: 5,
+      evidence_unavailable_count: 0, constituents_available_count: 0,
+      constituents_unavailable_count: 0, nav_discount_unavailable_count: 0,
+    },
+    holdings: [
+      evItem("A1", "에이", -2, -12.34, band("D10_PLUS", -12.3)),
+      evItem("A1", "에이", -2, -12.34, band("D10_PLUS", -12.3)),
+      evItem("B1", "비", -1, -6.04, band("D5_8", -6.0), bComparison),
+      evItem("C1", "씨", -3, -2.0, band(null, -2.0)),
+      evItem("D1", "디", null, null, band(null, null, "date_mismatch"), "date_mismatch"),
+    ],
+    judgment_summary: {
+      market_position: { available: true, regime_code: "bear", regime_label: "하락장", regime_streak_days: 4, regime_streak_at_least: false },
+      holdings: { available: true, top_holdings: [], coverage: { total: 4, need_check: 1, ok: 3 } },
+      data_status: {},
+    },
+    price_basis: {
+      reference_date: "2026-10-14", reference_ticker: "069500",
+      kodex200_start_date_5d: "2026-10-07", kodex200_start_date_20d: "2026-09-15",
+      date_mismatch: [{ ticker: "D1", name: "디", end_date: "2026-08-12" }],
+    },
+    warnings: [],
+  } as unknown as HoldingsMarketEvidenceResponse;
+}
+
+async function renderSection() {
+  const utils = render(<HoldingsRiskEvidenceSection />);
+  await act(async () => {
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+  return utils;
+}
+function rowOrder(): string[] {
+  const list = screen.getByTestId("hre-evidence-list");
+  return Array.from(list.querySelectorAll('[role="button"]')).map(
+    (el) => (el.getAttribute("aria-label") ?? "").replace(" 상세 보기", ""),
+  );
+}
+const rowEl = (name: string) => screen.getByRole("button", { name: `${name} 상세 보기` });
+
+describe("확인 근거 — PC 최근 20저장일 하락 구간 (POC5-13)", () => {
+  beforeEach(() => {
+    __resetQueryCache();
+    fetchEnrichedHoldings.mockReset();
+    fetchHoldingsMarketEvidence.mockReset();
+    fetchEnrichedHoldings.mockResolvedValue(enriched());
+    fetchHoldingsMarketEvidence.mockResolvedValue(evidence());
+    fetchPriceSeries.mockResolvedValue({ availability: "NO_DATA", points: [] });
+  });
+
+  it("요약 블록 — 시장 국면 · 종목 수 · 종목 합산 평가 비중 · 구간별 · 판정 범위 · 안내", async () => {
+    await renderSection();
+    const box = screen.getByTestId("hre-risk-summary");
+    expect(box.textContent).toContain("시장 국면하락장 · 4거래일째");
+    expect(screen.getByTestId("hre-risk-total").textContent).toBe("2종목 · 보유 평가 비중 60.0%");
+    expect(screen.getByTestId("hre-risk-band-D10_PLUS").textContent).toBe("10% 이상 1종목 · 40.0%");
+    expect(screen.getByTestId("hre-risk-band-D8_10").textContent).toBe("8~10% 0종목 · 0.0%");
+    expect(screen.getByTestId("hre-risk-band-D5_8").textContent).toBe("5~8% 1종목 · 20.0%");
+    expect(screen.getByTestId("hre-risk-scope").textContent).toBe(
+      "구간 판정 가능 3/4종목 · PC 가격 흐름 기준일 2026-10-14",
+    );
+    expect(box.textContent).toContain("PC 저장 종가 기준 · OCI 알림과 값이 다를 수 있음.");
+    expect(box.textContent).toContain("시장 국면이 각 종목 하락의 원인이라는 뜻은 아닙니다.");
+    expect(box.textContent).not.toContain("확인된 평가금액 기준");
+    // 근거 응답의 평가금액(777,777)은 쓰지 않는다.
+    expect(box.textContent).not.toMatch(/777/);
+    // 시장 국면 줄에는 날짜를 붙이지 않는다(판정 §7 '날짜').
+    expect(within(box).getByText("하락장 · 4거래일째").textContent).toBe("하락장 · 4거래일째");
+  });
+
+  it("일부 평가 미확인이면 비중 옆에 '확인된 평가금액 기준 · 일부 평가 자료 미확인' · 그 구간만 '확인 불가'", async () => {
+    fetchEnrichedHoldings.mockResolvedValue(enriched({ bEval: null }));
+    await renderSection();
+    // 분모 8,000 · 에이 4,000 → 50.0%
+    expect(screen.getByTestId("hre-risk-total").textContent).toBe(
+      "2종목 · 보유 평가 비중 50.0% (확인된 평가금액 기준 · 일부 평가 자료 미확인)",
+    );
+    expect(screen.getByTestId("hre-risk-band-D5_8").textContent).toBe("5~8% 1종목 · 확인 불가");
+  });
+
+  it("보기 세 개 · '하락 구간'은 구간 종목만 · 사용자 정렬 유지 · 다시 조회하지 않는다", async () => {
+    await renderSection();
+    const qv = document.querySelector(".hre-quickview") as HTMLElement;
+    expect(Array.from(qv.querySelectorAll("button")).map((b) => b.textContent)).toEqual([
+      "전체",
+      "하락 구간 (2)",
+      "자료 확인 필요 (1)",
+    ]);
+    expect(rowOrder()).toEqual(["씨", "에이", "비", "디"]); // 기본 5일 변화
+    fireEvent.click(screen.getByRole("button", { name: "하락 구간 (2)" }));
+    expect(rowOrder()).toEqual(["에이", "비"]);
+    fireEvent.click(screen.getByRole("button", { name: "평가 비중" }));
+    expect(rowOrder()).toEqual(["에이", "비"]);
+    fireEvent.click(screen.getByRole("button", { name: "자료 확인 필요 (1)" }));
+    expect(rowOrder()).toEqual(["디"]);
+    fireEvent.click(screen.getByRole("button", { name: "전체" }));
+    expect(rowOrder()).toEqual(["에이", "씨", "비", "디"]); // 평가 비중 정렬 그대로
+    expect(fetchEnrichedHoldings).toHaveBeenCalledTimes(1);
+    expect(fetchHoldingsMarketEvidence).toHaveBeenCalledTimes(1);
+  });
+
+  it("구간 배지(파란 계열 class 'band')는 구간 종목에만 · 구간 밖 · 판정 안 함에는 없다", async () => {
+    await renderSection();
+    expect(within(rowEl("에이")).getByText("PC 20저장일 하락 10% 이상")).toHaveClass("wb-hb", "band");
+    expect(within(rowEl("비")).getByText("PC 20저장일 하락 5~8%")).toHaveClass("wb-hb", "band");
+    expect(rowEl("씨").querySelector(".wb-hb.band")).toBeNull();
+    expect(rowEl("디").querySelector(".wb-hb.band")).toBeNull();
+    expect(within(rowEl("디")).getByText("자료 확인 필요")).toHaveClass("wb-hb", "warn");
+  });
+
+  it("상세 'PC 20저장일 하락 구간' 줄 — 판정 값 · 기간 / 해당 없음 / 판정하지 않음", async () => {
+    await renderSection();
+    const detail = async (name: string) => {
+      await act(async () => {
+        fireEvent.click(rowEl(name));
+        await Promise.resolve();
+      });
+      return screen.getByTestId("hre-decline-band").textContent ?? "";
+    };
+    expect(await detail("에이")).toBe(
+      "PC 20저장일 하락 구간PC 20저장일 하락 10% 이상 · 20저장일 변화 -12.3%(판정에 쓴 소수 첫째 자리 값) · 기간 2026-09-15 ~ 2026-10-14 · PC 저장 종가",
+    );
+    expect(await detail("씨")).toContain("해당 없음 · 20저장일 변화 -2.0%");
+    expect(await detail("디")).toContain(
+      "판정하지 않음 — 이 종목의 최근 저장일(2026-08-12)이 PC 가격 흐름 기준일(2026-10-14)과 다릅니다(자료 확인 필요).",
+    );
+    expect(fetchEnrichedHoldings).toHaveBeenCalledTimes(1);
+    expect(fetchHoldingsMarketEvidence).toHaveBeenCalledTimes(1);
+  });
+
+  it("20일 시작일이 다른 구간 종목은 '하락 구간'과 '자료 확인 필요' 두 보기에 함께 · 상세에 비교 기간 사유", async () => {
+    fetchHoldingsMarketEvidence.mockResolvedValue(evidence("window_mismatch"));
+    await renderSection();
+    const qv = document.querySelector(".hre-quickview") as HTMLElement;
+    expect(Array.from(qv.querySelectorAll("button")).map((b) => b.textContent)).toEqual([
+      "전체",
+      "하락 구간 (2)",
+      "자료 확인 필요 (2)",
+    ]);
+    fireEvent.click(screen.getByRole("button", { name: "하락 구간 (2)" }));
+    expect(rowOrder()).toEqual(["에이", "비"]);
+    fireEvent.click(screen.getByRole("button", { name: "자료 확인 필요 (2)" }));
+    expect(rowOrder()).toEqual(["비", "디"]);
+    expect(within(rowEl("비")).getByText("PC 20저장일 하락 5~8%")).toHaveClass("wb-hb", "band");
+    expect(rowEl("비").querySelector(".wb-hb.warn")?.textContent).toBe("자료 확인 필요");
+    await act(async () => {
+      fireEvent.click(rowEl("비"));
+      await Promise.resolve();
+    });
+    expect(screen.getByTestId("hre-decline-band").textContent).toContain(
+      "기간 2026-09-12 ~ 2026-10-14(KODEX200 비교 기간과 달라 상대 비교는 비워 둠)",
+    );
+    expect(fetchHoldingsMarketEvidence).toHaveBeenCalledTimes(1);
+  });
+
+  it("근거 응답에 구간 필드가 없으면(이전 응답) 0종목 · 판정 가능 0 — 구간 밖으로 꾸미지 않는다", async () => {
+    const ev = evidence();
+    for (const h of ev.holdings) delete (h as { decline_band?: unknown }).decline_band;
+    fetchHoldingsMarketEvidence.mockResolvedValue(ev);
+    await renderSection();
+    expect(screen.getByTestId("hre-risk-scope").textContent).toContain("구간 판정 가능 0/4종목");
+    expect(rowEl("에이").querySelector(".wb-hb.band")).toBeNull();
+  });
+});

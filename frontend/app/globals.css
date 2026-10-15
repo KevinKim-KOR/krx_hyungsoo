@@ -3439,3 +3439,23 @@ button[role="tab"] {
 @media (max-width: 720px) {
   .hmx-row-actions { flex-wrap: wrap; } /* 좁은 화면 버튼 줄은 줄바꿈 · 가로 넘침 없음 */
 }
+
+/* POC5-13 — 「확인 근거」 하락 구간 요약 · 구간 배지. 하락은 파란 계열(붉은색 = 상승 · 이익 · 사용자 결정 2026-10-15). */
+.hre-risk { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin: 10px 0 12px; display: flex; flex-direction: column; gap: 6px; background: #fafbfc; }
+.hre-risk-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: baseline; font-size: 14px; }
+.hre-risk-row .k { color: var(--muted); min-width: 176px; font-size: 13px; }
+.hre-risk .muted { color: var(--muted); font-size: 13px; }
+.hre-risk-bands { display: flex; gap: 8px; flex-wrap: wrap; margin-left: 188px; font-size: 13px; }
+.hre-risk-band { border: 1px solid var(--border); border-radius: 999px; padding: 2px 10px; background: var(--card); }
+.hre-risk-band .nm { color: var(--accent-hover); font-weight: 600; }
+.hre-risk-note { margin: 2px 0 0; font-size: 12px; }
+.wb-hb.band { background: #eff4ff; color: var(--accent-hover); border: 1px solid #c7d7fe; }
+@media (max-width: 720px) { .hre-risk-bands { margin-left: 0; } .hre-risk-row .k { min-width: 0; } }
+
+/* POC5-13 — 「오늘의 투자 점검」 보유 칸 제목 아래 요약 띠(사용자 목업 결정 B안 · 새 카드 아님). */
+.tc-risk-strip { margin: 12px 0; padding: 10px 14px; border-left: 4px solid var(--accent-hover); background: #eff4ff; border-radius: 8px; font-size: 15px; line-height: 1.6; word-break: keep-all; display: flex; flex-direction: column; gap: 2px; }
+.tc-risk-strip .tc-risk-num { font-size: 19px; font-weight: 700; color: var(--accent-hover); }
+.tc-risk-strip .tc-risk-sub { color: var(--muted); font-size: 13.5px; }
+.tc-risk-strip .tc-risk-part .tc-risk-sub { display: inline-block; white-space: nowrap; margin-left: 4px; }
+/* 같은 칸 안내 문장 — 띠 아래 여백 없이 한 단계 작게(사용자 요청 · 그 문장만). */
+.tc-hold-help { margin: 0; font-size: 13px; }

@@ -315,6 +315,8 @@ function item(ticker: string, comparison: string): HoldingsMarketEvidenceItem {
   return {
     ticker,
     price_dates: { end_date: "2026-10-13", start_date_5d: "2026-10-01", start_date_20d: "2026-09-12", comparison },
+    // POC5-13 — 보유 칸 요약이 종목 항목을 「확인 근거」와 같은 함수로 묶는다(API 필수 필드).
+    short_term_momentum: { status: "ok", return_5d_pct: null, return_20d_pct: null, excess_vs_kodex200_20d_pctp: null },
   } as unknown as HoldingsMarketEvidenceItem;
 }
 
