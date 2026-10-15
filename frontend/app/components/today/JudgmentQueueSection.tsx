@@ -3,7 +3,7 @@
 // POC3-OPS-02B-2-KS10-TRIGGER-FILE-SPLIT (2026-09-13)
 // `TodayInvestmentCheckView.tsx` 가 907줄로 KS-10 프론트 임계(>900)를 넘어
 // 책임별로 분리했다. 분리 때는 JSX·문구·className·핸들러·호출 조건을 고치지 않았다
-// (파일 배치와 import/export 줄만). 그 뒤 화면은 POC5-09 · POC5-UI-03 · POC5-13 에서 바뀌었다.
+// (파일 배치와 import/export 줄만). 그 뒤 화면은 POC5-09 · POC5-UI-03 · POC5-13 · POC5-15 에서 바뀌었다.
 
 import { useState } from "react";
 import type { QueryState } from "@/lib/api/queryCache";
@@ -19,12 +19,14 @@ import type { MenuKey } from "../LeftSidebar";
 import { fmtPct } from "./todayHelpers";
 import { describeMismatched, windowMismatchText } from "@/lib/priceBasis";
 import { aggregateHoldingsByTicker } from "../holdings_compare/helpers";
-import { buildRiskEvidenceRows } from "../holdings_risk_evidence/helpers";
+import { PARTIAL_EVAL_TEXT, fmtShare } from "../holdings_risk_evidence/declineSummary";
+import HelpPopover from "../holdings_risk_evidence/HelpPopover";
 import {
-  PARTIAL_EVAL_TEXT,
-  buildDeclineSummary,
-  fmtShare,
-} from "../holdings_risk_evidence/declineSummary";
+  FAILURE_TEXT,
+  PARTIAL_JUDGE_TEXT,
+  riskHelpParagraphs,
+  riskStateFromQueries,
+} from "../holdings_risk_evidence/riskCombination";
 
 type TopRow = NonNullable<
   NonNullable<HoldingsMarketEvidenceResponse["judgment_summary"]>["holdings"]
@@ -203,15 +205,10 @@ export default function JudgmentQueueSection({
       if (!itemByTicker.has(it.ticker)) itemByTicker.set(it.ticker, it);
     }
   }
-  // POC5-13 — 시장 국면 + PC 최근 20저장일 하락 구간 요약(「확인 근거」 요약과 같은 조립 함수 ·
-  // 받은 두 응답만). 사용자 목업 결정 B안: 보유 칸 제목 바로 아래 파란 띠 세 줄.
-  const decline =
-    holdings.phase === "success" && evidence.phase === "success"
-      ? buildDeclineSummary(
-          buildRiskEvidenceRows(holdings.data.items, evidence.data.holdings).rows,
-          evidence.data,
-        )
-      : null;
+  // POC5-13 · POC5-15 — 현재 상태 · 하락 구간 요약(「확인 근거」 요약과 같은 공통 판정 함수 · 받은 두 응답만).
+  // 두 조회가 끝나기 전이면 null(띠 없음) · 실패여도 띠는 상태와 실제 실패 사유를 보인다(PLAN 판정 Q1).
+  const risk = riskStateFromQueries(holdings, evidence);
+  const decline = risk?.summary ?? null;
   const candCount =
     market.phase === "success" && market.data.status === "ok"
       ? market.data.candidates.length
@@ -262,22 +259,37 @@ export default function JudgmentQueueSection({
             </span>
           ) : null}
         </div>
-        {decline ? (
+        {risk ? (
+          // POC5-15 — 세 정보 묶음(PLAN 판정 §4): 상태 + ? / 하락 구간 종목 수 · 비중 /
+          // 작은 보조 묶음(시장 국면 · 구간 판정 가능 a/b). 실패면 상태와 사유만 · 빈 보유면 상태만.
           <div className="tc-risk-strip" data-testid="tc-risk-strip">
-            <span className="tc-risk-part">
-              시장 <strong>{decline.regime ?? "확인 불가"}</strong>
-            </span>
-            <span className="tc-risk-part">
-              PC 최근 20저장일 하락 구간{" "}
-              <strong className="tc-risk-num">{decline.inBand}종목</strong> · 보유 평가 비중{" "}
-              <strong className="tc-risk-num">{fmtShare(decline.inBandShare)}</strong>
-              {decline.evalPartial && decline.inBandShare !== null ? (
-                <span className="tc-risk-sub">({PARTIAL_EVAL_TEXT})</span>
-              ) : null}
-            </span>
-            <span className="tc-risk-part tc-risk-sub">
-              구간 판정 가능 {decline.judgeable}/{decline.total}종목
-            </span>
+            <div className="tc-risk-head">
+              <strong className="tc-risk-headline">{risk.combo.text}</strong>
+              <HelpPopover label="현재 상태" paragraphs={riskHelpParagraphs(risk)} />
+            </div>
+            {risk.combo.holdings === "no_holdings" ? null : risk.failed ? (
+              <div className="tc-risk-sub" data-testid="tc-risk-failed">
+                {FAILURE_TEXT[risk.failed]}
+              </div>
+            ) : decline ? (
+              <>
+                <div className="tc-risk-part">
+                  PC 최근 20저장일 하락 구간{" "}
+                  <strong className="tc-risk-num">{decline.inBand}종목</strong> · 보유 평가 비중{" "}
+                  <strong className="tc-risk-num">{fmtShare(decline.inBandShare)}</strong>
+                  {decline.evalPartial && decline.inBandShare !== null ? (
+                    <span className="tc-risk-sub">({PARTIAL_EVAL_TEXT})</span>
+                  ) : null}
+                </div>
+                <div className="tc-risk-aux">
+                  <span>시장 {risk.regime ?? "확인 불가"}</span>
+                  <span>
+                    구간 판정 가능 {decline.judgeable}/{decline.total}종목
+                    {risk.combo.partial ? ` · ${PARTIAL_JUDGE_TEXT}` : ""}
+                  </span>
+                </div>
+              </>
+            ) : null}
           </div>
         ) : null}
         <p className="tc-muted tc-small tc-hold-help">

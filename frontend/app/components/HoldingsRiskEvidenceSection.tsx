@@ -10,6 +10,8 @@
 // '전체 ETF NAV·괴리율 보기' 보조 이동(설계 §11).
 // POC5-09: 가격 흐름 기준 줄(PC 저장 가격 기준일) · 기준일이 다른 종목은 5일 · 20일 · KODEX200 대비 '—'
 // (backend 응답 사본이 값을 비움) · 상세에 실제 날짜 사유 · 가격 흐름 기준 · 저장 거래량(판정 §9-4).
+// POC5-15: 요약 맨 위 '현재 상태 + ?'(시장 · 보유 조합 · 오늘 띠와 같은 함수) · 긴 안내는 ? 도움말 ·
+// 실패 · 빈 보유 안내 앞에 같은 상태 문구.
 // POC5-13: 목록 위 요약(시장 국면 · PC 최근 20저장일 하락 구간 · 판정 범위) · 보기 '하락 구간' ·
 // 이름 옆 구간 배지(파란 계열) · 상세 'PC 20저장일 하락 구간' 줄. 구간 판정은 backend 응답 사본이 한다.
 // 조회는 Dashboard 와 같은 캐시 키(DASH_KEY_HOLDINGS/EVIDENCE)를 공유한다(Q6 · N+1 없음).
@@ -33,11 +35,12 @@ import {
   type EvidenceSortKey,
   type RiskEvidenceRow,
 } from "./holdings_risk_evidence/helpers";
-import {
-  buildDeclineSummary,
-  declineDetailText,
-} from "./holdings_risk_evidence/declineSummary";
+import { declineDetailText } from "./holdings_risk_evidence/declineSummary";
 import DeclineSummaryBlock from "./holdings_risk_evidence/DeclineSummaryBlock";
+import {
+  FAILURE_TEXT,
+  riskStateFromQueries,
+} from "./holdings_risk_evidence/riskCombination";
 import PriceChart from "./workbench/PriceChart";
 import StoredVolumeBlock from "./StoredVolumeBlock";
 import { priceBasisLine, priceFlowLine } from "@/lib/priceBasis";
@@ -193,14 +196,13 @@ export default function HoldingsRiskEvidenceSection({ onNavigate }: Props = {}) 
     return sortEvidenceRows(rows, sortKey);
   }, [built, quickView, sortKey]);
 
-  // POC5-13 — 시장 국면 + 보유 하락 구간 요약(오늘 화면 띠와 같은 조립 함수).
-  const declineSummary = useMemo(
-    () =>
-      built && evidence.phase === "success"
-        ? buildDeclineSummary(built.rows, evidence.data)
-        : null,
-    [built, evidence],
+  // POC5-13 · POC5-15 — 현재 상태 · 하락 구간 요약(오늘 화면 띠와 같은 공통 판정 함수 · 같은 입력 → 같은 문구).
+  // 목록용으로 이미 만든 행을 넘겨 다시 만들지 않는다.
+  const risk = useMemo(
+    () => riskStateFromQueries(holdings, evidence, built?.rows),
+    [holdings, evidence, built],
   );
+  const declineSummary = risk?.summary ?? null;
 
   // POC5-09 — PC 비교 기준일 · 기준일이 달라 현재 비교에서 뺀 종목(응답 선택 필드).
   const basis =
@@ -235,9 +237,16 @@ export default function HoldingsRiskEvidenceSection({ onNavigate }: Props = {}) 
 
       {loading ? (
         <div className="message info">불러오는 중...</div>
+      ) : risk?.combo.holdings === "no_holdings" ? (
+        // POC5-15 — 정상 응답의 빈 보유가 실패보다 먼저(PLAN 판정 Q1).
+        <div className="message info" data-testid="hre-risk-state-empty">
+          <strong>{risk.combo.text}</strong> — 표시할 보유 ETF 가 없습니다.
+        </div>
       ) : failed ? (
-        <div className="message info">
-          보유 확인 근거 자료를 불러오지 못했습니다. 자료 확인이 필요합니다.
+        // POC5-15 — 오늘 띠와 같은 상태 문구 + 실제 실패한 조회 한 문장(PLAN 판정 Q1).
+        <div className="message info" data-testid="hre-risk-state-failed">
+          <strong>{risk?.combo.text ?? "자료 확인 필요"}</strong> —{" "}
+          {risk?.failed ? FAILURE_TEXT[risk.failed] : "보유 확인 근거 자료를 불러오지 못했습니다."}
         </div>
       ) : !built || built.rows.length === 0 ? (
         <div className="message info">표시할 보유 ETF 가 없습니다.</div>
@@ -267,7 +276,7 @@ export default function HoldingsRiskEvidenceSection({ onNavigate }: Props = {}) 
               {priceBasisLine(basis)}
             </p>
           ) : null}
-          {declineSummary ? <DeclineSummaryBlock s={declineSummary} /> : null}
+          {risk?.summary ? <DeclineSummaryBlock v={risk} /> : null}
 
           {/* 빠른 보기 — 전체 / 하락 구간 / 자료 확인 필요 (POC5-13 · 급락 신호 빠른보기 없음) */}
           <div className="hre-quickview">

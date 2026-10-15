@@ -1,4 +1,5 @@
-// POC5-13 — 「확인 근거」 시장 국면 + PC 최근 20저장일 하락 구간: 요약 블록 · 보기 '하락 구간' · 구간 배지 ·
+// POC5-13 · POC5-15 — 「확인 근거」 현재 상태 + PC 최근 20저장일 하락 구간: 요약 블록 · ? 도움말 · 실패 · 빈 보유 문구 ·
+// 보기 '하락 구간' · 구간 배지 ·
 // 상세 줄. 받은 두 응답(보유 평가 · 근거)만 쓴다(추가 조회 0). 비중은 정상 보유 평가 응답의 종목 합산이다.
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, act, fireEvent, within } from "@testing-library/react";
@@ -22,6 +23,11 @@ vi.mock("@/lib/api", async (importOriginal) => {
 });
 
 import HoldingsRiskEvidenceSection from "./HoldingsRiskEvidenceSection";
+import {
+  HELP_BAND_BASIS,
+  HELP_PARTIAL_EVAL,
+  HELP_PARTIAL_JUDGE,
+} from "./holdings_risk_evidence/riskCombination";
 
 function enrichedRow(ticker: string, name: string, evalAmt: number | null, invested: number) {
   return {
@@ -135,24 +141,39 @@ describe("확인 근거 — PC 최근 20저장일 하락 구간 (POC5-13)", () =
     fetchPriceSeries.mockResolvedValue({ availability: "NO_DATA", points: [] });
   });
 
-  it("요약 블록 — 시장 국면 · 종목 수 · 종목 합산 평가 비중 · 구간별 · 판정 범위 · 안내", async () => {
+  it("요약(POC5-15) — 현재 상태 + ? / 종목 수 · 비중 / 구간별 / 작은 보조 묶음 · 긴 안내 문단은 ? 로", async () => {
     await renderSection();
     const box = screen.getByTestId("hre-risk-summary");
-    expect(box.textContent).toContain("시장 국면하락장 · 4거래일째");
+    expect(screen.getByTestId("hre-risk-state").textContent).toBe("현재 상태시장·보유 동반 약세?");
     expect(screen.getByTestId("hre-risk-total").textContent).toBe("2종목 · 보유 평가 비중 60.0%");
     expect(screen.getByTestId("hre-risk-band-D10_PLUS").textContent).toBe("10% 이상 1종목 · 40.0%");
     expect(screen.getByTestId("hre-risk-band-D8_10").textContent).toBe("8~10% 0종목 · 0.0%");
     expect(screen.getByTestId("hre-risk-band-D5_8").textContent).toBe("5~8% 1종목 · 20.0%");
-    expect(screen.getByTestId("hre-risk-scope").textContent).toBe(
-      "구간 판정 가능 3/4종목 · PC 가격 흐름 기준일 2026-10-14",
-    );
-    expect(box.textContent).toContain("PC 저장 종가 기준 · OCI 알림과 값이 다를 수 있음.");
-    expect(box.textContent).toContain("시장 국면이 각 종목 하락의 원인이라는 뜻은 아닙니다.");
-    expect(box.textContent).not.toContain("확인된 평가금액 기준");
-    // 근거 응답의 평가금액(777,777)은 쓰지 않는다.
-    expect(box.textContent).not.toMatch(/777/);
-    // 시장 국면 줄에는 날짜를 붙이지 않는다(판정 §7 '날짜').
-    expect(within(box).getByText("하락장 · 4거래일째").textContent).toBe("하락장 · 4거래일째");
+    const aux = Array.from(screen.getByTestId("hre-risk-scope").querySelectorAll("span")).map((n) => n.textContent);
+    expect(aux).toEqual([
+      "시장 국면 하락장 · 4거래일째", // 시장 국면 줄에 날짜를 붙이지 않는다(13 판정 §7 '날짜')
+      "구간 판정 가능 3/4종목 · 일부 종목 판정 불가",
+      "PC 가격 흐름 기준일 2026-10-14",
+      "PC 저장 종가 기준",
+    ]);
+    // 긴 공통 안내 문단은 기본 화면에서 빠졌다(판정 Q3) — 그 내용은 ? 안에서 실제로 읽힌다.
+    expect(box.textContent).not.toContain("OCI 알림과 값이 다를 수 있");
+    expect(box.textContent).not.toContain("원인이라는 뜻은 아닙니다");
+    expect(box.textContent).not.toMatch(/777/); // 근거 응답의 평가금액은 쓰지 않는다
+    fireEvent.click(within(box).getByRole("button", { name: "현재 상태 도움말" }));
+    const dlg = screen.getByRole("dialog", { name: "현재 상태 도움말" });
+    expect(dlg.textContent).toContain("시장 국면이 각 종목 하락의 원인이라는 뜻은 아닙니다.");
+    expect(dlg.textContent).toContain(HELP_BAND_BASIS);
+    expect(dlg.textContent).toContain(HELP_PARTIAL_JUDGE);
+    expect(dlg.textContent).not.toContain(HELP_PARTIAL_EVAL);
+    for (const bad of ["위험", "고위험", "손절", "매도", "청산", "BUY", "SELL"]) {
+      expect(document.body.textContent ?? "").not.toContain(bad);
+    }
+    fireEvent.mouseDown(screen.getByTestId("hre-risk-total"));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    // 도움말을 열고 닫아도 다시 조회하지 않는다.
+    expect(fetchEnrichedHoldings).toHaveBeenCalledTimes(1);
+    expect(fetchHoldingsMarketEvidence).toHaveBeenCalledTimes(1);
   });
 
   it("일부 평가 미확인이면 비중 옆에 '확인된 평가금액 기준 · 일부 평가 자료 미확인' · 그 구간만 '확인 불가'", async () => {
@@ -247,5 +268,54 @@ describe("확인 근거 — PC 최근 20저장일 하락 구간 (POC5-13)", () =
     await renderSection();
     expect(screen.getByTestId("hre-risk-scope").textContent).toContain("구간 판정 가능 0/4종목");
     expect(rowEl("에이").querySelector(".wb-hb.band")).toBeNull();
+  });
+
+  it("판정 Q4 — 시장 하락 아님 · 하락 없음 = '시장·보유 하락 구간 미해당'", async () => {
+    const ev = evidence();
+    (ev.judgment_summary as { market_position: Record<string, unknown> }).market_position = {
+      available: true, regime_code: "neutral", regime_label: "보합장", regime_streak_days: 3, regime_streak_at_least: false,
+    };
+    for (const h of ev.holdings) {
+      (h as { decline_band?: HoldingsDeclineBand }).decline_band = band(null, -1.0);
+      (h as { price_dates?: { comparison: string } }).price_dates!.comparison = "ok";
+    }
+    fetchHoldingsMarketEvidence.mockResolvedValue(ev);
+    await renderSection();
+    expect(screen.getByTestId("hre-risk-state").textContent).toBe("현재 상태시장·보유 하락 구간 미해당?");
+    fireEvent.click(screen.getByRole("button", { name: "현재 상태 도움말" }));
+    expect(screen.getByRole("dialog").textContent).toContain("‘미해당’은 지금 기준에 해당하지 않았다는 뜻입니다.");
+  });
+
+  it.each([
+    ["근거 실패", "evidence", "자료 확인 필요 — 확인 근거를 불러오지 못했습니다."],
+    ["보유 실패(시장 하락)", "holdings", "시장 하락 · 보유 판정 불완전 — 보유 자료를 불러오지 못했습니다."],
+    ["둘 다 실패", "both", "자료 확인 필요 — 보유 자료와 확인 근거를 불러오지 못했습니다."],
+  ])("판정 Q1 — %s: 오늘 띠와 같은 상태 문구 + 실제 실패한 조회만", async (_, which, text) => {
+    if (which !== "holdings") fetchHoldingsMarketEvidence.mockRejectedValue(new Error("evidence down"));
+    if (which !== "evidence") fetchEnrichedHoldings.mockRejectedValue(new Error("holdings down"));
+    await renderSection();
+    expect(screen.getByTestId("hre-risk-state-failed").textContent).toBe(text);
+    expect(screen.queryByTestId("hre-risk-summary")).toBeNull();
+  });
+
+  it("정상 응답의 빈 보유(근거도 성공) → '보유 판정 대상 없음' — 오늘 띠와 같은 문구", async () => {
+    fetchEnrichedHoldings.mockResolvedValue({ items: [] });
+    const ev = evidence();
+    ev.holdings = [];
+    fetchHoldingsMarketEvidence.mockResolvedValue(ev);
+    await renderSection();
+    expect(screen.getByTestId("hre-risk-state-empty").textContent).toBe(
+      "보유 판정 대상 없음 — 표시할 보유 ETF 가 없습니다.",
+    );
+  });
+
+  it("정상 응답의 빈 보유는 근거가 실패해도 '보유 판정 대상 없음' — 실패보다 먼저", async () => {
+    fetchEnrichedHoldings.mockResolvedValue({ items: [] });
+    fetchHoldingsMarketEvidence.mockRejectedValue(new Error("evidence down"));
+    await renderSection();
+    expect(screen.getByTestId("hre-risk-state-empty").textContent).toBe(
+      "보유 판정 대상 없음 — 표시할 보유 ETF 가 없습니다.",
+    );
+    expect(screen.queryByTestId("hre-risk-state-failed")).toBeNull();
   });
 });

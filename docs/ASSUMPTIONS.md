@@ -52,6 +52,9 @@
   **별도 연구 계약 — POC5-08 (2026-10-11 · 한정 예외 · Q6 해결 아님)**: 02B 연구 종료(REJECT_ACCEPTED)와 운영 계약 OPEN 은 그대로다.
   > 2026-10-11 POC5-08 연구 예외: 사용자 요청에 따라 PC에서 수동 실행하는 알림 사후평가를 구현한다. 기존 원장 스냅샷과 확정 +5 가격 결과로 고정 Ridge와 중앙값 기준을 시간 분리 비교한다. 자동·운영 ML, 추천 모델 채택, PUSH/PARAM 변경, 주문은 승인하지 않는다. CURRENT_DEPLOYABLE_ML_MODEL=none과 ML_OPERATION_PROMOTION=NOT_APPROVED를 유지한다. POC4의 REJECT나 Q6 운영 가설의 해결을 선언하지 않는다.
   연구 계약: `docs/ai_design/POC5/POC5-08_ALERT_RETROSPECTIVE_ML_EVALUATION_DESIGN_V1.md` §2 · §5 · §6 · §12(PLAN 판정).
+  **PC 현재 상태 조합 표시 후보 — POC5-15 (2026-10-15 · Q6 해결 아님 · 운영 계약 OPEN 그대로)** — 설계자 PLAN 판정 §2 Q2 문장 그대로:
+  > POC5-15 PC 현재 상태 조합 룰 — 운영 표시 후보. 기존 시장 국면(bear / bull / neutral)과 PC 하락 구간 존재를 조합하며 새 수치 임계는 없다. 시장·보유 상태의 조합을 보여 주는 표시이고, 연구 계약의 위험/정상 분류 또는 이후 손실과 대조한 타당성 검증을 완료한 것이 아니다. Q6 운영 계약 확정·ANSWERED로 승격하지 않는다.
+  판정: `docs/ai_design/POC5/POC5-15_CURRENT_MARKET_HOLDINGS_RISK_COMBINATION_PLAN_DECISION_2026-10-15.md` §2 Q2 · 설계 `docs/ai_design/POC5/POC5-15_CURRENT_MARKET_HOLDINGS_RISK_COMBINATION_DESIGN_V1.md` §6.
 - **배경**: 2026-06-06 ETF Exposure Data Unfolding 1차 — ML 방향성 2축 중
   축 2 (위험 감지 = 위험 구간 분류). 사용자 목적에 더 가까운 축이지만 본 시점
   factor / threshold / label 미확정.

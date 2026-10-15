@@ -3448,7 +3448,6 @@ button[role="tab"] {
 .hre-risk-bands { display: flex; gap: 8px; flex-wrap: wrap; margin-left: 188px; font-size: 13px; }
 .hre-risk-band { border: 1px solid var(--border); border-radius: 999px; padding: 2px 10px; background: var(--card); }
 .hre-risk-band .nm { color: var(--accent-hover); font-weight: 600; }
-.hre-risk-note { margin: 2px 0 0; font-size: 12px; }
 .wb-hb.band { background: #eff4ff; color: var(--accent-hover); border: 1px solid #c7d7fe; }
 @media (max-width: 720px) { .hre-risk-bands { margin-left: 0; } .hre-risk-row .k { min-width: 0; } }
 
@@ -3459,3 +3458,20 @@ button[role="tab"] {
 .tc-risk-strip .tc-risk-part .tc-risk-sub { display: inline-block; white-space: nowrap; margin-left: 4px; }
 /* 같은 칸 안내 문장 — 띠 아래 여백 없이 한 단계 작게(사용자 요청 · 그 문장만). */
 .tc-hold-help { margin: 0; font-size: 13px; }
+
+/* POC5-15 — 현재 상태 줄(상태 문구 + ?) · 작은 보조 묶음(시장 국면 · 판정 범위 · 기준일 · 출처) · ? 도움말(PLAN 판정 §3~§5). */
+.tc-risk-strip .tc-risk-head, .hre-risk .hre-risk-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.tc-risk-strip .tc-risk-headline { font-size: 17px; font-weight: 700; color: var(--fg); }
+.hre-risk .hre-risk-headline { font-size: 16px; }
+.hre-risk .hre-risk-head .k { color: var(--muted); min-width: 176px; font-size: 13px; }
+.tc-risk-strip .tc-risk-aux, .hre-risk .hre-risk-aux { display: flex; flex-wrap: wrap; column-gap: 14px; row-gap: 2px; color: var(--muted); font-size: 13.5px; }
+.hre-risk .hre-risk-aux { margin-left: 188px; font-size: 13px; }
+.help-pop { position: relative; display: inline-flex; }
+/* POC5-UI-01 아이콘 버튼 규격(40 × 40 누르는 자리) — 보이는 원만 작게 · 줄 높이를 키우지 않게 위아래 음수 여백. */
+button.help-pop-btn { width: 40px; height: 40px; min-height: 40px; flex: 0 0 40px; padding: 0; margin: -9px 0 -9px -6px; border: none; background: transparent; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+button.help-pop-btn:hover:not(:disabled) { background: transparent; }
+button.help-pop-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: -4px; border-radius: 50%; }
+.help-pop-dot { width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--border); background: var(--card); color: var(--muted); font-size: 13px; font-weight: 700; line-height: 20px; text-align: center; }
+button.help-pop-btn[aria-expanded="true"] .help-pop-dot, button.help-pop-btn:hover .help-pop-dot { border-color: var(--accent-hover); color: var(--accent-hover); }
+.help-pop-panel { position: absolute; top: 34px; left: 0; z-index: 20; width: min(380px, calc(100vw - 40px)); /* 100vw 는 스크롤바 폭을 포함 — 여유를 두고, 좌우 위치는 HelpPopover 가 보이는 폭(clientWidth)으로 맞춤 */ background: var(--card); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 6px 20px rgba(15, 23, 42, 0.12); padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; font-size: 13px; line-height: 1.55; color: var(--fg); font-weight: 400; text-align: left; white-space: normal; }
+@media (max-width: 720px) { .hre-risk .hre-risk-aux { margin-left: 0; } .hre-risk .hre-risk-head .k { min-width: 0; } }

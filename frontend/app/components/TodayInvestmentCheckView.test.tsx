@@ -759,7 +759,7 @@ describe("TodayInvestmentCheckView", () => {
     expect(within(judgment).queryByText(/최대 3개/)).toBeNull();
   });
 
-  it("§6.4: Evidence 조회 실패여도 성공한 보유 종목 수는 확인 불가로 덮이지 않는다", async () => {
+  it("§6.4(POC5-15 판정 Q1 개정): Evidence 조회 실패여도 성공한 보유 종목 수는 확인 불가로 덮이지 않고 · 근거 없는 자료 확인 필요 건수는 없으며 · 실제 실패 상태 · 사유는 띠에", async () => {
     fetchEnrichedHoldings.mockResolvedValue({
       items: [
         { ticker: "069500", name: "KODEX200", price_missing: false },
@@ -777,8 +777,14 @@ describe("TodayInvestmentCheckView", () => {
     expect(holdHead.textContent).toContain("2");
     expect(holdHead.textContent).toContain("개");
     expect(holdHead.textContent).not.toContain("확인 불가");
-    // 자료 확인 필요 건수는 evidence 없으니 표시하지 않는다(오해 방지).
-    expect(within(judgment).queryByText(/자료 확인 필요/)).toBeNull();
+    // 자료 확인 필요 '건수'는 evidence 없으니 만들지 않는다(오해 방지 · 원래 취지 유지).
+    expect(holdHead.textContent).not.toMatch(/자료 확인 필요/);
+    expect(judgment.textContent ?? "").not.toMatch(/자료 확인 필요\s*\d+\s*건/);
+    // POC5-15 판정 Q1 — 실제 조회 실패의 상태와 그 조회만의 사유는 보인다(받은 보유는 실패라 쓰지 않음).
+    const strip = within(judgment).getByTestId("tc-risk-strip");
+    expect(strip.textContent).toContain("자료 확인 필요");
+    expect(within(strip).getByTestId("tc-risk-failed").textContent).toBe("확인 근거를 불러오지 못했습니다.");
+    expect(strip.textContent).not.toContain("보유 자료");
   });
 
   it("POC3-06 §6.1·AC-2·6·7: Dashboard 는 backend judgment_summary.top_holdings 를 그대로 표시한다", async () => {

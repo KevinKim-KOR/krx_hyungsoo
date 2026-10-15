@@ -36,7 +36,8 @@ function shareOf(rows: RiskEvidenceRow[], anyWeight: boolean): number | null {
   return rows.reduce((a, r) => a + (r.market_weight_pct ?? 0), 0);
 }
 
-function regimeText(evidence: HoldingsMarketEvidenceResponse): string | null {
+// POC5-15 — 두 화면 현재 상태의 시장 국면 문구도 이 함수(riskCombination.ts)를 쓴다.
+export function regimeText(evidence: HoldingsMarketEvidenceResponse): string | null {
   const mp = evidence.judgment_summary?.market_position as
     | {
         available?: boolean;
