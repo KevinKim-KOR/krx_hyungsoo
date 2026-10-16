@@ -332,7 +332,8 @@ def test_function_restored_when_exception_leaves_the_block(
     snap = get_state_snapshot(db_path=svc["db"])
     assert snap.status != "running"
     if stage == "price":
-        # 기존 판정 그대로(목록 성공 · 가격 시도 0 → completed · 사유만) — 이번 범위 밖.
+        # POC5-18 — 예상 밖 오류 회차는 failed(예전 completed 고정 기대값을 정정).
+        assert snap.status == "failed"
         assert snap.error_summary.startswith("refresh_unexpected: RuntimeError")
 
 
@@ -525,14 +526,3 @@ def test_on_stop_is_called_before_the_price_log(
         on_stop=lambda n: order.append(f"stop:{n}"),
     )
     assert order == ["stop:7", "log"]
-
-
-def test_price_log_failure_without_stop_keeps_existing_judgement(
-    svc: dict,  # noqa: F811
-) -> None:
-    # 범위 밖 기존 판정(가격 시도 수를 못 받으면 completed · 사유만)은 바꾸지 않았다(결과서 §5).
-    _block_price_log(svc["db"])
-    _run(svc, _ok)
-    snap = get_state_snapshot(db_path=svc["db"])
-    assert snap.status == "completed"
-    assert snap.error_summary.startswith("refresh_unexpected: ")

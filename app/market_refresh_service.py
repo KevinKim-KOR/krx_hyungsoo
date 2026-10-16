@@ -316,6 +316,7 @@ def _execute_refresh_job(
     price_success = 0
     price_fail = 0
     stop_box: list[int] = []  # POC5-17 — 중단 때 조회하지 않은 수(가격 기록 전에 받음)
+    stage_unexpected = False  # POC5-18 — 이 실행의 예상 밖 오류(실행마다 새로)
     universe_count = 0
     try:
         # POC5-17 — FDR 조회 요청 대기 상한(기존 함수 · 20초 · 연결 · 읽기마다 · 작업 전체 종료 보장 아님).
@@ -344,13 +345,13 @@ def _execute_refresh_job(
                 elif p_result.fail > 0:
                     error_summary = f"price_partial_failure: fail={p_result.fail}"
     except Exception as e:  # noqa: BLE001 — background thread 보호
+        stage_unexpected = True
         error_summary = f"refresh_unexpected: {type(e).__name__}: {e}"
     # POC5-17 — 연속 시간 초과 중단은 그 뒤 가격 기록이 실패해도 failed(검증자 r1) · 예외 사유는 뒤에 붙인다.
     price_stopped = bool(stop_box)
     if price_stopped:
-        unexpected = (error_summary or "").startswith("refresh_unexpected")
-        stop_text = PRICE_TIMEOUT_STOP_TEXT.format(n=stop_box[0])
-        error_summary = f"{stop_text} · {error_summary}" if unexpected else stop_text
+        extra = f" · {error_summary}" if stage_unexpected else ""
+        error_summary = PRICE_TIMEOUT_STOP_TEXT.format(n=stop_box[0]) + extra
 
     # POC5-10 — 보유 개별주 가격(ETF 단계 뒤 · KOSPI 단계 앞). 'KOSPI 행이 마지막 기록'인 기존
     # '마지막 refresh'(`latest_refresh_log()` · 화면 · 연결 ID)를 바꾸지 않으려는 순서다. 실패해도
@@ -442,8 +443,8 @@ def _execute_refresh_job(
     elapsed = time.perf_counter() - t0
     finished = _utcnow()
     success_overall = universe_ok and (price_success > 0 or price_attempted == 0)
-    # POC5-17 — 연속 시간 초과로 멈춘 회차는 뒤 단계가 성공해도 failed(성공 시각 · 대기 시작 안 함).
-    success_overall = success_overall and not price_stopped
+    # POC5-17 · 18 — 연속 시간 초과 중단 · 예상 밖 오류 회차는 뒤 단계가 성공해도 failed(성공 시각 · 대기 없음).
+    success_overall = success_overall and not (price_stopped or stage_unexpected)
     # POC5-12 — 다른 단계(ETF 목록 · 가격 · KOSPI 사유 · 보유 개별주 · NAV)가 실제로 실패하지 않았고
     # VIX 만 실패했는지(이 갱신의 결과로만 판단 · 문구 · 현재 VIX 날짜로 추측하지 않음).
     vix_only_failure = (
