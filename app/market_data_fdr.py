@@ -47,11 +47,36 @@ class UniverseRefreshResult:
 @dataclass
 class PriceRefreshResult:
     run_id: str
-    attempted: int
+    attempted: int  # 요청 대상 종목 수(기존 의미 · 시작 안 한 종목 포함)
     success: int
-    fail: int
+    fail: int  # attempted - success(기존 의미 · 시작 안 한 종목 포함)
     runtime_seconds: float
     failure_examples: list[dict] = field(default_factory=list)
+    # POC5-17 — 연속 시간 초과로 멈췄을 때만 채운다(인자를 준 호출만 · 기본 0 / False).
+    not_started: int = 0  # 멈춘 뒤 조회하지 않은 종목 수(시도 · 시간 초과로 세지 않음)
+    stopped_on_timeouts: bool = False
+
+
+def _is_request_timeout(exc: BaseException) -> bool:
+    """실제 요청 시간 초과만 참 — 예외 종류로만 판단한다(메시지 문자열로 판단하지 않는다).
+
+    `requests` Timeout 계열 · 내장 TimeoutError · 본문을 받는 중의 읽기 시간 초과(`requests` 가
+    `ConnectionError(urllib3 ReadTimeoutError)` 로 올린다 · requests 2.34 · urllib3 2.7 실측).
+    """
+    if isinstance(exc, TimeoutError):
+        return True
+    try:
+        import requests
+        import urllib3
+    except ImportError:  # pragma: no cover - FDR 의존성으로 늘 설치됨
+        return False
+    if isinstance(exc, requests.exceptions.Timeout):
+        return True
+    return (
+        isinstance(exc, requests.exceptions.ConnectionError)
+        and bool(exc.args)
+        and isinstance(exc.args[0], urllib3.exceptions.TimeoutError)
+    )
 
 
 def _default_universe_fetcher():
@@ -237,8 +262,17 @@ def refresh_price_history(
     lookback_days: int = DEFAULT_LOOKBACK_DAYS,
     price_fetcher: PriceFetcher = None,
     db_path: Path = DEFAULT_DB_PATH,
+    stop_after_consecutive_timeouts: Optional[int] = None,
+    on_stop: Optional[Callable[[int], None]] = None,
 ) -> PriceRefreshResult:
-    """ticker 별 가격 시계열을 fetch → etf_daily_price 에 upsert. 실패는 격리."""
+    """ticker 별 가격 시계열을 fetch → etf_daily_price 에 upsert. 실패는 격리.
+
+    POC5-17 — `stop_after_consecutive_timeouts` 를 주면(PC 버튼 갱신만) 종목 조회 결과가 그 수만큼
+    연속으로 실제 시간 초과일 때 남은 종목은 조회하지 않는다. 시간 초과 아닌 결과(성공 · 빈 자료 ·
+    다른 예외 · 저장 실패)가 끼면 연속 수를 0으로 되돌린다. 주지 않으면 기존 동작 그대로(OCI 배치).
+    `on_stop(조회하지 않은 수)` 는 멈추는 순간 · 가격 기록을 쓰기 전에 부른다(기록이 실패해도
+    호출자가 중단을 안다 · 검증자 r1).
+    """
     fetch = price_fetcher or _default_price_fetcher
     run_id = f"fdr-prices-{uuid.uuid4().hex[:12]}"
     normalized = normalize_ticker_list(tickers)
@@ -247,15 +281,29 @@ def refresh_price_history(
     t0 = time.perf_counter()
     success = 0
     failures: list[dict] = []
-    for tk in normalized:
+    consecutive_timeouts = 0
+    not_started = 0
+    for i, tk in enumerate(normalized):
+        if (
+            stop_after_consecutive_timeouts is not None
+            and consecutive_timeouts >= stop_after_consecutive_timeouts
+        ):
+            not_started = len(normalized) - i
+            if on_stop is not None:
+                on_stop(not_started)
+            break
         try:
             df = fetch(tk, start_date, end_date)
         except Exception as e:  # noqa: BLE001
+            consecutive_timeouts = (
+                consecutive_timeouts + 1 if _is_request_timeout(e) else 0
+            )
             if len(failures) < 10:
                 failures.append(
                     {"ticker": tk, "error": f"{type(e).__name__}: {e}"[:160]}
                 )
             continue
+        consecutive_timeouts = 0
         rows = _dataframe_to_price_rows(tk, df)
         if not rows:
             if len(failures) < 10:
@@ -277,6 +325,13 @@ def refresh_price_history(
         error_summary = "; ".join(
             f"{f['ticker']}:{f['error'][:48]}" for f in failures[:5]
         )
+    if not_started:
+        # 기존 기록 의미(attempted = 대상 · fail = 대상 - 성공)는 그대로 · 조회하지 않은 수를 사유에 따로 적는다.
+        error_summary = (
+            f"stopped_after_consecutive_timeouts={stop_after_consecutive_timeouts} "
+            f"queried={len(normalized) - not_started} not_started={not_started}; "
+            + (error_summary or "")
+        )
 
     log_refresh(
         run_id=run_id,
@@ -297,4 +352,6 @@ def refresh_price_history(
         fail=fail,
         runtime_seconds=elapsed,
         failure_examples=failures[:5],
+        not_started=not_started,
+        stopped_on_timeouts=bool(not_started),
     )

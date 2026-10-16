@@ -62,8 +62,15 @@ from app.market_refresh_state_store import (
     write_state,
 )
 from app.market_refresh_vix_retry import sync_vix_retry_after_full_refresh
+from app.three_push_runtime.market_data_batch import fdr_request_timeout
 
 DEFAULT_COOLDOWN_HOURS = 6
+# POC5-17 — ETF 가격 조회가 이만큼 연속으로 시간 초과면 남은 종목은 조회하지 않고 실패로 끝낸다.
+PRICE_TIMEOUT_STOP_STREAK = 5
+PRICE_TIMEOUT_STOP_TEXT = (
+    "가격 조회가 연속으로 시간 초과되어 남은 {n}종목은 받지 않았습니다. "
+    "앞서 받은 자료는 보존했습니다. 갱신 작업 종료 후 다시 실행할 수 있습니다."
+)
 
 # NAV refresh summary artifact 경로 (지시문 §5.5).
 NAV_REFRESH_SUMMARY_PATH = Path("state/market/nav_discount_refresh_latest.json")
@@ -308,42 +315,54 @@ def _execute_refresh_job(
     price_attempted = 0
     price_success = 0
     price_fail = 0
+    stop_box: list[int] = []  # POC5-17 — 중단 때 조회하지 않은 수(가격 기록 전에 받음)
     universe_count = 0
     try:
-        u_result = refresh_etf_universe(fetcher=universe_fetcher, db_path=db_path)
-        universe_ok = u_result.success
-        universe_count = u_result.universe_count
-        if not universe_ok:
-            error_summary = f"universe_fetch_failed: {u_result.error}"
-        else:
-            tickers = list_etf_tickers(db_path)
-            p_result = refresh_price_history(
-                tickers,
-                end_date=end_date_for_prices,
-                lookback_days=DEFAULT_LOOKBACK_DAYS,
-                price_fetcher=price_fetcher,
-                db_path=db_path,
-            )
-            price_attempted = p_result.attempted
-            price_success = p_result.success
-            price_fail = p_result.fail
-            if p_result.fail > 0 and p_result.success == 0:
-                error_summary = "all_price_fetches_failed"
-            elif p_result.fail > 0:
-                error_summary = f"price_partial_failure: fail={p_result.fail}"
+        # POC5-17 — FDR 조회 요청 대기 상한(기존 함수 · 20초 · 연결 · 읽기마다 · 작업 전체 종료 보장 아님).
+        with fdr_request_timeout():
+            u_result = refresh_etf_universe(fetcher=universe_fetcher, db_path=db_path)
+            universe_ok = u_result.success
+            universe_count = u_result.universe_count
+            if not universe_ok:
+                error_summary = f"universe_fetch_failed: {u_result.error}"
+            else:
+                tickers = list_etf_tickers(db_path)
+                p_result = refresh_price_history(
+                    tickers,
+                    end_date=end_date_for_prices,
+                    lookback_days=DEFAULT_LOOKBACK_DAYS,
+                    price_fetcher=price_fetcher,
+                    db_path=db_path,
+                    stop_after_consecutive_timeouts=PRICE_TIMEOUT_STOP_STREAK,
+                    on_stop=stop_box.append,
+                )
+                price_attempted = p_result.attempted
+                price_success = p_result.success
+                price_fail = p_result.fail
+                if p_result.fail > 0 and p_result.success == 0:
+                    error_summary = "all_price_fetches_failed"
+                elif p_result.fail > 0:
+                    error_summary = f"price_partial_failure: fail={p_result.fail}"
     except Exception as e:  # noqa: BLE001 — background thread 보호
         error_summary = f"refresh_unexpected: {type(e).__name__}: {e}"
+    # POC5-17 — 연속 시간 초과 중단은 그 뒤 가격 기록이 실패해도 failed(검증자 r1) · 예외 사유는 뒤에 붙인다.
+    price_stopped = bool(stop_box)
+    if price_stopped:
+        unexpected = (error_summary or "").startswith("refresh_unexpected")
+        stop_text = PRICE_TIMEOUT_STOP_TEXT.format(n=stop_box[0])
+        error_summary = f"{stop_text} · {error_summary}" if unexpected else stop_text
 
     # POC5-10 — 보유 개별주 가격(ETF 단계 뒤 · KOSPI 단계 앞). 'KOSPI 행이 마지막 기록'인 기존
     # '마지막 refresh'(`latest_refresh_log()` · 화면 · 연결 ID)를 바꾸지 않으려는 순서다. 실패해도
     # 전체 갱신 상태(완료 · 실패)는 ETF 결과대로 두고, 한국어 문구만 error_summary 끝에 붙인다.
     try:
-        holdings_equity_msg = refresh_holdings_equity_prices(
-            refresh_id=refresh_id,
-            end_date=end_date_for_prices,
-            db_path=db_path,
-            price_fetcher=price_fetcher,
-        )
+        with fdr_request_timeout():  # POC5-17 — 같은 FDR 가격 조회 · 같은 요청 대기 상한
+            holdings_equity_msg = refresh_holdings_equity_prices(
+                refresh_id=refresh_id,
+                end_date=end_date_for_prices,
+                db_path=db_path,
+                price_fetcher=price_fetcher,
+            )
     except Exception:  # noqa: BLE001 — 로그 기록 실패까지 thread 안에서 격리
         logger.exception("holdings equity price step failed")
         holdings_equity_msg = HOLDINGS_EQUITY_STEP_FAILED_TEXT
@@ -423,6 +442,8 @@ def _execute_refresh_job(
     elapsed = time.perf_counter() - t0
     finished = _utcnow()
     success_overall = universe_ok and (price_success > 0 or price_attempted == 0)
+    # POC5-17 — 연속 시간 초과로 멈춘 회차는 뒤 단계가 성공해도 failed(성공 시각 · 대기 시작 안 함).
+    success_overall = success_overall and not price_stopped
     # POC5-12 — 다른 단계(ETF 목록 · 가격 · KOSPI 사유 · 보유 개별주 · NAV)가 실제로 실패하지 않았고
     # VIX 만 실패했는지(이 갱신의 결과로만 판단 · 문구 · 현재 VIX 날짜로 추측하지 않음).
     vix_only_failure = (
