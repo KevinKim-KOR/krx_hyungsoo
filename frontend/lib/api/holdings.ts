@@ -233,6 +233,37 @@ export interface HoldingsMarketEvidenceItem {
   stored_volume?: StoredVolumeEvidence | null;
   // POC5-13 — PC 20저장일 하락 구간(경계 = OCI 보유 알림 함수 · PC 저장 종가 기준 · 선택 필드).
   decline_band?: HoldingsDeclineBand | null;
+  // POC5-16 — 저장 종가 가격 흔들림(최근 · 직전 20구간 · backend app/pc_price_volatility.py · 선택 필드).
+  price_volatility?: PriceVolatilityEvidence | null;
+}
+
+// POC5-16 — 한 기간(20구간)의 값 · 실제 저장 구간. value_pct 는 소수 둘째 자리(%).
+export interface PriceVolatilityWindow {
+  value_pct: number;
+  start_date: string;
+  end_date: string;
+}
+
+// 기간을 계산하지 못한 사유: 행 부족 · 비정상 종가(또는 허용 밖 출처) · 가격 연속성 확인 불가(POC5-06 연결 판정).
+export type PriceVolatilityReason = "insufficient_history" | "invalid_price" | "basis_unconfirmed";
+
+export interface PriceVolatilityEvidence {
+  // ok(둘 다) · recent_only · previous_only · unavailable(둘 다 없음) · date_mismatch(마지막 유효
+  // 가격일 ≠ PC 가격 흐름 기준일) · reference_unavailable(PC 가격 흐름 기준일 자체가 없음)
+  status:
+    | "ok"
+    | "recent_only"
+    | "previous_only"
+    | "unavailable"
+    | "date_mismatch"
+    | "reference_unavailable";
+  recent: PriceVolatilityWindow | null;
+  previous: PriceVolatilityWindow | null;
+  // 표시 값(소수 둘째 자리)으로 정함 · 둘 다 있을 때만
+  comparison: "higher" | "lower" | "same" | null;
+  recent_reason: PriceVolatilityReason | null;
+  previous_reason: PriceVolatilityReason | null;
+  end_date: string | null; // 이 종목의 마지막 유효 가격일(거른 읽기 최신일)
 }
 
 // POC5-13 — judgeable=false 면 구간을 판정하지 않은 종목(기준일이 다르거나 이력 부족 · 값 없음).

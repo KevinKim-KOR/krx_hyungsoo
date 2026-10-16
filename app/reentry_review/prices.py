@@ -150,6 +150,10 @@ def _valid_close(value: Any) -> bool:
     )
 
 
+# POC5-16 — PC 변동성 창도 같은 종가 판정을 쓴다(공개 이름 · 동작 같음).
+valid_close = _valid_close
+
+
 def research_axis(
     t: str,
     first: str,
@@ -287,6 +291,10 @@ class AxisSeries:
         """창이 안 되는 첫 사유(REASON_ORDER 순서 · 학습 표본 제외 집계용). 되면 None."""
         reasons = self.window_reasons(lo, hi)
         return reasons[0] if reasons else None
+
+
+# POC5-16 — 두 저장 행 사이 연결의 경계 판정(공개 이름 · 동작 같음). PC 변동성 창이 그대로 쓴다.
+link_break = AxisSeries._break
 
 
 def canonical_hash(payload: Any) -> str:

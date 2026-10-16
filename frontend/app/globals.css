@@ -3475,3 +3475,11 @@ button.help-pop-btn:focus-visible { outline: 2px solid var(--accent); outline-of
 button.help-pop-btn[aria-expanded="true"] .help-pop-dot, button.help-pop-btn:hover .help-pop-dot { border-color: var(--accent-hover); color: var(--accent-hover); }
 .help-pop-panel { position: absolute; top: 34px; left: 0; z-index: 20; width: min(380px, calc(100vw - 40px)); /* 100vw 는 스크롤바 폭을 포함 — 여유를 두고, 좌우 위치는 HelpPopover 가 보이는 폭(clientWidth)으로 맞춤 */ background: var(--card); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 6px 20px rgba(15, 23, 42, 0.12); padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; font-size: 13px; line-height: 1.55; color: var(--fg); font-weight: 400; text-align: left; white-space: normal; }
 @media (max-width: 720px) { .hre-risk .hre-risk-aux { margin-left: 0; } .hre-risk .hre-risk-head .k { min-width: 0; } }
+
+/* POC5-16 — 가격 흔들림(변동성) 접힌 구역(중립 색 · 수익 색 · 경보 색 없음 · 확정 목업 그대로). */
+.pvb { margin-top: 12px; }
+.pvb-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pvb-body { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+.wb-detail-grid.pvb-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 420px; }
+.pvb-cmp { font-weight: 600; color: var(--fg); }
+.pvb-note { color: var(--muted); font-size: 13px; }

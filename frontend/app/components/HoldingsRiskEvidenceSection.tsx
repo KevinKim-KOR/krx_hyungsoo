@@ -37,6 +37,7 @@ import {
 } from "./holdings_risk_evidence/helpers";
 import { declineDetailText } from "./holdings_risk_evidence/declineSummary";
 import DeclineSummaryBlock from "./holdings_risk_evidence/DeclineSummaryBlock";
+import PriceVolatilityBlock from "./holdings_risk_evidence/PriceVolatilityBlock";
 import {
   FAILURE_TEXT,
   riskStateFromQueries,
@@ -483,6 +484,12 @@ export default function HoldingsRiskEvidenceSection({ onNavigate }: Props = {}) 
                   columns={4}
                   headClassName="svb-head"
                   referenceDate={basis?.reference_date}
+                />
+                {/* POC5-16 — 가격 흔들림(변동성) 접힌 구역 · 거래량 바로 아래 · 종목을 바꾸면 다시 접힘(key) */}
+                <PriceVolatilityBlock
+                  key={selected ?? ""}
+                  ev={selectedEvidence?.price_volatility}
+                  flowDate={basis?.reference_date ?? null}
                 />
               </div>
               <NavConstituentsDetail item={selectedEvidence} />

@@ -31,6 +31,7 @@ from app.holdings_market_evidence import (
 from app.market_data_store import DEFAULT_DB_PATH as MARKET_DB_PATH
 from app.market_topn import DEFAULT_BASIS, DEFAULT_N, DEFAULT_ORDER, compute_topn
 from app.pc_price_basis import apply_pc_price_basis, load_recent_price_rows
+from app.pc_price_volatility import PriceVolatilityEvidence, build_price_volatility
 from app.stored_volume_evidence import (
     StoredVolumeEvidence,
     compute_stored_volume_evidence,
@@ -146,6 +147,8 @@ class HoldingEvidenceItem(BaseModel):
     stored_volume: Optional[StoredVolumeEvidence] = None
     # POC5-13 — PC 화면용 선택 필드(이 응답 사본에만).
     decline_band: Optional[DeclineBand] = None
+    # POC5-16 — PC 화면용 선택 필드(이 응답 사본에만 · 저장 종가 최근 / 직전 20구간 흔들림).
+    price_volatility: Optional[PriceVolatilityEvidence] = None
 
 
 class PriceBasisMismatch(BaseModel):
@@ -261,6 +264,12 @@ def get_holdings_market_evidence_latest() -> HoldingsMarketEvidenceResponse:
         [h["ticker"] for h in shared.get("holdings", [])], db_path=MARKET_DB_PATH
     )
     evidence = apply_pc_price_basis(shared, rows_by_ticker)
+    # POC5-16 — 기준일 검사를 통과한 종목만 원본 최근 41행을 따로 한 번 읽는다(기존 읽기 · 값 그대로).
+    volatility = build_price_volatility(
+        evidence.get("holdings", []),
+        reference_date=evidence["price_basis"]["reference_date"],
+        db_path=MARKET_DB_PATH,
+    )
 
     return HoldingsMarketEvidenceResponse(
         status=evidence["status"],
@@ -275,6 +284,7 @@ def get_holdings_market_evidence_latest() -> HoldingsMarketEvidenceResponse:
                 stored_volume=compute_stored_volume_evidence(
                     h["ticker"], rows_by_ticker[h["ticker"]]
                 ),
+                price_volatility=volatility[h["ticker"]],
             )
             for h in evidence.get("holdings", [])
         ],

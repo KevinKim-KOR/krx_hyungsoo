@@ -55,6 +55,8 @@
   **PC 현재 상태 조합 표시 후보 — POC5-15 (2026-10-15 · Q6 해결 아님 · 운영 계약 OPEN 그대로)** — 설계자 PLAN 판정 §2 Q2 문장 그대로:
   > POC5-15 PC 현재 상태 조합 룰 — 운영 표시 후보. 기존 시장 국면(bear / bull / neutral)과 PC 하락 구간 존재를 조합하며 새 수치 임계는 없다. 시장·보유 상태의 조합을 보여 주는 표시이고, 연구 계약의 위험/정상 분류 또는 이후 손실과 대조한 타당성 검증을 완료한 것이 아니다. Q6 운영 계약 확정·ANSWERED로 승격하지 않는다.
   판정: `docs/ai_design/POC5/POC5-15_CURRENT_MARKET_HOLDINGS_RISK_COMBINATION_PLAN_DECISION_2026-10-15.md` §2 Q2 · 설계 `docs/ai_design/POC5/POC5-15_CURRENT_MARKET_HOLDINGS_RISK_COMBINATION_DESIGN_V1.md` §6.
+  **PC 가격 흔들림 관측 후보 — POC5-16 (2026-10-16 · Q6 해결 아님 · 운영 계약 OPEN 그대로)**: PC 「확인 근거」 종목 상세에서 PC 저장 종가 단순 수익률의 최근 · 직전 20구간 모집단 표준편차(% · 연율화 없음)와 직전 대비 커짐 / 작아짐 / 같음을 **계산할 수 있게 된 범위**만 기록한다. 관측값이며 factor 타당성 · 운영 위험 임계 · 라벨 확정 · ML 검증 완료가 아니고, 위험 구간 분류 · 하락 구간 판정에 쓰지 않는다.
+  판정: `docs/ai_design/POC5/POC5-16_STORED_PRICE_VOLATILITY_EVIDENCE_PLAN_DECISION_2026-10-16.md` §6 · 설계 `docs/ai_design/POC5/POC5-16_STORED_PRICE_VOLATILITY_EVIDENCE_DESIGN_V1.md` §8.
 - **배경**: 2026-06-06 ETF Exposure Data Unfolding 1차 — ML 방향성 2축 중
   축 2 (위험 감지 = 위험 구간 분류). 사용자 목적에 더 가까운 축이지만 본 시점
   factor / threshold / label 미확정.
@@ -62,7 +64,7 @@
   맞히는 모델을 만들지 않는다.
 - **선행 조건**: 시계열 적재가 먼저. 단면 데이터로는 본 축을 다룰 수 없다.
   - NAV / 괴리율 시계열 (현재 not_integrated)
-  - 변동성 지표 (현재 not_calculated)
+  - 변동성 지표: PC 저장 종가의 최근·직전 20구간 관측값 계산 가능(POC5-16 · 2026-10-16). 운영 분류 factor 채택·타당성 검증은 미확정. (2026-06-06 기록 당시: not_calculated)
   - 거래량 / 유동성 시계열 (현재 partial)
   - 외국인 / 기관 수급 (현재 not_collected)
   - 시장 폭 지표 (현재 not_collected)

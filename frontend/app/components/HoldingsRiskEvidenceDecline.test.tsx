@@ -4,7 +4,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, act, fireEvent, within } from "@testing-library/react";
 import { __resetQueryCache } from "@/lib/api/queryCache";
-import type { HoldingsDeclineBand, HoldingsMarketEvidenceResponse } from "@/lib/api";
+import type {
+  HoldingsDeclineBand,
+  HoldingsMarketEvidenceResponse,
+  PriceVolatilityEvidence,
+} from "@/lib/api";
 
 const fetchEnrichedHoldings = vi.fn();
 const fetchHoldingsMarketEvidence = vi.fn();
@@ -317,5 +321,91 @@ describe("확인 근거 — PC 최근 20저장일 하락 구간 (POC5-13)", () =
       "보유 판정 대상 없음 — 표시할 보유 ETF 가 없습니다.",
     );
     expect(screen.queryByTestId("hre-risk-state-failed")).toBeNull();
+  });
+});
+
+// POC5-16 — 종목 상세의 '가격 흔들림(변동성)' 접힌 구역(거래량 칸 바로 아래 · 받은 근거 응답의 선택 필드만).
+describe("확인 근거 — 종목 상세 가격 흔들림 (POC5-16)", () => {
+  const PV: PriceVolatilityEvidence = {
+    status: "ok",
+    recent: { value_pct: 3.2, start_date: "2026-09-15", end_date: "2026-10-14" },
+    previous: { value_pct: 2.97, start_date: "2026-08-14", end_date: "2026-09-15" },
+    comparison: "higher",
+    recent_reason: null,
+    previous_reason: null,
+    end_date: "2026-10-14",
+  };
+  beforeEach(() => {
+    __resetQueryCache();
+    fetchEnrichedHoldings.mockReset();
+    fetchHoldingsMarketEvidence.mockReset();
+    fetchEnrichedHoldings.mockResolvedValue(enriched());
+    const ev = evidence();
+    // 같은 종목 두 계좌(에이)는 같은 근거 · 비는 최근만 · 디(기준일 다른 종목)는 날짜 불일치 · 씨는 선택 필드 없음(이전 응답 모양).
+    ev.holdings[0].price_volatility = PV;
+    ev.holdings[1].price_volatility = PV;
+    ev.holdings[2].price_volatility = {
+      ...PV, status: "recent_only", previous: null, comparison: null, previous_reason: "insufficient_history",
+    };
+    ev.holdings[4].price_volatility = {
+      ...PV, status: "date_mismatch", recent: null, previous: null, comparison: null, end_date: "2026-08-12",
+    };
+    fetchHoldingsMarketEvidence.mockResolvedValue(ev);
+    fetchPriceSeries.mockResolvedValue({ availability: "NO_DATA", points: [] });
+  });
+  const open = async (name: string) => {
+    await act(async () => {
+      fireEvent.click(rowEl(name));
+      await Promise.resolve();
+    });
+  };
+
+  it("거래량 칸 바로 아래 · 기본 접힘 · 펼치면 두 값 · 비교 — 다시 조회하지 않는다", async () => {
+    const rawFetch = vi.spyOn(globalThis, "fetch");
+    await renderSection();
+    expect(screen.queryByTestId("price-volatility")).toBeNull(); // 상세를 열기 전에는 없음
+    await open("에이");
+    const block = screen.getByTestId("price-volatility");
+    const volume = screen.getByTestId("stored-volume");
+    expect(volume.compareDocumentPosition(block) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(block.parentElement).toBe(volume.parentElement);
+    expect(screen.queryByTestId("price-volatility-body")).toBeNull();
+    fireEvent.click(within(block).getByRole("button", { name: "가격 흔들림(변동성) 보기" }));
+    expect(screen.getByTestId("price-volatility-body").textContent).toContain("3.20%");
+    expect(screen.getByTestId("price-volatility-cmp").textContent).toBe("직전보다 커짐");
+    fireEvent.click(within(block).getByRole("button", { name: "가격 흔들림 도움말" }));
+    expect(screen.getByRole("dialog", { name: "가격 흔들림 도움말" })).toBeInTheDocument();
+    expect(fetchEnrichedHoldings).toHaveBeenCalledTimes(1);
+    expect(fetchHoldingsMarketEvidence).toHaveBeenCalledTimes(1);
+    expect(rawFetch).not.toHaveBeenCalled();
+    rawFetch.mockRestore();
+  });
+
+  it("다른 종목을 고르면 다시 접힌 채로 시작한다", async () => {
+    await renderSection();
+    await open("에이");
+    fireEvent.click(screen.getByRole("button", { name: "가격 흔들림(변동성) 보기" }));
+    expect(screen.getByTestId("price-volatility-body")).toBeInTheDocument();
+    await open("비");
+    expect(screen.getByRole("button", { name: "가격 흔들림(변동성) 보기" })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+    expect(screen.queryByTestId("price-volatility-body")).toBeNull();
+    expect(screen.getByTestId("price-volatility-note").textContent).toBe(
+      "직전 20구간은 계산하지 못해 비교하지 않습니다.",
+    );
+  });
+
+  it("기준일 다른 종목은 접힌 채 사유(기존 날짜 안내와 함께) · 선택 필드가 없는 종목은 구역을 그리지 않는다", async () => {
+    await renderSection();
+    await open("디");
+    expect(screen.getByTestId("price-volatility-note").textContent).toBe(
+      "이 종목의 마지막 유효 가격일(2026-08-12)이 PC 가격 흐름 기준일(2026-10-14)과 달라 값을 보이지 않습니다.",
+    );
+    expect(screen.getByTestId("hre-decline-band").textContent).toContain("판정하지 않음");
+    await open("씨");
+    expect(screen.queryByTestId("price-volatility")).toBeNull();
+    expect(fetchHoldingsMarketEvidence).toHaveBeenCalledTimes(1);
   });
 });
