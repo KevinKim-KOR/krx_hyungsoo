@@ -32,6 +32,9 @@ export interface ShortTermMomentumPayload {
   excess_vs_kodex200_20d_pctp?: number | null;
   start_dates?: ShortTermMomentumStartDates | null;
   end_date?: string | null;
+  // POC5-21 — 같은 구간 KODEX200 수익률의 시작 · 끝 저장 행 날짜.
+  kodex200_start_dates?: ShortTermMomentumStartDates | null;
+  kodex200_end_date?: string | null;
   message?: string | null;
 }
 
@@ -47,6 +50,9 @@ export interface DailyReturnCheckPayload {
   flag?: DailyReturnFlag | null;
   threshold_pct?: number | null;
   message?: string | null;
+  // POC5-21 — 계산한 직전 · 마지막 저장 종가의 날짜.
+  price_start_date?: string | null;
+  price_end_date?: string | null;
 }
 
 export type DiscountFlag = "discount_check_needed" | "discount_warning";
@@ -95,6 +101,10 @@ export interface MarketContextKodex200 {
   // 2026-07-29 POC3-01 — 기준선 대비 거리(%). (close-ma)/ma*100 백엔드 제공.
   ma20_distance_pct?: number | null;
   ma60_distance_pct?: number | null;
+  // POC5-21 — 1M · 3M 수익률을 계산한 시작 · 끝 저장 행 날짜(PC 시장 화면 응답만).
+  return_1m_start_date?: string | null;
+  return_3m_start_date?: string | null;
+  return_end_date?: string | null;
 }
 
 // POC3-02D-OPS-02 3-4 — KOSPI 최신성 화면 상태(백엔드 판정 · 설계자 Q4~Q6).

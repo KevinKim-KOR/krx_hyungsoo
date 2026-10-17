@@ -36,6 +36,7 @@ from app.market_regime import (
     KOSPI_ID,
     compute_candidate_excess_return,
     compute_market_context,
+    kodex200_return_dates,
 )
 
 # POC2 Cleanup (2026-06-14) — 보조 helper / 상수 / dataclass 는
@@ -83,6 +84,7 @@ def compute_topn(
     exclude_futures: bool = True,
     kospi_today_kst: Optional[str] = None,
     market_asof_from_kodex200: bool = False,
+    actual_price_dates: bool = False,
 ) -> dict:
     """SQLite etf_daily_price 기준 일간 / 1개월 / 3개월 TOP N 산출.
 
@@ -93,6 +95,12 @@ def compute_topn(
     True 면 `market_context.asof`(계약 ⑤ 'KODEX200 기준일')를 판정 · 지속일 · 기준선과 같은
     읽기의 069500 유효 이력 마지막 날짜로 둔다(이력 없으면 None). 기본 False 는 예전 그대로
     (전체 최신일 `asof_iso`) — 최상위 `asof` · 후보 기간 계산 · 다른 호출자 출력은 늘 그대로다.
+
+    `actual_price_dates` — POC5-21(설계자 PLAN 판정 Q1 · Q3). PC 화면 API 만 True 를 넘긴다.
+    True 면 기간 dict 에 그 수익률을 계산한 시작 · 끝 저장 행 날짜(`price_start_date` ·
+    `price_end_date`)를, `market_context.kodex200` 에 1M · 3M 수익률의 시작 · 끝 행 날짜를 더한다.
+    이미 읽은 행에서만 가져온다(추가 조회 없음). 기본 False 는 출력이 예전 그대로다 —
+    `basis_end_date` 는 늘 시장 저장 최신일(`asof_iso`)이다.
 
     DB 부재 시 status="missing". DB 가 있어도 가격 데이터 없음/필수 테이블 부재면
     각각 status="empty"/"invalid". 본 함수는 외부 fetch / write 없음 — SQLite read only.
@@ -230,11 +238,15 @@ def compute_topn(
                 continue
             assert r.return_pct is not None and r.base_date is not None
             buckets[label].append((tk, r.return_pct, r.base_date, tags))
-            per_ticker_returns[tk][label] = {
+            period_out: dict[str, object] = {
                 "return_pct": round(r.return_pct, 4),
                 "basis_start_date": r.base_date,
                 "basis_end_date": asof_iso,
             }
+            if actual_price_dates:
+                period_out["price_start_date"] = r.base_date
+                period_out["price_end_date"] = r.end_date
+            per_ticker_returns[tk][label] = period_out
 
     # exclude 옵션 → 활성 필터 태그
     exclude_tags: set[str] = set()
@@ -347,6 +359,9 @@ def compute_topn(
         market_context["kodex200"].get("status") == "ok"
     ):
         market_context["regime_streak"] = compute_regime_streak(kodex200_history)
+        if actual_price_dates:
+            # POC5-21 — 같은 069500 이력 · 같은 행 선택(kodex200_return_dates).
+            market_context["kodex200"].update(kodex200_return_dates(kodex200_history))
     # 후보 excess_return 계산용 benchmark 수익률 추출 (없으면 None 으로 노출).
     _kodex = market_context.get("kodex200") or {}
     _kospi = market_context.get("kospi") or {}

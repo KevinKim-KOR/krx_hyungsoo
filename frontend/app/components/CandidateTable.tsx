@@ -18,12 +18,30 @@
 //   제거했다. 빈 열이나 "점수 미생성" placeholder 를 남기지 않는다.
 // - 후보 순서는 API 응답 순서를 그대로 따른다 (점수가 순서에 개입하지 않는다).
 // - API 응답 필드 자체는 계약 보존을 위해 그대로 둔다 — 화면이 소비하지 않을 뿐이다.
+//
+// POC5-21 (2026-10-17) — 표 위 기간 두 줄 · ETF명 아래 '수익률 끝일' / '계산 기간 확인 불가' ·
+// 칸 아래 실제 시작일 · KODEX200 대비 값 단위 %p. 판정은 lib/returnPeriod(카드 · 복사문과 같다).
 
 import type {
   MarketBasis,
   MarketCandidate,
+  MarketContextKodex200,
   MarketOrder,
 } from "@/lib/api";
+import {
+  PERIOD_KEYS,
+  allPeriodsUnknown,
+  candidateBadges,
+  cmpGroup,
+  cmpNote,
+  cmpState,
+  periodGroup,
+  valueNote,
+  valuePeriod,
+  type PeriodGroup,
+  type PeriodKey,
+} from "@/lib/returnPeriod";
+import ReturnPeriodLine, { PeriodNote } from "./ReturnPeriodLine";
 
 const DASH = "-";
 
@@ -41,6 +59,13 @@ function fmtPct(value: number | null | undefined): string {
   if (value === null || value === undefined) return DASH;
   const sign = value > 0 ? "+" : "";
   return `${sign}${value.toFixed(2)}%`;
+}
+
+// 두 수익률의 차이(KODEX200 대비) — 단위 %p.
+function fmtPctp(value: number | null | undefined): string {
+  if (value === null || value === undefined) return DASH;
+  const sign = value > 0 ? "+" : "";
+  return `${sign}${value.toFixed(2)}%p`;
 }
 
 function returnPctColor(value: number | null | undefined): string {
@@ -84,9 +109,13 @@ export default function CandidateTable({
   basis,
   order,
   onSort,
+  marketAsof,
+  kodex,
 }: {
   candidates: MarketCandidate[];
   basis: MarketBasis;
+  marketAsof?: string | null;
+  kodex?: MarketContextKodex200 | null;
   order: MarketOrder;
   onSort: (column: MarketBasis) => void;
 }) {
@@ -99,8 +128,20 @@ export default function CandidateTable({
   }
   // 2026-08-29 POC3-ML-02 REJECT Closeout — 참고점수 정렬을 제거했다.
   // 후보 순서는 API 응답 순서를 그대로 따른다.
+  // POC5-21 — 기간별 날짜 묶음 · KODEX200 대비 비교 묶음(카드 보기와 같은 판정).
+  const groups = Object.fromEntries(
+    PERIOD_KEYS.map((k) => [k, periodGroup(candidates, k)]),
+  ) as Record<PeriodKey, PeriodGroup>;
+  const cmp1 = cmpGroup(candidates, "1m", kodex);
+  const cmp3 = cmpGroup(candidates, "3m", kodex);
   return (
     <div className="card market-topn-card">
+      <ReturnPeriodLine
+        candidates={candidates}
+        selected={basis}
+        marketAsof={marketAsof}
+        kodex={kodex}
+      />
       {/* 2026-08-16: 16열을 width:100% 에 욱여넣어 열이 눌리던 것을 가로 스크롤로 푼다. */}
       <div className="market-candidate-table-wrap">
       <table className="market-topn-table market-candidate-table">
@@ -161,43 +202,61 @@ export default function CandidateTable({
             const priceVal = nav?.market_price ?? null;
             const discountVal = nav?.discount_rate_pct ?? null;
             const flagVal = nav?.flag ?? null;
+            const badges = candidateBadges(c, basis, groups[basis], marketAsof);
+            const allUnk = allPeriodsUnknown(c);
+            const note = (k: PeriodKey) => (
+              <PeriodNote text={valueNote(valuePeriod(c.returns?.[k]), groups[k], allUnk)} />
+            );
             return (
               <tr key={`${c.rank ?? "x"}-${c.ticker ?? "x"}-${idx}`}>
                 <td>{fmtNum(c.rank)}</td>
                 <td>{c.ticker ? <code>{c.ticker}</code> : DASH}</td>
-                <td>{fmt(c.name)}</td>
+                <td>
+                  {fmt(c.name)}
+                  {badges.map((b) => (
+                    <PeriodNote key={b} text={b} />
+                  ))}
+                </td>
                 <td
                   style={{ textAlign: "right", color: returnPctColor(dailyRet) }}
                   className={basis === "daily" ? "basis-active" : undefined}
                 >
                   {fmtPct(dailyRet)}
+                  {note("daily")}
                 </td>
                 <td
                   style={{ textAlign: "right", color: returnPctColor(oneRet) }}
                   className={basis === "one_month" ? "basis-active" : undefined}
                 >
                   {fmtPct(oneRet)}
+                  {note("one_month")}
                 </td>
                 <td
                   style={{ textAlign: "right", color: returnPctColor(threeRet) }}
                   className={basis === "three_month" ? "basis-active" : undefined}
                 >
                   {fmtPct(threeRet)}
+                  {note("three_month")}
                 </td>
                 <td style={{ textAlign: "right", color: returnPctColor(sixRet) }}>
                   {fmtPct(sixRet)}
+                  {note("six_month")}
                 </td>
                 <td style={{ textAlign: "right", color: returnPctColor(twelveRet) }}>
                   {fmtPct(twelveRet)}
+                  {note("twelve_month")}
                 </td>
                 <td style={{ textAlign: "right", color: returnPctColor(threeYearRet) }}>
                   {fmtPct(threeYearRet)}
+                  {note("three_year")}
                 </td>
                 <td style={{ textAlign: "right", color: returnPctColor(exKodex1m) }}>
-                  {fmtPct(exKodex1m)}
+                  {fmtPctp(exKodex1m)}
+                  <PeriodNote text={cmpNote(cmpState(c, "1m", kodex), cmp1)} />
                 </td>
                 <td style={{ textAlign: "right", color: returnPctColor(exKodex3m) }}>
-                  {fmtPct(exKodex3m)}
+                  {fmtPctp(exKodex3m)}
+                  <PeriodNote text={cmpNote(cmpState(c, "3m", kodex), cmp3)} />
                 </td>
                 <td style={{ textAlign: "right" }}>
                   {navVal != null ? Math.round(navVal).toLocaleString() : DASH}
@@ -252,8 +311,8 @@ export default function CandidateTable({
         className="helper"
         style={{ marginTop: 6, fontSize: "0.78rem" }}
       >
-        일간 / 1개월 / 3개월 컬럼 헤더는 클릭으로 정렬됩니다. 6개월 / 12개월 / 1년 /
-        3년은 표시 전용 (정렬 X — 신규 상장 ETF 는 시계열 미적재로 빈 값일 수 있습니다).
+        일간 / 1개월 / 3개월 컬럼 헤더는 클릭으로 정렬됩니다. 6개월 / 12개월 / 3년은
+        표시 전용 (정렬 X — 신규 상장 ETF 는 시계열 미적재로 빈 값일 수 있습니다).
         전체 ETF NAV 조회는 Data Status 화면에서 가능합니다.
       </p>
     </div>

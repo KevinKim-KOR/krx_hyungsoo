@@ -46,7 +46,8 @@ describe("후보 카드 (요즘 잘 오르는 ETF)", () => {
     expect(within(list).getAllByText("+6.01%")).toHaveLength(2);
     expect(within(list).getAllByText("1개월")).toHaveLength(2);
     expect(within(list).queryByText("72.3")).not.toBeInTheDocument();
-    expect(within(list).getByText("+11.91%")).toBeInTheDocument(); // KODEX200 대비 1M
+    // POC5-21 — KODEX200 대비 값은 두 수익률의 차이라 단위 %p.
+    expect(within(list).getByText("+11.91%p")).toBeInTheDocument(); // KODEX200 대비 1M
   });
 
   it("카드에 없는 항목은 펼쳐야 보인다 (열을 버리지 않는다)", () => {

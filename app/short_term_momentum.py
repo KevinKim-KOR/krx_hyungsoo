@@ -40,6 +40,11 @@ class ShortTermMomentum:
     start_date_10d: Optional[str] = None
     start_date_20d: Optional[str] = None
     end_date: Optional[str] = None
+    # POC5-21 — 같은 구간 KODEX200 수익률이 쓴 시작 · 끝 행 날짜(이미 읽은 이력).
+    kodex200_start_date_5d: Optional[str] = None
+    kodex200_start_date_10d: Optional[str] = None
+    kodex200_start_date_20d: Optional[str] = None
+    kodex200_end_date: Optional[str] = None
     message: Optional[str] = None
 
 
@@ -52,6 +57,9 @@ class DailyReturnCheck:
     flag: Optional[str] = None  # daily_surge_check_needed / daily_drop_check_needed
     threshold_pct: Optional[float] = None
     message: Optional[str] = None
+    # POC5-21 — 계산한 직전 · 마지막 저장 행 날짜(값이 있을 때만).
+    price_start_date: Optional[str] = None
+    price_end_date: Optional[str] = None
 
 
 def _window_return_pct(series: list[tuple[str, float]], window: int) -> Optional[float]:
@@ -133,6 +141,10 @@ def compute_short_term_momentum(
         start_date_10d=_window_start_date(series, 10),
         start_date_20d=_window_start_date(series, 20),
         end_date=series[-1][0],
+        kodex200_start_date_5d=_window_start_date(bench, 5),
+        kodex200_start_date_10d=_window_start_date(bench, 10),
+        kodex200_start_date_20d=_window_start_date(bench, 20),
+        kodex200_end_date=bench[-1][0],
     )
 
 
@@ -153,6 +165,11 @@ def compute_short_term_momentum_batch(
     b5 = _window_return_pct(bench, 5) if bench_ok else None
     b10 = _window_return_pct(bench, 10) if bench_ok else None
     b20 = _window_return_pct(bench, 20) if bench_ok else None
+    # POC5-21 — 위 b5 · b10 · b20 이 쓴 행의 날짜(같은 이력 · 같은 위치).
+    bs5 = _window_start_date(bench, 5) if bench_ok else None
+    bs10 = _window_start_date(bench, 10) if bench_ok else None
+    bs20 = _window_start_date(bench, 20) if bench_ok else None
+    b_end = bench[-1][0] if bench_ok else None
 
     out: dict[str, ShortTermMomentum] = {}
     for ticker in tickers:
@@ -196,6 +213,10 @@ def compute_short_term_momentum_batch(
             start_date_10d=_window_start_date(series, 10),
             start_date_20d=_window_start_date(series, 20),
             end_date=series[-1][0],
+            kodex200_start_date_5d=bs5,
+            kodex200_start_date_10d=bs10,
+            kodex200_start_date_20d=bs20,
+            kodex200_end_date=b_end,
         )
     return out
 
@@ -220,6 +241,8 @@ def compute_daily_return_check(
     if prev_close <= 0:
         return DailyReturnCheck(status="unavailable", message="invalid prev close")
     daily_pct = (last_close - prev_close) / prev_close * 100.0
+    # POC5-21 — 위 두 종가의 저장 날짜.
+    dates = {"price_start_date": series[-2][0], "price_end_date": series[-1][0]}
 
     if daily_pct >= DAILY_SURGE_THRESHOLD_PCT:
         return DailyReturnCheck(
@@ -228,6 +251,7 @@ def compute_daily_return_check(
             flag="daily_surge_check_needed",
             threshold_pct=DAILY_SURGE_THRESHOLD_PCT,
             message="일간 수익률 +10% 이상. 가격 데이터 또는 괴리율 확인 필요.",
+            **dates,
         )
     if daily_pct <= DAILY_DROP_THRESHOLD_PCT:
         return DailyReturnCheck(
@@ -236,9 +260,11 @@ def compute_daily_return_check(
             flag="daily_drop_check_needed",
             threshold_pct=DAILY_DROP_THRESHOLD_PCT,
             message="일간 수익률 -10% 이하. 가격 데이터 또는 분배금/권리락 확인 필요.",
+            **dates,
         )
     return DailyReturnCheck(
         status="ok",
         daily_return_pct=daily_pct,
         flag=None,
+        **dates,
     )

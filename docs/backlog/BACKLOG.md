@@ -100,7 +100,7 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 `DEF-PRICE-EQUITY-REFRESH` = **재개 (2026-10-13 · `POC5-09` 설계 §9-4)** — PC 화면 영향(아래 절 머리) · 화면 오용 정정 = `POC5-09`(검증자 VERIFIED · 실화면 확인 · 종료 2026-10-13) · **수집 원인 = `POC5-10` 해소(검증자 r2 VERIFIED · 실제 수집 2026-10-13: 3종목 08-12 → 10-13 · 08-13 이후 39행 · 현재 비교 복귀)** → 결함 닫음. (2026-09-06 철회는 운영 PUSH 기준 판단 · 운영은 지금도 정상.)
 `DEF-PC-VIX-REFRESH-MISSING` = **해소 (2026-10-14 · `POC5-11` · 검증자 VERIFIED · 사용자 갱신 1회 · VIX 09-11 → 10-13 · 22행)** — 수집 연결 해소. 정비 큐 VIX 지연 경고는 기존 판정(`vix < kodex`) 한계로 남음(별도 기록 · 아래 절) → **`POC5-12` 에서 미국 장 마감 기준 판정으로 정정 · 해소(2026-10-14 · 검증자 r2 VERIFIED · 사용자 화면 확인: 「자료 최신화 필요」 VIX 경고 줄 없음)**.
 `DEF-PC-MARKET-SCREEN-SLOW-LOAD` = **해소 (2026-10-14 · `POC5-12` · 검증자 r2 VERIFIED · 사용자 화면 확인 "금방 뜹니다. 예전보다 더 빨라졌네요")** — 「요즘 잘 오르는 ETF」 첫 조회가 화면 10초 제한을 넘어 '요청 시간 초과'(아래 절).
-`DEF-MARKET-CONTEXT-ASOF-MEANING` = **해소(PC 화면) (2026-10-14 · `POC5-11` · 검증자 VERIFIED · 실제 응답 `market_context.asof` = KODEX200 유효 최신 10-14)** — OCI 근거 문장 · 후보 끝 날짜 라벨은 관찰로 남음(아래 절) — `market_context.asof` 이름(KODEX200 기준일 · 계약 ⑤)과 값(저장 가격 표 전체 최신일)이 다름 · 오늘 화면 이름은 `POC5-UI-03` 에서 '저장 가격 최신일'로 임시 정정.
+`DEF-MARKET-CONTEXT-ASOF-MEANING` = **해소(PC 화면) (2026-10-14 · `POC5-11` · 검증자 VERIFIED · 실제 응답 `market_context.asof` = KODEX200 유효 최신 10-14)** — OCI 근거 문장 · 후보 끝 날짜 라벨은 관찰로 남음(아래 절 · 후보 실제 기간의 PC 화면 · 복사문 표시는 `POC5-21` 에서 해소 2026-10-17 · `basis_*` 의미 · OCI 문장 · 후보와 KODEX200 산식 차이는 관찰 유지) — `market_context.asof` 이름(KODEX200 기준일 · 계약 ⑤)과 값(저장 가격 표 전체 최신일)이 다름 · 오늘 화면 이름은 `POC5-UI-03` 에서 '저장 가격 최신일'로 임시 정정.
 `DEF-HOLDINGS-EVIDENCE-MULTIROW-VALUATION` = **해소 (2026-10-15 · `POC5-14` · 설계자 PLAN PASS · 검증자 r1 VERIFIED · 설계자 RESULT PASS · 커밋 `01e54a50` · A 위치 짝짓기 + C 요약 종목 합산 · 실제 PC 응답 정정 확인)** — 공유 보유 근거 builder 가 같은 종목 여러 줄에 마지막 줄 평가값을 복사하던 결함(아래 절).
 `DEF-ML-CHAIN` 은 **2026-08-25 해소**됐다.
 
@@ -319,6 +319,8 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
   - OCI 근거 문장 'KODEX200 최근 수익률 ({asof} 기준)'(`app/runtime_evidence/market_discovery.py:61`)도 최상위 `asof`(전체 최신일)를 쓴다.
   - 판정상 OCI · PUSH 불변이라 이번에 바꾸지 않는다.
   - 관찰(2026-10-14 · `POC5-11` 조사 · 해소 아님): 후보 기간 수익률의 끝 날짜 라벨(`basis_end_date` · `selected_basis_end_date`)은 `asof_iso`(전체 최신일)인데 끝 값은 종목마다 자기 마지막 저장 행이다(`app/market_topn_helpers.py :: _compute_period`). 마지막 행이 늦은 종목은 라벨과 실제 끝 날짜가 다를 수 있다.
+  - 해소(PC 화면 · 복사문만 · 2026-10-17 · `POC5-21` · 검증자 r1 VERIFIED · 설계자 RESULT PASS · IMPLEMENTED_VERIFIED_CLOSED · 결과서 `docs/ai_result/POC5/POC5-21_PC_CANDIDATE_RETURN_PERIOD_EVIDENCE_RESULT.md` §11): PC 화면 API 만 `compute_topn(actual_price_dates=True)` — 기간 dict 에 실제 시작 · 끝 저장 행 날짜(`price_start_date` · `price_end_date`) · KODEX200 1M · 3M 행 날짜를 더해 「요즘 잘 오르는 ETF」 카드 · 표 · AI 해석용 복사문이 실제 기간을 보인다(끝일 ≠ 시장 저장 최신일이면 '수익률 끝일'). `basis_end_date` 이름 · 값과 OCI 근거 문장 · 다른 호출자는 그대로(이번 범위 밖 · 정정했다고 기록하지 않음).
+  - 관찰(2026-10-17 · `POC5-21` 실측 · 범위 밖): 후보 1개월 · 3개월(시장 저장 최신일에서 달력 30 · 90일)과 KODEX200 1M · 3M(20 · 60 저장일)은 시작일이 다르다(사본 2026-10-14: 후보 09-14 · 07-16 / KODEX200 09-10 · 07-14). 계산 일치는 하지 않고(설계자 판정 Q1) 화면 · 복사문에 '기간 다른 수익률 차이'(%p)로 표시한다.
 
 ### ~~DEF-PC-MARKET-SCREEN-SLOW-LOAD — 「요즘 잘 오르는 ETF」 첫 조회가 화면 10초 제한을 넘음~~ → **해소 (2026-10-14 · `POC5-12`)**
 

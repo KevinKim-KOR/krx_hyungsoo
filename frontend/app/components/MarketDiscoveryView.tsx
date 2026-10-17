@@ -106,7 +106,7 @@ function SummaryHeader({ data }: { data: MarketTopNResponse }) {
         <li>
           데이터 기준: <strong>SQLite 단일 SSOT</strong> (state/market/market_data.sqlite)
         </li>
-        <li>시장 데이터 기준일: <strong>{fmt(data.asof)}</strong></li>
+        <li>시장 저장 최신일: <strong>{fmt(data.asof)}</strong> (저장된 전체 종목 가격 중 가장 늦은 저장일)</li>
         <li>데이터 소스: <strong>{fmt(data.source)}</strong></li>
         <li>Universe: <strong>{fmtNum(data.universe_count)}</strong>개</li>
         <li>가격 수집 성공: <strong>{fmtNum(data.price_success_count)}</strong>개</li>
@@ -632,6 +632,9 @@ export default function MarketDiscoveryView({
               heldTickers={heldTickers}
               selected={selectedCandidate}
               onSelect={setSelectedCandidate}
+              basis={basis}
+              marketAsof={data.asof}
+              kodex={data.market_context?.kodex200}
             />
           </div>
           <SummaryHeader data={data} />
@@ -644,6 +647,8 @@ export default function MarketDiscoveryView({
             basis={basis}
             order={order}
             onSort={handleSort}
+            marketAsof={data.asof}
+            kodex={data.market_context?.kodex200}
           />
           <SummaryHeader data={data} />
         </>

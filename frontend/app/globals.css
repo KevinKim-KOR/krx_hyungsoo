@@ -3542,3 +3542,34 @@ button.help-pop-btn[aria-expanded="true"] .help-pop-dot, button.help-pop-btn:hov
 
 /* POC5-UI-04 — 종목 가격 차트 기간 선택(기존 '정렬' 선택 묶음 모양 · 차트 위 한 줄 · 좁으면 줄바꿈). */
 .price-period-bar { margin: 0 0 6px; flex-wrap: wrap; }
+
+/* POC5-21 — 후보 수익률 계산 기간 */
+.rp-box {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 2px 2px 10px;
+  border-bottom: 1px solid #eef1f5;
+  margin-bottom: 8px;
+}
+.rp-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  font-size: 12.5px;
+}
+.rp-line .rp-k { color: var(--muted); font-weight: 700; min-width: 150px; }
+.rp-line .rp-v { font-variant-numeric: tabular-nums; }
+.rp-note {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.cand-dcell .v .rp-note { text-align: right; }
+.wb-hm-ex .v .rp-note { text-align: right; }
+.rp-date { white-space: nowrap; }
+/* 표 칸은 폭이 고정이라 한 줄로 둔다(표는 가로 스크롤). */
+.market-candidate-table .rp-note { white-space: nowrap; }

@@ -49,6 +49,9 @@ export interface MarketPeriodReturn {
   return_pct?: number | null;
   basis_start_date?: string | null;
   basis_end_date?: string | null;
+  // POC5-21 — 이 값을 계산한 시작 · 끝 종가의 저장 날짜(PC 시장 화면 응답만 · 그 종목 행).
+  price_start_date?: string | null;
+  price_end_date?: string | null;
 }
 
 export interface MarketReturns {

@@ -44,6 +44,9 @@ class MarketPeriodReturn(BaseModel):
     return_pct: Optional[float] = None
     basis_start_date: Optional[str] = None
     basis_end_date: Optional[str] = None
+    # POC5-21 — 이 값을 계산한 시작 · 끝 저장 행 날짜(이 PC 응답만 · 없으면 확인 불가).
+    price_start_date: Optional[str] = None
+    price_end_date: Optional[str] = None
 
 
 class MarketReturns(BaseModel):
@@ -72,6 +75,9 @@ class ShortTermMomentumPayload(BaseModel):
     excess_vs_kodex200_20d_pctp: Optional[float] = None
     start_dates: Optional[ShortTermMomentumStartDates] = None
     end_date: Optional[str] = None
+    # POC5-21 — 같은 구간 KODEX200 수익률의 시작 · 끝 행 날짜.
+    kodex200_start_dates: Optional[ShortTermMomentumStartDates] = None
+    kodex200_end_date: Optional[str] = None
     message: Optional[str] = None
 
 
@@ -81,6 +87,9 @@ class DailyReturnCheckPayload(BaseModel):
     flag: Optional[str] = None
     threshold_pct: Optional[float] = None
     message: Optional[str] = None
+    # POC5-21 — 계산한 직전 · 마지막 저장 행 날짜.
+    price_start_date: Optional[str] = None
+    price_end_date: Optional[str] = None
 
 
 class NavDiscountPayload(BaseModel):
@@ -153,6 +162,10 @@ class MarketContextKodex200(BaseModel):
     # 2026-07-29 POC3-01 — 기준선 대비 거리(%). (close-ma)/ma*100 저장값 단순 산술.
     ma20_distance_pct: Optional[float] = None
     ma60_distance_pct: Optional[float] = None
+    # POC5-21 — 1M · 3M 수익률이 쓴 시작 · 끝 행 날짜(PC 화면 응답만).
+    return_1m_start_date: Optional[str] = None
+    return_3m_start_date: Optional[str] = None
+    return_end_date: Optional[str] = None
 
 
 class MarketContextKospi(BaseModel):

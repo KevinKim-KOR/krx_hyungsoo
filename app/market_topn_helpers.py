@@ -84,6 +84,8 @@ class _PeriodResult:
     return_pct: Optional[float]
     base_date: Optional[str]
     exclusion_reason: Optional[str]  # None if success
+    # POC5-21 — 끝 가격을 쓴 저장 행의 날짜(그 종목 마지막 행 · 성공 시만).
+    end_date: Optional[str] = None
 
 
 def _missing_required_tables(db_path: Path) -> list[str]:
@@ -152,7 +154,7 @@ def _compute_period(
         return _PeriodResult(None, None, "insufficient_history")
 
     latest_idx = len(history) - 1
-    _latest_date, latest_close = history[latest_idx]
+    latest_date, latest_close = history[latest_idx]
     if latest_close <= 0:
         return _PeriodResult(None, None, "invalid_price")
 
@@ -179,7 +181,12 @@ def _compute_period(
     if base_close <= 0:
         return _PeriodResult(None, None, "invalid_price")
     ret_pct = (latest_close / base_close - 1.0) * 100.0
-    return _PeriodResult(return_pct=ret_pct, base_date=base_date, exclusion_reason=None)
+    return _PeriodResult(
+        return_pct=ret_pct,
+        base_date=base_date,
+        exclusion_reason=None,
+        end_date=latest_date,
+    )
 
 
 def _latest_date_in_db(db_path: Path) -> Optional[str]:

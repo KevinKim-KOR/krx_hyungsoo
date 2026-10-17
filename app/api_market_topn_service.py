@@ -60,6 +60,8 @@ def period_to_model(raw: Optional[dict]) -> Optional[MarketPeriodReturn]:
         return_pct=raw.get("return_pct"),
         basis_start_date=raw.get("basis_start_date"),
         basis_end_date=raw.get("basis_end_date"),
+        price_start_date=raw.get("price_start_date"),
+        price_end_date=raw.get("price_end_date"),
     )
 
 
@@ -217,6 +219,16 @@ def enrich_candidates_with_evidence(
                     else None
                 ),
                 end_date=m.end_date,
+                kodex200_start_dates=(
+                    ShortTermMomentumStartDates(
+                        five_d=m.kodex200_start_date_5d,
+                        ten_d=m.kodex200_start_date_10d,
+                        twenty_d=m.kodex200_start_date_20d,
+                    )
+                    if m.status == "ok"
+                    else None
+                ),
+                kodex200_end_date=m.kodex200_end_date,
                 message=m.message,
             )
             if m is not None
@@ -230,6 +242,8 @@ def enrich_candidates_with_evidence(
             flag=d.flag,
             threshold_pct=d.threshold_pct,
             message=d.message,
+            price_start_date=d.price_start_date,
+            price_end_date=d.price_end_date,
         )
         nav_payload = build_nav_discount_payload(c.ticker, db_path=db_path)
 

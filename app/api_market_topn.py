@@ -105,6 +105,8 @@ def get_market_topn_latest(
         kospi_today_kst=today,
         # POC5-11 — PC 시장 판정 날짜 = 실제 쓴 KODEX200 이력 마지막 날짜(이 화면 API 만).
         market_asof_from_kodex200=True,
+        # POC5-21 — 후보 · KODEX200 수익률의 실제 시작 · 끝 행 날짜(이 화면 API 만).
+        actual_price_dates=True,
     )
     latest_refresh = payload.get("latest_refresh")
     filters_raw = payload.get("filters") or {}

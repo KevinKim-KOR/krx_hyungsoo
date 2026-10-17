@@ -119,6 +119,26 @@ def compute_kodex200_metrics(history: Sequence[tuple[str, float]]) -> dict:
     }
 
 
+def kodex200_return_dates(history: Sequence[tuple[str, float]]) -> dict:
+    """POC5-21 — `compute_kodex200_metrics` 의 1M · 3M 수익률이 쓴 시작 · 끝 행 날짜.
+
+    같은 거르기(close 가 None · 0 이하 제외) · 같은 행 수(LOOKBACK_1M · LOOKBACK_3M) ·
+    같은 부족 조건(60행 + 1 미만이면 그 함수가 unavailable → 모두 None). 새 조회 없음.
+    """
+    rows = [(d, c) for d, c in history if c is not None and c > 0]
+    if len(rows) < LOOKBACK_60D + 1:
+        return {
+            "return_1m_start_date": None,
+            "return_3m_start_date": None,
+            "return_end_date": None,
+        }
+    return {
+        "return_1m_start_date": rows[-(LOOKBACK_1M + 1)][0],
+        "return_3m_start_date": rows[-(LOOKBACK_3M + 1)][0],
+        "return_end_date": rows[-1][0],
+    }
+
+
 def compute_kospi_metrics(
     history: Sequence[tuple[str, float]],
     *,
