@@ -3539,3 +3539,6 @@ button.help-pop-btn[aria-expanded="true"] .help-pop-dot, button.help-pop-btn:hov
 .dfw-chart-empty { min-height: 150px; }
 .dfw-notes { display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: var(--muted); }
 .dfw-foot { display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--border-soft); padding-top: 8px; margin-top: 4px; }
+
+/* POC5-UI-04 — 종목 가격 차트 기간 선택(기존 '정렬' 선택 묶음 모양 · 차트 위 한 줄 · 좁으면 줄바꿈). */
+.price-period-bar { margin: 0 0 6px; flex-wrap: wrap; }

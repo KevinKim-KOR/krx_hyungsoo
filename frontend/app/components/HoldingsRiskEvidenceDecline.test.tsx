@@ -668,4 +668,32 @@ describe("확인 근거 — 세 묶음 · 세부 흐름 창 (POC5-19)", () => {
     expect(screen.getByTestId("detail-flows-strip").textContent).toContain("0.4주");
     expect(Array.from(screen.getByTestId("evg-volume").querySelectorAll(".evg-grid .v")).map((e) => e.textContent)[0]).toBe("0.4주");
   });
+
+  // POC5-UI-04 — 기본 가격 차트는 3개월만 그려도 공유 조회 결과(원본 전체)는 그대로 → 세부 흐름 창은 3개월 밖 날짜도 찾는다.
+  it("기본 차트 3개월 표시와 무관하게 세부 흐름 창은 원본 전체 시계열에서 날짜를 찾는다 · 새 GET 없음", async () => {
+    const ev = evidence();
+    const vt = {
+      asof_date: "2026-10-14",
+      points: [
+        { date: "2026-05-04", volume: 700 },
+        { date: "2026-10-14", volume: 1500 },
+      ],
+      missing_count: 0,
+    };
+    ev.holdings[0].volume_trend = vt;
+    ev.holdings[1].volume_trend = vt;
+    fetchHoldingsMarketEvidence.mockResolvedValue(ev);
+    fetchPriceSeries.mockImplementation((t: string) =>
+      Promise.resolve({ ...SERIES, ticker: t, available_from: "2026-05-04", series: [{ date: "2026-05-04", price: 800 }, ...SERIES.series] }),
+    );
+    await renderSection();
+    await open("에이");
+    // 기본 화면: 3개월(2026-07-14 ~) — 05-04 는 그리지 않음.
+    expect(screen.getByRole("button", { name: "3개월" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByTestId("price-chart-period").textContent).toContain("표시 기간 2026-10-08 ~ 2026-10-14 · 4개 저장일");
+    fireEvent.click(flowsBtn());
+    fireEvent.keyDown(screen.getByTestId("detail-price-plot"), { key: "Home" });
+    expect(ro()).toBe("2026-05-04 · 종가 800원 · 거래량 700주");
+    expect(fetchPriceSeries).toHaveBeenCalledTimes(1);
+  });
 });
