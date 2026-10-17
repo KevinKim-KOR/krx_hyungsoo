@@ -3391,7 +3391,10 @@ button.hmx-btn-sm,
 button.ar-btn-sm,
 button.link-button,
 .dashboard-exception-btn,
-.wb-attn-btn {
+.wb-attn-btn,
+.wb-filter {
+  /* .wb-filter = 「ETF 비교하기」 빠른 선택(전체 · 보유 중 · 비교 가능 · 확인 필요) — 사용자 요청 2026-10-18
+     '중간 크기로만'(크기만 · 둥근 모양 · 색 그대로 · 예전 선택 묶음 제외 목록에서 옮김). */
   min-height: 40px;
   padding: 0 12px;
   font-size: 14px;
@@ -3408,7 +3411,6 @@ button.toggle-btn {
 .sidebar-group-title,
 .decision-tab-btn,
 .wb-tab,
-.wb-filter,
 .holdings-sort-seg button,
 .ar-seg button,
 .ar-fb-row button.ar-fb-btn,
@@ -3423,7 +3425,6 @@ button[role="tab"],
 .sidebar-group-title,
 .decision-tab-btn,
 .wb-tab,
-.wb-filter,
 .ar-seg button,
 .ar-fb-row button.ar-fb-btn,
 .hmx-seg button,
@@ -3573,3 +3574,9 @@ button.help-pop-btn[aria-expanded="true"] .help-pop-dot, button.help-pop-btn:hov
 .rp-date { white-space: nowrap; }
 /* 표 칸은 폭이 고정이라 한 줄로 둔다(표는 가로 스크롤). */
 .market-candidate-table .rp-note { white-space: nowrap; }
+
+/* POC5-22 — 동일 기간 KODEX200 대비 칸. 계산 불가 · 값 없음은 회색 짧은 글(위험 표시 아님). */
+/* `.wb-hm-cell .v` 와 같은 무게(0,2,0) · 뒤에 있어 이긴다 — !important 없이. */
+.sp-na,
+.v.sp-na { color: var(--muted); font-weight: 600; font-size: 11px; }
+.wb-hm-ex .sp-k { white-space: nowrap; }

@@ -5,7 +5,7 @@
 
 import { request } from "./core";
 import type { Run } from "./runApproval";
-import type { StoredVolumeEvidence } from "./market";
+import type { SamePeriodKodex200, StoredVolumeEvidence } from "./market";
 
 // ─── POC2 Step 1: holdings ───────────────────────────────────────────
 
@@ -237,6 +237,8 @@ export interface HoldingsMarketEvidenceItem {
   price_volatility?: PriceVolatilityEvidence | null;
   // POC5-19 — 최근 저장일 거래량 흐름(거래량 칸과 같은 읽기 행 · 기준일 포함 최근 최대 20개 · 오래된 순 · 선택 필드).
   volume_trend?: VolumeTrendEvidence | null;
+  // POC5-22 — 상위 후보와 연결된 보유 종목만 그 후보의 동일 기간 KODEX200 비교(선택 필드 · 없으면 값 없음).
+  same_period_kodex200?: SamePeriodKodex200 | null;
 }
 
 // POC5-19 — 거래량이 비어 있거나 확인이 필요한 날은 volume=null(0 으로 채우지 않음 · 저장된 0 은 0).

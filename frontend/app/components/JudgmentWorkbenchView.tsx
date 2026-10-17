@@ -11,6 +11,8 @@
 // - Dashboard 데이터 조회 계약 미변경 (§11). 후보 조회는 Workbench 전용 키.
 
 import { useState } from "react";
+import { sameView } from "@/lib/samePeriodKodex";
+import SamePeriodValue from "./SamePeriodValue";
 import {
   fetchMarketTopnLatest,
   type MarketTopNResponse,
@@ -44,7 +46,7 @@ import {
   evidenceByTicker,
   heldTickerSet,
   evidenceReturn,
-  evidenceExcess,
+  samePeriodDetail,
   isHeld,
   relationState,
   type RelationState,
@@ -480,7 +482,7 @@ function CandidateTable({
           {S("rank", "순위")}
           {S("one_month", "1M")}
           {S("three_month", "3M")}
-          {S("excess", "KODEX초과")}
+          {S("excess", "동일기간 KODEX 1M")}
           {S("drawdown", "고점대비")}
         </span>
         <span className="holdings-sortbar-hint">
@@ -497,7 +499,6 @@ function CandidateTable({
           const heldSt = relationState(heldTickers, c.ticker);
           const om = candReturn(c, "one_month");
           const tm = candReturn(c, "three_month");
-          const ex = candExcess(c);
           const dd = candDrawdown(c);
           const isSel = selected === c.ticker;
           return (
@@ -540,7 +541,7 @@ function CandidateTable({
                     </span>
                   </div>
                   {/* 2026-08-29 POC3-ML-02 REJECT Closeout — 참고점수 자리를
-                      **제거**했다. 아래 facts 줄에 순위·1M·3M·KODEX초과·고점대비가
+                      **제거**했다. 아래 facts 줄에 순위·1M·3M·동일기간 KODEX 1M·고점대비가
                       이미 있어 같은 값을 큰 숫자로 되풀이하지 않는다.
                       0·"사용 불가"·경고 배지 같은 대체 표시도 두지 않는다. */}
                 </div>
@@ -568,10 +569,8 @@ function CandidateTable({
                     </span>
                   </div>
                   <div className="wb-hm-cell">
-                    <span className="k">KODEX초과</span>
-                    <span className="v" style={{ color: directionColor(ex) }}>
-                      {fmtSignedPct(ex)}
-                    </span>
+                    <span className="k">동일기간 KODEX 1M</span>
+                    <SamePeriodValue view={sameView(c, "1m")} colorOf={directionColor} />
                   </div>
                 </div>
                 <div className="wb-hm-ex">
@@ -783,10 +782,7 @@ function SelectedDetail({
             candReturn(c, "three_month") ?? evidenceReturn(ev, "three_month"),
           )}
         />
-        <DetailCell
-          label="KODEX 초과"
-          v={fmtSignedPct(candExcess(c) ?? evidenceExcess(ev))}
-        />
+        <DetailCell label="동일 기간 KODEX200 대비 1M" v={samePeriodDetail(c, ev)} />
         <DetailCell label="고점 대비" v={fmtPlainPct(candDrawdown(c))} />
         <DetailCell label="보유 여부" v={relLabel(heldSt, "보유 중", "미보유")} />
         <DetailCell

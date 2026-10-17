@@ -2,20 +2,15 @@
 // - '모두 같음'은 값이 있는 후보의 날짜가 전부 확인되고 전부 같을 때만.
 // - 시작일이 여러 종류면 모든 값에 실제 시작일(다수를 기준 삼지 않음).
 // - 끝일은 시장 저장 최신일과 비교(다수가 옛 날짜여도 기준 불변).
-// - KODEX200 대비: 같은 기간 · 기간 다름 · 확인 불가.
+// - KODEX200 대비 비교는 POC5-22 동일 기간 값(lib/samePeriodKodex.test.ts)으로 옮겼다.
 import { describe, it, expect } from "vitest";
-import type { MarketCandidate, MarketContextKodex200, MarketPeriodReturn } from "./api";
+import type { MarketCandidate, MarketPeriodReturn } from "./api";
 import {
   UNKNOWN_BADGE,
   allPeriodsUnknown,
   candidateBadges,
-  cmpGroup,
-  cmpLabel,
-  cmpNote,
-  cmpState,
   groupLine,
   groupSummary,
-  kodexRange,
   periodGroup,
   valueNote,
   valuePeriod,
@@ -37,21 +32,12 @@ function cand(
   ticker: string,
   one: MarketPeriodReturn | null,
   three: MarketPeriodReturn | null = r(3, "2026-07-16", ASOF),
-  ex: [number | null, number | null] = [1, 2],
 ): MarketCandidate {
   return {
     ticker,
     returns: { one_month: one, three_month: three },
-    excess_return: { vs_kodex200_1m_pctp: ex[0], vs_kodex200_3m_pctp: ex[1] },
   } as MarketCandidate;
 }
-
-const KODEX: MarketContextKodex200 = {
-  status: "ok",
-  return_1m_start_date: "2026-09-10",
-  return_3m_start_date: "2026-07-14",
-  return_end_date: ASOF,
-};
 
 describe("valuePeriod", () => {
   it("값 없음 · 날짜 없음 · 날짜 있음을 나눈다(basis_* 로 채우지 않는다)", () => {
@@ -182,50 +168,5 @@ describe("이름 옆 표시(candidateBadges) — 끝일은 시장 저장 최신�
     expect(candidateBadges(cs[1], "one_month", periodGroup(cs, "one_month"), ASOF)).toEqual([UNKNOWN_BADGE]);
     const all = [cand("A", r(1), r(2)), cand("B", r(2), r(3))];
     expect(candidateBadges(all[0], "one_month", periodGroup(all, "one_month"), ASOF)).toEqual([]);
-  });
-});
-
-describe("KODEX200 대비 비교 기간", () => {
-  it("같은 기간 · 기간 다름 · 확인 불가 · 값 없음", () => {
-    const same = cand("A", r(1, "2026-09-10", ASOF));
-    const diff = cand("B", r(1, "2026-09-14", ASOF));
-    const unk = cand("C", r(1));
-    const none = cand("D", r(1, "2026-09-14", ASOF), null, [null, null]);
-    expect(cmpState(same, "1m", KODEX)).toBe("same");
-    expect(cmpState(diff, "1m", KODEX)).toBe("diff");
-    expect(cmpState(unk, "1m", KODEX)).toBe("unknown");
-    // 시작은 같아도 끝이 다르면(후보 끝 행이 이른 경우) 기간 다름.
-    expect(cmpState(cand("E", r(1, "2026-09-10", "2026-10-13")), "1m", KODEX)).toBe("diff");
-    expect(cmpState(none, "1m", KODEX)).toBe("none");
-    expect(cmpState(diff, "1m", { status: "ok", return_1m_start_date: "2026-09-10" })).toBe("unknown");
-    expect(cmpState(diff, "1m", { status: "unavailable" })).toBe("unknown");
-    expect(kodexRange({ ...KODEX, status: "unavailable" }, "1m")).toBeNull();
-    expect(kodexRange(KODEX, "3m")).toEqual({ start: "2026-07-14", end: ASOF });
-  });
-
-  it("공통이면 한 번(제목 줄) · 섞이면 값 아래 · 미확인은 숨기지 않는다", () => {
-    const diffs = [cand("A", r(1, "2026-09-14", ASOF)), cand("B", r(1, "2026-09-14", ASOF))];
-    const g1 = cmpGroup(diffs, "1m", KODEX);
-    expect(cmpLabel(g1)).toBe("기간 다른 수익률 차이");
-    expect(cmpNote(cmpState(diffs[0], "1m", KODEX), g1)).toBeNull();
-
-    const sames = [cand("A", r(1, "2026-09-10", ASOF))];
-    expect(cmpLabel(cmpGroup(sames, "1m", KODEX))).toBe("같은 기간 수익률 차이");
-
-    const mixed = [cand("A", r(1, "2026-09-10", ASOF)), cand("B", r(1, "2026-09-14", ASOF)), cand("C", r(1))];
-    const gm = cmpGroup(mixed, "1m", KODEX);
-    expect(gm).toEqual({ total: 3, same: 1, diff: 1, unknown: 1 });
-    expect(cmpLabel(gm)).toBe("후보별로 다름 — 값 아래 표시 · 1개 기간 확인 불가");
-    expect(mixed.map((c) => cmpNote(cmpState(c, "1m", KODEX), gm))).toEqual([
-      "같은 기간",
-      "기간 다름",
-      "기간 확인 불가",
-    ]);
-
-    const allUnk = [cand("A", r(1)), cand("B", r(2))];
-    const gu = cmpGroup(allUnk, "1m", KODEX);
-    expect(cmpLabel(gu)).toBe("기간 확인 불가");
-    expect(cmpNote("unknown", gu)).toBeNull();
-    expect(cmpLabel(cmpGroup([], "1m", KODEX))).toBe("값 없음");
   });
 });

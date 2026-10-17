@@ -1,6 +1,7 @@
 // POC3-02 Judgment Workbench — 공통 표시 헬퍼 (§8 데이터 정직성).
 // Workbench 에만 적용. 기존 데이터 의미 변경 없음.
 
+import { sameDetail, sameDiffOf, sameShort, sameViewOf } from "@/lib/samePeriodKodex";
 import type {
   MarketCandidate,
   EnrichedHolding,
@@ -69,16 +70,10 @@ export function candReturn(
   return r?.return_pct ?? null;
 }
 
-// 후보 초과수익 (excess_return · optional shape 안전 접근).
-// 2026-08-13 필드명 정정 — 실제 응답 키는 `vs_kodex200_1m_pctp` 이며
-// `excess_return_pct` 는 존재하지 않아 항상 null 이었다(화면 전체 "—").
-// 보유 탭의 evidenceExcess 와 같은 1M 기준으로 맞춘다.
+// 후보 동일 기간 KODEX200 대비 1M(%p) — 칸 · 사용자 정렬이 같은 값을 쓴다(POC5-22 · 판정 §2).
+// 새 객체(`same_period_kodex200`)만 읽는다 — 없거나 계산 불가면 null(기존 excess_return 으로 대신하지 않음).
 export function candExcess(c: MarketCandidate | undefined): number | null {
-  const ex = c?.excess_return as
-    | { vs_kodex200_1m_pctp?: number | null; excess_return_pct?: number | null }
-    | null
-    | undefined;
-  return ex?.vs_kodex200_1m_pctp ?? ex?.excess_return_pct ?? null;
+  return sameDiffOf(c?.same_period_kodex200, "1m");
 }
 
 // 후보 고점 대비 (drawdown_20d · 음수 표기 close/peak-1 → %).
@@ -182,13 +177,16 @@ export function evidenceReturn(
   }
 }
 
-// Evidence item 의 KODEX200 대비 초과수익 (1M pctp) — 없으면 null.
-export function evidenceExcess(
+// 상세 칸 — 후보에 있으면 후보 객체, 보유만 고르면 보유 근거 객체(같은 helper · 같은 1M · POC5-22 Q2 (a)).
+// 보유 근거 객체는 상위 후보와 연결된 보유 종목만 있다 — 없으면 '동일 기간 값 없음'(기존 excess_return ·
+// 단기 20구간으로 대신하지 않는다). 보유 탭 칸은 HoldingTable 이 같은 sameViewOf 로 그린다.
+export function samePeriodDetail(
+  c: MarketCandidate | undefined,
   ev: HoldingsMarketEvidenceItem | undefined,
-): number | null {
-  const ex = ev?.excess_return;
-  if (!ex || ex.status !== "ok") return null;
-  return ex.vs_kodex200_1m_pctp;
+): string {
+  const v = sameViewOf(c ? c.same_period_kodex200 : ev?.same_period_kodex200, "1m");
+  const d = sameDetail(v);
+  return d ? `${sameShort(v, "동일 기간 값 없음")} — ${d}` : sameShort(v, "동일 기간 값 없음");
 }
 
 // 보유 종목 Evidence 상태: 없음/실패는 "정상" 으로 표시하지 않는다 (A-1(5)).

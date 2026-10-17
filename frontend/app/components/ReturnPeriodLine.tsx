@@ -1,20 +1,17 @@
 "use client";
-// POC5-21 — 후보 목록 위 '수익률 계산 기간' 한 줄(선택 기간) + 'KODEX200 대비' 한 줄.
-// 양쪽 실제 시작~끝과 계산 정의는 기존 클릭형 ? 안에. 날짜는 표시 후보의 응답 값에서만 만든다.
-import type { MarketCandidate, MarketContextKodex200 } from "@/lib/api";
+// POC5-21 — 후보 목록 위 '수익률 계산 기간' 한 줄(선택 기간). 날짜는 표시 후보의 응답 값에서만 만든다.
+// POC5-22 — 둘째 줄 = '동일 기간 KODEX200 대비 1M · 3M'(후보와 같은 시작 · 끝 날짜의 KODEX200 종가로 뺀 차이).
+// 기간별 KODEX200 수익률 · 뺄셈 뜻 · 한계(가격 조정 기준 연속성 미검사)는 기존 클릭형 ? 안에.
+import type { MarketCandidate } from "@/lib/api";
 import {
   PERIOD_KEYS,
   PERIOD_LABEL,
-  cmpGroup,
-  cmpLabel,
-  fmtRange,
   groupLine,
   groupSummary,
-  kodexRange,
   periodGroup,
-  type CmpKey,
   type PeriodKey,
 } from "@/lib/returnPeriod";
+import { SAME_PERIOD_LIMIT, sameGroups, sameSummary } from "@/lib/samePeriodKodex";
 import HelpPopover from "./holdings_risk_evidence/HelpPopover";
 
 // 값 아래 · 이름 옆 짧은 표시. 날짜(YYYY-MM-DD)는 중간에서 줄을 바꾸지 않는다.
@@ -40,27 +37,16 @@ export default function ReturnPeriodLine({
   candidates,
   selected,
   marketAsof,
-  kodex,
 }: {
   candidates: MarketCandidate[];
   selected: PeriodKey;
   marketAsof: string | null | undefined;
-  kodex: MarketContextKodex200 | null | undefined;
 }) {
   if (candidates.length === 0) return null;
   const g = periodGroup(candidates, selected);
   const byPeriod = PERIOD_KEYS.map(
     (k) => `· ${PERIOD_LABEL[k]} ${groupSummary(periodGroup(candidates, k))}`,
   );
-  const c1 = cmpGroup(candidates, "1m", kodex);
-  const c3 = cmpGroup(candidates, "3m", kodex);
-  const l1 = cmpLabel(c1);
-  const l3 = cmpLabel(c3);
-  const cmpText = l1 === l3 ? `${l1} (%p)` : `1M ${l1} · 3M ${l3} (%p)`;
-  const kd = (key: CmpKey) => {
-    const r = kodexRange(kodex, key);
-    return r ? fmtRange(r.start, r.end) : "확인 불가";
-  };
   return (
     <div className="rp-box" data-testid="return-period-line">
       <div className="rp-line">
@@ -79,16 +65,16 @@ export default function ReturnPeriodLine({
         />
       </div>
       <div className="rp-line">
-        <span className="rp-k">KODEX200 대비 1M · 3M</span>
-        <span className="rp-v">{cmpText}</span>
+        <span className="rp-k">동일 기간 KODEX200 대비 1M · 3M</span>
+        <span className="rp-v">{sameSummary(candidates)}</span>
         <HelpPopover
-          label="KODEX200 대비 기간"
+          label="동일 기간 KODEX200 대비"
           paragraphs={[
-            "KODEX200 대비 값 = 후보 수익률 − KODEX200 수익률(두 수익률의 차이 · 단위 %p).",
-            "후보 1개월 · 3개월은 시장 저장 최신일에서 30 · 90일 전 날짜 또는 그 뒤 첫 저장 종가부터, KODEX200 1M · 3M 은 KODEX200 마지막 저장일에서 20 · 60 저장일 앞 종가부터 계산합니다.",
-            "두 기간이 다르면 같은 기간의 초과수익이나 시장 대비 우위를 확인한 값이 아닙니다.",
-            `· 1M — 후보 ${groupSummary(periodGroup(candidates, "one_month"))} · KODEX200 ${kd("1m")}`,
-            `· 3M — 후보 ${groupSummary(periodGroup(candidates, "three_month"))} · KODEX200 ${kd("3m")}`,
+            "차이(%p) = 후보 수익률 − KODEX200 수익률. 두 수익률 모두 후보가 실제로 쓴 시작 · 끝 날짜의 저장 종가로 계산합니다(KODEX200 도 같은 날짜 · 전후 날짜나 보간 없음).",
+            "예: 같은 기간 후보 +10% · KODEX200 +5% → +5%p.",
+            ...sameGroups(candidates, "1m"),
+            ...sameGroups(candidates, "3m"),
+            `뜻: 그 저장 가격 기간에 KODEX200 보다 몇 %p 높거나 낮았는가. 배당 포함 총수익 · 개인 손익 · 앞으로의 우위가 아닙니다. ${SAME_PERIOD_LIMIT}`,
           ]}
         />
       </div>

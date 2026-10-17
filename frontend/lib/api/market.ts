@@ -64,6 +64,24 @@ export interface MarketReturns {
   three_year?: MarketPeriodReturn | null;
 }
 
+// POC5-22 — 후보의 실제 시작 · 끝 날짜(A · B) KODEX200 종가로 계산한 동일 기간 비교(PC 화면 응답만).
+// 단위: 수익률 % · 차이 %p · 소수 4자리. status=ok 는 산술 비교가 됐다는 뜻(가격 기준 연결 확인 아님).
+// reason = candidate_period_unknown | kodex200_start_price_missing | kodex200_end_price_missing.
+export interface SamePeriodKodex200Item {
+  status: "ok" | "unavailable";
+  reason?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  candidate_return_pct?: number | null;
+  kodex200_return_pct?: number | null;
+  diff_pctp?: number | null;
+}
+
+export interface SamePeriodKodex200 {
+  one_month?: SamePeriodKodex200Item | null;
+  three_month?: SamePeriodKodex200Item | null;
+}
+
 export interface MarketCandidate {
   rank?: number | null;
   ticker?: string | null;
@@ -75,6 +93,8 @@ export interface MarketCandidate {
   returns?: MarketReturns;
   // 2026-05-22 — Market Regime & Benchmark Context 1차.
   excess_return?: MarketCandidateExcessReturn | null;
+  // POC5-22 — 동일 기간 KODEX200 비교(1개월 · 3개월). excess_return(기간 다른 차이)은 그대로 남는다.
+  same_period_kodex200?: SamePeriodKodex200 | null;
   // 2026-06-01 — Market Discovery Evidence Closeout 1차.
   short_term_momentum?: ShortTermMomentumPayload | null;
   data_quality?: DataQualityPayload | null;

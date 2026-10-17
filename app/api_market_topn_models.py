@@ -49,6 +49,24 @@ class MarketPeriodReturn(BaseModel):
     price_end_date: Optional[str] = None
 
 
+class SamePeriodKodex200Item(BaseModel):
+    # POC5-22 — 후보 실제 A · B 날짜의 KODEX200 종가로 계산한 동일 기간 비교(단위 % · %p · 소수 4자리).
+    # status = ok | unavailable · reason = candidate_period_unknown | kodex200_start_price_missing |
+    # kodex200_end_price_missing. ok 는 산술 비교가 됐다는 뜻(가격 기준 연결 확인 아님).
+    status: str
+    reason: Optional[str] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    candidate_return_pct: Optional[float] = None
+    kodex200_return_pct: Optional[float] = None
+    diff_pctp: Optional[float] = None
+
+
+class SamePeriodKodex200(BaseModel):
+    one_month: Optional[SamePeriodKodex200Item] = None
+    three_month: Optional[SamePeriodKodex200Item] = None
+
+
 class MarketReturns(BaseModel):
     daily: Optional[MarketPeriodReturn] = None
     one_month: Optional[MarketPeriodReturn] = None
@@ -131,6 +149,8 @@ class MarketCandidate(BaseModel):
     # 2026-05-22 Market Regime & Benchmark Context 1차 — KODEX200/KOSPI 대비
     # 1m/3m 초과수익 (percentage point). KOSPI 데이터 없으면 vs_kospi_* 는 null.
     excess_return: Optional["MarketCandidateExcessReturn"] = None
+    # POC5-22 — 동일 기간 KODEX200 비교(1개월 · 3개월 · PC 화면 응답만 · excess_return 은 그대로).
+    same_period_kodex200: Optional[SamePeriodKodex200] = None
     # 2026-06-01 Market Discovery Evidence Closeout 1차 — 단기 흐름 + 데이터 품질.
     short_term_momentum: Optional[ShortTermMomentumPayload] = None
     data_quality: Optional[DataQualityPayload] = None

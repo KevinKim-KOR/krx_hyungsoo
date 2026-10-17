@@ -88,6 +88,7 @@ def candidate_to_model(raw: dict) -> MarketCandidate:
         excess_return=(
             MarketCandidateExcessReturn(**excess_raw) if excess_raw else None
         ),
+        same_period_kodex200=raw.get("same_period_kodex200"),
     )
 
 

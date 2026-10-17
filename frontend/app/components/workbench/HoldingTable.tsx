@@ -1,7 +1,8 @@
 "use client";
 
 // POC3-02 Judgment Workbench — 보유 표 (§7.6 · KS-10 분리).
-// 같은 ticker 다계좌 집계(종목당 한 행) + Evidence 기반 1M/3M/KODEX초과/상태.
+// 같은 ticker 다계좌 집계(종목당 한 행) + Evidence 기반 1M/3M/동일 기간 KODEX 1M/상태.
+// POC5-22 — KODEX 칸 = 보유 근거 PC 사본의 동일 기간 객체(상위 후보와 연결된 보유 종목만 · 없으면 '동일 기간 값 없음').
 //
 // 2026-08-12 사용자 실화면 직접 지시 — 14컬럼 가로 표 → 하이브리드 행으로 전환.
 //   좌측: 보유 현황(.hld-row)과 같은 2단 카드. 우측: 비교 지표 고정 열.
@@ -13,6 +14,8 @@ import type {
   HoldingsMarketEvidenceResponse,
 } from "@/lib/api";
 import type { QueryState } from "@/lib/api/queryCache";
+import { sameViewOf } from "@/lib/samePeriodKodex";
+import SamePeriodValue from "../SamePeriodValue";
 import {
   fmtSignedPct,
   fmtPlainPct,
@@ -21,7 +24,6 @@ import {
   directionColor,
   evidenceByTicker,
   evidenceReturn,
-  evidenceExcess,
   holdingEvidenceState,
   relationState,
   type HoldingEvidenceState,
@@ -152,7 +154,7 @@ export function HoldingTable({
         const pnlRate = r.count > 1 ? null : ev?.holding?.pnl_rate_pct ?? null;
         const om = evidenceReturn(ev, "one_month");
         const tm = evidenceReturn(ev, "three_month");
-        const ex = evidenceExcess(ev);
+        const ex = sameViewOf(ev?.same_period_kodex200, "1m");
         // NAV·구성종목 상태를 별도 배지로 분리 (어느 근거가 불가한지 식별 · A-1).
         const navSt = ev?.nav_discount?.status ?? null;
         const conSt = ev?.constituents_overlap?.status ?? null;
@@ -271,10 +273,8 @@ export function HoldingTable({
                 </div>
               </div>
               <div className="wb-hm-ex">
-                <span className="k">KODEX초과</span>
-                <span className="v" style={{ color: directionColor(ex) }}>
-                  {fmtSignedPct(ex)}
-                </span>
+                <span className="k">동일기간 KODEX 1M</span>
+                <SamePeriodValue view={ex} colorOf={directionColor} absentText="동일 기간 값 없음" />
               </div>
             </div>
           </div>

@@ -1,7 +1,8 @@
 // POC5-21 — AI 해석용 복사문의 실제 계산 기간(설계 V1 §3 · PLAN 판정 Q1 · Q2).
 // - 수익률 줄마다 (사용 종가 시작 → 끝) · 날짜 없으면 '계산 기간 확인 불가' · 값 없으면 '-' 그대로.
 // - 머리말은 시장 저장 최신일을 따로 적는다('○○ 기준 결과'라고 쓰지 않음).
-// - KODEX200 대비 = 수익률 차이(%p) + 두 기간 · 제목 · 요청 문구도 그 뜻.
+// - POC5-22 — [동일 기간 KODEX200 대비] = 같은 A · B 의 후보 · KODEX200 수익률과 차이(%p) · 한계 한 번.
+// - 단기 흐름 KODEX200 대비 = 수익률 차이(%p) + 두 기간(POC5-21 그대로).
 import { describe, it, expect } from "vitest";
 import type {
   ConstituentsAnalysisResponse,
@@ -9,6 +10,7 @@ import type {
   MarketContext,
   MarketContextKodex200,
   MarketPeriodReturn,
+  SamePeriodKodex200,
 } from "./api";
 import { buildMarketDiscoveryCopyText } from "./marketDiscoveryCopyText";
 
@@ -64,6 +66,26 @@ const STM_OK = {
   kodex200_end_date: ASOF,
 };
 
+// POC5-22 — 후보 실제 A · B 의 KODEX200 종가로 계산한 동일 기간 비교(실측 2026-10-14 모양).
+const SAME: SamePeriodKodex200 = {
+  one_month: {
+    status: "ok",
+    start_date: "2026-09-14",
+    end_date: ASOF,
+    candidate_return_pct: 22.2689,
+    kodex200_return_pct: -9.8615,
+    diff_pctp: 32.1304,
+  },
+  three_month: {
+    status: "ok",
+    start_date: "2026-07-16",
+    end_date: ASOF,
+    candidate_return_pct: 33.7931,
+    kodex200_return_pct: -12.6548,
+    diff_pctp: 46.4479,
+  },
+};
+
 function cand(over: Partial<MarketCandidate> = {}): MarketCandidate {
   return {
     rank: 1,
@@ -76,6 +98,7 @@ function cand(over: Partial<MarketCandidate> = {}): MarketCandidate {
       three_month: r(33.79, "2026-07-16", ASOF),
     },
     excess_return: { vs_kodex200_1m_pctp: 37.33, vs_kodex200_3m_pctp: 47.02 },
+    same_period_kodex200: SAME,
     short_term_momentum: STM_OK,
     data_quality: {
       status: "ok",
@@ -115,7 +138,7 @@ describe("머리말 — 시장 저장 최신일을 따로", () => {
 });
 
 describe("수익률 줄마다 실제 기간", () => {
-  it("[후보 ETF] 일간 · 1개월 · 3개월 + [KODEX200 대비 수익률 차이] 1개월", () => {
+  it("[후보 ETF] 일간 · 1개월 · 3개월 + [동일 기간 KODEX200 대비] 1개월", () => {
     const t = text([cand()]);
     expect(t).toContain("   - 일간 수익률: +5.40% (직전 저장일 대비 · 사용 종가 2026-10-13 → 2026-10-14)");
     expect(t).toContain("   - 1개월 수익률: +22.27% (사용 종가 2026-09-14 → 2026-10-14)");
@@ -140,35 +163,50 @@ describe("수익률 줄마다 실제 기간", () => {
   });
 });
 
-describe("KODEX200 대비 — 수익률 차이(%p)와 두 기간", () => {
-  it("제목 · 기간 다름 · 같은 기간 · 확인 불가", () => {
+describe("동일 기간 KODEX200 대비(POC5-22) · 단기 흐름 차이(POC5-21)", () => {
+  it("제목 · 설명 한 번(한계 포함) · 양쪽 수익률 · 사용 종가 날짜", () => {
     const t = text([cand()]);
-    expect(t).toContain("[KODEX200 대비 수익률 차이]");
-    expect(t[t.indexOf("[KODEX200 대비 수익률 차이]") + 1]).toBe(
-      "- 수익률 차이 = 후보 수익률 − KODEX200 수익률(%p). 괄호의 두 기간이 다르면 같은 기간 초과수익이나 시장 대비 우위를 확인한 값이 아닙니다.",
+    expect(t).toContain("[동일 기간 KODEX200 대비]");
+    expect(t[t.indexOf("[동일 기간 KODEX200 대비]") + 1]).toBe(
+      "- 차이(%p) = 후보 수익률 − KODEX200 수익률. 두 수익률 모두 괄호의 같은 시작 · 끝 날짜 저장 종가(배당 포함 총수익 · 개인 손익 아님). 저장 종가로 계산하며 가격 조정 기준의 연속성은 검사하지 않습니다.",
     );
-    expect(t.join("\n")).not.toContain("[시장 대비 후보 강도]");
+    expect(t.filter((l) => l.includes("가격 조정 기준의 연속성"))).toHaveLength(1);
     expect(t).toContain(
-      "   - KODEX200 대비 1개월 수익률 차이: +37.33%p (기간 다름 — 후보 2026-09-14 → 2026-10-14 · KODEX200 2026-09-10 → 2026-10-14)",
+      "   - 동일 기간 KODEX200 대비 1개월: +32.13%p (후보 +22.27% · KODEX200 -9.86% · 사용 종가 2026-09-14 → 2026-10-14)",
     );
     expect(t).toContain(
-      "   - KODEX200 대비 3개월 수익률 차이: +47.02%p (기간 다름 — 후보 2026-07-16 → 2026-10-14 · KODEX200 2026-07-14 → 2026-10-14)",
+      "   - 동일 기간 KODEX200 대비 3개월: +46.45%p (후보 +33.79% · KODEX200 -12.65% · 사용 종가 2026-07-16 → 2026-10-14)",
     );
-    const same = text([cand()], { ...KODEX, return_1m_start_date: "2026-09-14" });
-    expect(same).toContain("   - KODEX200 대비 1개월 수익률 차이: +37.33%p (같은 기간 2026-09-14 → 2026-10-14)");
-    const endOnly = text([
-      cand({ returns: { ...cand().returns, one_month: r(22.27, "2026-09-10", "2026-10-13") } }),
+    // 이전 '기간 다른 수익률 차이' 설명 · 값은 남기지 않는다.
+    const all = t.join("\n");
+    expect(all).not.toContain("[KODEX200 대비 수익률 차이]");
+    expect(all).not.toContain("+37.33");
+    expect(all).not.toContain("기간이 다르면");
+    expect(all).not.toMatch(/초과수익[:,]/);
+  });
+
+  it("계산 불가 사유 · 새 값 없음(기존 차이로 대신하지 않음)", () => {
+    const miss = text([
+      cand({
+        same_period_kodex200: {
+          one_month: {
+            status: "unavailable",
+            reason: "kodex200_end_price_missing",
+            start_date: "2026-09-14",
+            end_date: ASOF,
+            candidate_return_pct: 22.2689,
+          },
+          three_month: { status: "unavailable", reason: "candidate_period_unknown" },
+        },
+      }),
     ]);
-    expect(endOnly).toContain(
-      "   - KODEX200 대비 1개월 수익률 차이: +37.33%p (기간 다름 — 후보 2026-09-10 → 2026-10-13 · KODEX200 2026-09-10 → 2026-10-14)",
+    expect(miss).toContain(
+      "   - 동일 기간 KODEX200 대비 1개월: 계산 불가 — KODEX200 끝일 가격 없음 (후보 기간 2026-09-14 → 2026-10-14)",
     );
-    const unk = text([cand()], { status: "ok" });
-    expect(unk).toContain(
-      "   - KODEX200 대비 1개월 수익률 차이: +37.33%p (기간 확인 불가 — 후보 2026-09-14 → 2026-10-14 · KODEX200 확인 불가)",
-    );
-    const none = text([cand({ excess_return: { vs_kodex200_1m_pctp: null, vs_kodex200_3m_pctp: null } })]);
-    expect(none).toContain("   - KODEX200 대비 1개월 수익률 차이: -");
-    expect(t.join("\n")).not.toMatch(/초과수익[:,]/);
+    expect(miss).toContain("   - 동일 기간 KODEX200 대비 3개월: 계산 불가 — 후보 기간 확인 불가");
+    const old = text([cand({ same_period_kodex200: undefined })]);
+    expect(old).toContain("   - 동일 기간 KODEX200 대비 1개월: 동일 기간 값 없음");
+    expect(old.join("\n")).not.toContain("+37.33");
   });
 
   it("단기 흐름 5 · 10 · 20거래일 — 후보 기간 + KODEX200 비교 기간", () => {
@@ -187,9 +225,9 @@ describe("KODEX200 대비 — 수익률 차이(%p)와 두 기간", () => {
     );
   });
 
-  it("[요청] 문구도 수익률 차이 — 두 갈래 모두", () => {
+  it("[요청] 문구도 동일 기간 수익률 차이 — 두 갈래 모두", () => {
     const plain = text([cand()]).join("\n");
-    expect(plain).toContain("시스템의 시장 국면 판정, KODEX200 대비 수익률 차이(기간이 다르면 괄호에 두 기간),");
+    expect(plain).toContain("시스템의 시장 국면 판정, 동일 기간 KODEX200 대비 수익률 차이,");
     const analysis = {
       coverage: { requested_count: 0, available_count: 0, unavailable_count: 0 },
       constituents: [],
@@ -197,7 +235,7 @@ describe("KODEX200 대비 — 수익률 차이(%p)와 두 기간", () => {
       repeated_core_holdings: [],
     } as unknown as ConstituentsAnalysisResponse;
     const withC = text([cand()], KODEX, analysis).join("\n");
-    expect(withC).toContain("시스템의 시장 국면 판정, KODEX200 대비 수익률 차이(기간이 다르면 괄호에 두 기간),");
+    expect(withC).toContain("시스템의 시장 국면 판정, 동일 기간 KODEX200 대비 수익률 차이,");
     expect(withC).not.toMatch(/초과수익[:,]/);
   });
 });

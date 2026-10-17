@@ -8,14 +8,17 @@
 // returns 에 이미 있던 값을 옮기지 않던 것) 양쪽 모두 4개 기간을 나란히 놓는다.
 //
 // 카드 규칙은 다른 화면과 같다: 좌측 2단 + 우측 지표 + 정상이면 배지 숨김.
-//   보유 : 큰 숫자 = 현재 손익률(사용자 지정) · 우측 1/3/6/12개월 + 20일 KODEX 초과
-//   후보 : 큰 숫자 = 순위 기준 표기("1개월 1위") · 우측 동일 4칸 + 20일 KODEX 초과
+//   보유 : 큰 숫자 = 현재 손익률(사용자 지정) · 우측 1/3/6/12개월 + 20구간 KODEX200 차이
+//   후보 : 큰 숫자 = 순위 기준 표기("1개월 1위") · 우측 동일 4칸 + 20구간 KODEX200 차이
+//   POC5-22 Q3 (a) — 두 카드 모두 기존 단기 20구간 값(`short_term_momentum.excess_vs_kodex200_20d_pctp` ·
+//   이 화면 정렬과 같은 값 · %p). 후보 카드가 1개월 값(excess_return)을 보이던 연결을 바로잡았다.
 //
 // 참고점수는 카드에서 뺐다 — `relative_upside_v0` REJECT 판정(POC3-ML-02) 때문이다.
 // 사유(relative_upside_reasons)도 점수와 한 몸이라 함께 빠진다. 대신 후보가
 // **왜 이 목록에 있는지**를 응답의 basis+rank 로 그대로 적는다(새 판단 문구를
 // 만들지 않는다 — 관찰값만 제공하는 원칙).
 
+import { fmtSigned } from "@/lib/samePeriodKodex";
 import type { MarketBasis, MarketCandidate } from "@/lib/api";
 import type { HoldingsMarketEvidenceItem } from "@/lib/api";
 import {
@@ -135,9 +138,9 @@ export function HoldingCompareCards({
                 ["12개월", ok ? r?.twelve_month_return_pct ?? null : null],
               ])}
               <div className="wb-hm-ex">
-                <span className="k">20일 KODEX 초과</span>
+                <span className="k">20구간 KODEX200 차이</span>
                 <span className="v" style={{ color: returnColor(ex20) }}>
-                  {fmtPct(ex20)}
+                  {ex20 == null ? DASH : fmtSigned(ex20, "%p")}
                 </span>
               </div>
             </div>
@@ -170,7 +173,7 @@ export function CandidateCompareCards({
       {rows.map((c, idx) => {
         const exposure = c.ticker ? exposureByTicker[c.ticker] : undefined;
         const ret = c.returns;
-        const ex20 = c.excess_return?.vs_kodex200_1m_pctp ?? null;
+        const ex20 = c.short_term_momentum?.excess_vs_kodex200_20d_pctp ?? null;
         const dq = candidateDataState(c);
         const isSel = !!c.ticker && selectedTicker === c.ticker;
         return (
@@ -234,9 +237,9 @@ export function CandidateCompareCards({
                 ["12개월", ret?.twelve_month?.return_pct ?? null],
               ])}
               <div className="wb-hm-ex">
-                <span className="k">20일 KODEX 초과</span>
+                <span className="k">20구간 KODEX200 차이</span>
                 <span className="v" style={{ color: returnColor(ex20) }}>
-                  {fmtPct(ex20)}
+                  {ex20 == null ? DASH : fmtSigned(ex20, "%p")}
                 </span>
               </div>
             </div>

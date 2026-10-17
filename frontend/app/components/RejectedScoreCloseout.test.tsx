@@ -350,6 +350,11 @@ describe("보유와 비교 — 점수 미표시 · 정렬 선택지 부재 · �
     // 첫 클릭은 desc (handleCandSort 계약).
     fireEvent.click(candSortButton(/20일 초과/));
     expect(order()).toEqual(["BBB", "AAA", "CCC"]);
+    // POC5-22 Q3 (a) — 후보 카드 칸 숫자 = 이 정렬 값(단기 20구간 · %p). 1개월 excess_return(11.9)이 아니다.
+    const shown = Array.from(candidateCard().querySelectorAll(".wb-hm-ex"))
+      .filter((el) => el.textContent?.startsWith("20구간 KODEX200 차이"))
+      .map((el) => el.querySelector(".v")?.textContent);
+    expect(shown).toEqual(["+9.00%p", "+5.00%p", "+1.00%p"]);
 
     fireEvent.click(candSortButton(/고점 대비/));
     expect(order()).toEqual(["CCC", "AAA", "BBB"]);

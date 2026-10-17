@@ -18,6 +18,7 @@ from typing import Literal, Optional
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
+from app.api_market_topn_models import SamePeriodKodex200
 from app.decision_evidence_store import (
     ALLOWED_USER_VERDICTS,
     DEFAULT_DB_PATH,
@@ -51,6 +52,8 @@ class DecisionCandidateSnapshot(BaseModel):
     one_month_return_pct: Optional[float] = None
     three_month_return_pct: Optional[float] = None
     tags: list[str] = []
+    # POC5-22 — 화면 · 질문 본문과 같은 동일 기간 KODEX200 비교 객체(선택 · 저장 JSON 안 · 과거 기록은 없음).
+    same_period_kodex200: Optional[SamePeriodKodex200] = None
 
 
 class CreateDecisionSessionRequest(BaseModel):

@@ -7,7 +7,7 @@
 // 자동 AI 토론 / 투자 판단 자동화는 본 모듈의 책임이 아니다.
 
 import { request } from "./core";
-import type { MarketCandidate } from "./market";
+import type { MarketCandidate, SamePeriodKodex200 } from "./market";
 
 export type DecisionUserVerdict =
   | "useful"
@@ -39,6 +39,8 @@ export interface DecisionCandidateSnapshot {
   one_month_return_pct?: number | null;
   three_month_return_pct?: number | null;
   tags: string[];
+  // POC5-22 — 화면 · 질문 본문과 같은 동일 기간 KODEX200 비교 객체(선택 · 이전 기록에는 없음).
+  same_period_kodex200?: SamePeriodKodex200 | null;
 }
 
 export interface CreateDecisionSessionRequest {
@@ -170,5 +172,6 @@ export function toDecisionCandidateSnapshot(
     one_month_return_pct: c.returns?.one_month?.return_pct ?? null,
     three_month_return_pct: c.returns?.three_month?.return_pct ?? null,
     tags: (c.tags ?? []) as string[],
+    same_period_kodex200: c.same_period_kodex200 ?? null,
   };
 }

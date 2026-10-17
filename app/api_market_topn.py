@@ -107,6 +107,8 @@ def get_market_topn_latest(
         market_asof_from_kodex200=True,
         # POC5-21 — 후보 · KODEX200 수익률의 실제 시작 · 끝 행 날짜(이 화면 API 만).
         actual_price_dates=True,
+        # POC5-22 — 동일 기간 KODEX200 비교(이 화면 API · 보유 근거 API 만).
+        same_period_kodex200=True,
     )
     latest_refresh = payload.get("latest_refresh")
     filters_raw = payload.get("filters") or {}

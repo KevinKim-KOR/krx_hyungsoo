@@ -28,6 +28,7 @@ from app.holdings_market_evidence import (
     build_holdings_market_evidence,
     get_holdings_file_mtime_iso,
 )
+from app.api_market_topn_models import SamePeriodKodex200
 from app.market_data_store import DEFAULT_DB_PATH as MARKET_DB_PATH
 from app.market_topn import DEFAULT_BASIS, DEFAULT_N, DEFAULT_ORDER, compute_topn
 from app.pc_price_basis import apply_pc_price_basis, load_recent_price_rows
@@ -153,6 +154,9 @@ class HoldingEvidenceItem(BaseModel):
     price_volatility: Optional[PriceVolatilityEvidence] = None
     # POC5-19 — PC 화면용 선택 필드(이 응답 사본에만 · 거래량 칸과 같은 읽기 행의 최근 최대 20개 저장일).
     volume_trend: Optional[VolumeTrendEvidence] = None
+    # POC5-22 — PC 화면용 선택 필드(이 응답 사본에만). 상위 후보와 연결된 보유 종목만 그 후보의 동일 기간
+    # KODEX200 비교를 옮긴다(기존 excess_return 과 같은 제공 범위). 없으면 None — 다른 값으로 채우지 않는다.
+    same_period_kodex200: Optional[SamePeriodKodex200] = None
 
 
 class PriceBasisMismatch(BaseModel):
@@ -252,7 +256,14 @@ def get_holdings_market_evidence_latest() -> HoldingsMarketEvidenceResponse:
         db_path=MARKET_DB_PATH,
         basis=DEFAULT_BASIS,
         order=DEFAULT_ORDER,
+        # POC5-22 — 동일 기간 비교만 더한다(공유 builder 는 쓰지 않는 키 · 다른 결과 그대로).
+        same_period_kodex200=True,
     )
+    same_by_ticker = {
+        c["ticker"]: c.get("same_period_kodex200")
+        for c in topn_payload.get("candidates") or []
+        if c.get("ticker")
+    }
 
     shared = build_holdings_market_evidence(
         holdings=loaded,
@@ -290,6 +301,7 @@ def get_holdings_market_evidence_latest() -> HoldingsMarketEvidenceResponse:
                 ),
                 price_volatility=volatility[h["ticker"]],
                 volume_trend=compute_volume_trend(rows_by_ticker[h["ticker"]]),
+                same_period_kodex200=same_by_ticker.get(h["ticker"]),
             )
             for h in evidence.get("holdings", [])
         ],

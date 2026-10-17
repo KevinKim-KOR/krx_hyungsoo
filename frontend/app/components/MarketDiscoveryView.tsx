@@ -634,7 +634,6 @@ export default function MarketDiscoveryView({
               onSelect={setSelectedCandidate}
               basis={basis}
               marketAsof={data.asof}
-              kodex={data.market_context?.kodex200}
             />
           </div>
           <SummaryHeader data={data} />
@@ -648,7 +647,6 @@ export default function MarketDiscoveryView({
             order={order}
             onSort={handleSort}
             marketAsof={data.asof}
-            kodex={data.market_context?.kodex200}
           />
           <SummaryHeader data={data} />
         </>

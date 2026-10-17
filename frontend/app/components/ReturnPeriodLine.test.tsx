@@ -1,5 +1,6 @@
 // POC5-21 — 「요즘 잘 오르는 ETF」 후보 수익률의 실제 계산 기간 표시(카드 · 표 · 요약 · 복사문).
 // 설계 V1 §3 · §5-3 · PLAN 판정(2026-10-17 · Q1 · Q3 · §2 시험 보충).
+// POC5-22 — 둘째 줄 · KODEX200 칸 = 동일 기간 비교(후보 A · B 의 KODEX200 종가 · 새 객체만).
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, within, act } from "@testing-library/react";
 import { __resetQueryCache } from "@/lib/api/queryCache";
@@ -8,6 +9,7 @@ import type {
   MarketContext,
   MarketContextKodex200,
   MarketPeriodReturn,
+  SamePeriodKodex200Item,
 } from "@/lib/api";
 
 const fetchMarketTopnLatest = vi.fn();
@@ -57,6 +59,18 @@ function ctx(k: MarketContextKodex200 = KODEX): MarketContext {
   } as unknown as MarketContext;
 }
 
+// POC5-22 — 동일 기간 비교 한 칸(후보 A · B 의 KODEX200 종가로 계산한 값 · 실측 모양).
+function same(start: string, end: string, cand: number, kodex: number): SamePeriodKodex200Item {
+  return {
+    status: "ok",
+    start_date: start,
+    end_date: end,
+    candidate_return_pct: cand,
+    kodex200_return_pct: kodex,
+    diff_pctp: Math.round((cand - kodex) * 10000) / 10000,
+  };
+}
+
 // 정상 후보(실측 2026-10-14 날짜와 같은 모양).
 function normal(ticker: string, name: string, rank: number): MarketCandidate {
   return {
@@ -72,6 +86,10 @@ function normal(ticker: string, name: string, rank: number): MarketCandidate {
       three_year: r(65.01, "2025-01-07", ASOF),
     },
     excess_return: { vs_kodex200_1m_pctp: 37.33, vs_kodex200_3m_pctp: 47.02 },
+    same_period_kodex200: {
+      one_month: same("2026-09-14", ASOF, 22.27, -9.86),
+      three_month: same("2026-07-16", ASOF, 33.79, -12.65),
+    },
   } as MarketCandidate;
 }
 
@@ -84,6 +102,10 @@ function late(rank: number): MarketCandidate {
     six_month: r(31.24, "2026-07-28", ASOF),
     twelve_month: r(31.24, "2026-07-28", ASOF),
     three_year: r(31.24, "2026-07-28", ASOF),
+  };
+  c.same_period_kodex200 = {
+    one_month: same("2026-09-14", ASOF, 22.27, -9.86),
+    three_month: same("2026-07-28", ASOF, 31.24, -0.49),
   };
   return c;
 }
@@ -103,6 +125,10 @@ function stale(rank: number): MarketCandidate {
       three_year: r(3, "2025-01-07", "2026-10-13"),
     },
     excess_return: { vs_kodex200_1m_pctp: 32.95, vs_kodex200_3m_pctp: 20.66 },
+    same_period_kodex200: {
+      one_month: same("2026-09-14", "2026-10-13", 17.89, -9.64),
+      three_month: same("2026-07-16", "2026-10-13", 7.43, -12.4),
+    },
   } as MarketCandidate;
 }
 
@@ -138,40 +164,44 @@ describe("정상 자료 — 위 두 줄만 · 후보마다 날짜 반복 없음"
         candidates={[normal("0005D0", "SOL 전고체배터리&실리콘음극재", 1), normal("476260", "HANARO", 2)]}
         heldTickers={new Set()}
         marketAsof={ASOF}
-        kodex={KODEX}
       />,
     );
     expect(lines()).toEqual([
       "1개월 수익률 계산 기간 | 2026-09-14 → 2026-10-14 종가 · 표시 후보 2개 모두 같음",
-      "KODEX200 대비 1M · 3M | 기간 다른 수익률 차이 (%p)",
+      "동일 기간 KODEX200 대비 1M · 3M | 후보와 같은 시작 · 끝 날짜의 KODEX200 종가로 뺀 차이 (%p)",
     ]);
     const list = screen.getByTestId("candidate-card-list");
     expect(list.querySelectorAll(".rp-note")).toHaveLength(0);
-    expect(list.textContent).not.toMatch(/수익률 끝일|확인 불가/);
-    expect(within(list).getAllByText("+37.33%p")).toHaveLength(2);
+    expect(list.textContent).not.toMatch(/수익률 끝일|확인 불가|계산 불가/);
+    expect(within(list).getAllByText("+32.13%p")).toHaveLength(2);
+    expect(list.textContent).not.toContain("37.33"); // 기존 기간 다른 차이는 보이지 않는다
   });
 
-  it("? 안에 계산 정의 · 기간별 날짜 · 양쪽 KODEX200 기간", () => {
+  it("? 안에 계산 정의 · 기간별 날짜 · 동일 기간 KODEX200 수익률 · 한계 한 번", () => {
     render(
-      <CandidateCards candidates={[late(1), normal("0005D0", "SOL", 2)]} heldTickers={new Set()} marketAsof={ASOF} kodex={KODEX} />,
+      <CandidateCards candidates={[late(1), normal("0005D0", "SOL", 2)]} heldTickers={new Set()} marketAsof={ASOF} />,
     );
     const main = openHelp("수익률 계산 기간");
     expect(main).toContain("· 1개월 2026-09-14 → 2026-10-14 (2개 모두)");
     expect(main).toContain("· 3개월 종목별 다름 — 시작 2026-07-16 ~ 2026-07-28 · 끝 2026-10-14");
     expect(main).toContain("그 기간 전체의 수익률이 아닙니다");
     expect(main).toContain("시장 저장 최신일 2026-10-14 = 저장된 전체 종목 가격 중 가장 늦은 저장일");
-    const k = openHelp("KODEX200 대비 기간");
-    expect(k).toContain("단위 %p");
-    expect(k).toContain("· 1M — 후보 2026-09-14 → 2026-10-14 (2개 모두) · KODEX200 2026-09-10 → 2026-10-14");
-    expect(k).toContain("· 3M — 후보 종목별 다름 — 시작 2026-07-16 ~ 2026-07-28 · 끝 2026-10-14 · KODEX200 2026-07-14 → 2026-10-14");
-    expect(k).toContain("같은 기간의 초과수익이나 시장 대비 우위를 확인한 값이 아닙니다");
+    const k = openHelp("동일 기간 KODEX200 대비");
+    expect(k).toContain("차이(%p) = 후보 수익률 − KODEX200 수익률");
+    expect(k).toContain("예: 같은 기간 후보 +10% · KODEX200 +5% → +5%p.");
+    expect(k).toContain("· 1M 2026-09-14 → 2026-10-14 (2개) · KODEX200 -9.86%");
+    expect(k).toContain("· 3M 2026-07-16 → 2026-10-14 (1개) · KODEX200 -12.65%");
+    expect(k).toContain("· 3M 2026-07-28 → 2026-10-14 (1개) · KODEX200 -0.49%");
+    // 판정 Q1 (a) — 한계는 도움말에 한 번.
+    expect(k.split("가격 조정 기준의 연속성은 검사하지 않습니다").length - 1).toBe(1);
+    expect(k).not.toContain("KODEX200 2026-09-10"); // 이전 20 저장일 기간 설명 없음
   });
 });
 
 describe("날짜 차이 — 시작일 여러 종류 · 끝일 다름 · 확인 불가", () => {
   it("3개월 기준: 모든 3개월 값 아래 실제 시작일 · 끝일 다른 후보는 이름 옆", () => {
     const cs = [normal("0005D0", "SOL", 1), late(2), stale(3)];
-    render(<CandidateCards candidates={cs} heldTickers={new Set()} basis="three_month" marketAsof={ASOF} kodex={KODEX} />);
+    render(<CandidateCards candidates={cs} heldTickers={new Set()} basis="three_month" marketAsof={ASOF} />);
     expect(lines()[0]).toBe(
       "3개월 수익률 계산 기간 | 종목별 계산 기간 다름 · 시작일은 각 값 아래 · 끝일이 시장 저장 최신일과 다른 후보는 이름 옆",
     );
@@ -185,20 +215,24 @@ describe("날짜 차이 — 시작일 여러 종류 · 끝일 다름 · 확인 �
 
   it("일부 확인 불가 — 위 줄에 알리고 그 후보 이름 옆에도", () => {
     render(
-      <CandidateCards candidates={[normal("0005D0", "SOL", 1), noDates(2)]} heldTickers={new Set()} marketAsof={ASOF} kodex={KODEX} />,
+      <CandidateCards candidates={[normal("0005D0", "SOL", 1), noDates(2)]} heldTickers={new Set()} marketAsof={ASOF} />,
     );
     expect(lines()[0]).toContain("날짜 확인된 1개 같음 · 1개 계산 기간 확인 불가");
-    expect(lines()[1]).toBe("KODEX200 대비 1M · 3M | 기간 다른 수익률 차이 · 1개 기간 확인 불가 (%p)");
+    expect(lines()[1]).toBe(
+      "동일 기간 KODEX200 대비 1M · 3M | 후보와 같은 시작 · 끝 날짜의 KODEX200 종가로 뺀 차이 (%p) · 2칸 값 없음",
+    );
     const cards = screen.getAllByRole("button", { name: /상세 보기/ });
     expect(within(cards[1]).getByText("계산 기간 확인 불가")).toBeInTheDocument();
-    expect(within(cards[1]).getByText("기간 확인 불가")).toBeInTheDocument(); // KODEX200 대비 값 아래
+    // 새 객체가 없는 후보 칸은 '—'(기존 기간 다른 +35.36 으로 대신하지 않음).
+    expect(cards[1].querySelector(".wb-hm-ex .sp-na")?.textContent).toBe("—");
+    expect(cards[1].textContent).not.toContain("35.36");
   });
 
   it("전부 확인 불가(예전 형식 응답) — 위 줄 한 번만", () => {
-    render(<CandidateCards candidates={[noDates(1)]} heldTickers={new Set()} marketAsof={ASOF} kodex={{ status: "ok" }} />);
+    render(<CandidateCards candidates={[noDates(1)]} heldTickers={new Set()} marketAsof={ASOF} />);
     expect(lines()).toEqual([
       "1개월 수익률 계산 기간 | 확인 불가 — 응답에 사용 종가 날짜가 없습니다",
-      "KODEX200 대비 1M · 3M | 기간 확인 불가 (%p)",
+      "동일 기간 KODEX200 대비 1M · 3M | 응답에 동일 기간 비교가 없습니다",
     ]);
     expect(screen.getByTestId("candidate-card-list").querySelectorAll(".rp-note, .wb-hb.mute").length).toBe(1); // '미보유'만
   });
@@ -209,7 +243,6 @@ describe("날짜 차이 — 시작일 여러 종류 · 끝일 다름 · 확인 �
         candidates={[normal("0005D0", "SOL", 1), normal("476260", "HANARO", 2)]}
         heldTickers={new Set()}
         marketAsof="2026-10-15"
-        kodex={KODEX}
       />,
     );
     expect(screen.getAllByText("수익률 끝일 2026-10-14")).toHaveLength(2);
@@ -226,7 +259,6 @@ describe("표 보기", () => {
         order="desc"
         onSort={() => undefined}
         marketAsof={ASOF}
-        kodex={KODEX}
       />,
     );
     expect(lines()[0]).toContain("종목별 계산 기간 다름");
@@ -236,7 +268,9 @@ describe("표 보기", () => {
     expect(notes(rows[1]).filter((t) => t === "시작 2026-07-28")).toHaveLength(4);
     expect(notes(rows[2])).toContain("수익률 끝일 2026-10-13");
     expect(notes(rows[0])).not.toContain("수익률 끝일 2026-10-14");
-    expect(within(rows[0]).getByText("+37.33%p")).toBeInTheDocument();
+    expect(within(rows[0]).getByText("+32.13%p")).toBeInTheDocument();
+    expect(within(rows[1]).getByText("+31.73%p")).toBeInTheDocument(); // 짧은 이력 3M(07-28 → 10-14)
+    expect(screen.getByText("동일 기간 KODEX200 1M")).toBeInTheDocument();
     const helper = document.querySelector(".market-topn-card p.helper")?.textContent ?? "";
     expect(helper).toContain("6개월 / 12개월 / 3년은");
     expect(helper).not.toContain("1년");
@@ -246,7 +280,7 @@ describe("표 보기", () => {
 describe("화면에 보인 날짜 = 복사문 날짜", () => {
   it("후보마다 일간 · 1개월 · 3개월의 시작 · 끝이 복사문 괄호와 같다", () => {
     const cs = [normal("0005D0", "SOL", 1), late(2), stale(3), noDates(4)];
-    render(<CandidateCards candidates={cs} heldTickers={new Set()} basis="three_month" marketAsof={ASOF} kodex={KODEX} />);
+    render(<CandidateCards candidates={cs} heldTickers={new Set()} basis="three_month" marketAsof={ASOF} />);
     const help = openHelp("수익률 계산 기간");
     // ? 안 기간별 줄에서 공통 시작일(한 종류일 때만 있다).
     const D = "(\\d{4}-\\d{2}-\\d{2})";
@@ -286,11 +320,25 @@ describe("화면에 보인 날짜 = 복사문 날짜", () => {
       });
     });
     expect(checked).toBe(9);
-    // KODEX200 비교 두 기간도 ? 안의 날짜와 같다.
-    const k = openHelp("KODEX200 대비 기간");
-    expect(k).toContain("KODEX200 2026-09-10 → 2026-10-14");
+    // POC5-22 — 동일 기간 KODEX200 1M 칸 값 = 복사문 값(같은 객체 · 같은 helper).
+    let sameChecked = 0;
+    cs.forEach((c, i) => {
+      const shown = cards[i].querySelector(".wb-hm-ex span:last-child")?.textContent ?? "";
+      // [동일 기간 KODEX200 대비] 안의 그 후보 머리줄 → 2줄 아래가 1개월 줄.
+      const sec = copy.indexOf("[동일 기간 KODEX200 대비]");
+      const head = copy.indexOf(`${c.rank}. ${c.name} (${c.ticker})`, sec);
+      const line = copy[head + 2];
+      expect(line.startsWith("   - 동일 기간 KODEX200 대비 1개월:")).toBe(true);
+      if (shown === "—") {
+        expect(line).toContain("동일 기간 값 없음");
+      } else {
+        expect(line).toContain(`: ${shown} (`);
+        sameChecked += 1;
+      }
+    });
+    expect(sameChecked).toBe(3);
     expect(copy).toContain(
-      "   - KODEX200 대비 1개월 수익률 차이: +37.33%p (기간 다름 — 후보 2026-09-14 → 2026-10-14 · KODEX200 2026-09-10 → 2026-10-14)",
+      "   - 동일 기간 KODEX200 대비 3개월: +31.73%p (후보 +31.24% · KODEX200 -0.49% · 사용 종가 2026-07-28 → 2026-10-14)",
     );
   });
 });

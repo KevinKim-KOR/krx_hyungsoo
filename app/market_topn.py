@@ -39,6 +39,10 @@ from app.market_regime import (
     kodex200_return_dates,
 )
 
+# POC5-22 — 동일 기간 KODEX200 비교(순수 계산 · 조회 · 연구 모듈 import 없음).
+from app.same_period_kodex200 import PERIOD_KEYS as SAME_PERIOD_KEYS
+from app.same_period_kodex200 import close_by_date, compare as same_period_compare
+
 # POC2 Cleanup (2026-06-14) — 보조 helper / 상수 / dataclass 는
 # market_topn_helpers.py 로 분리 (KS-10 near 해소). 본 파일은 re-export 로 기존
 # import 경로 호환을 유지한다.
@@ -85,6 +89,7 @@ def compute_topn(
     kospi_today_kst: Optional[str] = None,
     market_asof_from_kodex200: bool = False,
     actual_price_dates: bool = False,
+    same_period_kodex200: bool = False,
 ) -> dict:
     """SQLite etf_daily_price 기준 일간 / 1개월 / 3개월 TOP N 산출.
 
@@ -101,6 +106,11 @@ def compute_topn(
     `price_end_date`)를, `market_context.kodex200` 에 1M · 3M 수익률의 시작 · 끝 행 날짜를 더한다.
     이미 읽은 행에서만 가져온다(추가 조회 없음). 기본 False 는 출력이 예전 그대로다 —
     `basis_end_date` 는 늘 시장 저장 최신일(`asof_iso`)이다.
+
+    `same_period_kodex200` — POC5-22(설계자 PLAN 판정 2026-10-17). PC 화면 API(시장 · 보유 근거)만
+    True 를 넘긴다. True 면 후보마다 1개월 · 3개월의 동일 기간 KODEX200 비교(`same_period_kodex200`)를
+    더한다 — 그 수익률이 실제로 쓴 A · B 날짜의 KODEX200 종가 · 반올림 전 값으로 뺀 차이(%p). 시장 판정용으로
+    이미 읽은 069500 이력을 한 번 정리해 쓴다(추가 조회 없음). 기존 `excess_return` 은 그대로다.
 
     DB 부재 시 status="missing". DB 가 있어도 가격 데이터 없음/필수 테이블 부재면
     각각 status="empty"/"invalid". 본 함수는 외부 fetch / write 없음 — SQLite read only.
@@ -204,6 +214,8 @@ def compute_topn(
     # 통합 후보 — ticker 별 3 기간 결과 + 태그. 결측 기간은 None 으로 두고
     # 0% 보정하지 않는다 (지시문 §6).
     per_ticker_returns: dict[str, dict[str, Optional[dict[str, object]]]] = {}
+    # POC5-22 — 동일 기간 비교용 반올림 전 수익률 · 실제 A · B(flag 일 때만 · 1개월 · 3개월).
+    raw_periods: dict[str, dict[str, _PeriodResult]] = {}
     per_ticker_tags: dict[str, list[str]] = {}
     exclusions = _empty_exclusion_buckets()
 
@@ -247,6 +259,8 @@ def compute_topn(
                 period_out["price_start_date"] = r.base_date
                 period_out["price_end_date"] = r.end_date
             per_ticker_returns[tk][label] = period_out
+            if same_period_kodex200 and label in SAME_PERIOD_KEYS:
+                raw_periods.setdefault(tk, {})[label] = r
 
     # exclude 옵션 → 활성 필터 태그
     exclude_tags: set[str] = set()
@@ -378,6 +392,9 @@ def compute_topn(
         _kospi.get("return_3m_pct") if _kospi.get("status") == "ok" else None
     )
 
+    # POC5-22 — 이미 읽은 069500 이력을 {날짜: 종가}로 한 번 정리(같은 날짜만 · 후보마다 다시 읽지 않음).
+    kodex200_close = close_by_date(kodex200_history) if same_period_kodex200 else {}
+
     candidates_out: list[dict] = []
     for rank, (tk, tags, returns) in enumerate(kept_candidates[:n], start=1):
         sel = returns[basis]
@@ -403,6 +420,17 @@ def compute_topn(
                 ),
             }
         )
+        if same_period_kodex200:
+            raw = raw_periods.get(tk, {})
+            candidates_out[-1]["same_period_kodex200"] = {
+                label: same_period_compare(
+                    raw[label].return_pct if label in raw else None,
+                    raw[label].base_date if label in raw else None,
+                    raw[label].end_date if label in raw else None,
+                    kodex200_close,
+                )
+                for label in SAME_PERIOD_KEYS
+            }
 
     elapsed = time.perf_counter() - t0
     return {

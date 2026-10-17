@@ -21,25 +21,24 @@
 // 데이터 접근·판정은 전부 CandidateTable 과 동일하다. 표시 형태만 다르다.
 //
 // POC5-21 (2026-10-17) — 후보 목록 위 기간 두 줄(ReturnPeriodLine) · 이름 옆 '수익률 끝일' /
-// '계산 기간 확인 불가' · 값 아래 실제 시작일 · KODEX200 대비 값 단위 %p(두 수익률의 차이).
-// 판정은 lib/returnPeriod 하나(표 · 복사문과 같다).
+// '계산 기간 확인 불가' · 값 아래 실제 시작일. 판정은 lib/returnPeriod 하나(표 · 복사문과 같다).
+// POC5-22 (2026-10-17) — KODEX200 대비 1M · 3M 칸 = 동일 기간 값(lib/samePeriodKodex · %p).
 
 import { useState } from "react";
-import type { MarketBasis, MarketCandidate, MarketContextKodex200 } from "@/lib/api";
+import type { MarketBasis, MarketCandidate } from "@/lib/api";
 import {
   PERIOD_KEYS,
   allPeriodsUnknown,
   candidateBadges,
-  cmpGroup,
-  cmpNote,
-  cmpState,
   periodGroup,
   valueNote,
   valuePeriod,
   type PeriodGroup,
   type PeriodKey,
 } from "@/lib/returnPeriod";
+import { sameShort, sameView } from "@/lib/samePeriodKodex";
 import ReturnPeriodLine, { PeriodNote } from "./ReturnPeriodLine";
+import SamePeriodValue from "./SamePeriodValue";
 
 const DASH = "-";
 
@@ -52,12 +51,6 @@ function dirColor(v: number | null | undefined): string {
   if (v === null || v === undefined) return "var(--muted)";
   // 국내 관례 — 상승 빨강 / 하락 파랑 (전용 토큰).
   return v >= 0 ? "var(--pnl-up)" : "var(--pnl-down)";
-}
-
-// 두 수익률의 차이(KODEX200 대비) — 단위 %p.
-function fmtPctp(v: number | null | undefined): string {
-  if (v === null || v === undefined) return DASH;
-  return `${v >= 0 ? "+" : ""}${v.toFixed(2)}%p`;
 }
 
 function fmtWon(v: number | null | undefined): string {
@@ -79,25 +72,21 @@ export default function CandidateCards({
   onSelect,
   basis = "one_month",
   marketAsof,
-  kodex,
 }: {
   candidates: MarketCandidate[];
-  // POC5-21 — 선택 기간 · 시장 저장 최신일 · KODEX200 1M · 3M 날짜.
+  // POC5-21 — 선택 기간 · 시장 저장 최신일.
   basis?: MarketBasis;
   marketAsof?: string | null;
-  kodex?: MarketContextKodex200 | null;
   // 보유 ticker 집합. undefined 면 조회 미완/실패 → 3-state 의 "확인 불가".
   heldTickers?: Set<string>;
   selected?: string | null;
   onSelect?: (ticker: string) => void;
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
-  // POC5-21 — 기간별 날짜 묶음 · KODEX200 대비 비교 묶음(표시 후보 전체에서 한 번).
+  // POC5-21 — 기간별 날짜 묶음(표시 후보 전체에서 한 번).
   const groups = Object.fromEntries(
     PERIOD_KEYS.map((k) => [k, periodGroup(candidates, k)]),
   ) as Record<PeriodKey, PeriodGroup>;
-  const cmp1 = cmpGroup(candidates, "1m", kodex);
-  const cmp3 = cmpGroup(candidates, "3m", kodex);
 
   if (candidates.length === 0) {
     return <p className="wb-muted">표시할 후보가 없습니다.</p>;
@@ -109,7 +98,6 @@ export default function CandidateCards({
         candidates={candidates}
         selected={basis}
         marketAsof={marketAsof}
-        kodex={kodex}
       />
       <div className="wb-hlist" data-testid="candidate-card-list">
         {candidates.map((c, idx) => {
@@ -120,8 +108,9 @@ export default function CandidateCards({
           const sixRet = c.returns?.six_month?.return_pct ?? null;
           const twelveRet = c.returns?.twelve_month?.return_pct ?? null;
           const threeYearRet = c.returns?.three_year?.return_pct ?? null;
-          const exKodex1m = c.excess_return?.vs_kodex200_1m_pctp ?? null;
-          const exKodex3m = c.excess_return?.vs_kodex200_3m_pctp ?? null;
+          // POC5-22 — 동일 기간 KODEX200 대비(새 객체만 · 기존 excess_return 으로 대신하지 않음).
+          const same1 = sameView(c, "1m");
+          const same3 = sameView(c, "3m");
           const nav = c.data_quality?.nav_discount ?? null;
           const navVal = nav?.nav ?? null;
           const priceVal = nav?.market_price ?? null;
@@ -242,11 +231,8 @@ export default function CandidateCards({
                     </div>
                   </div>
                   <div className="wb-hm-ex">
-                    <span className="k">KODEX200 대비 1M</span>
-                    <span className="v" style={{ color: dirColor(exKodex1m) }}>
-                      {fmtPctp(exKodex1m)}
-                      <PeriodNote text={cmpNote(cmpState(c, "1m", kodex), cmp1)} />
-                    </span>
+                    <span className="k sp-k">동일 기간 KODEX200 1M</span>
+                    <SamePeriodValue view={same1} colorOf={dirColor} />
                   </div>
                 </div>
               </div>
@@ -272,10 +258,9 @@ export default function CandidateCards({
                       note={note("three_year")}
                     />
                     <DetailCell
-                      label="KODEX200 대비 3M"
-                      value={fmtPctp(exKodex3m)}
-                      color={dirColor(exKodex3m)}
-                      note={cmpNote(cmpState(c, "3m", kodex), cmp3)}
+                      label="동일 기간 KODEX200 3M"
+                      value={sameShort(same3)}
+                      color={same3.kind === "ok" ? dirColor(same3.diff) : "var(--muted)"}
                     />
                     <DetailCell label="고점 대비" value={fmtPct(drawdown)} color={dirColor(drawdown)} />
                   </div>

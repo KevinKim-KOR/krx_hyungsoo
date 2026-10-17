@@ -256,18 +256,21 @@ describe("Workbench — REJECTED 정정 (보유 표 의미·중복·검색·Evid
     expect(within(list).getByText(/2계좌 합산/)).toBeInTheDocument();
   });
 
-  it("보유 행에 1M·3M·KODEX초과 지표가 있고 '일간=평가수익률' 오류가 없다 (A-1(2)(3))", async () => {
+  it("보유 행에 1M·3M·동일기간 KODEX 1M 지표가 있고 '일간=평가수익률' 오류가 없다 (A-1(2)(3))", async () => {
     render(<JudgmentWorkbenchView onNavigate={vi.fn()} />);
     await screen.findByText("KODEX 200");
     fireEvent.click(screen.getByRole("tab", { name: "보유" }));
     const list = await screen.findByTestId("wb-holding-list");
     // 2026-08-12 카드 전환: 열 헤더 → 지표 라벨. 검사 항목은 동일.
     const labels = within(list)
-      .getAllByText(/^(일간|1M|3M|KODEX초과)$/)
+      .getAllByText(/^(일간|1M|3M|동일기간 KODEX 1M)$/)
       .map((el) => el.textContent);
     expect(labels).toContain("1M");
     expect(labels).toContain("3M");
-    expect(labels).toContain("KODEX초과");
+    expect(labels).toContain("동일기간 KODEX 1M");
+    // POC5-22 Q2 (a) — 보유 근거에 동일 기간 객체가 없으면 '동일 기간 값 없음'(기존 차이로 채우지 않음).
+    const exCell = within(list).getAllByText("동일기간 KODEX 1M")[0].parentElement!;
+    expect(exCell.textContent).toContain("동일 기간 값 없음");
     // §7.6 명시 항목 "일간" 은 자리를 두되 값은 미제공(—).
     expect(labels).toContain("일간");
     const dayCell = within(list).getAllByText("일간")[0].parentElement!;
@@ -508,7 +511,7 @@ describe("REJECT Closeout — 참고점수 비활성", () => {
     expect(
       screen.queryByRole("button", { name: /참고점수/ }),
     ).not.toBeInTheDocument();
-    for (const label of ["순위", "1M", "3M", "KODEX초과", "고점대비"]) {
+    for (const label of ["순위", "1M", "3M", "동일기간 KODEX 1M", "고점대비"]) {
       expect(
         screen.getByRole("button", { name: new RegExp(`^${label}`) }),
       ).toBeInTheDocument();
@@ -522,7 +525,7 @@ describe("REJECT Closeout — 참고점수 비활성", () => {
   //   rank        asc → A B C
   //   one_month   asc → B C A   (A=3 · B=1 · C=2)
   //   three_month asc → C A B   (A=2 · B=3 · C=1)
-  //   excess      asc → A C B   (A=1 · B=3 · C=2)
+  //   excess      asc → A C B   (A=1 · B=3 · C=2 · 동일 기간 1M 값 — 기존 excess_return 은 반대 순서 함정)
   //   drawdown    asc → B A C   (A=-2 · B=-3 · C=-1 → ×100)
   function sortTrio(scores: (number | null)[] = [10, 20, 30]) {
     const mk = (
@@ -542,7 +545,18 @@ describe("REJECT Closeout — 참고점수 비활성", () => {
         one_month: { return_pct: one },
         three_month: { return_pct: three },
       },
-      excess_return: { vs_kodex200_1m_pctp: excess },
+      // POC5-22 — 정렬 · 칸은 동일 기간 값만. 기존 기간 다른 차이는 반대 순서라 섞이면 순서가 틀린다.
+      excess_return: { vs_kodex200_1m_pctp: -excess },
+      same_period_kodex200: {
+        one_month: {
+          status: "ok",
+          start_date: "2026-09-14",
+          end_date: "2026-10-14",
+          candidate_return_pct: one,
+          kodex200_return_pct: one - excess,
+          diff_pctp: excess,
+        },
+      },
       relative_upside_score: score,
       drawdown_20d: dd,
       data_quality: { status: "ok" },
@@ -611,8 +625,13 @@ describe("REJECT Closeout — 참고점수 비활성", () => {
     click("3M");
     expect(order()).toEqual(["CCC333", "AAA111", "BBB222"]);
 
-    click("KODEX초과");
+    click("동일기간 KODEX 1M");
     expect(order()).toEqual(["AAA111", "CCC333", "BBB222"]);
+    // 정렬 값 = 칸에 보이는 값(판정 §2) — 보이는 순서도 +1 · +2 · +3.
+    const shown = Array.from(container.querySelectorAll(".wb-hm-cell .v"))
+      .map((el) => el.textContent ?? "")
+      .filter((t) => t.endsWith("%p"));
+    expect(shown).toEqual(["+1.00%p", "+2.00%p", "+3.00%p"]);
 
     click("고점대비");
     expect(order()).toEqual(["BBB222", "AAA111", "CCC333"]);
@@ -672,5 +691,84 @@ describe("Workbench — VIX 최신성 (POC5-12)", () => {
     expect(
       await screen.findByText("VIX 기준일 확인 필요(기준일 2026-07-03)"),
     ).toBeInTheDocument();
+  });
+});
+
+// POC5-22 — 「ETF 비교하기」 동일 기간 KODEX200 대비 1M(후보 탭 · 보유 탭 · 상세 · 판정 Q2 (a)).
+describe("Workbench — 동일 기간 KODEX200 대비 (POC5-22)", () => {
+  const SP = (cand: number, kodex: number) => ({
+    one_month: {
+      status: "ok",
+      start_date: "2026-06-24",
+      end_date: "2026-07-24",
+      candidate_return_pct: cand,
+      kodex200_return_pct: kodex,
+      diff_pctp: cand - kodex,
+    },
+  });
+
+  function withSame() {
+    const c = candOk();
+    const list = c.candidates as unknown as Record<string, unknown>[];
+    list[0].same_period_kodex200 = SP(5, -3);
+    list[1].same_period_kodex200 = {
+      one_month: { status: "unavailable", reason: "kodex200_end_price_missing", start_date: "2026-06-24", end_date: "2026-07-24" },
+    };
+    return c;
+  }
+
+  it("후보 칸 = 동일 기간 값 · 계산 불가는 회색 사유 · 기존 excess_return 은 쓰지 않는다", async () => {
+    fetchMarketTopnLatest.mockReset().mockResolvedValue(withSame());
+    render(<JudgmentWorkbenchView onNavigate={vi.fn()} />);
+    const list = await screen.findByTestId("wb-candidate-list");
+    expect(within(list).getByText("+8.00%p")).toBeInTheDocument();
+    const na = within(list).getByText("KODEX200 끝일 가격 없음");
+    expect(na).toHaveClass("sp-na");
+    expect(list.textContent).not.toContain("1.50"); // 기존 excess_return_pct 1.5
+  });
+
+  it("상세 칸 — 후보면 후보 객체(양쪽 수익률 · 사용 종가 날짜)", async () => {
+    fetchMarketTopnLatest.mockReset().mockResolvedValue(withSame());
+    render(<JudgmentWorkbenchView onNavigate={vi.fn()} />);
+    const list = await screen.findByTestId("wb-candidate-list");
+    fireEvent.click(within(list).getByText("KODEX 200").closest("[role=button]")!);
+    const cell = (await screen.findByText("동일 기간 KODEX200 대비 1M")).parentElement!;
+    expect(cell.textContent).toContain("+8.00%p — 후보 +5.00% · KODEX200 -3.00% · 사용 종가 2026-06-24 → 2026-07-24");
+  });
+
+  it("보유 탭 — 보유 근거 사본의 동일 기간 객체를 같은 helper 로(없으면 '동일 기간 값 없음')", async () => {
+    const ev = evidOk();
+    (ev.holdings[0] as Record<string, unknown>).same_period_kodex200 = SP(5, -3);
+    fetchHoldingsMarketEvidence.mockReset().mockResolvedValue(ev);
+    render(<JudgmentWorkbenchView onNavigate={vi.fn()} />);
+    await screen.findByText("KODEX 200");
+    fireEvent.click(screen.getByRole("tab", { name: "보유" }));
+    const list = await screen.findByTestId("wb-holding-list");
+    const cell = within(list).getAllByText("동일기간 KODEX 1M")[0].parentElement!;
+    expect(cell.textContent).toContain("+8.00%p");
+  });
+
+  it("상세 칸 — 후보 목록에 없는 보유만 고르면 보유 근거 객체 · 없으면 '동일 기간 값 없음'", async () => {
+    const hold = holdOk();
+    hold.items.push({ ...hold.items[0], ticker: "360750", name: "TIGER 미국S&P500" });
+    hold.items.push({ ...hold.items[0], ticker: "133690", name: "TIGER 미국나스닥100" });
+    const ev = evidOk();
+    ev.holdings.push({ ...ev.holdings[0], ticker: "360750", name: "TIGER 미국S&P500" });
+    ev.holdings.push({ ...ev.holdings[0], ticker: "133690", name: "TIGER 미국나스닥100" });
+    (ev.holdings[2] as Record<string, unknown>).same_period_kodex200 = SP(4, 1);
+    fetchEnrichedHoldings.mockReset().mockResolvedValue(hold);
+    fetchHoldingsMarketEvidence.mockReset().mockResolvedValue(ev);
+    render(<JudgmentWorkbenchView onNavigate={vi.fn()} />);
+    await screen.findByText("KODEX 200");
+    fireEvent.click(screen.getByRole("tab", { name: "보유" }));
+    const list = await screen.findByTestId("wb-holding-list");
+    // 보유 근거 객체가 있는 보유 — 그 객체(양쪽 수익률 · 사용 종가 날짜).
+    fireEvent.click(within(list).getByText("TIGER 미국나스닥100").closest("[role=button]")!);
+    const cell = (await screen.findByText("동일 기간 KODEX200 대비 1M")).parentElement!;
+    expect(cell.textContent).toContain("+3.00%p — 후보 +4.00% · KODEX200 +1.00% · 사용 종가 2026-06-24 → 2026-07-24");
+    // 보유 근거 객체가 없는 보유 — '동일 기간 값 없음'(기존 excess_return 으로 채우지 않음).
+    fireEvent.click(within(list).getByText("TIGER 미국S&P500").closest("[role=button]")!);
+    const cell2 = (await screen.findByText("동일 기간 KODEX200 대비 1M")).parentElement!;
+    expect(cell2.textContent).toContain("동일 기간 값 없음");
   });
 });

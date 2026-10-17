@@ -22,6 +22,24 @@ function cand(over: Partial<MarketCandidate> = {}): MarketCandidate {
       three_year: { return_pct: 38.4 },
     },
     excess_return: { vs_kodex200_1m_pctp: 11.91, vs_kodex200_3m_pctp: -2.3 },
+    // POC5-22 — 화면은 동일 기간 객체만 쓴다(위 excess_return 은 표시하지 않음).
+    same_period_kodex200: {
+      one_month: {
+        status: "ok",
+        start_date: "2026-09-14",
+        end_date: "2026-10-14",
+        candidate_return_pct: 6.01,
+        kodex200_return_pct: -2.2,
+        diff_pctp: 8.21,
+      },
+      three_month: {
+        status: "unavailable",
+        reason: "kodex200_start_price_missing",
+        start_date: "2026-07-16",
+        end_date: "2026-10-14",
+        candidate_return_pct: -13.82,
+      },
+    },
     relative_upside_score: 72.3,
     relative_upside_reasons: ["1M 상위", "거래대금 충분"],
     drawdown_20d: -0.042,
@@ -46,15 +64,17 @@ describe("후보 카드 (요즘 잘 오르는 ETF)", () => {
     expect(within(list).getAllByText("+6.01%")).toHaveLength(2);
     expect(within(list).getAllByText("1개월")).toHaveLength(2);
     expect(within(list).queryByText("72.3")).not.toBeInTheDocument();
-    // POC5-21 — KODEX200 대비 값은 두 수익률의 차이라 단위 %p.
-    expect(within(list).getByText("+11.91%p")).toBeInTheDocument(); // KODEX200 대비 1M
+    // POC5-22 — 동일 기간 KODEX200 대비 1M(%p) · 기존 기간 다른 차이(+11.91)는 보이지 않는다.
+    expect(within(list).getByText("동일 기간 KODEX200 1M")).toBeInTheDocument();
+    expect(within(list).getByText("+8.21%p")).toBeInTheDocument();
+    expect(list.textContent).not.toContain("11.91");
   });
 
   it("카드에 없는 항목은 펼쳐야 보인다 (열을 버리지 않는다)", () => {
     render(<CandidateCards candidates={[cand()]} heldTickers={new Set()} />);
     // 접힘 상태 — 6개월·3년·KODEX200 대비 3M·고점 대비 없음.
     expect(screen.queryByText("6개월")).not.toBeInTheDocument();
-    expect(screen.queryByText("KODEX200 대비 3M")).not.toBeInTheDocument();
+    expect(screen.queryByText("동일 기간 KODEX200 3M")).not.toBeInTheDocument();
     expect(screen.queryByText(/거래대금 충분/)).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /KODEX 200 상세 보기/ }));
@@ -62,7 +82,10 @@ describe("후보 카드 (요즘 잘 오르는 ETF)", () => {
     expect(screen.getByText("6개월")).toBeInTheDocument();
     expect(screen.getByText("12개월")).toBeInTheDocument();
     expect(screen.getByText("3년")).toBeInTheDocument();
-    expect(screen.getByText("KODEX200 대비 3M")).toBeInTheDocument();
+    expect(screen.getByText("동일 기간 KODEX200 3M")).toBeInTheDocument();
+    // 계산 불가는 그 칸에 짧은 사유(기존 -2.3 으로 대신하지 않음).
+    expect(screen.getByText("KODEX200 시작일 가격 없음")).toBeInTheDocument();
+    expect(screen.queryByText("-2.30%p")).not.toBeInTheDocument();
     expect(screen.getByText("고점 대비")).toBeInTheDocument();
     // 2026-08-29 REJECT Closeout — 점수 근거는 펼쳐도 나오지 않는다.
     expect(screen.queryByText(/거래대금 충분/)).not.toBeInTheDocument();

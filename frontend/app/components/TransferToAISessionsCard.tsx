@@ -149,6 +149,8 @@ export default function TransferToAISessionsCard({
         one_month_return_pct: c.returns?.one_month?.return_pct ?? null,
         three_month_return_pct: c.returns?.three_month?.return_pct ?? null,
         tags: (c.tags ?? []) as string[],
+        // POC5-22 — 화면 · 질문 본문과 같은 동일 기간 KODEX200 비교 객체(응답에 없으면 null).
+        same_period_kodex200: c.same_period_kodex200 ?? null,
       })),
       // CopyTextCard 와 동일 모듈을 사용해 question_text 자동 생성 — 두 카드의
       // 결과 텍스트가 항상 동일하다 (시스템 시장 판정 + 후보 강도 포함).

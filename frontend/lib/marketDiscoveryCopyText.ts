@@ -14,8 +14,11 @@
 // 2026-10-17 POC5-21 (설계자 PLAN 판정 Q1 · Q2 · Q3):
 // - 수익률 줄마다 실제 사용 종가 날짜(시작 → 끝). 날짜가 없으면 '계산 기간 확인 불가'.
 // - 머리말은 시장 저장 최신일을 따로 적는다(후보 끝일을 보증하는 날짜로 쓰지 않음).
-// - KODEX200 대비 값은 두 수익률의 차이(%p) — 두 기간을 함께 적고, 다르면 '기간 다름'.
-//   섹션 제목 [시장 대비 후보 강도] → [KODEX200 대비 수익률 차이].
+// - 단기 흐름 KODEX200 대비 값은 두 수익률의 차이(%p) — 두 기간을 함께 적고, 다르면 '기간 다름'.
+//
+// 2026-10-17 POC5-22 (설계자 PLAN 판정 Q1 (a)):
+// - 1개월 · 3개월 KODEX200 대비 = 동일 기간 값(후보 실제 A · B 의 KODEX200 종가 · lib/samePeriodKodex).
+//   섹션 제목 [동일 기간 KODEX200 대비] · 양쪽 수익률 · 사용 종가 날짜 · 한계(가격 조정 기준 연속성 미검사) 한 번.
 // - 날짜 판정은 화면과 같은 lib/returnPeriod 를 쓴다.
 
 import type {
@@ -27,7 +30,8 @@ import type {
   MarketTopNFilters,
 } from "./api";
 import { KOSPI_SOURCE_LINE, kospiStatusText, kospiValuesUsable } from "./kospiStatus";
-import { cmpState, kodexRange, valuePeriod, type CmpKey } from "./returnPeriod";
+import { valuePeriod } from "./returnPeriod";
+import { SAME_PERIOD_LIMIT, sameCopyText, sameView } from "./samePeriodKodex";
 
 const TAG_LABEL_KO: Record<MarketProductTag, string> = {
   inverse: "인버스",
@@ -50,7 +54,7 @@ function periodTail(r: MarketPeriodReturn | null | undefined, daily = false): st
   return ` (${daily ? "직전 저장일 대비 · " : ""}사용 종가 ${vp.start} → ${vp.end})`;
 }
 
-// POC5-21 — KODEX200 대비 수익률 차이 뒤 두 기간(화면과 같은 판정 cmpState).
+// POC5-21 — 단기 흐름 KODEX200 대비 차이 뒤 두 기간(후보 · KODEX200 각자의 행 날짜).
 function rangeText(start: string | null | undefined, end: string | null | undefined): string {
   return start && end ? `${start} → ${end}` : "확인 불가";
 }
@@ -69,19 +73,6 @@ function compareTail(
   return candStart === kStart && candEnd === kEnd
     ? ` (같은 기간 ${cand})`
     : ` (기간 다름 — 후보 ${cand} · KODEX200 ${k})`;
-}
-
-function candidateCompareTail(c: MarketCandidate, key: CmpKey, ctx: MarketContext | null | undefined): string {
-  const kodex = ctx?.kodex200;
-  if (cmpState(c, key, kodex) === "none") return "";
-  const vp = valuePeriod(key === "1m" ? c.returns?.one_month : c.returns?.three_month);
-  const kd = kodexRange(kodex, key);
-  return compareTail(
-    vp.kind === "dated" ? vp.start : null,
-    vp.kind === "dated" ? vp.end : null,
-    kd?.start,
-    kd?.end,
-  );
 }
 
 function datesTail(start: string | null | undefined, end: string | null | undefined, head = ""): string {
@@ -215,28 +206,25 @@ function appendMarketContextSection(
 function appendCandidateStrengthSection(
   lines: string[],
   candidates: MarketCandidate[],
-  ctx: MarketContext | null | undefined,
 ): void {
-  lines.push("[KODEX200 대비 수익률 차이]");
+  lines.push("[동일 기간 KODEX200 대비]");
   if (candidates.length === 0) {
     lines.push("(후보 없음)");
     return;
   }
-  // POC5-21 — 화면 ? 와 같은 뜻(판정 Q1 · 기간이 다르면 초과수익 · 시장 우위로 설명하지 않음).
+  // POC5-22 — 화면 ? 와 같은 뜻 · 한계(판정 Q1 (a))를 한 번.
   lines.push(
-    "- 수익률 차이 = 후보 수익률 − KODEX200 수익률(%p). 괄호의 두 기간이 다르면 같은 기간 초과수익이나 시장 대비 우위를 확인한 값이 아닙니다.",
+    `- 차이(%p) = 후보 수익률 − KODEX200 수익률. 두 수익률 모두 괄호의 같은 시작 · 끝 날짜 저장 종가(배당 포함 총수익 · 개인 손익 아님). ${SAME_PERIOD_LIMIT}`,
   );
   candidates.forEach((c, idx) => {
     const num = c.rank ?? idx + 1;
     const name = c.name ?? "-";
     const ticker = c.ticker ?? "-";
     const oneM = formatPct(c.returns?.one_month?.return_pct ?? null);
-    const exK1 = formatPctp(c.excess_return?.vs_kodex200_1m_pctp ?? null);
-    const exK3 = formatPctp(c.excess_return?.vs_kodex200_3m_pctp ?? null);
     lines.push(`${num}. ${name} (${ticker})`);
     lines.push(`   - 1개월 수익률: ${oneM}${periodTail(c.returns?.one_month)}`);
-    lines.push(`   - KODEX200 대비 1개월 수익률 차이: ${exK1}${candidateCompareTail(c, "1m", ctx)}`);
-    lines.push(`   - KODEX200 대비 3개월 수익률 차이: ${exK3}${candidateCompareTail(c, "3m", ctx)}`);
+    lines.push(`   - 동일 기간 KODEX200 대비 1개월: ${sameCopyText(sameView(c, "1m"))}`);
+    lines.push(`   - 동일 기간 KODEX200 대비 3개월: ${sameCopyText(sameView(c, "3m"))}`);
   });
 }
 
@@ -402,7 +390,7 @@ export function buildMarketDiscoveryCopyText(input: BuildCopyTextInput): string 
   lines.push("");
   appendMarketContextSection(lines, input.marketContext);
   lines.push("");
-  appendCandidateStrengthSection(lines, input.candidates, input.marketContext);
+  appendCandidateStrengthSection(lines, input.candidates);
   // 2026-06-01 Market Discovery Evidence Closeout 1차 — 단기 흐름 + 데이터 품질
   // 섹션 (지시문 §15). candidates 에 응답 payload 가 들어있을 때만 노출.
   appendShortTermMomentumSection(lines, input.candidates);
@@ -417,7 +405,7 @@ export function buildMarketDiscoveryCopyText(input: BuildCopyTextInput): string 
   if (input.constituentsAnalysis) {
     // 구성종목 정보가 있을 때 — 독립 테마 vs 반복 노출 해석 요청 (지시문 §10).
     lines.push(
-      "시스템의 시장 국면 판정, KODEX200 대비 수익률 차이(기간이 다르면 괄호에 두 기간),",
+      "시스템의 시장 국면 판정, 동일 기간 KODEX200 대비 수익률 차이,",
     );
     lines.push(
       "그리고 ETF 구성종목/중복률을 전제로 해석해주세요.",
@@ -436,7 +424,7 @@ export function buildMarketDiscoveryCopyText(input: BuildCopyTextInput): string 
     lines.push("매수/매도 추천은 하지 마세요.");
   } else {
     lines.push(
-      "시스템의 시장 국면 판정, KODEX200 대비 수익률 차이(기간이 다르면 괄호에 두 기간),",
+      "시스템의 시장 국면 판정, 동일 기간 KODEX200 대비 수익률 차이,",
     );
     lines.push(
       "단기 흐름 (5/10/20거래일) 과 데이터 품질 체크 (일간 급등/급락 / 괴리율) 를 바탕으로",
