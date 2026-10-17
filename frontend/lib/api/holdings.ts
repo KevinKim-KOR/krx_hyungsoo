@@ -235,6 +235,19 @@ export interface HoldingsMarketEvidenceItem {
   decline_band?: HoldingsDeclineBand | null;
   // POC5-16 — 저장 종가 가격 흔들림(최근 · 직전 20구간 · backend app/pc_price_volatility.py · 선택 필드).
   price_volatility?: PriceVolatilityEvidence | null;
+  // POC5-19 — 최근 저장일 거래량 흐름(거래량 칸과 같은 읽기 행 · 기준일 포함 최근 최대 20개 · 오래된 순 · 선택 필드).
+  volume_trend?: VolumeTrendEvidence | null;
+}
+
+// POC5-19 — 거래량이 비어 있거나 확인이 필요한 날은 volume=null(0 으로 채우지 않음 · 저장된 0 은 0).
+export interface VolumeTrendPoint {
+  date: string;
+  volume: number | null;
+}
+export interface VolumeTrendEvidence {
+  asof_date: string | null;
+  points: VolumeTrendPoint[];
+  missing_count: number;
 }
 
 // POC5-16 — 한 기간(20구간)의 값 · 실제 저장 구간. value_pct 는 소수 둘째 자리(%).

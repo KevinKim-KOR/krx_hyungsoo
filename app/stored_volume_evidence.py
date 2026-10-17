@@ -110,6 +110,40 @@ def compute_stored_volume_evidence(
     )
 
 
+# POC5-19 — 「확인 근거」 종목 상세의 최근 저장일 거래량 흐름(PC 근거 응답 사본의 선택 필드).
+# 거래량 칸과 같은 읽기 행(종가가 유효한 저장 행 · 최신순)의 앞 TREND_POINTS 개 = 기준일 포함.
+TREND_POINTS = 20
+
+
+class VolumeTrendPoint(BaseModel):
+    date: str
+    # 유효하지 않은 거래량(null · 숫자 아님 · 음수 · 무한대)은 null — 0 으로 채우지 않는다(저장된 0 은 0).
+    volume: Optional[Union[int, float]] = None
+
+
+class VolumeTrendEvidence(BaseModel):
+    asof_date: Optional[str] = None
+    points: list[VolumeTrendPoint] = []  # 오래된 순 · 최대 TREND_POINTS
+    missing_count: int = 0
+
+
+def compute_volume_trend(rows_desc: list[RecentPriceRow]) -> VolumeTrendEvidence:
+    """최신순 저장 가격 행 `(date, close, volume, source)` → 기준일 포함 최근 최대 20개 저장일 거래량.
+
+    행을 건너뛰지 않는다(거래량이 비어 있어도 그 날짜 자리를 유지 · 더 오래된 행으로 채우지 않음).
+    """
+    window = rows_desc[:TREND_POINTS]
+    points = [
+        VolumeTrendPoint(date=r[0], volume=(r[2] if _valid_volume(r[2]) else None))
+        for r in reversed(window)
+    ]
+    return VolumeTrendEvidence(
+        asof_date=(window[0][0] if window else None),
+        points=points,
+        missing_count=sum(1 for p in points if p.volume is None),
+    )
+
+
 def build_stored_volume_evidence(
     ticker: str, *, db_path: Path = DEFAULT_DB_PATH
 ) -> StoredVolumeEvidence:

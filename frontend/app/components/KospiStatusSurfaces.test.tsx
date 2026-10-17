@@ -101,7 +101,7 @@ beforeEach(() => {
 describe("코스피 차트 — 카드와 같은 배지 · 기준 줄", () => {
   it("기준일 지연: 같은 배지 · 같은 기준 줄 · 선은 경고색", async () => {
     const { container } = render(<KospiChart kospi={STALE_T2} phase="success" />);
-    await screen.findByText(/최근 2거래일/);
+    await screen.findByText(/최근 2개 저장일/);
     const box = container.querySelector("[data-kospi-chart-state]");
     expect(box?.getAttribute("data-kospi-chart-state")).toBe("stale");
     expect(screen.getByText("기준일 지연")).toHaveClass("kospi-badge", "warn");
@@ -113,7 +113,7 @@ describe("코스피 차트 — 카드와 같은 배지 · 기준 줄", () => {
 
   it("정상: 배지 · 상태 줄 없음 · 선은 기본색", async () => {
     const { container } = render(<KospiChart kospi={OK} phase="success" />);
-    await screen.findByText(/최근 2거래일/);
+    await screen.findByText(/최근 2개 저장일/);
     expect(container.querySelector("[data-kospi-chart-state]")).toBeNull();
     expect(container.querySelector(".kospi-badge")).toBeNull();
     expect(container.querySelector("path")?.getAttribute("stroke")).toBe("var(--accent)");
@@ -123,20 +123,20 @@ describe("코스피 차트 — 카드와 같은 배지 · 기준 줄", () => {
     const { unmount } = render(
       <KospiChart kospi={{ ...STALE_T2, display_state: "source_failed" }} phase="success" />,
     );
-    await screen.findByText(/최근 2거래일/);
+    await screen.findByText(/최근 2개 저장일/);
     expect(screen.getByText("자료원 확인 실패")).toHaveClass("kospi-badge", "warn");
     unmount();
     __resetQueryCache();
     const holiday = { ...OK, display_state: "holiday" as const, today_is_trading_day: false };
     const r = render(<KospiChart kospi={holiday} phase="success" />);
-    await screen.findByText(/최근 2거래일/);
+    await screen.findByText(/최근 2개 저장일/);
     expect(screen.getByText("휴장일")).toHaveClass("kospi-badge", "neutral");
     expect(r.container.querySelector("path")?.getAttribute("stroke")).toBe("var(--accent)");
   });
 
   it("KOSPI 판정을 불러오는 중이면 배지를 달지 않는다", async () => {
     const { container } = render(<KospiChart kospi={null} phase="loading" />);
-    await screen.findByText(/최근 2거래일/);
+    await screen.findByText(/최근 2개 저장일/);
     expect(container.querySelector("[data-kospi-chart-state]")).toBeNull();
   });
 });
@@ -244,7 +244,7 @@ describe("설계자 RESULT STEP 4-2 · 4-3 — 「오늘의 투자 점검」 KOS
   it("마지막 자료 기준일 = KOSPI 기준일(KODEX200 날짜 아님) · 출처는 카드 전체에 한 줄", async () => {
     render(<KospiHeadline market={todayMarket(STALE_T2)} />);
     // 차트까지 그려진 뒤(차트에는 출처 줄을 따로 달지 않는다).
-    await screen.findByText(/최근 2거래일/);
+    await screen.findByText(/최근 2개 저장일/);
     const card = screen.getByLabelText("KOSPI 현재 위치");
     const foot = within(card).getByText(/마지막 자료 기준일/);
     expect(foot.textContent).toBe(`마지막 자료 기준일 2026-09-28 · ${KRX_SOURCE}`);
@@ -268,7 +268,7 @@ describe("설계자 RESULT STEP 4-2 · 4-3 — 「오늘의 투자 점검」 KOS
         market={todayMarket({ status: "unavailable", as_of_date: null, display_state: "no_result" })}
       />,
     );
-    await screen.findByText(/최근 2거래일/);
+    await screen.findByText(/최근 2개 저장일/);
     const card = screen.getByLabelText("KOSPI 현재 위치");
     // UI-03 — '없다' 확인은 접힌 칸을 편 뒤에도 본다(판정 §3).
     for (const step of ["접힘", "펼침"]) {

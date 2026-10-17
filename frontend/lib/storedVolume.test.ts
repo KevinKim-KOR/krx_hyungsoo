@@ -25,6 +25,15 @@ function ev(over: Partial<StoredVolumeEvidence> = {}): StoredVolumeEvidence {
 const values = (e: StoredVolumeEvidence) => volumeCells(e).map((c) => c.value);
 
 describe("storedVolume 표시 (POC5-09)", () => {
+  // POC5-19 검증 r1(P2) — 저장된 거래량 자체는 반올림하지 않는다(0 이 아닌 소수가 '0주'로 보이지 않게).
+  it("저장된 거래량 그대로: 소수 · 아주 작은 값 · 0 · 정수", () => {
+    expect(values(ev({ volume: 0.4 }))[1]).toBe("0.4주");
+    expect(values(ev({ volume: 0.0004 }))[1]).toBe("0.0004주");
+    expect(values(ev({ volume: 0 }))[1]).toBe("0주");
+    expect(values(ev({ volume: 1234.5678 }))[1]).toBe("1,234.5678주");
+    expect(values(ev())[1]).toBe("23,162,524주");
+  });
+
   it("정상: 기준일 · 거래량(주) · 직전 20개 저장일 평균 · 평균 대비(배 · 소수 둘째 자리)", () => {
     expect(volumeCells(ev()).map((c) => c.label)).toEqual([
       "기준일",

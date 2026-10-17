@@ -534,52 +534,65 @@ describe("확인 근거 — 가격 흐름 기준일 · 저장 거래량 (POC5-09
     expect(rowOrder()).toEqual(["에이", "비", "씨"]);
   });
 
+  // POC5-19 — 값 · 문구는 그대로이고 위치만 바뀌었다: 거래량 값은 기본 '거래량' 묶음, 가격 흐름 기준 · 출처 줄은
+  // 상세 제목 줄 [세부 흐름 보기] 창 아래쪽(차트 읽기 개정 2026-10-17 §2).
+  const openFlows = () => fireEvent.click(screen.getByRole("button", { name: "세부 흐름 보기" }));
+  const volValues = () =>
+    Array.from(screen.getByTestId("evg-volume").querySelectorAll(".evg-grid .v")).map((e) => e.textContent);
+
   it("기준일이 다른 종목 상세: 실제 날짜 사유 · 가격 흐름 기준 · 과거 저장 거래량 · NAV 유지", async () => {
     await renderAndSelect("씨");
     expect(guidanceItems()).toEqual([
       "저장 가격 기준일: 2026-08-12 / PC 비교 기준일: 2026-10-08 — 기준일이 달라 현재 비교에 사용하지 않습니다.",
       "씨 메모",
     ]);
-    expect(screen.getByTestId("hre-price-flow").textContent).toBe(
-      "가격 흐름 기준기준일 2026-08-12 · 5일 2026-08-05 ~ 2026-08-12 · 20일 2026-07-14 ~ 2026-08-12",
-    );
-    const vol = screen.getByTestId("stored-volume");
-    expect(vol.textContent).toContain("씨 거래량");
+    const price = screen.getByTestId("evg-price");
+    expect(price.textContent).toContain("판정하지 않음");
+    expect(price.querySelector(".evg-grid")).toBeNull(); // 기준일이 다르면 값 대신 사유
+    expect(price.querySelector(".evg-foot")?.textContent).toBe("기준일 2026-08-12 · PC 저장 종가");
+    const vol = screen.getByTestId("evg-volume");
     expect(vol.textContent).toContain("과거 저장 자료 · PC 비교 기준일은 2026-10-08");
-    expect(Array.from(vol.querySelectorAll(".svb-v")).map((e) => e.textContent)).toEqual([
-      "2026-08-12",
-      "4,204,301주",
-      "6,174,143.20주",
-      "0.68배",
-    ]);
+    expect(volValues()).toEqual(["4,204,301주", "0.68배", "6,174,143.20주"]);
+    expect(vol.querySelector(".evg-foot")?.textContent).toBe("기준일 2026-08-12");
+    openFlows();
+    expect(screen.getByTestId("detail-flows-body").textContent).toContain(
+      "기준일 2026-08-12 · 5일 2026-08-05 ~ 2026-08-12 · 20일 2026-07-14 ~ 2026-08-12",
+    );
+    // 세부 흐름 창 첫 부분 거래량 줄에도 기존 '과거 저장 자료' 안내(PLAN Q3 (a) · 개정 §4 '기존 안내 보존').
+    expect(screen.getByTestId("detail-flows-strip").querySelector(".dfw-strip-note")?.textContent).toBe(
+      "과거 저장 자료 · PC 비교 기준일은 2026-10-08",
+    );
     expect(screen.getByText("NAV · 괴리율")).toBeTruthy();
   });
 
-  it("정상 종목 상세: 날짜 사유 없음 · 거래량 4칸 · 과거 표시 없음 · 출처 줄", async () => {
+  it("정상 종목 상세: 날짜 사유 없음 · 거래량 값 · 과거 표시 없음 · 세부에 기준 줄 · 출처 줄", async () => {
     await renderAndSelect("에이");
     expect(guidanceItems()).toEqual(["에이 메모"]);
-    expect(screen.getByTestId("hre-price-flow").textContent).toContain(
+    expect(volValues()).toEqual(["1,500,000주", "1.50배", "1,000,000.00주"]);
+    expect(screen.getByTestId("evg-volume").textContent).not.toContain("과거 저장 자료");
+    expect(screen.getByTestId("evg-volume").querySelector(".evg-foot")?.textContent).toBe(
+      "기준일 2026-10-08",
+    );
+    expect(screen.queryByTestId("detail-flows-body")).toBeNull(); // 세부 흐름 창은 누를 때만
+    openFlows();
+    const body = screen.getByTestId("detail-flows-body");
+    expect(body.textContent).toContain(
       "기준일 2026-10-08 · 5일 2026-09-30 ~ 2026-10-08 · 20일 2026-09-07 ~ 2026-10-08",
     );
-    const vol = screen.getByTestId("stored-volume");
-    expect(Array.from(vol.querySelectorAll(".svb-v")).map((e) => e.textContent)).toEqual([
-      "2026-10-08",
-      "1,500,000주",
-      "1,000,000.00주",
-      "1.50배",
-    ]);
-    expect(vol.textContent).not.toContain("과거 저장 자료");
-    expect(vol.querySelector(".svb-src")?.textContent).toBe(
+    expect(body.textContent).toContain(
       "출처 FinanceDataReader · 비교 구간 2026-09-07 ~ 2026-10-07 · 유효 20/20",
     );
-    expect(vol.querySelector(".wb-detail-grid")?.className).toBe("wb-detail-grid");
+    expect(screen.getByTestId("detail-flows-strip").querySelector(".dfw-strip-note")).toBeNull(); // 기준일 같으면 안내 없음
   });
 
-  it("거래량 필드가 없으면 '거래량 자료 없음'만 · 차트 · NAV 는 그대로 · 다시 조회하지 않는다", async () => {
+  it("거래량 필드가 없으면 '거래량 자료 없음'만 · 차트 · NAV 는 그대로 · 세부를 펼쳐도 다시 조회하지 않는다", async () => {
     await renderAndSelect("비");
-    expect(screen.getByTestId("stored-volume").textContent).toContain("거래량 자료 없음");
+    expect(screen.getByTestId("evg-volume").textContent).toContain("거래량 자료 없음");
     expect(screen.getByText("NAV · 괴리율")).toBeTruthy();
     expect(fetchPriceSeries).toHaveBeenCalled();
+    const priceCalls = fetchPriceSeries.mock.calls.length;
+    openFlows();
+    expect(fetchPriceSeries.mock.calls.length).toBe(priceCalls);
     expect(fetchEnrichedHoldings).toHaveBeenCalledTimes(1);
     expect(fetchHoldingsMarketEvidence).toHaveBeenCalledTimes(1);
   });

@@ -1,7 +1,9 @@
 // POC5-09 — 저장 거래량 확인 근거 표시(「확인 근거」 종목 상세 · 「오늘의 투자 점검」 KODEX200 공용).
 // 계산은 backend(app/stored_volume_evidence.py)가 원래 숫자로 하고, 여기서는 표시할 때만
-// 반올림한다(평균 · 배수 소수 둘째 자리 · 거래량 단위 = 주). 값을 지어내지 않는다.
+// 반올림한다(평균 · 배수 소수 둘째 자리 · 거래량 단위 = 주). 저장된 거래량 자체는 줄이지 않는다(POC5-19 검증 r1).
+// 값을 지어내지 않는다.
 import type { StoredVolumeEvidence } from "@/lib/api";
+import { fmtExact } from "./chartScale";
 
 export const VOLUME_HELP =
   "기준일 거래량을 그 앞 20개 저장일 평균과 비교한 배수입니다. 거래가 많고 적음만 보여 주며, 오르내림의 원인이나 매매 신호가 아닙니다.";
@@ -16,8 +18,8 @@ export type VolumeCell = { label: string; value: string };
 // 네 칸: 기준일 · 거래량 · 직전 20개 저장일 평균 · 평균 대비.
 // 배수 사유 우선순위(판정 §9-2) = backend ratio_status: 기준일 거래량 없음 → 자료 부족 → 평균 0.
 export function volumeCells(ev: StoredVolumeEvidence): VolumeCell[] {
-  const volume =
-    ev.volume != null ? `${ev.volume.toLocaleString("ko-KR")}주` : "자료 없음";
+  // 저장된 거래량은 줄이지 않는다(POC5-19 검증 r1 — 0 이 아닌 소수가 '0주'로 보이지 않게 · 평균 · 배수는 소수 둘째 자리 그대로).
+  const volume = ev.volume != null ? `${fmtExact(ev.volume)}주` : "자료 없음";
   const avg =
     ev.avg_status === "ok" && ev.avg_prev20 != null
       ? `${ev.avg_prev20.toLocaleString("ko-KR", TWO)}주`

@@ -34,7 +34,9 @@ from app.pc_price_basis import apply_pc_price_basis, load_recent_price_rows
 from app.pc_price_volatility import PriceVolatilityEvidence, build_price_volatility
 from app.stored_volume_evidence import (
     StoredVolumeEvidence,
+    VolumeTrendEvidence,
     compute_stored_volume_evidence,
+    compute_volume_trend,
 )
 
 router = APIRouter()
@@ -149,6 +151,8 @@ class HoldingEvidenceItem(BaseModel):
     decline_band: Optional[DeclineBand] = None
     # POC5-16 — PC 화면용 선택 필드(이 응답 사본에만 · 저장 종가 최근 / 직전 20구간 흔들림).
     price_volatility: Optional[PriceVolatilityEvidence] = None
+    # POC5-19 — PC 화면용 선택 필드(이 응답 사본에만 · 거래량 칸과 같은 읽기 행의 최근 최대 20개 저장일).
+    volume_trend: Optional[VolumeTrendEvidence] = None
 
 
 class PriceBasisMismatch(BaseModel):
@@ -285,6 +289,7 @@ def get_holdings_market_evidence_latest() -> HoldingsMarketEvidenceResponse:
                     h["ticker"], rows_by_ticker[h["ticker"]]
                 ),
                 price_volatility=volatility[h["ticker"]],
+                volume_trend=compute_volume_trend(rows_by_ticker[h["ticker"]]),
             )
             for h in evidence.get("holdings", [])
         ],

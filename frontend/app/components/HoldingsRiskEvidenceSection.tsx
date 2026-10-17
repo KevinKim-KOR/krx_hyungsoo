@@ -35,17 +35,15 @@ import {
   type EvidenceSortKey,
   type RiskEvidenceRow,
 } from "./holdings_risk_evidence/helpers";
-import { declineDetailText } from "./holdings_risk_evidence/declineSummary";
 import DeclineSummaryBlock from "./holdings_risk_evidence/DeclineSummaryBlock";
-import PriceVolatilityBlock from "./holdings_risk_evidence/PriceVolatilityBlock";
+import DetailFlows from "./holdings_risk_evidence/DetailFlows";
+import EvidenceGroups from "./holdings_risk_evidence/EvidenceGroups";
 import {
   FAILURE_TEXT,
   riskStateFromQueries,
 } from "./holdings_risk_evidence/riskCombination";
 import PriceChart from "./workbench/PriceChart";
-import StoredVolumeBlock from "./StoredVolumeBlock";
-import { priceBasisLine, priceFlowLine } from "@/lib/priceBasis";
-import { VOLUME_HELP } from "@/lib/storedVolume";
+import { priceBasisLine } from "@/lib/priceBasis";
 // 손익·수익률 방향 색은 ETF 비교하기와 같은 함수를 쓴다 — 국내 관례 전환 시
 // 한 곳만 고치면 두 화면이 함께 바뀐다.
 import { directionColor } from "./workbench/helpers";
@@ -219,13 +217,6 @@ export default function HoldingsRiskEvidenceSection({ onNavigate }: Props = {}) 
     () => (selectedRow ? evidenceGuidance(selectedRow, basis) : []),
     [selectedRow, basis],
   );
-  const selectedFlowLine: string | null = selectedRow?.price_dates?.end_date
-    ? priceFlowLine(
-        selectedRow.price_dates.end_date,
-        selectedRow.price_dates.start_date_5d,
-        selectedRow.price_dates.start_date_20d,
-      )
-    : null;
 
   return (
     <section aria-labelledby="hre-h" className="hre-section card">
@@ -443,55 +434,39 @@ export default function HoldingsRiskEvidenceSection({ onNavigate }: Props = {}) 
               필요 판정에는 넣지 않는다(§6.2). */}
           {selected ? (
             <div className="hre-detail">
-              <h3>{selected} 상세</h3>
-              {selectedGuidance.length > 0 || selectedFlowLine || selectedRow ? (
+              {/* POC5-19 개정(2026-10-17 §2) — [세부 흐름 보기]는 상세 머리 하나(창으로 열림 · 아래 펼침 없음).
+                  종목을 바꾸면 창 · 고른 날짜를 이어받지 않는다(key). */}
+              <div className="hre-detail-head">
+                <h3>{selected} 상세</h3>
+                {selectedRow ? (
+                  <DetailFlows
+                    key={`df-${selected}`}
+                    row={selectedRow}
+                    item={selectedEvidence}
+                    basis={basis}
+                  />
+                ) : null}
+              </div>
+              {selectedGuidance.length > 0 ? (
                 <div className="hre-detail-evidence">
-                  {selectedGuidance.length > 0 ? (
-                    <div className="hre-detail-line" data-testid="hre-guidance">
-                      <span className="k">자료 확인 안내</span>
-                      <span className="v">
-                        {selectedGuidance.map((t) => (
-                          <span key={t} className="hre-guidance-item">
-                            {t}
-                            <br />
-                          </span>
-                        ))}
-                      </span>
-                    </div>
-                  ) : null}
-                  {selectedRow ? (
-                    <div className="hre-detail-line" data-testid="hre-decline-band">
-                      <span className="k">PC 20저장일 하락 구간</span>
-                      <span className="v">
-                        {declineDetailText(selectedRow, basis)}
-                      </span>
-                    </div>
-                  ) : null}
-                  {selectedFlowLine ? (
-                    <div className="hre-detail-line" data-testid="hre-price-flow">
-                      <span className="k">가격 흐름 기준</span>
-                      <span className="v">{selectedFlowLine}</span>
-                    </div>
-                  ) : null}
+                  <div className="hre-detail-line" data-testid="hre-guidance">
+                    <span className="k">자료 확인 안내</span>
+                    <span className="v">
+                      {selectedGuidance.map((t) => (
+                        <span key={t} className="hre-guidance-item">
+                          {t}
+                          <br />
+                        </span>
+                      ))}
+                    </span>
+                  </div>
                 </div>
               ) : null}
+              {/* POC5-19 — 기본: 가격 흐름 · 거래량 · 가격 흔들림 세 묶음 → 가격 차트(기존 자리 · 눈금 · 고른 날 종가). */}
+              {selectedRow ? (
+                <EvidenceGroups row={selectedRow} item={selectedEvidence} basis={basis} />
+              ) : null}
               <PriceChart ticker={selected} />
-              <div className="hre-detail-evidence">
-                <StoredVolumeBlock
-                  title={`${selectedRow?.name ?? selected} 거래량`}
-                  ev={selectedEvidence?.stored_volume}
-                  help={VOLUME_HELP}
-                  columns={4}
-                  headClassName="svb-head"
-                  referenceDate={basis?.reference_date}
-                />
-                {/* POC5-16 — 가격 흔들림(변동성) 접힌 구역 · 거래량 바로 아래 · 종목을 바꾸면 다시 접힘(key) */}
-                <PriceVolatilityBlock
-                  key={selected ?? ""}
-                  ev={selectedEvidence?.price_volatility}
-                  flowDate={basis?.reference_date ?? null}
-                />
-              </div>
               <NavConstituentsDetail item={selectedEvidence} />
               {onNavigate ? (
                 <button

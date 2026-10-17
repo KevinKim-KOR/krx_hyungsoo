@@ -12,21 +12,37 @@ interface Props {
   wide?: boolean;
   children: React.ReactNode;
   footer?: React.ReactNode;
+  // 처음 초점을 둘 요소(선택 · 없으면 첫 입력 칸 · 버튼 — 기존 동작 그대로).
+  focusSelector?: string;
 }
 
-export default function Dialog({ title, subtitle, onClose, wide, children, footer }: Props) {
+export default function Dialog({
+  title,
+  subtitle,
+  onClose,
+  wide,
+  children,
+  footer,
+  focusSelector,
+}: Props) {
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      // 창 안의 ? 도움말이 열려 있으면 Esc 는 그 도움말만 닫는다(도움말이 스스로 닫음 · POC5-19).
+      if (e.key === "Escape" && !box.current?.querySelector(".help-pop-panel")) onClose();
     };
     document.addEventListener("keydown", onKey);
-    const first = box.current?.querySelector<HTMLElement>(
-      "input:not([readonly]), select, textarea, button:not(.hmx-x)",
-    );
+    // 처음 초점: focusSelector 가 있으면 그 요소, 없거나 맞는 요소가 없으면 첫 입력 칸 · 버튼(기존 동작),
+    // 그것도 없으면 닫기(×) — 초점이 창 뒤에 남지 않게.
+    const first =
+      (focusSelector ? box.current?.querySelector<HTMLElement>(focusSelector) : null) ??
+      box.current?.querySelector<HTMLElement>(
+        "input:not([readonly]), select, textarea, button:not(.hmx-x)",
+      ) ??
+      box.current?.querySelector<HTMLElement>(".hmx-x");
     first?.focus();
     return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [onClose, focusSelector]);
   return (
     <div
       className="hmx-scrim"

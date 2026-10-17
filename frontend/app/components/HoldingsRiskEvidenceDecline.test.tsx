@@ -27,6 +27,12 @@ vi.mock("@/lib/api", async (importOriginal) => {
 });
 
 import HoldingsRiskEvidenceSection from "./HoldingsRiskEvidenceSection";
+import { NO_VOLUME_TEXT, VOLUME_HELP } from "@/lib/storedVolume";
+import {
+  TREND_HELP_BASIS,
+  TREND_HELP_MISSING,
+  TREND_HELP_SHORT,
+} from "./holdings_risk_evidence/volumeTrend";
 import {
   HELP_BAND_BASIS,
   HELP_PARTIAL_EVAL,
@@ -220,22 +226,31 @@ describe("확인 근거 — PC 최근 20저장일 하락 구간 (POC5-13)", () =
     expect(within(rowEl("디")).getByText("자료 확인 필요")).toHaveClass("wb-hb", "warn");
   });
 
-  it("상세 'PC 20저장일 하락 구간' 줄 — 판정 값 · 기간 / 해당 없음 / 판정하지 않음", async () => {
+  it("상세 하락 구간 — 기본 '가격 흐름' 묶음엔 구간 이름 · 세부에 판정 값 · 기간 / 해당 없음 / 판정하지 않음", async () => {
     await renderSection();
+    // POC5-19 — 짧은 값은 기본 '가격 흐름' 묶음, 긴 문장(판정 값 · 기간)은 [세부 흐름 보기](종목마다 다시 접힘).
     const detail = async (name: string) => {
       await act(async () => {
         fireEvent.click(rowEl(name));
         await Promise.resolve();
       });
-      return screen.getByTestId("hre-decline-band").textContent ?? "";
+      const group = screen.getByTestId("evg-price").textContent ?? "";
+      fireEvent.click(screen.getByRole("button", { name: "세부 흐름 보기" }));
+      return [group, screen.getByTestId("hre-decline-band").textContent ?? ""];
     };
-    expect(await detail("에이")).toBe(
-      "PC 20저장일 하락 구간PC 20저장일 하락 10% 이상 · 20저장일 변화 -12.3%(판정에 쓴 소수 첫째 자리 값) · 기간 2026-09-15 ~ 2026-10-14 · PC 저장 종가",
+    const [aGroup, aDetail] = await detail("에이");
+    expect(aGroup).toContain("하락 구간PC 20저장일 하락 10% 이상");
+    expect(aDetail).toBe(
+      "하락 구간 · PC 20저장일 하락 10% 이상 · 20저장일 변화 -12.3%(판정에 쓴 소수 첫째 자리 값) · 기간 2026-09-15 ~ 2026-10-14 · PC 저장 종가",
     );
-    expect(await detail("씨")).toContain("해당 없음 · 20저장일 변화 -2.0%");
-    expect(await detail("디")).toContain(
-      "판정하지 않음 — 이 종목의 최근 저장일(2026-08-12)이 PC 가격 흐름 기준일(2026-10-14)과 다릅니다(자료 확인 필요).",
-    );
+    const [cGroup, cDetail] = await detail("씨");
+    expect(cGroup).toContain("하락 구간해당 없음");
+    expect(cDetail).toContain("해당 없음 · 20저장일 변화 -2.0%");
+    const [dGroup, dDetail] = await detail("디");
+    const reason =
+      "판정하지 않음 — 이 종목의 최근 저장일(2026-08-12)이 PC 가격 흐름 기준일(2026-10-14)과 다릅니다(자료 확인 필요).";
+    expect(dGroup).toContain(reason); // 계산할 수 없으면 기본 묶음에 기존 사유
+    expect(dDetail).toContain(reason);
     expect(fetchEnrichedHoldings).toHaveBeenCalledTimes(1);
     expect(fetchHoldingsMarketEvidence).toHaveBeenCalledTimes(1);
   });
@@ -259,6 +274,7 @@ describe("확인 근거 — PC 최근 20저장일 하락 구간 (POC5-13)", () =
       fireEvent.click(rowEl("비"));
       await Promise.resolve();
     });
+    fireEvent.click(screen.getByRole("button", { name: "세부 흐름 보기" }));
     expect(screen.getByTestId("hre-decline-band").textContent).toContain(
       "기간 2026-09-12 ~ 2026-10-14(KODEX200 비교 기간과 달라 상대 비교는 비워 둠)",
     );
@@ -360,52 +376,296 @@ describe("확인 근거 — 종목 상세 가격 흔들림 (POC5-16)", () => {
     });
   };
 
-  it("거래량 칸 바로 아래 · 기본 접힘 · 펼치면 두 값 · 비교 — 다시 조회하지 않는다", async () => {
+  // POC5-19 — 가격 흔들림은 독립 접힘 구역이 아니라 기본 '가격 흔들림' 묶음(값 · 비교 · 사유 · 기준일 · ?)이다.
+  const vol = () => screen.getByTestId("evg-volatility");
+
+  it("세 묶음에 가격 흔들림 값 · 비교가 바로 보인다 · ? · 다시 조회하지 않는다", async () => {
     const rawFetch = vi.spyOn(globalThis, "fetch");
     await renderSection();
-    expect(screen.queryByTestId("price-volatility")).toBeNull(); // 상세를 열기 전에는 없음
+    expect(screen.queryByTestId("evidence-groups")).toBeNull(); // 상세를 열기 전에는 없음
     await open("에이");
-    const block = screen.getByTestId("price-volatility");
-    const volume = screen.getByTestId("stored-volume");
-    expect(volume.compareDocumentPosition(block) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(block.parentElement).toBe(volume.parentElement);
-    expect(screen.queryByTestId("price-volatility-body")).toBeNull();
-    fireEvent.click(within(block).getByRole("button", { name: "가격 흔들림(변동성) 보기" }));
-    expect(screen.getByTestId("price-volatility-body").textContent).toContain("3.20%");
-    expect(screen.getByTestId("price-volatility-cmp").textContent).toBe("직전보다 커짐");
-    fireEvent.click(within(block).getByRole("button", { name: "가격 흔들림 도움말" }));
+    const groups = screen.getByTestId("evidence-groups");
+    expect(Array.from(groups.children).map((c) => c.getAttribute("data-testid"))).toEqual([
+      "evg-price",
+      "evg-volume",
+      "evg-volatility",
+    ]);
+    // [세부 흐름 보기]는 상세 제목 줄 하나(세 묶음보다 위) · 아래 펼침 없음(차트 읽기 개정 2026-10-17 §2).
+    const flows = screen.getByTestId("detail-flows");
+    expect(flows.closest(".hre-detail-head")).not.toBeNull();
+    expect(flows.compareDocumentPosition(groups) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: "세부 흐름 보기" })).toHaveLength(1);
+    expect(Array.from(vol().querySelectorAll(".evg-grid .v")).map((e) => e.textContent)).toEqual([
+      "3.20%",
+      "2.97%",
+      "직전보다 커짐",
+    ]);
+    expect(vol().querySelector(".evg-foot")?.textContent).toBe("기준일 2026-10-14");
+    expect(screen.queryByTestId("price-volatility")).toBeNull(); // 예전 독립 접힘 구역 없음
+    fireEvent.click(within(vol()).getByRole("button", { name: "가격 흔들림 도움말" }));
     expect(screen.getByRole("dialog", { name: "가격 흔들림 도움말" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "세부 흐름 보기" }));
+    expect(screen.getByTestId("detail-flows-body").textContent).toContain(
+      "최근 2026-09-15 ~ 2026-10-14 · 직전 2026-08-14 ~ 2026-09-15 · PC 저장 종가",
+    );
     expect(fetchEnrichedHoldings).toHaveBeenCalledTimes(1);
     expect(fetchHoldingsMarketEvidence).toHaveBeenCalledTimes(1);
     expect(rawFetch).not.toHaveBeenCalled();
     rawFetch.mockRestore();
   });
 
-  it("다른 종목을 고르면 다시 접힌 채로 시작한다", async () => {
+  it("다른 종목을 고르면 세부 흐름 창을 이어받지 않음 · 계산 못 한 사유는 기본 묶음에", async () => {
     await renderSection();
     await open("에이");
-    fireEvent.click(screen.getByRole("button", { name: "가격 흔들림(변동성) 보기" }));
-    expect(screen.getByTestId("price-volatility-body")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "세부 흐름 보기" }));
+    expect(screen.getByRole("dialog", { name: "에이 세부 흐름" })).toBeInTheDocument();
     await open("비");
-    expect(screen.getByRole("button", { name: "가격 흔들림(변동성) 보기" })).toHaveAttribute(
-      "aria-expanded",
-      "false",
-    );
-    expect(screen.queryByTestId("price-volatility-body")).toBeNull();
-    expect(screen.getByTestId("price-volatility-note").textContent).toBe(
+    expect(screen.queryByRole("dialog", { name: "에이 세부 흐름" })).toBeNull();
+    expect(screen.queryByTestId("detail-flows-body")).toBeNull();
+    expect(screen.getByTestId("evg-volatility-cmp").textContent).toBe(
       "직전 20구간은 계산하지 못해 비교하지 않습니다.",
     );
   });
 
-  it("기준일 다른 종목은 접힌 채 사유(기존 날짜 안내와 함께) · 선택 필드가 없는 종목은 구역을 그리지 않는다", async () => {
+  it("기준일 다른 종목은 기본 묶음에 사유 · 선택 필드가 없는 종목은 '확인 불가'", async () => {
     await renderSection();
     await open("디");
-    expect(screen.getByTestId("price-volatility-note").textContent).toBe(
+    expect(vol().textContent).toContain(
       "이 종목의 마지막 유효 가격일(2026-08-12)이 PC 가격 흐름 기준일(2026-10-14)과 달라 값을 보이지 않습니다.",
     );
-    expect(screen.getByTestId("hre-decline-band").textContent).toContain("판정하지 않음");
+    expect(vol().querySelector(".evg-grid")).toBeNull();
+    expect(screen.getByTestId("evg-price").textContent).toContain("판정하지 않음");
     await open("씨");
-    expect(screen.queryByTestId("price-volatility")).toBeNull();
+    expect(vol().textContent).toContain("확인 불가");
     expect(fetchHoldingsMarketEvidence).toHaveBeenCalledTimes(1);
+  });
+});
+
+// POC5-19 — 기본 세 묶음 · 상세 제목 줄의 [세부 흐름 보기] → 세부 흐름 창(차트 읽기 개정 2026-10-17 §2 · §4):
+// 거래량 흐름 날짜를 공통 가로축으로, 이미 받은 가격 시계열을 '날짜로' 찾아 종가 선 · 거래량 막대를 함께 본다.
+describe("확인 근거 — 세 묶음 · 세부 흐름 창 (POC5-19)", () => {
+  // 거래량 흐름: 10-09 · 10-10 · 10-13(거래량 없음) · 10-14. 가격 시계열엔 10-09 가 없고 10-08 이 있다
+  // (배열 위치로 짝지으면 10-09 에 900원이 붙는다 — 날짜로 찾으면 '종가 자료 없음').
+  const VT = (end: string) => ({
+    asof_date: end,
+    points: [
+      { date: "2026-10-09", volume: 800 },
+      { date: "2026-10-10", volume: 1000 },
+      { date: "2026-10-13", volume: null },
+      { date: end, volume: 1500 },
+    ],
+    missing_count: 1,
+  });
+  const SERIES = {
+    ticker: "A1",
+    availability: "AVAILABLE",
+    available_from: "2026-10-08",
+    available_to: "2026-10-14",
+    series: [
+      { date: "2026-10-08", price: 900 },
+      { date: "2026-10-10", price: 1000 },
+      { date: "2026-10-13", price: 1010 },
+      { date: "2026-10-14", price: 1020 },
+    ],
+  };
+  beforeEach(() => {
+    __resetQueryCache();
+    fetchEnrichedHoldings.mockReset();
+    fetchHoldingsMarketEvidence.mockReset();
+    fetchPriceSeries.mockReset();
+    fetchEnrichedHoldings.mockResolvedValue(enriched());
+    const ev = evidence();
+    ev.holdings[0].volume_trend = VT("2026-10-14");
+    ev.holdings[1].volume_trend = VT("2026-10-14");
+    ev.holdings[2].volume_trend = { asof_date: "2026-10-14", points: [], missing_count: 0 };
+    ev.holdings[3].volume_trend = VT("2026-10-14");
+    fetchHoldingsMarketEvidence.mockResolvedValue(ev);
+    fetchPriceSeries.mockImplementation((t: string) =>
+      Promise.resolve(t === "A1" ? SERIES : { ticker: t, availability: "NO_DATA", series: [] }),
+    );
+  });
+  const open = async (name: string) => {
+    await act(async () => {
+      fireEvent.click(rowEl(name));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+  };
+  const flowsBtn = () => screen.getByRole("button", { name: "세부 흐름 보기" });
+  const ro = () => screen.getByTestId("detail-flows-readout").textContent;
+
+  it("거래량 ? 문단 · 창: 세 근거 기준일 · 공통 기간 · 고른 날의 종가 · 거래량(날짜로 찾음) · 두 차트가 같은 날 · 결측 · 새 조회 0", async () => {
+    await renderSection();
+    await open("에이");
+    fireEvent.click(within(screen.getByTestId("evg-volume")).getByRole("button", { name: "거래량 도움말" }));
+    const paras = Array.from(
+      screen.getByRole("dialog", { name: "거래량 도움말" }).querySelectorAll(".help-pop-p"),
+    ).map((p) => p.textContent);
+    expect(paras).toEqual([VOLUME_HELP, TREND_HELP_BASIS, TREND_HELP_SHORT, TREND_HELP_MISSING]);
+    const priceCalls = fetchPriceSeries.mock.calls.length;
+    expect(priceCalls).toBe(1); // 기본 화면 가격 차트가 받은 한 번
+    fireEvent.click(flowsBtn());
+    const dlg = screen.getByRole("dialog", { name: "에이 세부 흐름" });
+    const strip = Array.from(within(dlg).getByTestId("detail-flows-strip").querySelectorAll(".dfw-strip-k")).map(
+      (e) => e.textContent,
+    );
+    // 세 근거 각자의 실제 기준일(이 고정 자료엔 거래량 칸 · 가격 흔들림 필드가 없어 '확인 불가').
+    expect(strip).toEqual(["가격 흐름 기준일 2026-10-14", "거래량 기준일 확인 불가", "가격 흔들림 기준일 확인 불가"]);
+    expect(within(dlg).getByTestId("detail-flows-period").textContent).toBe(
+      "같은 날짜로 맞춘 최근 4개 저장일 · 2026-10-09 ~ 2026-10-14",
+    );
+    expect(ro()).toBe("2026-10-14 · 종가 1,020원 · 거래량 1,500주");
+    const pricePlot = screen.getByTestId("detail-price-plot");
+    fireEvent.keyDown(pricePlot, { key: "Home" });
+    expect(ro()).toBe("2026-10-09 · 종가 자료 없음 · 거래량 800주");
+    fireEvent.keyDown(screen.getByTestId("volume-bars-plot"), { key: "ArrowRight" });
+    expect(ro()).toBe("2026-10-10 · 종가 1,000원 · 거래량 1,000주");
+    fireEvent.keyDown(pricePlot, { key: "ArrowRight" });
+    expect(ro()).toBe("2026-10-13 · 종가 1,010원 · 거래량 값 없음");
+    expect(screen.getByTestId("volume-bars-missing-2")).toHaveClass("rc-missing-sel"); // 두 차트가 같은 날
+    expect(dlg.querySelectorAll("path.rc-line")).toHaveLength(1); // 10-09(종가 없음) 은 선을 잇지 않음
+    expect(screen.getByTestId("detail-price-missing").textContent).toContain("1개");
+    expect(screen.getByTestId("volume-trend-note")).toBeInTheDocument();
+    expect(fetchPriceSeries.mock.calls.length).toBe(priceCalls); // 창을 열어도 새 조회 없음
+    expect(fetchHoldingsMarketEvidence).toHaveBeenCalledTimes(1);
+  });
+
+  it("열고 닫기 반복(Esc · ×) · 닫으면 버튼으로 초점 · 열면 차트에 초점 · 새 조회 0", async () => {
+    await renderSection();
+    await open("에이");
+    const calls = fetchPriceSeries.mock.calls.length;
+    for (let k = 0; k < 3; k++) {
+      fireEvent.click(flowsBtn());
+      expect(document.activeElement).toBe(screen.getByTestId("detail-price-plot"));
+      fireEvent.keyDown(document, { key: "Escape" });
+      expect(screen.queryByRole("dialog", { name: "에이 세부 흐름" })).toBeNull();
+      expect(document.activeElement).toBe(flowsBtn());
+    }
+    fireEvent.click(flowsBtn());
+    fireEvent.click(screen.getByRole("button", { name: "닫기" }));
+    expect(screen.queryByRole("dialog", { name: "에이 세부 흐름" })).toBeNull();
+    expect(document.activeElement).toBe(flowsBtn());
+    expect(fetchPriceSeries.mock.calls.length).toBe(calls);
+  });
+
+  it("종목을 바꾸면 창 · 고른 날을 이어받지 않음 · 흐름 자료 0개는 '자료 없음' · 가격 시계열 없음은 기존 문구", async () => {
+    await renderSection();
+    await open("에이");
+    fireEvent.click(flowsBtn());
+    fireEvent.keyDown(screen.getByTestId("detail-price-plot"), { key: "Home" });
+    expect(ro()).toContain("2026-10-09");
+    await open("비");
+    expect(screen.queryByRole("dialog", { name: "에이 세부 흐름" })).toBeNull();
+    expect(screen.queryByTestId("detail-flows-body")).toBeNull(); // 창 자체가 닫힘(key · 다른 종목 이름으로 남지 않음)
+    fireEvent.click(flowsBtn());
+    expect(screen.getByTestId("detail-flows-body").textContent).toContain(NO_VOLUME_TEXT);
+    fireEvent.keyDown(document, { key: "Escape" });
+    await open("씨");
+    fireEvent.click(flowsBtn());
+    expect(screen.getByTestId("detail-price-unavailable").textContent).toBe("저장된 가격 데이터 없음");
+    expect(ro()).toBe("2026-10-14 · 종가 확인 불가 · 거래량 1,500주");
+    fireEvent.keyDown(document, { key: "Escape" });
+    await open("에이");
+    fireEvent.click(flowsBtn());
+    expect(ro()).toBe("2026-10-14 · 종가 1,020원 · 거래량 1,500주");
+  });
+
+  it("가격은 정상인데 흐름 자료 0개 · 흐름 필드 없음 · 근거 항목 없음이어도 창이 멈추지 않는다 · 초점은 창 안", async () => {
+    fetchPriceSeries.mockImplementation((t: string) => Promise.resolve({ ...SERIES, ticker: t }));
+    const ev = evidence();
+    ev.holdings[0].volume_trend = VT("2026-10-14");
+    ev.holdings[1].volume_trend = VT("2026-10-14");
+    ev.holdings[2].volume_trend = { asof_date: "2026-10-14", points: [], missing_count: 0 }; // 비: 0개
+    // 디: volume_trend 필드 없음(백엔드 재시작 전 응답 모양) · 씨: 근거 항목 자체 없음.
+    ev.holdings = ev.holdings.filter((h) => h.ticker !== "C1");
+    fetchHoldingsMarketEvidence.mockResolvedValue(ev);
+    await renderSection();
+    for (const name of ["비", "디", "씨"]) {
+      await open(name);
+      fireEvent.click(flowsBtn());
+      const dlg = screen.getByRole("dialog", { name: `${name} 세부 흐름` });
+      expect(within(dlg).getByTestId("detail-flows-body").textContent).toContain(NO_VOLUME_TEXT);
+      expect(within(dlg).queryByTestId("detail-flows-readout")).toBeNull();
+      expect(dlg.contains(document.activeElement)).toBe(true); // 차트가 없으면 닫기(×)에 초점
+      fireEvent.keyDown(document, { key: "Escape" });
+      expect(screen.queryByRole("dialog", { name: `${name} 세부 흐름` })).toBeNull();
+    }
+  });
+
+  it("가격 조회가 실패했으면 창을 여러 번 열어도 새 GET 없음 · 기존 실패 문구", async () => {
+    fetchPriceSeries.mockRejectedValue(new Error("price down"));
+    await renderSection();
+    await open("에이");
+    expect(fetchPriceSeries).toHaveBeenCalledTimes(1); // 기본 화면 가격 차트의 한 번
+    for (let k = 0; k < 3; k++) {
+      fireEvent.click(flowsBtn());
+      expect(screen.getByTestId("detail-price-unavailable").textContent).toBe("가격 시계열 확인 불가 (조회 실패)");
+      expect(ro()).toBe("2026-10-14 · 종가 확인 불가 · 거래량 1,500주");
+      fireEvent.keyDown(document, { key: "Escape" });
+    }
+    expect(fetchPriceSeries).toHaveBeenCalledTimes(1);
+  });
+
+  it("가격 조회 중에 열면 '불러오는 중' · 끝나면 같은 결과로 값 · 추가 GET 없음", async () => {
+    let resolve: (v: unknown) => void = () => {};
+    fetchPriceSeries.mockImplementation(() => new Promise((r) => (resolve = r)));
+    await renderSection();
+    await open("에이");
+    fireEvent.click(flowsBtn());
+    expect(screen.getByTestId("detail-price-unavailable").textContent).toBe("가격 시계열 불러오는 중...");
+    expect(ro()).toBe("2026-10-14 · 종가 불러오는 중 · 거래량 1,500주");
+    await act(async () => {
+      resolve(SERIES);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(ro()).toBe("2026-10-14 · 종가 1,020원 · 거래량 1,500주");
+    expect(fetchPriceSeries).toHaveBeenCalledTimes(1);
+  });
+
+  it("창 안 ? 도움말이 열려 있으면 Esc 는 도움말만 닫는다 · 고른 날 그대로", async () => {
+    await renderSection();
+    await open("에이");
+    fireEvent.click(flowsBtn());
+    fireEvent.keyDown(screen.getByTestId("detail-price-plot"), { key: "Home" });
+    fireEvent.click(screen.getByRole("button", { name: "세부 흐름 도움말" }));
+    expect(screen.getByRole("dialog", { name: "세부 흐름 도움말" })).toBeInTheDocument();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("dialog", { name: "세부 흐름 도움말" })).toBeNull();
+    expect(screen.getByRole("dialog", { name: "에이 세부 흐름" })).toBeInTheDocument();
+    expect(ro()).toContain("2026-10-09");
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("dialog", { name: "에이 세부 흐름" })).toBeNull();
+  });
+
+  // POC5-19 검증 r1(P2) — 유효한 소수 거래량은 반올림 없이 · 저장된 0 과 구분해 보인다.
+  it("고른 날 거래량은 저장된 값 그대로(0.4주 · 0주 구분) · 창 첫 부분 거래량 칸도 같음", async () => {
+    const ev = evidence();
+    const vt = {
+      asof_date: "2026-10-14",
+      points: [
+        { date: "2026-10-13", volume: 0 },
+        { date: "2026-10-14", volume: 0.4 },
+      ],
+      missing_count: 0,
+    };
+    ev.holdings[0].volume_trend = vt;
+    ev.holdings[1].volume_trend = vt;
+    const sv = {
+      ticker: "A1", status: "ok", asof_date: "2026-10-14", source: "FinanceDataReader", volume: 0.4,
+      window_size: 20, window_start_date: "2026-09-15", window_end_date: "2026-10-13", window_date_count: 20,
+      valid_count: 20, avg_prev20: 1000, avg_status: "ok", ratio: 0.0004, ratio_status: "ok",
+    } as const;
+    ev.holdings[0].stored_volume = { ...sv };
+    ev.holdings[1].stored_volume = { ...sv };
+    fetchHoldingsMarketEvidence.mockResolvedValue(ev);
+    await renderSection();
+    await open("에이");
+    fireEvent.click(flowsBtn());
+    expect(ro()).toBe("2026-10-14 · 종가 1,020원 · 거래량 0.4주");
+    fireEvent.keyDown(screen.getByTestId("detail-price-plot"), { key: "ArrowLeft" });
+    expect(ro()).toBe("2026-10-13 · 종가 1,010원 · 거래량 0주");
+    expect(screen.getByTestId("detail-flows-strip").textContent).toContain("0.4주");
+    expect(Array.from(screen.getByTestId("evg-volume").querySelectorAll(".evg-grid .v")).map((e) => e.textContent)[0]).toBe("0.4주");
   });
 });

@@ -20,10 +20,12 @@ import {
 } from "@/lib/api";
 import { kospiStatusView, type KospiQueryPhase } from "@/lib/kospiStatus";
 import { KospiStatusBadges } from "../KospiStatusNote";
+import ReadableLineChart from "../charts/ReadableLineChart";
 
 export const KOSPI_SERIES_KEY = "today:price-series?benchmark=KOSPI";
 
-// 최근 N 거래일만 표시 (전체 12년 시계열은 대표 차트에서 흐름 판독을 흐린다).
+// 최근 N개 저장값만 표시 (전체 12년 시계열은 대표 차트에서 흐름 판독을 흐린다).
+// POC5-19 차트 읽기 개정: 아래 줄은 '최근 N개 저장일'(연속 거래일로 설명하지 않음) · 최종 값에 pt.
 const RECENT_DAYS = 120;
 
 export default function KospiChart({
@@ -72,10 +74,19 @@ export default function KospiChart({
 
   return (
     <div>
-      <SvgLine points={recent} stale={q.stale || flagged} />
+      {/* POC5-19 개정(차트 읽기 · 2026-10-17) — 날짜 · pt 눈금 · 가로선 · 고른 날의 코스피 값 줄. */}
+      <ReadableLineChart
+        points={recent}
+        unit="pt"
+        valueLabel="코스피"
+        label="코스피 일별 가격 흐름"
+        height={220}
+        warn={q.stale || flagged}
+        testId="kospi-chart"
+      />
       <div className="tc-small tc-muted" style={{ marginTop: 6 }}>
-        코스피 {first.date} ~ {last.date} · 최근 {recent.length}거래일 · 최종{" "}
-        {last.price.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}
+        코스피 {first.date} ~ {last.date} · 최근 {recent.length}개 저장일 · 최종{" "}
+        {last.price.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}pt
         {q.stale && <span className="tc-warn"> · ⚠ 이전 조회값 (재조회 실패)</span>}
       </div>
       {status !== null && !status.loading && status.state !== "ok" ? (
@@ -91,44 +102,5 @@ export default function KospiChart({
         </div>
       ) : null}
     </div>
-  );
-}
-
-function SvgLine({
-  points,
-  stale,
-}: {
-  points: { date: string; price: number }[];
-  stale: boolean;
-}) {
-  const W = 900;
-  const H = 220;
-  const pad = 10;
-  const prices = points.map((p) => p.price);
-  const min = Math.min(...prices);
-  const max = Math.max(...prices);
-  const span = max - min || 1;
-  const n = points.length;
-  const x = (i: number) => pad + (i / Math.max(n - 1, 1)) * (W - 2 * pad);
-  const y = (v: number) => H - pad - ((v - min) / span) * (H - 2 * pad);
-  const d = points
-    .map((p, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(p.price).toFixed(1)}`)
-    .join(" ");
-  return (
-    <svg
-      viewBox={`0 0 ${W} ${H}`}
-      width="100%"
-      height={H}
-      role="img"
-      aria-label="코스피 일별 가격 흐름"
-      style={{ overflow: "visible" }}
-    >
-      <path
-        d={d}
-        fill="none"
-        stroke={stale ? "var(--warn)" : "var(--accent)"}
-        strokeWidth={1.75}
-      />
-    </svg>
   );
 }
