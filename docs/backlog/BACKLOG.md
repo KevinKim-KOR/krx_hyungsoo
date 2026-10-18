@@ -21,7 +21,7 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 
 **본 canonical BACKLOG 본문(아래 §1~)에는 조건부 보류 65개만 유지**한다. 전체 105개 분류·귀속 이력은 통합지도 V2 §6과 Git 이력에서 보존한다.
 
-**등록 항목 수 (2026-10-12 · `POC5-UI-02` 정리 뒤 · `grep -c "^- \*\*항목\*\*"`)**: **62**(2026-09-07 판 55 → 10-01 ~ 10-11 추가 6 → 10-12 01B 누락 1줄 보완 1). 해소 · 닫음(대체됨 · LEGACY) 항목도 기록으로 보존하므로 **등록 건수는 남은 개발 건수가 아니다**. 위 '65개' · 아래 '남은 항목 55' 는 당시 기록.
+**등록 항목 수 (2026-10-12 · `POC5-UI-02` 정리 뒤 · `grep -c "^- \*\*항목\*\*"`)**: **62**(2026-09-07 판 55 → 10-01 ~ 10-11 추가 6 → 10-12 01B 누락 1줄 보완 1 · 2026-10-18 재확인 62). 해소 · 닫음(대체됨 · LEGACY) 항목도 기록으로 보존하므로 **등록 건수는 남은 개발 건수가 아니다**. 위 '65개' · 아래 '남은 항목 55' 는 당시 기록.
 
 전체 항목의 최신 상태와 담당 Lane 은 다음 문서를 **단일 기준**으로 한다.
 
@@ -93,14 +93,14 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 
 **결함 상태 (2026-10-12 · `POC5-UI-02` 정정 · 근거 `docs/ai_result/POC5/POC5_BACKLOG_SOURCE_AUDIT_2026-10-12.md`)** — 이 절에 등재된 결함만의 상태다(자료 전체의 결함 개수가 아니다):
 `DEF-FDR-TIMEOUT` = OCI 배치 경로 해소(`POC3-02D-OPS-03` · 2026-10-01 배포 · 10-02 운영 확인) · **PC 버튼 경로 보호 구현(`POC5-17` · 구현 2026-10-16 · 검증자 r2 VERIFIED(2026-10-16) · 설계자 RESULT PASS · 종료 2026-10-16 · 요청 timeout 20초 · 연속 timeout 중단 · DNS · 느린 연속 응답에 대한 전체 종료 보장 없음)** · PC 터미널 수동 스크립트는 그대로(판정 Q3) ·
-`DEF-COMPUTE-TOPN-ASOF-HISTORICAL` = 열림(재검토 트리거 미도래 · 운영 호출부는 `asof` 미사용) ·
+`DEF-COMPUTE-TOPN-ASOF-HISTORICAL` = 열림(재검토 트리거 미도래 · 운영 호출부는 `asof` 미사용 · 2026-10-18 재확인: `compute_topn` 호출 8곳 중 운영 7곳 `asof` 미전달 · `app/ml_score_validity_screen.py` 1곳만 절단 임시 DB 로 `asof=t` · `_compute_period` 최신가 = 이력 마지막 행 · 이력 조회 날짜 제한 없음 그대로) ·
 `DEF-PC-REFRESH-UNEXPECTED-COMPLETED` = **해소**(`POC5-18` · 구현 2026-10-16 · 검증자 r1 VERIFIED(2026-10-16) · 설계자 RESULT PASS · 종료 2026-10-16 · 2026-10-16 등재 · `POC5-17` RESULT 판정 §3) ·
 `DEF-KOSPI-BENCHMARK-VALUE-ASOF-INTEGRITY` = **해소**(`POC3-OPS-02B-1` `988b0494`).
 (이전 표기 '현재 열린 결함: 3건'은 2026-09-07 기준.)
 `DEF-PRICE-EQUITY-REFRESH` = **재개 (2026-10-13 · `POC5-09` 설계 §9-4)** — PC 화면 영향(아래 절 머리) · 화면 오용 정정 = `POC5-09`(검증자 VERIFIED · 실화면 확인 · 종료 2026-10-13) · **수집 원인 = `POC5-10` 해소(검증자 r2 VERIFIED · 실제 수집 2026-10-13: 3종목 08-12 → 10-13 · 08-13 이후 39행 · 현재 비교 복귀)** → 결함 닫음. (2026-09-06 철회는 운영 PUSH 기준 판단 · 운영은 지금도 정상.)
 `DEF-PC-VIX-REFRESH-MISSING` = **해소 (2026-10-14 · `POC5-11` · 검증자 VERIFIED · 사용자 갱신 1회 · VIX 09-11 → 10-13 · 22행)** — 수집 연결 해소. 정비 큐 VIX 지연 경고는 기존 판정(`vix < kodex`) 한계로 남음(별도 기록 · 아래 절) → **`POC5-12` 에서 미국 장 마감 기준 판정으로 정정 · 해소(2026-10-14 · 검증자 r2 VERIFIED · 사용자 화면 확인: 「자료 최신화 필요」 VIX 경고 줄 없음)**.
 `DEF-PC-MARKET-SCREEN-SLOW-LOAD` = **해소 (2026-10-14 · `POC5-12` · 검증자 r2 VERIFIED · 사용자 화면 확인 "금방 뜹니다. 예전보다 더 빨라졌네요")** — 「요즘 잘 오르는 ETF」 첫 조회가 화면 10초 제한을 넘어 '요청 시간 초과'(아래 절).
-`DEF-MARKET-CONTEXT-ASOF-MEANING` = **해소(PC 화면) (2026-10-14 · `POC5-11` · 검증자 VERIFIED · 실제 응답 `market_context.asof` = KODEX200 유효 최신 10-14)** — OCI 근거 문장 · 후보 끝 날짜 라벨은 관찰로 남음(아래 절 · 후보 실제 기간의 PC 화면 · 복사문 표시는 `POC5-21` 에서 해소 2026-10-17 · `basis_*` 의미 · OCI 문장 · 후보와 KODEX200 산식 차이는 관찰 유지) — `market_context.asof` 이름(KODEX200 기준일 · 계약 ⑤)과 값(저장 가격 표 전체 최신일)이 다름 · 오늘 화면 이름은 `POC5-UI-03` 에서 '저장 가격 최신일'로 임시 정정.
+`DEF-MARKET-CONTEXT-ASOF-MEANING` = **해소(PC 화면) (2026-10-14 · `POC5-11` · 검증자 VERIFIED · 실제 응답 `market_context.asof` = KODEX200 유효 최신 10-14)** — OCI 근거 문장 · 후보 끝 날짜 라벨은 관찰로 남음(아래 절 · 후보 실제 기간의 PC 화면 · 복사문 표시는 `POC5-21` 에서 해소 2026-10-17 · `basis_*` 의미 · OCI 문장 · 후보와 KODEX200 산식 차이는 관찰 유지 · PC 화면 · 복사문 · AI 자료의 1 · 3개월 KODEX200 대비는 `POC5-22` 에서 동일 기간 값으로 교체 2026-10-18 · 기존 `excess_return` · 다른 호출 · OCI 는 관찰 유지) — `market_context.asof` 이름(KODEX200 기준일 · 계약 ⑤)과 값(저장 가격 표 전체 최신일)이 다름 · 오늘 화면 이름은 `POC5-UI-03` 에서 '저장 가격 최신일'로 임시 정정.
 `DEF-HOLDINGS-EVIDENCE-MULTIROW-VALUATION` = **해소 (2026-10-15 · `POC5-14` · 설계자 PLAN PASS · 검증자 r1 VERIFIED · 설계자 RESULT PASS · 커밋 `01e54a50` · A 위치 짝짓기 + C 요약 종목 합산 · 실제 PC 응답 정정 확인)** — 공유 보유 근거 builder 가 같은 종목 여러 줄에 마지막 줄 평가값을 복사하던 결함(아래 절).
 `DEF-ML-CHAIN` 은 **2026-08-25 해소**됐다.
 
@@ -159,9 +159,9 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 
 **실측 근거** — `app/market_topn_helpers.py:140 _compute_period()` 가 최신가를
 `history[-1]` 에서 가져오고, `app/market_topn.py:207` 이 `fetch_price_history(tk)` 를
-날짜 제한 없이 호출한다. `compute_topn(n=10, asof="2016-06-30")` 이 1개월 수익률
+날짜 제한 없이 호출한다(줄 번호는 2026-08-29 기준 · 2026-10-18 현재 `:142` · `:234` · 동작 같음). `compute_topn(n=10, asof="2016-06-30")` 이 1개월 수익률
 **1017.26%** 를 반환했고(해당 종목 실제 종가는 연속적), 절단 임시 DB 로 재현하면
-**5.38%** 다. 상세: `docs/ai_result/POC3/POC3-ML-02_..._RESULT.md` §10.
+**5.38%** 다. 상세: `docs/ai_result/POC3/POC3-ML-02_RELATIVE_UPSIDE_SCORE_VALIDITY_GATE_RESULT.md` §10.
 
 ### ~~DEF-PRICE-EQUITY-REFRESH — 보유 개별주의 일별 가격이 갱신되지 않음~~ → **오등재 · 철회 (2026-09-06)** → **재개 (2026-10-13 · PC 화면 영향)** → **해소 (2026-10-13 · `POC5-09` 화면 정정 + `POC5-10` 수집 원인)**
 
@@ -205,7 +205,7 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 > 로컬에서 보유 개별주를 포함해 분석하려면 `collect_approved_tickers()` 경로를
 > 쓰거나 해당 ticker 를 수동 적재해야 한다.
 
-### DEF-KOSPI-BENCHMARK-VALUE-ASOF-INTEGRITY — KOSPI 벤치마크 값·기준일 정합성
+### ~~DEF-KOSPI-BENCHMARK-VALUE-ASOF-INTEGRITY — KOSPI 벤치마크 값·기준일 정합성~~ → **해소 (`POC3-OPS-02B-1` `988b0494` 2026-09-10 · 상태 정정 2026-10-12 `POC5-UI-02`)**
 
 **등재**: 2026-09-07 · 설계자 확정 (POC3-OPS-01B-GATE 판정문). **발견 Step**: `POC3-OPS-01B-GATE`.
 
@@ -247,7 +247,7 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 ### DEF-FDR-TIMEOUT — FDR 호출 timeout 부재
 
 - **원장 출처**: 구 §3 `FDR 외부 의존 약관 / 안정성 / 단일 호출 timeout 부재` (B-014)
-- **현재 동작**: `app/market_data_fdr.py` 에 `timeout` **0건**. 호출자 3곳
+- **현재 동작 (2026-08 등재 당시 · 아래 정정 · 정리 참조)**: `app/market_data_fdr.py` 에 `timeout` **0건**. 호출자 3곳
   (`market_refresh_service.py:33` · `market_benchmark_store.py:189` ·
   `three_push_runtime/market_data_batch.py:147`) **어디에도 상위 timeout·budget 없음**.
 - **필수 운영 경로 여부**: **그렇다.** `market_refresh_log` 실측 — `FinanceDataReader/prices`
@@ -266,6 +266,7 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
   `market_benchmark_batch.py`) · `market_timeseries_naver_yahoo_adapter.py` · `kospi_history_closeout.py` ·
   `scripts/_market_refresh/vix_ingest.py` 다(OCI 보호는 앞의 배치 경유 호출에만 적용).
 - **정리 (2026-10-16 · `POC5-17` PC 수동 갱신의 멈춤 보호 · 구현 2026-10-16 · 검증자 r2 VERIFIED(2026-10-16) · 설계자 RESULT PASS · 종료 2026-10-16)**: PC 버튼 경로(`POST /market/refresh`)의 FDR 세 단계(ETF 목록 · ETF 가격 · 보유 개별주)에 기존 `fdr_request_timeout()`(요청 20초) · ETF 가격은 연속 5종목 시간 초과면 남은 종목 조회 중단 · 그 회차는 `failed`(바로 다시 실행 · 받은 자료 보존). **범위: 'PC 버튼 경로에 요청 timeout · 연속 timeout 중단 적용, DNS · 느린 연속 응답에 대한 전체 종료 보장 없음'**(판정 §3) — 이 결함의 모든 경로가 해소된 것이 아니다. PC 터미널 수동 스크립트(`refresh_market_timeseries.py`)는 그대로(판정 Q3). NAV(8초) · KOSPI(40초) · VIX(20초)는 원래 상한이 있었다.
+- **재확인 (2026-10-18)**: FDR 을 부르는 곳에 `app/holdings_equity_refresh.py`(`POC5-10` · 2026-10-13 · `market_data_fdr` 경유)가 더 있다 — PC 버튼 경로의 보유 개별주 단계라 `POC5-17` 요청 대기 20초 안(`app/market_refresh_service.py:360`). 일회성 진단 스크립트(`scripts/diagnose_nav_discount_source.py` · `scripts/ops02b1_gate/fetch_snapshot.py`)의 직접 호출은 운영 경로가 아니다. PC 터미널 수동 스크립트(`scripts/refresh_market_timeseries.py` · naver/yahoo 어댑터 경유)는 여전히 대기 상한 0. `scripts/run_oci_market_data_batch.py:238` · `:282` 는 현재도 같은 줄.
 
 ---
 
@@ -278,7 +279,7 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 - **현재 동작**: `app/market_refresh_service.py :: _execute_refresh_job` 이 사유 `refresh_unexpected: …` 를 남긴다.
   - 가격 시도 수를 받지 못해(0) 완료 판정 `universe_ok and (price_success > 0 or price_attempted == 0)` 이 참이 된다 → `completed`.
 - **영향**: 새 성공 시각이 기록되어 6시간 대기가 시작된다. 가격을 못 받았어도 그동안 다시 누를 수 없다('최근 시장 데이터가 이미 갱신되었습니다').
-- **근거**: `tests/test_pc_refresh_stall_protection.py :: test_function_restored_when_exception_leaves_the_block[price]` · `test_price_log_failure_without_stop_keeps_existing_judgement`(지금 동작을 그대로 확인하는 시험 · 정정 때 기대값을 바꾼다).
+- **근거**: `tests/test_pc_refresh_stall_protection.py :: test_function_restored_when_exception_leaves_the_block[price]` · `test_price_log_failure_without_stop_keeps_existing_judgement`(→ `POC5-18` `eea4ff4e` 에서 `tests/test_pc_refresh_unexpected_failure.py :: test_price_log_error_without_stop_is_failed_and_saved_prices_kept` 로 이름 · 기대값 변경 · 옛 이름의 시험은 없음)(지금 동작을 그대로 확인하는 시험 · 정정 때 기대값을 바꾼다).
 - **이번 범위**: `POC5-17` 은 연속 시간 초과 중단만 다뤘다(가격 기록 실패에도 중단은 failed). 이 현상은 정상 완료로 승인한 것이 아니다.
 - **정리 (2026-10-16 · `POC5-18` · 구현 2026-10-16 · 검증자 r1 VERIFIED(2026-10-16) · 설계자 RESULT PASS · 종료 2026-10-16)**: `_execute_refresh_job` 의 ETF 목록 · 가격 블록 예외 경계에서 실행별 표식 `stage_unexpected` 를 세운다. 최종 판정에 반영해 그 회차는 `failed` 다(성공 시각 · 6시간 대기 없음 · 이전 성공 기록 · 받은 가격 보존 · 바로 다시 실행). 위 근거 시험 두 건의 기대값을 정정했다(하나는 `tests/test_pc_refresh_unexpected_failure.py` 로 옮김). 결과서 `docs/ai_result/POC5/POC5-18_PC_MARKET_REFRESH_UNEXPECTED_FAILURE_STATUS_RESULT.md`.
 
@@ -286,7 +287,7 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 
 ### ~~DEF-PC-VIX-REFRESH-MISSING — PC 갱신에 VIX(시장 불안 지표) 단계가 없음~~ → **해소 (2026-10-14 · `POC5-11`)**
 
-**등재**: 2026-10-14 · **발견**: `POC5-UI-03` 전체 화면 목업 기록 응답(PLAN §5-1) · **대응**: `POC5-11` PC 시장 자료 갱신 연결 · 기준일 정정(설계자 확정 2026-10-14 · PLAN 제출 · 구현 미승인).
+**등재**: 2026-10-14 · **발견**: `POC5-UI-03` 전체 화면 목업 기록 응답(PLAN §5-1) · **대응**: `POC5-11` PC 시장 자료 갱신 연결 · 기준일 정정(설계자 확정 2026-10-14 · PLAN 제출 · 구현 미승인 — 등재 당시 기록 · 같은 날 구현 · 해소).
 
 - 상태: **해소(수집 연결)** — 2026-10-14 사용자 갱신 1회(`market_refresh_20261014_062637_d0fa54`). VIX 09-11 → 10-13(22행 · `FDR_VIX`) · 완료 사유 없음 · 새 기록 행 없음.
   - **남은 최신성 한계(별도 · 해소 아님)**: 갱신 뒤에도 정비 큐 '시장 불안 지표가 오래되었습니다 (기준일 2026-10-13)'가 남았다(VIX 10-13 < KODEX200 10-14 · 기존 판정 `vix < kodex` · 판정 Q4 '새 규칙 · 달력 없음'). 규칙 조정은 별도 판단 대상.
