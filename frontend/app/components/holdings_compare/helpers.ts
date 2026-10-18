@@ -3,11 +3,7 @@
 // HoldingsCompareView.tsx 의 책임 분리 (FIX r1 — B-3 파일 책임 과다 해소).
 // 신규 계산 / 신규 API 0건. 순수 변환 + 사용자 친화 상태 문구 상수.
 
-import type {
-  EnrichedHolding,
-  HoldingsMarketEvidenceItem,
-  MarketCandidate,
-} from "@/lib/api";
+import type { EnrichedHolding, MarketCandidate } from "@/lib/api";
 
 // ─── 사용자 친화 상태 문구 (지시문 §6 — raw 상태값 미노출) ──────────
 
@@ -82,208 +78,76 @@ export function aggregateHoldingsByTicker(
   return result;
 }
 
-// ─── 보유 노출 1 칸 표현 (AC-4) ─────────────────────────────────────
+// ─── 보유 노출 1 칸 표현 (AC-4 · POC5-23 정정) ──────────────────────────
+//
+// POC5-23 판정 §3 — 이전 판정은 후보 **ETF 티커**를 보유 ETF 겹침 항목(시장 반복 핵심 **주식 종목** 티커)과
+// 비교해 구조상 거의 늘 '보유 ETF 0개' · '중복 없음'이 됐다. 그 비교는 쓰지 않는다. 이 칸은 직접 보유 여부만
+// 확정해 보이고, 후보 ↔ 보유 ETF 구성종목 중복은 [판단 근거 미리보기]가 저장 구성종목으로 비교한다(자동 조회 없음).
+
+export const STATE_OVERLAP_UNCHECKED = "구성종목 중복 미확인";
 
 export type ExposureKind =
-  | "direct_only"
-  | "direct_and_overlap"
-  | "overlap_only"
-  | "no_overlap"
-  | "unchecked"
-  | "unavailable";
+  | "direct"
+  | "overlap_unchecked"
+  | "holdings_loading"
+  | "holdings_unavailable";
 
 export interface ExposureSummary {
   kind: ExposureKind;
   directHoldingTicker: string | null;
   directHoldingName: string | null;
-  overlapHoldingCount: number;
-  topOverlapHoldingName: string | null;
-  topOverlapWeightPct: number | null;
 }
 
 export function computeExposure(
   candidateTicker: string | null | undefined,
   aggregated: AggregatedHolding[],
-  evidenceByTicker: Record<string, HoldingsMarketEvidenceItem>,
-  evidenceLoaded: boolean,
-  evidenceError: boolean,
+  holdingsLoaded: boolean,
+  holdingsError: boolean,
 ): ExposureSummary {
+  if (holdingsError) {
+    return { kind: "holdings_unavailable", directHoldingTicker: null, directHoldingName: null };
+  }
+  if (!holdingsLoaded) {
+    return { kind: "holdings_loading", directHoldingTicker: null, directHoldingName: null };
+  }
   const direct = candidateTicker
     ? aggregated.find((h) => h.ticker === candidateTicker)
     : undefined;
-  const directHoldingTicker = direct?.ticker ?? null;
-  const directHoldingName = direct?.name ?? null;
-
-  let overlapHoldingCount = 0;
-  let topOverlapHoldingName: string | null = null;
-  let topOverlapWeightPct: number | null = null;
-  let constituentsAnyUnavail = false;
-
-  if (evidenceLoaded && candidateTicker) {
-    for (const h of aggregated) {
-      const ev = evidenceByTicker[h.ticker];
-      // FIX r1-1 — evidence 미매칭 / co 부재 / status unavail 모두 정상 조회
-      // 미완료로 카운트. 지시문 — "중복 없음" 은 모든 보유 ETF 정상 조회 +
-      // 일치 0건일 때만.
-      if (!ev) {
-        constituentsAnyUnavail = true;
-        continue;
-      }
-      const co = ev.constituents_overlap;
-      if (!co) {
-        constituentsAnyUnavail = true;
-        continue;
-      }
-      if (
-        co.status === "constituents_unavailable" ||
-        co.status === "market_core_unavailable" ||
-        co.status === "unavailable"
-      ) {
-        constituentsAnyUnavail = true;
-        continue;
-      }
-      const found = (co.overlap_with_market_core ?? []).find(
-        (it) => it.ticker === candidateTicker,
-      );
-      if (found) {
-        overlapHoldingCount += 1;
-        const w = found.weight_pct ?? 0;
-        if (topOverlapWeightPct === null || w > topOverlapWeightPct) {
-          topOverlapWeightPct = found.weight_pct ?? null;
-          topOverlapHoldingName = h.name;
-        }
-      }
-    }
-  }
-
-  if (!evidenceLoaded) {
-    if (evidenceError) {
-      return {
-        kind: "unavailable",
-        directHoldingTicker,
-        directHoldingName,
-        overlapHoldingCount: 0,
-        topOverlapHoldingName: null,
-        topOverlapWeightPct: null,
-      };
-    }
-    if (direct) {
-      return {
-        kind: "direct_only",
-        directHoldingTicker,
-        directHoldingName,
-        overlapHoldingCount: 0,
-        topOverlapHoldingName: null,
-        topOverlapWeightPct: null,
-      };
-    }
-    return {
-      kind: "unchecked",
-      directHoldingTicker: null,
-      directHoldingName: null,
-      overlapHoldingCount: 0,
-      topOverlapHoldingName: null,
-      topOverlapWeightPct: null,
-    };
-  }
-
-  if (direct && overlapHoldingCount > 0) {
-    return {
-      kind: "direct_and_overlap",
-      directHoldingTicker,
-      directHoldingName,
-      overlapHoldingCount,
-      topOverlapHoldingName,
-      topOverlapWeightPct,
-    };
-  }
   if (direct) {
     return {
-      kind: "direct_only",
-      directHoldingTicker,
-      directHoldingName,
-      overlapHoldingCount: 0,
-      topOverlapHoldingName: null,
-      topOverlapWeightPct: null,
+      kind: "direct",
+      directHoldingTicker: direct.ticker,
+      directHoldingName: direct.name ?? null,
     };
   }
-  if (overlapHoldingCount > 0) {
-    return {
-      kind: "overlap_only",
-      directHoldingTicker: null,
-      directHoldingName: null,
-      overlapHoldingCount,
-      topOverlapHoldingName,
-      topOverlapWeightPct,
-    };
-  }
-  if (constituentsAnyUnavail) {
-    return {
-      kind: "unavailable",
-      directHoldingTicker: null,
-      directHoldingName: null,
-      overlapHoldingCount: 0,
-      topOverlapHoldingName: null,
-      topOverlapWeightPct: null,
-    };
-  }
-  // 모든 보유 ETF overlap 정상 조회 + 일치 0건일 때만 진짜 "중복 없음".
-  return {
-    kind: "no_overlap",
-    directHoldingTicker: null,
-    directHoldingName: null,
-    overlapHoldingCount: 0,
-    topOverlapHoldingName: null,
-    topOverlapWeightPct: null,
-  };
+  return { kind: "overlap_unchecked", directHoldingTicker: null, directHoldingName: null };
 }
 
 export function exposureLabel(ex: ExposureSummary): string {
   switch (ex.kind) {
-    case "direct_only":
+    case "direct":
       return "직접 보유";
-    case "direct_and_overlap":
-      return "직접 보유 · 구성종목도 겹침";
-    case "overlap_only":
-      return `구성종목 겹침 · 보유 ETF ${ex.overlapHoldingCount}개`;
-    case "no_overlap":
-      return "중복 없음";
-    case "unchecked":
-      return STATE_UNCHECKED;
-    case "unavailable":
-      return STATE_UNAVAIL;
+    case "overlap_unchecked":
+      return STATE_OVERLAP_UNCHECKED;
+    case "holdings_loading":
+      return "보유 확인 전";
+    case "holdings_unavailable":
+      return "보유 확인 불가";
   }
 }
 
 export function exposureColor(ex: ExposureSummary): string {
-  switch (ex.kind) {
-    case "direct_only":
-    case "direct_and_overlap":
-      return "var(--warn)";
-    case "overlap_only":
-      return "var(--warn)";
-    case "no_overlap":
-      return "var(--ok)";
-    case "unchecked":
-    case "unavailable":
-    default:
-      return "var(--muted)";
-  }
+  return ex.kind === "direct" ? "var(--warn)" : "var(--muted)";
 }
 
 export function exposureSortRank(kind: ExposureKind): number {
   switch (kind) {
-    case "direct_and_overlap":
-      return 5;
-    case "direct_only":
-      return 4;
-    case "overlap_only":
-      return 3;
-    case "no_overlap":
+    case "direct":
       return 2;
-    case "unchecked":
+    case "overlap_unchecked":
       return 1;
-    case "unavailable":
+    case "holdings_loading":
+    case "holdings_unavailable":
     default:
       return 0;
   }
@@ -317,6 +181,13 @@ export function exposureColorByState(state: string): string {
 // ─── 포맷팅 helper ──────────────────────────────────────────────────
 
 export const DASH = "-";
+
+// POC5-23 — KODEX200 대비 같은 차이 값은 %p(미리보기 · 카드와 같은 단위 · 설계 §6-1).
+export function fmtPctp(value: number | null | undefined): string {
+  if (value === null || value === undefined) return DASH;
+  const sign = value >= 0 ? "+" : "";
+  return `${sign}${value.toFixed(2)}%p`;
+}
 
 export function fmtPct(value: number | null | undefined): string {
   if (value === null || value === undefined) return DASH;

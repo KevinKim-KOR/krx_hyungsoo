@@ -1,34 +1,51 @@
-"""Decision Draft Preview v1 — 선택 ETF 임시 판단 근거 미리보기 서비스.
+"""Decision Draft Preview — 선택 종목 하나의 판단 근거 미리보기 글(저장 없음).
 
-지시문 §3 / §4 원칙:
-- 저장 없는 preview 전용 — 기존 PENDING draft 경로 (generate_draft, store.save_run)
-  와 완전 분리.
+2026-07-03 v1 · POC5-23(2026-10-18) 묶음 개편 — 설계
+`docs/ai_design/POC5/POC5-23_SELECTED_ETF_DECISION_EVIDENCE_PREVIEW_DESIGN_V1.md` §3 · 판정
+`..._PLAN_DECISION_2026-10-18.md`.
+
+- 저장 없는 preview 전용 — PENDING draft 경로(generate_draft, store.save_run)와 분리.
 - LLM / 외부 시세 호출 / 자동 재시도 / 승인·OCI·Telegram 연결 0건.
-- 서버가 결정적으로 조립한 텍스트 (사용자가 복사해 외부 AI 웹에 입력하는 용도).
+- 자료는 호출자가 화면 API 응답에서 꺼내 넘긴다(`app/decision_preview_sources.py`). 이 모듈은 그 값을
+  묶음별 글로만 옮긴다 — 새 산식 · 점수 · 등급 · 결론 없음. 값이 없으면 줄을 빼거나 0 · 다른 값으로
+  채우지 않고 그 묶음 안에 사유를 남긴다.
 
-구성 (지시문 §7 / 설계자 Q3 확정):
-1. 대상과 검토 맥락
-2. 확인된 근거
-3. 시장 참고
-4. 주의·미확인 사항
-5. AI에게 추가로 물어볼 질문 (사용자가 별도 AI 웹사이트에 붙여넣어 추가
-   해석을 요청할 수 있는 형태)
-
-부작용 없음. DB write / 파일 write / 외부 호출 0건.
+묶음 순서: [대상] [시장] [가격 흐름 · PC 저장 종가] [KODEX200 동일 기간 비교] [거래량] [가격 흔들림]
+[중복 · 자료 상태] [AI에게 요청]. 숫자 표시 정밀도는 화면 규칙과 같다(%·%p 소수 둘째 · 거래량 저장값 그대로 ·
+평균 · 배수 소수 둘째 · 하락 구간 판정값 소수 첫째).
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Optional
 
+from app.decision_preview_lines import (
+    AI_REQUEST,
+    BASIS_LABEL,
+    candidate_flow_lines,
+    candidate_overlap_lines,
+    daily_check_line,
+    fmt_pct,
+    holding_flow_lines,
+    holding_overlap_lines,
+    one_line,
+    market_lines,
+    nav_line,
+    same_period_lines,
+    volatility_lines,
+    volume_lines,
+)
 from app.market_data_store import DEFAULT_DB_PATH
-from app.market_risk_reference_service import build_market_risk_reference
 
 TARGET_KIND_HOLDING = "holding"
 TARGET_KIND_CANDIDATE = "candidate"
 ALLOWED_TARGET_KINDS = (TARGET_KIND_HOLDING, TARGET_KIND_CANDIDATE)
+
+_FAILURE = "판단 근거 미리보기를 생성하지 못했습니다. 다시 시도하세요."
+_KST = timezone(timedelta(hours=9))
 
 
 @dataclass
@@ -45,38 +62,11 @@ class PreviewResult:
     ticker: Optional[str] = None
     preview_text: Optional[str] = None
     evidence_as_of: Optional[EvidenceAsOfPayload] = None
+    generated_at: Optional[str] = None
     message: Optional[str] = None
 
 
-def _fmt_pct(value: Optional[float]) -> str:
-    if value is None:
-        return "미확인"
-    sign = "+" if value > 0 else ""
-    return f"{sign}{value:.2f}%"
-
-
-def _fmt_num(value: Optional[float], digits: int = 2) -> str:
-    if value is None:
-        return "미확인"
-    return f"{value:,.{digits}f}"
-
-
-def _find_holding(
-    holdings: list[dict[str, Any]], ticker: str
-) -> Optional[dict[str, Any]]:
-    for h in holdings:
-        if str(h.get("ticker") or "") == ticker:
-            return h
-    return None
-
-
-def _find_candidate(
-    candidates: list[dict[str, Any]], ticker: str
-) -> Optional[dict[str, Any]]:
-    for c in candidates:
-        if str(c.get("ticker") or "") == ticker:
-            return c
-    return None
+# ─── 조립 ──────────────────────────────────────────────────────────────
 
 
 def _section(title: str, lines: list[str]) -> str:
@@ -84,144 +74,107 @@ def _section(title: str, lines: list[str]) -> str:
     return f"[{title}]\n{body}"
 
 
-def _build_holding_evidence_lines(
-    holding: dict[str, Any],
-) -> tuple[list[str], list[str], Optional[str]]:
-    """(확인된 근거, 주의·미확인, target_as_of_date) 조립.
-
-    holding 은 api_decision_draft_preview 가 만든 한 종목 dict 다 — 평가 비중 · 손익은 정상 보유 평가의
-    종목 합산(`_aggregate_enriched_by_ticker`), 단기 흐름은 build_holdings_market_evidence 응답 항목에서 온다.
-    """
-    confirmed: list[str] = []
-    warnings: list[str] = []
-    target_asof: Optional[str] = None
-
-    name = holding.get("name") or holding.get("ticker") or "보유 ETF"
-    confirmed.append(f"대상: {name} ({holding.get('ticker') or '미확인'}) — 보유 ETF")
-    # FIX r5 (설계자 Q4 확정): 값 없을 시 라인 삭제 금지, "미확인" 표기.
-    weight = holding.get("market_weight_pct")
-    pnl = holding.get("pnl_rate_pct")
-    confirmed.append(f"평가비중: {_fmt_pct(weight)}")
-    confirmed.append(f"손익률: {_fmt_pct(pnl)}")
-
-    stm = holding.get("short_term_momentum") or {}
-    ex_20 = stm.get("excess_vs_kodex200_20d_pctp")
-    # 값 유무 무관 항상 한 줄 — 값 있으면 수치, 없으면 "미확인".
-    confirmed.append(f"KODEX200 대비 20거래일 초과: {_fmt_pct(ex_20)}")
-    stm_end = stm.get("end_date")
-    if stm_end:
-        target_asof = stm_end
-
-    dq = holding.get("data_quality") or {}
-    dq_status = dq.get("status")
-    if dq_status == "warning":
-        warnings.append("보유 ETF 데이터 품질 경고 — 확인 필요.")
-    elif dq_status == "unavailable" or dq_status is None:
-        warnings.append("보유 ETF 데이터 품질은 확인되지 않았습니다.")
-
-    overlap = holding.get("overlap") or {}
-    overlap_status = overlap.get("status")
-    if overlap_status == "not_loaded" or overlap_status is None:
-        warnings.append("직접 보유·구성종목 중복은 아직 확인되지 않았습니다.")
-    elif overlap_status == "unavailable":
-        warnings.append("구성종목 중복 확인이 불가능했습니다.")
-    return confirmed, warnings, target_asof
-
-
-def _build_candidate_evidence_lines(
-    candidate: dict[str, Any],
-) -> tuple[list[str], list[str], Optional[str]]:
-    confirmed: list[str] = []
-    warnings: list[str] = []
-    target_asof: Optional[str] = None
-
-    name = candidate.get("name") or candidate.get("ticker") or "후보 ETF"
-    confirmed.append(f"대상: {name} ({candidate.get('ticker') or '미확인'}) — 후보 ETF")
-    score = candidate.get("relative_upside_score")
-    if score is not None:
-        confirmed.append(f"상대상승 참고점수: {score:.1f}")
-    else:
-        warnings.append("상대상승 참고점수는 확인되지 않았습니다.")
-
-    stm = candidate.get("short_term_momentum") or {}
-    ex_20 = stm.get("excess_vs_kodex200_20d_pctp")
-    if ex_20 is not None:
-        confirmed.append(f"KODEX200 대비 20거래일 초과: {_fmt_pct(ex_20)}")
-    else:
-        warnings.append("KODEX200 대비 20거래일 초과 수치는 확인되지 않았습니다.")
-    stm_end = stm.get("end_date")
-    if stm_end:
-        target_asof = stm_end
-
-    dd = candidate.get("drawdown_20d")
-    if dd is not None:
-        confirmed.append(f"20거래일 고점 대비: {_fmt_pct(dd * 100)}")
-    else:
-        warnings.append("20거래일 고점 대비 수치는 확인되지 않았습니다.")
-
-    dq = candidate.get("data_quality") or {}
-    dq_status = dq.get("status")
-    if dq_status == "warning":
-        warnings.append("후보 ETF 데이터 품질 경고 — 확인 필요.")
-    elif dq_status == "unavailable" or dq_status is None:
-        warnings.append("후보 ETF 데이터 품질은 확인되지 않았습니다.")
-    return confirmed, warnings, target_asof
-
-
-def _build_market_reference_lines(
-    db_path: Path,
-) -> tuple[list[str], list[str], Optional[str], Optional[str]]:
-    """(시장 참고 lines, 주의사항 lines, kodex_asof, vix_asof)."""
-    evidence = build_market_risk_reference(db_path=db_path)
-    lines: list[str] = []
-    warnings: list[str] = []
-
-    if evidence.kodex200.availability == "available":
-        lines.append(
-            f"KODEX200 기준일: {evidence.kodex200.as_of_date or '미확인'} — "
-            f"전일 대비: {_fmt_pct(evidence.kodex200.change_1d_pct)}"
-        )
-    else:
-        lines.append("KODEX200: 미확인")
-        warnings.append("KODEX200 evidence 가 아직 확인되지 않았습니다.")
-
-    if evidence.vix.availability == "available":
-        lines.append(
-            f"VIX 기준일: {evidence.vix.as_of_date or '미확인'} — "
-            f"전일 대비: {_fmt_pct(evidence.vix.change_1d_pct)} / "
-            f"5거래일 변화: {_fmt_pct(evidence.vix.change_5d_pct)}"
-        )
-    else:
-        lines.append("VIX: 미확인")
-        warnings.append("VIX evidence 가 아직 확인되지 않았습니다.")
-
-    k_asof = evidence.kodex200.as_of_date
-    v_asof = evidence.vix.as_of_date
-    if k_asof and v_asof and k_asof != v_asof:
-        lines.append(
-            "국내·미국 시장의 마지막 확인 거래일은 다를 수 있습니다. "
-            "각 시장의 실제 기준일을 표시합니다."
-        )
-
-    return lines, warnings, k_asof, v_asof
-
-
-def _build_ai_followup_questions(target_kind: str) -> list[str]:
-    """지시문 Q3 확정 — 사용자가 AI 웹사이트에 그대로 붙여넣을 수 있는 형태.
-
-    자동 매수·매도·유지 지시 / 시장 예측 / 위험 등급 요청 문구는 만들지 않는다.
-    """
-    if target_kind == TARGET_KIND_HOLDING:
-        return [
-            "위 evidence 만 놓고 볼 때, 이 보유 ETF 의 현재 상황을 어떻게 요약할 수 있을까요?",
-            "확인되지 않은 항목 (구성종목 중복 등) 이 판단에 얼마나 중요한 변수라고 보시나요?",
-            "국내·미국 시장 기준일 차이가 이 evidence 해석에 어떤 영향을 줄 수 있나요?",
-        ]
-    return [
-        "위 evidence 만 놓고 볼 때, 이 후보 ETF 의 현재 상황을 어떻게 요약할 수 있을까요?",
-        "보유 ETF 와의 중복 상태가 확인되지 않은 점이 이 evidence 해석에 어떤 영향을 줄 수 있나요?",
-        "고점 대비 / KODEX200 대비 수치를 함께 놓고 볼 때, 이 evidence 는 어떤 관점을 시사하나요?",
+def _holding_sections(
+    ev: dict[str, Any], db_path: Path
+) -> tuple[list[str], dict[str, Optional[str]]]:
+    bundle = ev.get("bundle") or None
+    item = (bundle or {}).get("item") or {}
+    ref = (bundle or {}).get("reference_date")
+    is_etf = (bundle or {}).get("is_etf")
+    kind = "" if bundle is None else ("(ETF)" if is_etf else "(개별 종목)")
+    target_asof = (item.get("price_dates") or {}).get("end_date")
+    mp = (bundle or {}).get("market_position") or {}
+    regime = (
+        {
+            "label": mp.get("regime_label"),
+            "streak_days": mp.get("regime_streak_days"),
+            "at_least": mp.get("regime_streak_at_least"),
+            # 보유 근거 API 의 판정 날짜(`market_asof`)는 저장 가격 표 전체 최신일일 수 있다
+            # (DEF-MARKET-CONTEXT-ASOF-MEANING · PC 시장 화면만 KODEX200 끝으로 정정됨). 국면은
+            # KODEX200 이력으로 정하므로 같은 응답의 PC 비교 기준일(KODEX200 최신 저장일)을 적는다.
+            "asof": ref,
+        }
+        if mp.get("available")
+        else None
+    )
+    market, k_asof, v_asof = market_lines(regime, db_path)
+    target = [
+        f"{one_line(ev.get('name') or ev.get('ticker'))} ({ev.get('ticker')}) · 보유 종목{kind}",
+        f"평가비중 {fmt_pct(ev.get('market_weight_pct'), plus_zero=True)} · "
+        f"손익률 {fmt_pct(ev.get('pnl_rate_pct'), plus_zero=True)}",
     ]
+    if bundle is None:
+        no = ["값 없음 — 보유 근거 응답에 이 종목이 없습니다."]
+        return (
+            [target, market, no, no, no, no, no],
+            {"target": None, "kodex200": k_asof, "vix": v_asof},
+        )
+    status_lines = (
+        [
+            *holding_overlap_lines(item, bundle.get("constituents_asof")),
+            nav_line(item.get("nav_discount")),
+        ]
+        if is_etf
+        else ["구성종목 겹침 · NAV 괴리율: 대상 아님(개별 종목)"]
+    )
+    return (
+        [
+            target,
+            market,
+            holding_flow_lines(item, ref),
+            same_period_lines(item.get("same_period_kodex200"), True),
+            volume_lines(item.get("stored_volume"), ref),
+            volatility_lines(item.get("price_volatility"), ref),
+            status_lines,
+        ],
+        {"target": target_asof, "kodex200": k_asof, "vix": v_asof},
+    )
+
+
+def _candidate_sections(
+    ev: dict[str, Any], db_path: Path
+) -> tuple[list[str], dict[str, Optional[str]]]:
+    cand = ev.get("candidate") or {}
+    ref = ev.get("reference_date")
+    mc = ev.get("market_context") or {}
+    rs = mc.get("regime_streak") or {}
+    regime = (
+        {
+            "label": mc.get("regime_label"),  # PC 시장 응답 = KODEX200 끝 날짜(POC5-11)
+            "streak_days": rs.get("streak_days"),
+            "at_least": rs.get("at_least"),
+            "asof": mc.get("asof"),
+        }
+        if mc.get("regime_code") not in (None, "unavailable")
+        else None
+    )
+    market, k_asof, v_asof = market_lines(regime, db_path)
+    stm = cand.get("short_term_momentum") or {}
+    target_asof = stm.get("end_date") or ev.get("end_date")
+    basis = BASIS_LABEL.get(ev.get("basis") or "", ev.get("basis") or "")
+    rank = cand.get("rank")
+    # 낮은 순(asc = 하위 N) 목록이면 순위가 '잘 오른 순'으로 읽히지 않게 적는다.
+    order = " · 낮은 순" if ev.get("order") == "asc" else ""
+    target = [
+        f"{one_line(cand.get('name') or cand.get('ticker'))} ({cand.get('ticker')}) · 후보 ETF"
+        + (f" · 현재 목록 {rank}위({basis} 기준{order})" if rank is not None else "")
+    ]
+    dq = cand.get("data_quality") or {}
+    status_lines = candidate_overlap_lines(ev.get("direct_holding"), ev.get("overlap"))
+    status_lines.append(nav_line(dq.get("nav_discount")))
+    status_lines.append(daily_check_line(dq.get("daily_return_check")))
+    return (
+        [
+            target,
+            market,
+            candidate_flow_lines(cand),
+            same_period_lines(cand.get("same_period_kodex200"), False),
+            volume_lines(ev.get("stored_volume"), ref),
+            volatility_lines(ev.get("price_volatility"), ref),
+            status_lines,
+        ],
+        {"target": target_asof, "kodex200": k_asof, "vix": v_asof},
+    )
 
 
 def build_preview_text(
@@ -230,67 +183,45 @@ def build_preview_text(
     ticker: str,
     target_evidence: dict[str, Any],
     db_path: Path = DEFAULT_DB_PATH,
+    generated_at: Optional[datetime] = None,
 ) -> PreviewResult:
-    """선택 ETF 하나에 대한 preview_text 를 결정적으로 조립.
+    """선택 종목 하나의 preview_text 를 결정적으로 조립(부작용 없음).
 
-    target_evidence 는 호출자가 미리 구성한 dict (보유 또는 후보 evidence 한 건).
-    본 함수는 부작용 없이 텍스트만 생성.
+    target_evidence: 보유 = {ticker, name, market_weight_pct, pnl_rate_pct, bundle} ·
+    후보 = `load_candidate_bundle` 결과(`app/decision_preview_sources.py`).
     """
-    if target_kind not in ALLOWED_TARGET_KINDS:
-        return PreviewResult(
-            status="error",
-            message="판단 근거 미리보기를 생성하지 못했습니다. 다시 시도하세요.",
-        )
-    if not ticker:
-        return PreviewResult(
-            status="error",
-            message="판단 근거 미리보기를 생성하지 못했습니다. 다시 시도하세요.",
-        )
+    if target_kind not in ALLOWED_TARGET_KINDS or not ticker:
+        return PreviewResult(status="error", message=_FAILURE)
 
+    gen = (generated_at or datetime.now(_KST)).astimezone(_KST)
     if target_kind == TARGET_KIND_HOLDING:
-        confirmed_lines, warning_lines, target_asof = _build_holding_evidence_lines(
-            target_evidence
-        )
-        context_line = "보유 ETF 하나에 대해 유지·조정 판단 근거를 정리합니다."
+        bodies, asof = _holding_sections(target_evidence, db_path)
     else:
-        confirmed_lines, warning_lines, target_asof = _build_candidate_evidence_lines(
-            target_evidence
-        )
-        context_line = "후보 ETF 하나에 대해 매수 검토 근거를 정리합니다."
-
-    market_lines, market_warnings, k_asof, v_asof = _build_market_reference_lines(
-        db_path=db_path
-    )
-    warning_lines.extend(market_warnings)
-    questions = _build_ai_followup_questions(target_kind)
-
-    sections = [
-        _section(
-            "1. 대상과 검토 맥락",
-            [
-                context_line,
-                (
-                    f"선택 ETF 기준일: {target_asof or '미확인'} / "
-                    f"KODEX200 기준일: {k_asof or '미확인'} / "
-                    f"VIX 기준일: {v_asof or '미확인'}"
-                ),
-            ],
-        ),
-        _section("2. 확인된 근거", confirmed_lines),
-        _section("3. 시장 참고", market_lines),
-        _section("4. 주의·미확인 사항", warning_lines),
-        _section("5. AI에게 추가로 물어볼 질문", questions),
+        bodies, asof = _candidate_sections(target_evidence, db_path)
+    bodies[0] = bodies[0] + [
+        f"생성 {gen.strftime('%Y-%m-%d %H:%M')} · 가격 기준일 {asof['target'] or '확인 불가'}"
+        "(이 종목 마지막 저장 종가) · 생성 시각에 다시 계산한 값이라 화면 목록과 날짜가 다를 수 있습니다."
     ]
-    preview_text = "\n\n".join(sections)
-
+    titles = [
+        "대상",
+        "시장",
+        "가격 흐름 · PC 저장 종가",
+        "KODEX200 동일 기간 비교",
+        "거래량",
+        "가격 흔들림",
+        "중복 · 자료 상태",
+    ]
+    sections = [_section(t, b) for t, b in zip(titles, bodies)]
+    sections.append(_section("AI에게 요청", AI_REQUEST))
     return PreviewResult(
         status="ok",
         target_kind=target_kind,
         ticker=ticker,
-        preview_text=preview_text,
+        preview_text="\n\n".join(sections),
         evidence_as_of=EvidenceAsOfPayload(
-            target_as_of_date=target_asof,
-            kodex200_as_of_date=k_asof,
-            vix_as_of_date=v_asof,
+            target_as_of_date=asof["target"],
+            kodex200_as_of_date=asof["kodex200"],
+            vix_as_of_date=asof["vix"],
         ),
+        generated_at=gen.isoformat(timespec="seconds"),
     )

@@ -2,20 +2,23 @@
 
 지시문 §5 원칙:
 - 저장 없는 preview 전용 endpoint (기존 PENDING draft 경로와 완전 분리).
-- 요청은 target_kind + ticker 만. raw evidence / 초안 ID / LLM 문장 / 승인 상태
-  를 클라이언트가 전달하지 않는다.
+- 요청은 target_kind + ticker (+ POC5-23 후보만 화면 목록 조건 선택 필드). raw evidence / 초안 ID /
+  LLM 문장 / 승인 상태를 클라이언트가 전달하지 않는다.
 - 서버는 SQLite / 기존 비교·시장 참고 서비스에서 evidence 를 read → 결정적으로
   텍스트 조립 → 응답 반환.
 - 어떤 DB 상태도 생성·수정·삭제하지 않는다.
 - 외부 시세 호출·자동 조회·ML 실행 0건.
 - 응답에 PENDING ID / 승인 상태 / 원본 예외 / 소스명 / 프롬프트 노출 X.
+
+POC5-23(2026-10-18) — 자료는 화면이 쓰는 두 PC API 응답에서 꺼낸다(`app/decision_preview_sources.py`).
+후보 요청은 화면 목록 조건을 선택 필드로 받는다(판정 Q1 (a) · 없으면 기존 기본 조건).
 """
 
 from __future__ import annotations
 
 from typing import Any, Optional
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from app.decision_draft_preview_service import (
@@ -24,16 +27,34 @@ from app.decision_draft_preview_service import (
     TARGET_KIND_HOLDING,
     build_preview_text,
 )
+from app.decision_preview_sources import (
+    CandidateListQuery,
+    CandidateListUnavailable,
+    load_candidate_bundle,
+    load_holding_bundle,
+)
 from app.market_data_store import DEFAULT_DB_PATH
 
 router = APIRouter()
 
 _FAILURE_MESSAGE = "판단 근거 미리보기를 생성하지 못했습니다. 다시 시도하세요."
+# POC5-23 §4 — 현재 조건으로 다시 계산한 목록에 그 종목이 없을 때(다른 조건 값으로 채우지 않음).
+_NOT_IN_LIST_MESSAGE = (
+    "현재 목록 조건에서 이 후보를 찾지 못했습니다. 목록을 다시 불러온 뒤 시도하세요."
+)
 
 
 class PreviewRequest(BaseModel):
     target_kind: str  # holding / candidate
     ticker: str
+    # POC5-23 판정 Q1 (a) — 후보만 · 화면 목록 조건(없으면 기존 기본 조건).
+    n: Optional[int] = None
+    basis: Optional[str] = None
+    order: Optional[str] = None
+    exclude_inverse: Optional[bool] = None
+    exclude_leveraged: Optional[bool] = None
+    exclude_synthetic: Optional[bool] = None
+    exclude_futures: Optional[bool] = None
 
 
 class PreviewEvidenceAsOf(BaseModel):
@@ -48,24 +69,20 @@ class PreviewResponse(BaseModel):
     ticker: Optional[str] = None
     preview_text: Optional[str] = None
     evidence_as_of: Optional[PreviewEvidenceAsOf] = None
+    # POC5-23 — 생성 시각(KST · 선택 필드).
+    generated_at: Optional[str] = None
     message: Optional[str] = None
 
 
 def _load_holdings_evidence(ticker: str) -> Optional[dict[str, Any]]:
-    """canonical 보유 evidence 조립 — 화면과 동일 원천·동일 계산 (FIX r5).
+    """보유 종목 하나 — 평가 비중 · 손익(기존 종목 합산 정책) + 화면 근거 묶음(POC5-23).
 
-    화면 (HoldingsCompareView) 이 사용하는 두 데이터 원천을 그대로 결합한다:
-      - GET /holdings/enriched  → enrich_holdings 로 market_weight_pct /
-        pnl_rate_pct 계산 (market_cache.get_all() quotes 기준)
-      - GET /holdings/market-evidence/latest → build_holdings_market_evidence
-        로 short_term_momentum / data_quality / overlap 계산 (동일 quotes 사용)
+    - 평가 비중 · 손익률: 화면과 같은 `enrich_holdings` + `_aggregate_enriched_by_ticker`(FIX r5 · r7).
+    - 근거: 「보유와 비교」 · 「확인 근거」가 쓰는 `get_holdings_market_evidence_latest()` 응답의 그 종목
+      (`load_holding_bundle` · PC 기준일 정정 사본 · 같은 계산).
 
-    화면과 preview 가 서로 다른 계산 경로를 쓰지 않도록 두 결과를 **동일 시점·
-    동일 quotes** 로 조립한 뒤 ticker 별 dict 반환.
-
-    FIX r3 예외 정책 그대로:
-    - 데이터 오류 (파일 부재 / JSON 파싱 / holdings 검증 / SQLite) 만 catch.
-    - 프로그래머 오류 (ImportError / AttributeError / TypeError) 는 propagate.
+    FIX r3 예외 정책 그대로 — 데이터 오류(파일 부재 / JSON 파싱 / holdings 검증 / SQLite · 보유 근거
+    API 의 손상 응답)만 catch. 프로그래머 오류는 propagate.
     """
     import json
     import logging
@@ -75,8 +92,6 @@ def _load_holdings_evidence(ticker: str) -> Optional[dict[str, Any]]:
     from app import market_cache
     from app.holdings import HoldingsValidationError, load as load_holdings
     from app.holdings_enrich import enrich_holdings
-    from app.holdings_market_evidence import build_holdings_market_evidence
-    from app.market_topn import compute_topn
 
     logger = logging.getLogger(__name__)
     try:
@@ -87,17 +102,13 @@ def _load_holdings_evidence(ticker: str) -> Optional[dict[str, Any]]:
             h.ticker: all_quotes[h.ticker] for h in holdings if h.ticker in all_quotes
         }
         enriched = enrich_holdings(holdings, relevant_quotes)
-        topn_payload = compute_topn()
-        evidence_payload = build_holdings_market_evidence(
-            holdings=holdings,
-            topn_payload=topn_payload,
-            market_quotes=relevant_quotes,
-        )
+        bundle = load_holding_bundle(ticker, db_path=DEFAULT_DB_PATH)
     except (
         FileNotFoundError,
         json.JSONDecodeError,
         HoldingsValidationError,
         sqlite3.Error,
+        HTTPException,
     ) as exc:
         logger.warning(
             "decision-draft/preview: holdings evidence load data error "
@@ -109,32 +120,20 @@ def _load_holdings_evidence(ticker: str) -> Optional[dict[str, Any]]:
         return None
 
     # FIX r7 — 화면의 aggregateHoldingsByTicker 와 동일한 ticker 단위 집계.
-    # 중복 ticker 보유 케이스에서 raw row 를 그대로 선택하면 화면 집계와 값이
-    # 갈라진다. 화면 helpers.ts::aggregateHoldingsByTicker 로직을 그대로 이식.
-    aggregated = _aggregate_enriched_by_ticker(enriched)
-    aggregated_by_ticker = {a["ticker"]: a for a in aggregated}
-    evidence_by_ticker = {
-        str(h.get("ticker") or ""): h for h in (evidence_payload.get("holdings") or [])
-    }
-    aggregated_row = aggregated_by_ticker.get(ticker)
-    evidence_row = evidence_by_ticker.get(ticker)
-    if aggregated_row is None and evidence_row is None:
+    aggregated_row = {
+        a["ticker"]: a for a in _aggregate_enriched_by_ticker(enriched)
+    }.get(ticker)
+    if aggregated_row is None and bundle is None:
         return None
 
-    canonical: dict[str, Any] = {"ticker": ticker}
-    if aggregated_row is not None:
-        canonical["name"] = aggregated_row.get("name")
-        canonical["market_weight_pct"] = aggregated_row.get("market_weight_pct")
-        canonical["pnl_rate_pct"] = aggregated_row.get("pnl_rate_pct")
-    else:
-        canonical["name"] = evidence_row.get("name") if evidence_row else None
-        canonical["market_weight_pct"] = None
-        canonical["pnl_rate_pct"] = None
-    if evidence_row is not None:
-        canonical["short_term_momentum"] = evidence_row.get("short_term_momentum")
-        canonical["data_quality"] = evidence_row.get("data_quality")
-        canonical["overlap"] = evidence_row.get("overlap")
-    return canonical
+    item = (bundle or {}).get("item") or {}
+    return {
+        "ticker": ticker,
+        "name": (aggregated_row or {}).get("name") or item.get("name"),
+        "market_weight_pct": (aggregated_row or {}).get("market_weight_pct"),
+        "pnl_rate_pct": (aggregated_row or {}).get("pnl_rate_pct"),
+        "bundle": bundle,
+    }
 
 
 def _aggregate_enriched_by_ticker(enriched: list) -> list[dict[str, Any]]:
@@ -203,31 +202,44 @@ def _aggregate_enriched_by_ticker(enriched: list) -> list[dict[str, Any]]:
     return result
 
 
-def _load_candidate_evidence(ticker: str) -> Optional[dict[str, Any]]:
-    """FIX r3 (2026-07-03): 프로그래머 오류 propagate, 데이터 오류만 catch."""
-    import logging
-    import sqlite3
-    import traceback
+def _load_candidate_evidence(
+    ticker: str, query: CandidateListQuery
+) -> Optional[dict[str, Any]]:
+    """후보 하나 — 화면과 같은 목록 조건의 PC 시장 응답 + 선택 1종목 추가 읽기(POC5-23).
 
-    from app.market_topn import compute_topn
+    그 조건의 목록에 없으면 None(호출자가 '목록에 없음' 사유로 응답). 예외는 잡지 않는다 — endpoint 경계가
+    짧은 실패 응답으로 바꾸고 traceback 을 남긴다(FIX r3 경계 그대로).
+    """
+    return load_candidate_bundle(ticker, query, db_path=DEFAULT_DB_PATH)
 
-    logger = logging.getLogger(__name__)
-    try:
-        payload = compute_topn()
-    except sqlite3.Error as exc:
-        logger.warning(
-            "decision-draft/preview: candidate evidence load data error "
-            "(ticker=%s): %s\n%s",
-            ticker,
-            type(exc).__name__,
-            traceback.format_exc(),
-        )
-        return None
 
-    for c in payload.get("candidates") or []:
-        if str(c.get("ticker") or "") == ticker:
-            return c
-    return None
+def _list_query(req: PreviewRequest) -> CandidateListQuery:
+    base = CandidateListQuery()
+    return CandidateListQuery(
+        n=req.n if req.n is not None else base.n,
+        basis=req.basis if req.basis is not None else base.basis,
+        order=req.order if req.order is not None else base.order,
+        exclude_inverse=(
+            req.exclude_inverse
+            if req.exclude_inverse is not None
+            else base.exclude_inverse
+        ),
+        exclude_leveraged=(
+            req.exclude_leveraged
+            if req.exclude_leveraged is not None
+            else base.exclude_leveraged
+        ),
+        exclude_synthetic=(
+            req.exclude_synthetic
+            if req.exclude_synthetic is not None
+            else base.exclude_synthetic
+        ),
+        exclude_futures=(
+            req.exclude_futures
+            if req.exclude_futures is not None
+            else base.exclude_futures
+        ),
+    )
 
 
 @router.post("/decision-draft/preview", response_model=PreviewResponse)
@@ -250,11 +262,22 @@ def post_decision_draft_preview(req: PreviewRequest) -> PreviewResponse:
     import traceback
 
     _preview_logger = logging.getLogger(__name__)
+    query = _list_query(req)
+    if req.target_kind != TARGET_KIND_HOLDING and not query.is_valid():
+        return PreviewResponse(status="error", message=_FAILURE_MESSAGE)
     try:
         if req.target_kind == TARGET_KIND_HOLDING:
             target_evidence = _load_holdings_evidence(ticker)
         else:
-            target_evidence = _load_candidate_evidence(ticker)
+            target_evidence = _load_candidate_evidence(ticker, query)
+            if target_evidence is None:
+                return PreviewResponse(status="error", message=_NOT_IN_LIST_MESSAGE)
+    except CandidateListUnavailable as exc:
+        # 시장 목록 자료 자체가 없음 · 손상 — '목록에 없음'으로 바꾸지 않고 일반 실패.
+        _preview_logger.warning(
+            "decision-draft/preview: market list unavailable (status=%s)", exc
+        )
+        return PreviewResponse(status="error", message=_FAILURE_MESSAGE)
     except Exception as exc:  # noqa: BLE001 — endpoint 경계 응답 계약 유지
         _preview_logger.error(
             "decision-draft/preview: unexpected loader error "
@@ -269,12 +292,25 @@ def post_decision_draft_preview(req: PreviewRequest) -> PreviewResponse:
     if target_evidence is None:
         return PreviewResponse(status="error", message=_FAILURE_MESSAGE)
 
-    result = build_preview_text(
-        target_kind=req.target_kind,
-        ticker=ticker,
-        target_evidence=target_evidence,
-        db_path=DEFAULT_DB_PATH,
-    )
+    # POC5-23 검증자 r2 — 글 조립(숫자 글 포함)의 예상 밖 예외도 HTTP 500 대신 로더와 같은 짧은 실패 응답
+    # (traceback 은 서버 로그에만).
+    try:
+        result = build_preview_text(
+            target_kind=req.target_kind,
+            ticker=ticker,
+            target_evidence=target_evidence,
+            db_path=DEFAULT_DB_PATH,
+        )
+    except Exception as exc:  # noqa: BLE001 — endpoint 경계 응답 계약 유지
+        _preview_logger.error(
+            "decision-draft/preview: unexpected text build error "
+            "(target_kind=%s, ticker=%s): %s\n%s",
+            req.target_kind,
+            ticker,
+            type(exc).__name__,
+            traceback.format_exc(),
+        )
+        return PreviewResponse(status="error", message=_FAILURE_MESSAGE)
     if result.status != "ok" or result.preview_text is None:
         return PreviewResponse(status="error", message=_FAILURE_MESSAGE)
 
@@ -283,6 +319,7 @@ def post_decision_draft_preview(req: PreviewRequest) -> PreviewResponse:
         target_kind=result.target_kind,
         ticker=result.ticker,
         preview_text=result.preview_text,
+        generated_at=result.generated_at,
         evidence_as_of=PreviewEvidenceAsOf(
             target_as_of_date=(
                 result.evidence_as_of.target_as_of_date

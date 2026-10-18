@@ -14,7 +14,7 @@
 // "확인 전" 으로 구분해 적는다(미포함과 확인 불가는 다른 상태다).
 
 import type { EnrichedHolding, HoldingsMarketEvidenceItem } from "@/lib/api";
-import { type AggregatedHolding, DASH, fmtPct, returnColor } from "./helpers";
+import { type AggregatedHolding, DASH, fmtPct, fmtPctp, returnColor } from "./helpers";
 
 // topn_match.basis 를 사람이 읽는 말로. 값을 만들지 않고 이름만 붙인다.
 const BASIS_LABEL: Record<string, string> = {
@@ -45,6 +45,11 @@ function Row({
 
 function Pct({ v }: { v: number | null | undefined }) {
   return <b style={{ color: returnColor(v) }}>{fmtPct(v)}</b>;
+}
+
+// POC5-23 — KODEX200 대비 차이는 %p(미리보기 · 카드와 같은 단위).
+function PctP({ v }: { v: number | null | undefined }) {
+  return <b style={{ color: returnColor(v) }}>{fmtPctp(v)}</b>;
 }
 
 export default function SelectedHoldingDetail({
@@ -148,11 +153,11 @@ export default function SelectedHoldingDetail({
         <Row label="KODEX 대비">
           {smOk ? (
             <>
-              5일 <Pct v={sm?.excess_vs_kodex200_5d_pctp} />
+              5일 <PctP v={sm?.excess_vs_kodex200_5d_pctp} />
               <span className="hcd-sep">·</span>
-              10일 <Pct v={sm?.excess_vs_kodex200_10d_pctp} />
+              10일 <PctP v={sm?.excess_vs_kodex200_10d_pctp} />
               <span className="hcd-sep">·</span>
-              20일 <Pct v={sm?.excess_vs_kodex200_20d_pctp} />
+              20일 <PctP v={sm?.excess_vs_kodex200_20d_pctp} />
             </>
           ) : (
             <span className="hcd-muted">

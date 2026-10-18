@@ -234,8 +234,9 @@ function compareData(candidates: MarketCandidate[]) {
  * 정렬 실동작 검증용 3종목.
  * 각 정렬 키가 **서로 다른 순서**를 만들도록 값을 설계했다.
  *   excess_20d(desc) : BBB(9) > AAA(5) > CCC(1)
- *   drawdown(desc)   : CCC(-0.01) > AAA(-0.05) > BBB(-0.09)
  *   exposure(desc)   : CCC(직접보유) > AAA · BBB  ← 기본 순서와 다름
+ * (POC5-23 판정 §3 — '고점 대비' 정렬은 뺐다: 폐기된 참고점수 스냅샷 값 · 종목별 날짜 없음.
+ *  drawdown_20d 값을 넣어 두고 화면에 그 값 · 정렬이 없음을 본다.)
  */
 function sortTrio(): MarketCandidate[] {
   const mk = (
@@ -339,7 +340,7 @@ describe("보유와 비교 — 점수 미표시 · 정렬 선택지 부재 · �
     ).not.toBeInTheDocument();
   });
 
-  it("C-7 정상 정렬 3종이 **실제로 순서를 바꾼다**", async () => {
+  it("C-7 정상 정렬 2종이 **실제로 순서를 바꾼다** · 고점 대비 정렬 · 값 없음", async () => {
     const TICKERS = ["AAA", "BBB", "CCC"];
     await renderCompare(sortTrio());
     const order = () => candidateOrder(TICKERS);
@@ -356,8 +357,11 @@ describe("보유와 비교 — 점수 미표시 · 정렬 선택지 부재 · �
       .map((el) => el.querySelector(".v")?.textContent);
     expect(shown).toEqual(["+9.00%p", "+5.00%p", "+1.00%p"]);
 
-    fireEvent.click(candSortButton(/고점 대비/));
-    expect(order()).toEqual(["CCC", "AAA", "BBB"]);
+    // POC5-23 — 고점 대비 정렬 선택지가 없다(값도 후보 카드 · 상세에 없다).
+    expect(
+      within(candidateCard()).queryByRole("button", { name: /고점 대비/ }),
+    ).not.toBeInTheDocument();
+    expect(within(candidateCard()).queryByText(/고점 대비/)).not.toBeInTheDocument();
 
     // `보유 노출` desc — 직접 보유한 CCC 가 **맨 뒤에서 맨 앞으로** 올라온다.
     // 기본 순서(AAA,BBB,CCC)와 결과가 달라야 정렬 분기의 실동작 증거가 된다.
@@ -366,10 +370,14 @@ describe("보유와 비교 — 점수 미표시 · 정렬 선택지 부재 · �
     expect(byExposure).toEqual(["CCC", "AAA", "BBB"]);
     expect(byExposure).not.toEqual(TICKERS); // 기본 순서와 반드시 달라야 한다
 
-    // 같은 키 재클릭 → asc 전환. 정렬이 살아 있음을 한 번 더 확인한다.
-    fireEvent.click(candSortButton(/고점 대비/));
-    fireEvent.click(candSortButton(/고점 대비/));
-    expect(order()).toEqual(["BBB", "AAA", "CCC"]);
+    // 같은 키 재클릭 → asc 전환(직접 보유 CCC 가 맨 뒤로). 정렬이 살아 있음을 한 번 더 확인한다.
+    fireEvent.click(candSortButton(/보유 노출/));
+    expect(order()).toEqual(["AAA", "BBB", "CCC"]);
+    // 직접 보유가 아닌 후보는 '구성종목 중복 미확인' — 이전 판정의 '중복 없음' · '보유 ETF 0개'를 쓰지 않는다.
+    const chips = within(candidateCard()).getAllByText("구성종목 중복 미확인");
+    expect(chips).toHaveLength(2);
+    expect(within(candidateCard()).getByText("직접 보유")).toBeInTheDocument();
+    expect(within(candidateCard()).queryByText("중복 없음")).not.toBeInTheDocument();
   });
 
   it("C-3 / C-4 점수를 뒤집거나 지워도 기본 순서가 API 순서와 같다", async () => {

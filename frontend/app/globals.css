@@ -2123,24 +2123,21 @@ textarea.decision-textarea {
   }
 }
 
-/* 2026-07-03 Decision Draft Preview v1 */
-.decision-draft-preview-actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.decision-draft-preview-text {
-  white-space: pre-wrap;
-  font-family: inherit;
-  font-size: 0.8rem;
-  background: var(--bg-muted, #f8f8f8);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 8px;
-  margin: 6px 0;
-  max-height: 320px;
-  overflow: auto;
+/* 2026-07-03 Decision Draft Preview v1 · POC5-23 묶음 개편(2026-10-18) — 응답 글을 묶음 상자로 나눠
+   보인다(안쪽 스크롤 없음 · 1440 두 줄 · 좁으면 한 줄). [복사]는 btn-md(중간 버튼 규격). */
+.ddp-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+.ddp-head strong { font-size: 15px; }
+.ddp-target { font-size: 0.8rem; }
+.decision-draft-preview-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ddp-copied { color: var(--muted); font-size: 0.8rem; }
+.ddp-dates { font-size: 0.8rem; color: var(--muted); margin-bottom: 6px; }
+.ddp-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 6px 0; }
+@media (max-width: 1180px) { .ddp-grid { grid-template-columns: minmax(0, 1fr); } }
+.ddp-sec { border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; background: var(--bg-muted, #f8f8f8); min-width: 0; }
+.ddp-sec-t { font-weight: 700; font-size: 0.85rem; margin-bottom: 4px; }
+.ddp-sec .ddp-sec-b {
+  white-space: pre-wrap; font-family: inherit; font-size: 0.82rem; line-height: 1.6;
+  margin: 0; border: 0; background: transparent; padding: 0; border-radius: 0;
 }
 
 /* POC3-02 Judgment Workbench (고밀도 표 · 탭 · 상세) */

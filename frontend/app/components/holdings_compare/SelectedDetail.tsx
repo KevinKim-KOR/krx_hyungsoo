@@ -3,10 +3,12 @@
 // POC2 — 보유·후보 비교 v1 CLOSEOUT 선택 상세 영역 (FIX r1 — B-3 분리).
 //
 // 순서 고정 (지시문 §3):
-//   1. 보유 노출 요약 (직접 보유 / 겹침 보유 ETF 수 / 가장 큰 겹침 대상)
-//   2. 후보 흐름 (5/10/20일 + KODEX 초과 + 고점 대비 + 품질)
+//   1. 보유 노출 요약 (직접 보유 / 구성종목 중복 = 미리보기에서 비교 — POC5-23 판정 §3)
+//   2. 후보 흐름 (5/10/20일 + KODEX 초과 + 품질)
 //      2026-08-29 POC3-ML-02 REJECT Closeout — `relative_upside_v0` REJECT 판정으로
 //      참고점수와 점수 근거를 뺐다.
+//      POC5-23 판정 §3 — '고점 대비'는 폐기된 참고점수 스냅샷 값이고 종목별 날짜를 화면이 받지
+//      못해 뺐다(현재값처럼 보이지 않게). 보유 노출은 직접 보유만 확정 · 구성종목 중복은 미리보기에서.
 //   3. 세부 근거 (구성종목 목록 + overlap 수치) — 기본 접힘
 
 import type {
@@ -15,11 +17,11 @@ import type {
 } from "@/lib/api";
 import {
   type ExposureSummary,
-  STATE_UNAVAIL,
-  STATE_UNCHECKED,
+  STATE_OVERLAP_UNCHECKED,
   candidateDataState,
+  exposureLabel,
   fmtPct,
-  returnColor,
+  fmtPctp,
 } from "./helpers";
 
 interface Props {
@@ -38,11 +40,8 @@ export default function SelectedDetail({
   directHoldingEvidence,
 }: Props) {
   const sm = candidate.short_term_momentum;
-  const dd =
-    candidate.drawdown_20d != null ? candidate.drawdown_20d * 100 : null;
-  const isDirectKind =
-    exposure.kind === "direct_only" ||
-    exposure.kind === "direct_and_overlap";
+  const isDirectKind = exposure.kind === "direct";
+  const holdingsKnown = exposure.kind === "direct" || exposure.kind === "overlap_unchecked";
   return (
     <div style={{ display: "grid", gap: 10, fontSize: "0.85em" }}>
       <div>
@@ -68,32 +67,20 @@ export default function SelectedDetail({
               fontWeight: isDirectKind ? "bold" : "normal",
             }}
           >
-            {exposure.directHoldingTicker
-              ? `${exposure.directHoldingName ?? exposure.directHoldingTicker}`
-              : "없음"}
+            {!holdingsKnown
+              ? exposureLabel(exposure)
+              : exposure.directHoldingTicker
+                ? `${exposure.directHoldingName ?? exposure.directHoldingTicker}`
+                : "없음"}
           </span>
         </div>
         <div>
-          <span style={{ color: "var(--muted)" }}>구성종목 겹침: </span>
+          <span style={{ color: "var(--muted)" }}>구성종목 중복: </span>
           <span>
-            {exposure.kind === "unchecked"
-              ? STATE_UNCHECKED
-              : exposure.kind === "unavailable"
-                ? STATE_UNAVAIL
-                : `보유 ETF ${exposure.overlapHoldingCount}개`}
+            {STATE_OVERLAP_UNCHECKED} — 아래 [판단 근거 미리보기]에서 보유 ETF 와 저장
+            구성종목으로 비교합니다.
           </span>
         </div>
-        {exposure.topOverlapHoldingName ? (
-          <div>
-            <span style={{ color: "var(--muted)" }}>가장 큰 겹침: </span>
-            <span>
-              {exposure.topOverlapHoldingName}
-              {exposure.topOverlapWeightPct != null
-                ? ` (${exposure.topOverlapWeightPct.toFixed(1)}%)`
-                : ""}
-            </span>
-          </div>
-        ) : null}
       </section>
 
       {/* 2. 후보 흐름 */}
@@ -108,13 +95,9 @@ export default function SelectedDetail({
         <div style={{ marginTop: 4 }}>
           <span style={{ color: "var(--muted)" }}>KODEX 대비 초과수익: </span>
         </div>
-        <div>5d: {fmtPct(sm?.excess_vs_kodex200_5d_pctp ?? null)}</div>
-        <div>10d: {fmtPct(sm?.excess_vs_kodex200_10d_pctp ?? null)}</div>
-        <div>20d: {fmtPct(sm?.excess_vs_kodex200_20d_pctp ?? null)}</div>
-        <div style={{ marginTop: 4 }}>
-          <span style={{ color: "var(--muted)" }}>고점 대비: </span>
-          <span style={{ color: returnColor(dd) }}>{fmtPct(dd)}</span>
-        </div>
+        <div>5d: {fmtPctp(sm?.excess_vs_kodex200_5d_pctp ?? null)}</div>
+        <div>10d: {fmtPctp(sm?.excess_vs_kodex200_10d_pctp ?? null)}</div>
+        <div>20d: {fmtPctp(sm?.excess_vs_kodex200_20d_pctp ?? null)}</div>
         <div>
           <span style={{ color: "var(--muted)" }}>데이터 품질: </span>
           <span>{candidateDataState(candidate)}</span>
@@ -131,6 +114,8 @@ export default function SelectedDetail({
             border: "1px solid var(--border)",
             borderRadius: 4,
             backgroundColor: "transparent",
+            // POC5-23 판정 §3 — 기본 버튼 글자색(흰색) 위에 배경만 투명이라 빈 상자로 보였다.
+            color: "var(--fg)",
             cursor: "pointer",
             width: "100%",
             textAlign: "left",
@@ -162,12 +147,6 @@ export default function SelectedDetail({
                       </li>
                     ))}
                 </ul>
-              </div>
-            ) : exposure.kind === "overlap_only" ? (
-              <div style={{ color: "var(--muted)" }}>
-                본 후보가 보유 ETF {exposure.overlapHoldingCount}개의 구성종목
-                겹침에 포함됩니다. 상세 overlap 수치는 보유 ETF 별 evidence
-                응답에서 확인하세요.
               </div>
             ) : (
               <div style={{ color: "var(--muted)" }}>

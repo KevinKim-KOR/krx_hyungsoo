@@ -372,7 +372,7 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
     - **활성 검사 경로 — 쉼표 숫자 탐지 한계**: 쉼표가 든 숫자('1,500,000')를 찾지 못한다(`has_numeric_word` · `:41`). 정기 보유 브리핑마다 도는 개인정보 검사 경로에 있다(`holdings_selection_flow.py:315` · `:344` · 휴면 진단 경로 아님). 지금 본문은 금액 숫자를 넣지 않아(`holdings_selection_render.py:7`) 현재 노출 영향은 없다.
     - **재검토 조건**: 보유 수량 · 평단 등 개인 숫자가 들어갈 수 있는 본문 형식을 바꾸거나 실제 미탐지 사례가 나오면, 그 변경 범위에서 이 검사를 함께 재검토한다. 개인값을 본문에 넣어도 된다는 허용이 아니다(기존 본문 · 개인값 정책 그대로). 발송 이력 조사로 넓히지 않는다.
   - 근거 응답 `summary.total_holdings_count` 는 보유 줄 수(예 32)이고 화면 '내가 가진 ETF N개'는 고유 종목 수(29)다 — 단위 차이일 뿐 계산 결함 아님(의미는 PROGRAM_TRUTH API 표에 적음 · 응답 키 · 값 변경 없음).
-  - 결정 초안 미리보기(`app/api_decision_draft_preview.py:135-136`)가 builder 에 없는 키(`data_quality` · `overlap`)를 읽어 늘 비어 있다(builder 키는 `constituents_overlap`) — 별도 기능 연결 문제.
+  - 결정 초안 미리보기(`app/api_decision_draft_preview.py:135-136`)가 builder 에 없는 키(`data_quality` · `overlap`)를 읽어 늘 비어 있다(builder 키는 `constituents_overlap`) — 별도 기능 연결 문제. → **해소(2026-10-18 · `POC5-23` · 검증자 r4 VERIFIED(2026-10-18 · 결과서 §16 · r1~r3 지적 모두 해소) · 설계자 RESULT PASS · IMPLEMENTED_VERIFIED_CLOSED)**: 미리보기가 화면이 쓰는 PC 근거 응답(`get_holdings_market_evidence_latest()`)의 `constituents_overlap` · `nav_discount` 를 그대로 옮긴다 · 결과서 `docs/ai_result/POC5/POC5-23_SELECTED_ETF_DECISION_EVIDENCE_PREVIEW_RESULT.md`.
 - PC 「오늘의 투자 점검」 최대 3개의 비중 · 손익은 POC5-09 부터 종목 합산 값으로 바꿔 보인다. POC5-13 비중 계산은 정상 `GET /holdings/enriched` 종목 합산 값만 쓴다.
 
 ### 승격 시점 원문 (참고 보존)
@@ -545,6 +545,8 @@ POC 1단계부터 누적된 의도적으로 미룬 항목.
 - **보류 사유**: DEFAULT_BASIS=one_month 코드 상수 고정. Settings 화면 미도입.
 - **보류된 위험**: 기본 기준 변경 마찰.
 - **재검토 트리거**: 사용자가 1개월 기본 기준 부적합 보고 또는 Settings 화면 도입 시.
+
+- 관찰(2026-10-18 · `POC5-23` 조사 · 범위 밖 · 해소 아님): 후보 '고점 대비'(`drawdown_20d`)는 REJECT 종료된 상대상승 참고점수 스냅샷의 값이다. 화면이 받는 날짜는 응답 맨 위 `relative_upside_score_asof_date`(스냅샷 전체 날짜) 하나뿐이고 종목별 날짜는 오지 않는다(라이브 스냅샷 2026-08-27 · 1,162행 중 18행은 06-24 ~ 08-26). 「보유와 비교」는 `POC5-23` 에서 값 · 정렬을 뺐고(판정 §3), 「요즘 잘 오르는 ETF」 카드 펼침 · 표 · 「ETF 비교하기」 상세 · 정렬은 그대로 날짜 없이 보인다.
 
 ---
 

@@ -6,6 +6,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type {
+  DecisionDraftListQuery,
   EnrichedHolding,
   HoldingsMarketEvidenceItem,
   HoldingsMarketEvidenceResponse,
@@ -38,7 +39,8 @@ import SelectedHoldingDetail from "./holdings_compare/SelectedHoldingDetail";
 
 // 2026-08-29 POC3-ML-02 REJECT Closeout — `"score"` 리터럴을 타입에서 뺐다.
 // 타입 수준에서 참고점수 정렬의 재도입을 막는다.
-type CandidateSortKey = "default" | "excess_20d" | "drawdown" | "exposure";
+// POC5-23 판정 §3 — '고점 대비'(폐기된 참고점수 스냅샷 값 · 종목별 날짜를 화면이 받지 못함) 정렬도 뺐다.
+type CandidateSortKey = "default" | "excess_20d" | "exposure";
 type HoldingSortKey = "default" | "weight" | "pnl" | "excess_20d";
 type SortDirection = "desc" | "asc";
 
@@ -50,6 +52,7 @@ export default function HoldingsCompareView({ data }: Props) {
   const [enrichedRaw, setEnrichedRaw] = useState<EnrichedHolding[]>([]);
   const [enrichedLoading, setEnrichedLoading] = useState<boolean>(false);
   const [enrichedError, setEnrichedError] = useState<string | null>(null);
+  const [enrichedLoaded, setEnrichedLoaded] = useState<boolean>(false);
 
   const [evidence, setEvidence] =
     useState<HoldingsMarketEvidenceResponse | null>(null);
@@ -79,6 +82,7 @@ export default function HoldingsCompareView({ data }: Props) {
       .then((res) => {
         if (canceled) return;
         setEnrichedRaw(res.items ?? []);
+        setEnrichedLoaded(true);
       })
       .catch((e) => {
         if (canceled) return;
@@ -142,19 +146,12 @@ export default function HoldingsCompareView({ data }: Props) {
       m[c.ticker] = computeExposure(
         c.ticker,
         aggregated,
-        evidenceByTicker,
-        evidenceLoaded,
-        evidenceError !== null,
+        enrichedLoaded,
+        enrichedError !== null,
       );
     }
     return m;
-  }, [
-    data.candidates,
-    aggregated,
-    evidenceByTicker,
-    evidenceLoaded,
-    evidenceError,
-  ]);
+  }, [data.candidates, aggregated, enrichedLoaded, enrichedError]);
 
   const sortedCandidates = useMemo<MarketCandidate[]>(() => {
     const list = [...(data.candidates ?? [])];
@@ -164,8 +161,6 @@ export default function HoldingsCompareView({ data }: Props) {
       switch (candSortKey) {
         case "excess_20d":
           return c.short_term_momentum?.excess_vs_kodex200_20d_pctp ?? null;
-        case "drawdown":
-          return c.drawdown_20d ?? null;
         case "exposure": {
           if (!c.ticker) return null;
           const ex = exposureByTicker[c.ticker];
@@ -218,6 +213,17 @@ export default function HoldingsCompareView({ data }: Props) {
       (data.candidates ?? []).find((c) => c.ticker === selectedTicker) ?? null
     );
   }, [selectedTicker, data.candidates]);
+
+  // POC5-23 판정 Q1 (a) — 후보 미리보기는 이 화면 목록 조건으로 같은 목록에서 찾는다.
+  const listQuery = useMemo<DecisionDraftListQuery>(
+    () => ({
+      ...(data.n != null ? { n: data.n } : {}),
+      ...(data.basis ? { basis: data.basis } : {}),
+      ...(data.order ? { order: data.order } : {}),
+      ...(data.filters ?? {}),
+    }),
+    [data.n, data.basis, data.order, data.filters],
+  );
 
   const selectedExposure = useMemo<ExposureSummary | null>(() => {
     if (!selectedCandidate?.ticker) return null;
@@ -372,7 +378,6 @@ export default function HoldingsCompareView({ data }: Props) {
               {(
                 [
                   ["excess_20d", "20일 초과"],
-                  ["drawdown", "고점 대비"],
                   ["exposure", "보유 노출"],
                 ] as [CandidateSortKey, string][]
               ).map(([k, label]) => (
@@ -432,6 +437,7 @@ export default function HoldingsCompareView({ data }: Props) {
                   targetKind="candidate"
                   ticker={selectedCandidate.ticker}
                   displayName={selectedCandidate.name ?? selectedCandidate.ticker}
+                  listQuery={listQuery}
                 />
               </div>
             ) : null}
@@ -480,11 +486,11 @@ export default function HoldingsCompareView({ data }: Props) {
         className="helper"
         style={{ marginTop: 12, fontSize: "0.78rem", color: "var(--muted)" }}
       >
-        보유 노출은 직접 보유 여부 (ticker 일치) 와 구성종목 겹침 (보유 ETF 의
-        구성종목이 시장 반복 핵심 종목과 겹치는지) 을 합쳐 한 칸에 표시합니다.
-        데이터가 없는 값은 임의 채우지 않고 &quot;데이터 없음&quot; / &quot;확인
-        필요&quot; / &quot;중복 확인 전&quot; / &quot;중복 확인 불가&quot; 로
-        표시합니다.
+        보유 노출 칸은 직접 보유 여부(같은 종목 코드)만 확정해 표시합니다. 후보와
+        보유 ETF 의 구성종목 중복은 후보를 고른 뒤 [판단 근거 미리보기]에서 저장
+        구성종목으로 비교하며, 그 전에는 &quot;구성종목 중복 미확인&quot;으로
+        둡니다. 데이터가 없는 값은 임의 채우지 않고 &quot;데이터 없음&quot; /
+        &quot;확인 필요&quot; 로 표시합니다.
       </p>
     </section>
   );
