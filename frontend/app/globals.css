@@ -3581,3 +3581,19 @@ button.help-pop-btn[aria-expanded="true"] .help-pop-dot, button.help-pop-btn:hov
 .sp-na,
 .v.sp-na { color: var(--muted); font-weight: 600; font-size: 11px; }
 .wb-hm-ex .sp-k { white-space: nowrap; }
+
+/* POC5-26 — 「요즘 잘 오르는 ETF」 목록 카드 맨 위 '기본 조회 기준' 한 줄(이름 칸 = 기간 상자와 같은 150px ·
+   버튼 = 중간 40px btn-md · 안내 = 같은 줄 짧은 글 · 저장 실패만 다음 줄). */
+.mbd-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  padding: 0 2px 8px;
+  font-size: 12.5px;
+}
+.mbd-row .mbd-k { color: var(--muted); font-weight: 700; min-width: 150px; }
+.mbd-row .mbd-v { font-size: 14px; font-weight: 700; }
+.mbd-row .mbd-now { color: var(--accent); font-weight: 700; }
+.mbd-row .mbd-note { color: var(--warn); font-weight: 600; }
+.mbd-row .mbd-err { flex-basis: 100%; color: var(--danger); font-weight: 600; }

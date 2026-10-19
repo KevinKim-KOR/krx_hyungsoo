@@ -98,12 +98,15 @@ function SortableHeader({
 // 2026-06-20 ML 축1 — 상대상승 참고점수 정렬 (지시문 §9). frontend 로컬 정렬만
 // (신규 API 정렬 파라미터 추가 금지). 점수 null 후보는 항상 점수 있는 후보 뒤로.
 export default function CandidateTable({
+  top,
   candidates,
   basis,
   order,
   onSort,
   marketAsof,
 }: {
+  // POC5-26 — 목록 카드 맨 위 줄(「요즘 잘 오르는 ETF」 기본 조회 기준).
+  top?: React.ReactNode;
   candidates: MarketCandidate[];
   basis: MarketBasis;
   marketAsof?: string | null;
@@ -113,6 +116,7 @@ export default function CandidateTable({
   if (candidates.length === 0) {
     return (
       <div className="card market-topn-card">
+        {top}
         <div className="message info">표시할 항목이 없습니다.</div>
       </div>
     );
@@ -126,6 +130,7 @@ export default function CandidateTable({
   const ddG = ddGroup(candidates);
   return (
     <div className="card market-topn-card">
+      {top}
       <ReturnPeriodLine
         candidates={candidates}
         selected={basis}

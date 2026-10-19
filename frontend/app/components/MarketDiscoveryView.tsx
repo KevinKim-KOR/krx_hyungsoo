@@ -14,7 +14,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ApiConfigError,
   ApiRequestError,
-  DEFAULT_MARKET_BASIS,
   DEFAULT_MARKET_ORDER,
   DEFAULT_MARKET_TOPN_FILTERS,
   fetchMarketRefreshStatus,
@@ -33,6 +32,7 @@ import {
 import type { MenuKey } from "./LeftSidebar";
 import CandidateTable from "./CandidateTable";
 import CandidateCards from "./CandidateCards";
+import MarketBasisDefaultRow, { useMarketBasisDefault } from "./MarketBasisDefaultRow";
 import {
   fetchEnrichedHoldings,
   type EnrichedHoldingsResult,
@@ -245,7 +245,9 @@ export default function MarketDiscoveryView({
 }: MarketDiscoveryViewProps = {}) {
   const [refreshUi, setRefreshUi] = useState<RefreshUiState>({ kind: "idle" });
   const [filters, setFilters] = useState<FilterUiState>(DEFAULT_FILTER_UI);
-  const [basis, setBasis] = useState<MarketBasis>(DEFAULT_MARKET_BASIS);
+  // POC5-26 — 기본 조회 기준(이 브라우저 저장)을 상태 초기값에서 한 번 읽는다 → 첫 조회부터 그 기준.
+  const basisDefault = useMarketBasisDefault();
+  const [basis, setBasis] = useState<MarketBasis>(basisDefault.initial.basis);
   const [order, setOrder] = useState<MarketOrder>(DEFAULT_MARKET_ORDER);
   // POC5-12 — 시장 TOP N 조회 · 순번 · 받은 화면 유지 · 최신 입력으로 다시 읽기(hook).
   const { state, reloadError, reloadLatest } = useMarketTopnLoad(filters, basis, order, describeError);
@@ -627,6 +629,7 @@ export default function MarketDiscoveryView({
         <>
           {/* 기본 보기 — 카드 (2026-08-16). 표 보기는 옆 탭에 그대로 남는다. */}
           <div className="card market-topn-card">
+            <MarketBasisDefaultRow current={basis} pref={basisDefault} />
             <CandidateCards
               candidates={data.candidates ?? []}
               heldTickers={heldTickers}
@@ -642,6 +645,7 @@ export default function MarketDiscoveryView({
         <>
           {/* 통합 테이블 (기존) */}
           <CandidateTable
+            top={<MarketBasisDefaultRow current={basis} pref={basisDefault} />}
             candidates={data.candidates ?? []}
             basis={basis}
             order={order}
