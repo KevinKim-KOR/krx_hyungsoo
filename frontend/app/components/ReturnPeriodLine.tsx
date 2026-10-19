@@ -2,6 +2,7 @@
 // POC5-21 — 후보 목록 위 '수익률 계산 기간' 한 줄(선택 기간). 날짜는 표시 후보의 응답 값에서만 만든다.
 // POC5-22 — 둘째 줄 = '동일 기간 KODEX200 대비 1M · 3M'(후보와 같은 시작 · 끝 날짜의 KODEX200 종가로 뺀 차이).
 // 기간별 KODEX200 수익률 · 뺄셈 뜻 · 한계(가격 조정 기준 연속성 미검사)는 기존 클릭형 ? 안에.
+// POC5-25 — 셋째 줄 = '20저장일 종가 고점 대비'(현재 저장 종가 · 공통 기간 한 번 · 다르면 끝일 나열 · ?).
 import type { MarketCandidate } from "@/lib/api";
 import {
   PERIOD_KEYS,
@@ -12,6 +13,7 @@ import {
   type PeriodKey,
 } from "@/lib/returnPeriod";
 import { SAME_PERIOD_LIMIT, sameGroups, sameSummary } from "@/lib/samePeriodKodex";
+import { DD_HELP, DD_LABEL, ddGroup, ddSummary } from "@/lib/storedDrawdown";
 import HelpPopover from "./holdings_risk_evidence/HelpPopover";
 
 // 값 아래 · 이름 옆 짧은 표시. 날짜(YYYY-MM-DD)는 중간에서 줄을 바꾸지 않는다.
@@ -77,6 +79,11 @@ export default function ReturnPeriodLine({
             `뜻: 그 저장 가격 기간에 KODEX200 보다 몇 %p 높거나 낮았는가. 배당 포함 총수익 · 개인 손익 · 앞으로의 우위가 아닙니다. ${SAME_PERIOD_LIMIT}`,
           ]}
         />
+      </div>
+      <div className="rp-line">
+        <span className="rp-k">{DD_LABEL}</span>
+        <span className="rp-v">{ddSummary(ddGroup(candidates))}</span>
+        <HelpPopover label={DD_LABEL} paragraphs={DD_HELP} />
       </div>
     </div>
   );

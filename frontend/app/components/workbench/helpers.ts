@@ -7,6 +7,7 @@ import type {
   EnrichedHolding,
   HoldingsMarketEvidenceItem,
 } from "@/lib/api";
+import { ddSortValue } from "@/lib/storedDrawdown";
 
 // 기준일 표시: 순수 날짜(YYYY-MM-DD)는 그대로, ISO datetime 은 KST 가독 변환
 // (raw ISO 원문 미노출 · A-1(8)). 파싱 불가 시 "확인 불가".
@@ -76,9 +77,20 @@ export function candExcess(c: MarketCandidate | undefined): number | null {
   return sameDiffOf(c?.same_period_kodex200, "1m");
 }
 
-// 후보 고점 대비 (drawdown_20d · 음수 표기 close/peak-1 → %).
+// POC5-25 — 후보 '20저장일 종가 고점 대비'(%) — 현재 저장 종가 객체만(옛 drawdown_20d 를 쓰지 않는다 · 100배 없음).
 export function candDrawdown(c: MarketCandidate | undefined): number | null {
-  return c?.drawdown_20d != null ? c.drawdown_20d * 100 : null;
+  return ddSortValue(c);
+}
+
+// POC5-25 — 고점 대비 정렬의 값 없음 = 방향과 무관하게 맨 뒤(판정 §3). 둘 다 값이 있으면 null(값으로 비교).
+export function drawdownMissingLast(
+  a: MarketCandidate | undefined,
+  b: MarketCandidate | undefined,
+): number | null {
+  const na = candDrawdown(a) == null;
+  const nb = candDrawdown(b) == null;
+  if (!na && !nb) return null;
+  return na === nb ? 0 : na ? 1 : -1;
 }
 
 // 후보 데이터 상태 (data_quality · optional).

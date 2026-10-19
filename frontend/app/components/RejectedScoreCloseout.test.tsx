@@ -133,7 +133,8 @@ describe("C-1 후보 표 — 점수·사유 미표시", () => {
     );
     expectNoScoreArtifacts(container);
     // 남아야 하는 열은 그대로다.
-    expect(within(container).getByText("고점 대비")).toBeInTheDocument();
+    // POC5-25 — 열 이름 '20저장일 종가 고점 대비'(기간 상자 셋째 줄에도 같은 이름).
+    expect(within(container).getAllByText("20저장일 종가 고점 대비").length).toBeGreaterThan(0);
     expect(within(container).getByText("069500")).toBeInTheDocument();
   });
 });

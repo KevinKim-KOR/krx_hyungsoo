@@ -6,6 +6,7 @@ from typing import Optional
 
 from pydantic import BaseModel
 
+from app.pc_stored_drawdown import StoredDrawdown
 from app.stored_volume_evidence import StoredVolumeEvidence
 
 
@@ -160,6 +161,9 @@ class MarketCandidate(BaseModel):
     relative_upside_score: Optional[float] = None
     drawdown_20d: Optional[float] = None
     relative_upside_reasons: list[str] = []
+    # POC5-25 — 현재 PC 저장 종가 '20저장일 종가 고점 대비'(PC 시장 목록 응답만 · 단위 % ·
+    # 옛 drawdown_20d(폐기된 점수 스냅샷 · 비율 · 날짜 없음)와 별개 · 화면 · 정렬은 이 객체만 쓴다).
+    stored_drawdown_20: Optional[StoredDrawdown] = None
 
 
 MarketCandidate.model_rebuild()

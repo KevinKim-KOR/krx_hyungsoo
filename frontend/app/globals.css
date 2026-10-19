@@ -2860,7 +2860,7 @@ button.tc-fold-btn:hover { background: #f0f4f8; }
   border-bottom: 1px dotted #e3e8ef;
   padding: 4px 0;
 }
-.cand-dcell .k { color: var(--muted); }
+.cand-dcell .k { color: var(--muted); word-break: keep-all; } /* POC5-25 — 좁은 칸 이름을 단어 단위로 */
 .cand-dcell .v { font-weight: 700; font-variant-numeric: tabular-nums; }
 .cand-detail-reasons {
   margin-top: 10px;
@@ -3571,6 +3571,7 @@ button.help-pop-btn[aria-expanded="true"] .help-pop-dot, button.help-pop-btn:hov
 }
 .cand-dcell .v .rp-note { text-align: right; }
 .wb-hm-ex .v .rp-note { text-align: right; }
+.wb-hm-ex .v.wb-dd-none { font-weight: 400; font-size: 12px; } /* POC5-25 — 고점 대비 값 없음 사유 */
 .rp-date { white-space: nowrap; }
 /* 표 칸은 폭이 고정이라 한 줄로 둔다(표는 가로 스크롤). */
 .market-candidate-table .rp-note { white-space: nowrap; }

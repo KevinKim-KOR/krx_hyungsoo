@@ -36,6 +36,16 @@ function candOk() {
         excess_return: { excess_return_pct: 1.5 },
         relative_upside_score: 72.3,
         drawdown_20d: -0.08,
+        stored_drawdown_20: {
+          status: "ok",
+          value_pct: -8.0,
+          start_date: "2026-06-26",
+          end_date: "2026-07-24",
+          peak_close: 37000,
+          peak_date: "2026-07-10",
+          close: 34040,
+          rows: 20,
+        },
         data_quality: { status: "ok" },
       },
       {
@@ -511,7 +521,7 @@ describe("REJECT Closeout — 참고점수 비활성", () => {
     expect(
       screen.queryByRole("button", { name: /참고점수/ }),
     ).not.toBeInTheDocument();
-    for (const label of ["순위", "1M", "3M", "동일기간 KODEX 1M", "고점대비"]) {
+    for (const label of ["순위", "1M", "3M", "동일기간 KODEX 1M", "20저장일 종가 고점 대비"]) {
       expect(
         screen.getByRole("button", { name: new RegExp(`^${label}`) }),
       ).toBeInTheDocument();
@@ -526,7 +536,7 @@ describe("REJECT Closeout — 참고점수 비활성", () => {
   //   one_month   asc → B C A   (A=3 · B=1 · C=2)
   //   three_month asc → C A B   (A=2 · B=3 · C=1)
   //   excess      asc → A C B   (A=1 · B=3 · C=2 · 동일 기간 1M 값 — 기존 excess_return 은 반대 순서 함정)
-  //   drawdown    asc → B A C   (A=-2 · B=-3 · C=-1 → ×100)
+  //   drawdown    asc → B A C   (POC5-25 현재 저장 종가 % · A=-2 · B=-3 · C=-1 · 옛 drawdown_20d 는 반대 순서 함정)
   function sortTrio(scores: (number | null)[] = [10, 20, 30]) {
     const mk = (
       ticker: string,
@@ -558,15 +568,16 @@ describe("REJECT Closeout — 참고점수 비활성", () => {
         },
       },
       relative_upside_score: score,
-      drawdown_20d: dd,
+      drawdown_20d: -dd / 100,
+      stored_drawdown_20: { status: "ok", value_pct: dd, start_date: "2026-09-16", end_date: "2026-10-14", rows: 20 },
       data_quality: { status: "ok" },
     });
     return {
       ...candOk(),
       candidates: [
-        mk("AAA111", "가나다 ETF", 1, 3, 2, 1, -0.02, scores[0]),
-        mk("BBB222", "라마바 ETF", 2, 1, 3, 3, -0.03, scores[1]),
-        mk("CCC333", "사아자 ETF", 3, 2, 1, 2, -0.01, scores[2]),
+        mk("AAA111", "가나다 ETF", 1, 3, 2, 1, -2, scores[0]),
+        mk("BBB222", "라마바 ETF", 2, 1, 3, 3, -3, scores[1]),
+        mk("CCC333", "사아자 ETF", 3, 2, 1, 2, -1, scores[2]),
       ],
     };
   }
@@ -633,7 +644,7 @@ describe("REJECT Closeout — 참고점수 비활성", () => {
       .filter((t) => t.endsWith("%p"));
     expect(shown).toEqual(["+1.00%p", "+2.00%p", "+3.00%p"]);
 
-    click("고점대비");
+    click("20저장일 종가 고점 대비");
     expect(order()).toEqual(["BBB222", "AAA111", "CCC333"]);
 
     click("순위");
@@ -770,5 +781,90 @@ describe("Workbench — 동일 기간 KODEX200 대비 (POC5-22)", () => {
     fireEvent.click(within(list).getByText("TIGER 미국S&P500").closest("[role=button]")!);
     const cell2 = (await screen.findByText("동일 기간 KODEX200 대비 1M")).parentElement!;
     expect(cell2.textContent).toContain("동일 기간 값 없음");
+  });
+});
+
+// POC5-25 — '20저장일 종가 고점 대비'(현재 저장 종가 객체만 · 옛 drawdown_20d 는 반대 순서 함정).
+describe("Workbench — 20저장일 종가 고점 대비 (POC5-25)", () => {
+  const LABEL = "20저장일 종가 고점 대비";
+  function dd(value: number | null, reason?: string) {
+    return value == null
+      ? { status: "unavailable", reason: reason ?? "insufficient_history", rows: 18 }
+      : {
+          status: "ok",
+          value_pct: value,
+          start_date: "2026-09-16",
+          end_date: "2026-10-14",
+          peak_close: 28550,
+          peak_date: "2026-10-06",
+          close: 24600,
+          rows: 20,
+        };
+  }
+  function five() {
+    const mk = (tk: string, name: string, rank: number, v: number | null, old: number) => ({
+      rank,
+      ticker: tk,
+      name,
+      returns: { one_month: { return_pct: 1 }, three_month: { return_pct: 1 } },
+      drawdown_20d: old,
+      stored_drawdown_20: dd(v, v == null && rank === 4 ? "basis_unconfirmed" : undefined),
+      data_quality: { status: "ok" },
+    });
+    return {
+      ...candOk(),
+      candidates: [
+        mk("AAA111", "가 ETF", 1, -2, -0.9),
+        mk("BBB222", "나 ETF", 2, null, -0.01), // 값 없음(옛 값은 있음)
+        mk("CCC333", "다 ETF", 3, -2, -0.5), // A 와 동률 — 기존(API) 순서 유지
+        mk("DDD444", "라 ETF", 4, null, -0.2), // 값 없음(가격 기준 확인 필요)
+        mk("EEE555", "마 ETF", 5, -5, 0),
+      ],
+    };
+  }
+  const ALL = ["AAA111", "BBB222", "CCC333", "DDD444", "EEE555"];
+  function order(container: HTMLElement): string[] {
+    const t = container.textContent ?? "";
+    return ALL.map((x) => ({ x, at: t.indexOf(x) }))
+      .filter((o) => o.at >= 0)
+      .sort((a, b) => a.at - b.at)
+      .map((o) => o.x);
+  }
+  async function renderFive() {
+    fetchMarketTopnLatest.mockReset().mockResolvedValue(five());
+    const utils = render(<JudgmentWorkbenchView onNavigate={vi.fn()} />);
+    await screen.findByText("가 ETF");
+    return utils;
+  }
+  const click = (label: string) =>
+    fireEvent.click(screen.getByRole("button", { name: new RegExp(`^${label}`) }));
+
+  it("오름(값 작은 순) · 내림 모두 값 없음은 맨 뒤 · 동률은 API 순서", async () => {
+    const { container } = await renderFive();
+    click(LABEL); // 첫 클릭 = 오름
+    expect(order(container)).toEqual(["EEE555", "AAA111", "CCC333", "BBB222", "DDD444"]);
+    click(LABEL); // 다시 = 내림
+    expect(order(container)).toEqual(["AAA111", "CCC333", "EEE555", "BBB222", "DDD444"]);
+  });
+
+  it("카드 줄 = 새 값 또는 사유 · 옛 값은 보이지 않는다 · 0% 아님 중립", async () => {
+    const { container } = await renderFive();
+    const text = container.textContent ?? "";
+    expect(text).toContain("저장 종가 20개 미만");
+    expect(text).toContain("가격 기준 확인 필요");
+    expect(text).not.toContain("-90.00%"); // 옛 drawdown_20d −0.9 × 100
+    const none = Array.from(container.querySelectorAll(".wb-hm-ex .v.wb-dd-none")).map(
+      (e) => e.textContent,
+    );
+    expect(none).toEqual(["저장 종가 20개 미만", "가격 기준 확인 필요"]);
+  });
+
+  it("상세 칸 = 값 · 기간 · 고점(날짜 · 종가)", async () => {
+    await renderFive();
+    const list = screen.getByTestId("wb-candidate-list");
+    fireEvent.click(within(list).getByText("가 ETF").closest("[role=button]")!);
+    const cell = (await screen.findAllByText(LABEL)).map((e) => e.parentElement!)
+      .find((p) => p.className.includes("wb-detail-cell"))!;
+    expect(cell.textContent).toBe(`${LABEL}-2.00% (2026-09-16 ~ 2026-10-14 · 고점 2026-10-06 28,550)`);
   });
 });

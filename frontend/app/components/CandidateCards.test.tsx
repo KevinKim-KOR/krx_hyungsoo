@@ -43,6 +43,17 @@ function cand(over: Partial<MarketCandidate> = {}): MarketCandidate {
     relative_upside_score: 72.3,
     relative_upside_reasons: ["1M 상위", "거래대금 충분"],
     drawdown_20d: -0.042,
+    // POC5-25 — 화면은 현재 저장 종가 객체만(옛 drawdown_20d −4.20% 는 보이지 않아야 한다).
+    stored_drawdown_20: {
+      status: "ok",
+      value_pct: -7.5,
+      start_date: "2026-09-16",
+      end_date: "2026-10-14",
+      peak_close: 12000,
+      peak_date: "2026-10-06",
+      close: 11100,
+      rows: 20,
+    },
     data_quality: {
       status: "ok",
       nav_discount: { nav: 10919, market_price: 10935, discount_rate_pct: 0.15 },
@@ -86,7 +97,11 @@ describe("후보 카드 (요즘 잘 오르는 ETF)", () => {
     // 계산 불가는 그 칸에 짧은 사유(기존 -2.3 으로 대신하지 않음).
     expect(screen.getByText("KODEX200 시작일 가격 없음")).toBeInTheDocument();
     expect(screen.queryByText("-2.30%p")).not.toBeInTheDocument();
-    expect(screen.getByText("고점 대비")).toBeInTheDocument();
+    // POC5-25 — 기간 상자 셋째 줄 이름 + 펼침 칸 이름 · 값 = 현재 저장 종가 · 고점 날짜.
+    expect(screen.getAllByText("20저장일 종가 고점 대비")).toHaveLength(2);
+    expect(screen.getByText("-7.50%")).toBeInTheDocument();
+    expect(screen.queryByText("-4.20%")).not.toBeInTheDocument();
+    expect(document.body.textContent).toContain("고점 2026-10-06");
     // 2026-08-29 REJECT Closeout — 점수 근거는 펼쳐도 나오지 않는다.
     expect(screen.queryByText(/거래대금 충분/)).not.toBeInTheDocument();
   });

@@ -51,6 +51,7 @@ from app.market_refresh_service import (
 )
 from app.market_refresh_vix_retry import get_vix_retry_snapshot, start_vix_retry_job
 from app.market_topn import DEFAULT_BASIS, DEFAULT_N, DEFAULT_ORDER, compute_topn
+from app.pc_stored_drawdown import build_stored_drawdown
 from app.short_term_momentum import KODEX200_TICKER
 from app.stored_volume_evidence import build_stored_volume_evidence
 
@@ -119,6 +120,13 @@ def get_market_topn_latest(
     # 2026-06-20 ML 축1 — 상대상승 참고점수 v0 머지 (지시문 §10). snapshot 부재
     # 시에도 후보 응답 자체는 유지 (지시문 §10 끝 — 실패·미생성 격리).
     merged_candidates, score_meta = merge_relative_upside_score(enriched_candidates)
+    # POC5-25 — 현재 저장 종가 20행 고점 대비(이 화면 API 만 · D = 후보 실제 끝 행 · 읽기 전용).
+    drawdowns = build_stored_drawdown(
+        payload.get("candidates", []), db_path=DEFAULT_DB_PATH
+    )
+    for cand in merged_candidates:
+        if cand.ticker:
+            cand.stored_drawdown_20 = drawdowns.get(cand.ticker)
     return MarketTopNResponse(
         status=payload["status"],
         error=payload.get("error"),

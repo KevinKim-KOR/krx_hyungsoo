@@ -40,6 +40,7 @@ import {
 } from "@/lib/returnPeriod";
 import { sameView } from "@/lib/samePeriodKodex";
 import ReturnPeriodLine, { PeriodNote } from "./ReturnPeriodLine";
+import { DD_LABEL, ddColor, ddGroup, ddNote, ddPct, ddView } from "@/lib/storedDrawdown";
 import SamePeriodValue from "./SamePeriodValue";
 
 const DASH = "-";
@@ -122,6 +123,7 @@ export default function CandidateTable({
   const groups = Object.fromEntries(
     PERIOD_KEYS.map((k) => [k, periodGroup(candidates, k)]),
   ) as Record<PeriodKey, PeriodGroup>;
+  const ddG = ddGroup(candidates);
   return (
     <div className="card market-topn-card">
       <ReturnPeriodLine
@@ -169,7 +171,7 @@ export default function CandidateTable({
             <th style={{ width: 95, textAlign: "right" }}>NAV</th>
             <th style={{ width: 95, textAlign: "right" }}>시장가</th>
             <th style={{ width: 100, textAlign: "right" }}>괴리율</th>
-            <th style={{ width: 95, textAlign: "right" }}>고점 대비</th>
+            <th style={{ width: 120, textAlign: "right" }}>{DD_LABEL}</th>
           </tr>
         </thead>
         <tbody>
@@ -272,18 +274,16 @@ export default function CandidateTable({
                     <span style={{ color: "var(--muted)" }}>-</span>
                   )}
                 </td>
-                <td
-                  style={{
-                    textAlign: "right",
-                    color: returnPctColor(
-                      c.drawdown_20d != null ? c.drawdown_20d * 100 : null,
-                    ),
-                  }}
-                >
-                  {c.drawdown_20d != null
-                    ? fmtPct(c.drawdown_20d * 100)
-                    : DASH}
-                </td>
+                {(() => {
+                  // POC5-25 — 현재 저장 종가 20개 고점 대비(옛 drawdown_20d 쓰지 않음 · 값 없으면 사유).
+                  const dd = ddView(c);
+                  return (
+                    <td style={{ textAlign: "right", color: ddColor(dd, returnPctColor) }}>
+                      {dd.kind === "ok" ? ddPct(dd.value, fmtPct) : dd.reason}
+                      <PeriodNote text={ddNote(dd, ddG)} />
+                    </td>
+                  );
+                })()}
               </tr>
             );
           })}

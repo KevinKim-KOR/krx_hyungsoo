@@ -104,6 +104,21 @@ export interface MarketCandidate {
   relative_upside_score?: number | null;
   drawdown_20d?: number | null;
   relative_upside_reasons?: string[];
+  // POC5-25 — 현재 PC 저장 종가 '20저장일 종가 고점 대비'(PC 시장 목록 응답만 · 단위 % · 옛 drawdown_20d 와 별개 ·
+  // 화면 · 정렬은 이 객체만 읽는다 · lib/storedDrawdown).
+  stored_drawdown_20?: StoredDrawdown | null;
+}
+
+export interface StoredDrawdown {
+  status: "ok" | "unavailable";
+  reason?: "end_date_unknown" | "insufficient_history" | "invalid_price" | "basis_unconfirmed" | null;
+  value_pct?: number | null;
+  end_date?: string | null;
+  start_date?: string | null;
+  close?: number | null;
+  peak_close?: number | null;
+  peak_date?: string | null;
+  rows?: number;
 }
 
 // 2026-06-20 ML 축1 — 응답 top-level 의 상대상승 참고점수 상태.

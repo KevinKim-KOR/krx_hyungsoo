@@ -10,7 +10,7 @@
 //   지표 : 일간 · 1개월 · 3개월 + KODEX200 대비 1M
 //          (아랫줄이 KODEX 대비 지표인 것은 ETF 비교하기·확인 근거와 같은 배치)
 //   배지 : 보유 여부 3-state · 데이터 상태(정상이면 숨김)
-//   펼침 : 6개월 · 12개월 · 3년 · KODEX200 대비 3M · 고점 대비
+//   펼침 : 6개월 · 12개월 · 3년 · KODEX200 대비 3M · 20저장일 종가 고점 대비(POC5-25 · 현재 저장 종가)
 //
 // 2026-08-29 POC3-ML-02 REJECT Closeout — `relative_upside_v0` 이 REJECT 판정을
 // 받아 참고점수 배지와 점수 근거를 뺐다. 큰 숫자 자리는 1개월 수익률이 대신한다.
@@ -38,6 +38,7 @@ import {
 } from "@/lib/returnPeriod";
 import { sameShort, sameView } from "@/lib/samePeriodKodex";
 import ReturnPeriodLine, { PeriodNote } from "./ReturnPeriodLine";
+import { DD_LABEL, ddColor, ddGroup, ddNote, ddPct, ddView } from "@/lib/storedDrawdown";
 import SamePeriodValue from "./SamePeriodValue";
 
 const DASH = "-";
@@ -92,6 +93,7 @@ export default function CandidateCards({
     return <p className="wb-muted">표시할 후보가 없습니다.</p>;
   }
 
+  const ddG = ddGroup(candidates);
   return (
     <>
       <ReturnPeriodLine
@@ -117,7 +119,8 @@ export default function CandidateCards({
           const discountVal = nav?.discount_rate_pct ?? null;
           const flagVal = nav?.flag ?? null;
           const dq = c.data_quality?.status ?? null;
-          const drawdown = c.drawdown_20d != null ? c.drawdown_20d * 100 : null;
+          // POC5-25 — 현재 저장 종가 20개 고점 대비(옛 점수 스냅샷 drawdown_20d 는 쓰지 않는다).
+          const dd = ddView(c);
           const held = heldTickers ? (c.ticker ? heldTickers.has(c.ticker) : false) : null;
           const isOpen = expanded === key;
           const isSel = !!c.ticker && selected === c.ticker;
@@ -262,7 +265,12 @@ export default function CandidateCards({
                       value={sameShort(same3)}
                       color={same3.kind === "ok" ? dirColor(same3.diff) : "var(--muted)"}
                     />
-                    <DetailCell label="고점 대비" value={fmtPct(drawdown)} color={dirColor(drawdown)} />
+                    <DetailCell
+                      label={DD_LABEL}
+                      value={dd.kind === "ok" ? ddPct(dd.value, fmtPct) : dd.reason}
+                      color={ddColor(dd, dirColor)}
+                      note={ddNote(dd, ddG)}
+                    />
                   </div>
                 </div>
               ) : null}

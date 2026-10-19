@@ -42,6 +42,7 @@ import {
   candReturn,
   candExcess,
   candDrawdown,
+  drawdownMissingLast,
   candDataState,
   evidenceByTicker,
   heldTickerSet,
@@ -51,6 +52,7 @@ import {
   relationState,
   type RelationState,
 } from "./workbench/helpers";
+import { DD_LABEL, ddColor, ddDetail, ddPct, ddView } from "@/lib/storedDrawdown";
 
 interface Props {
   onNavigate: (key: MenuKey) => void;
@@ -446,13 +448,15 @@ function CandidateTable({
         return candReturn(c, "three_month") ?? -Infinity;
       case "excess":
         return candExcess(c) ?? -Infinity;
-      case "drawdown":
-        return candDrawdown(c) ?? -Infinity;
+      case "drawdown": // POC5-25 — 값 없음은 아래 비교에서 방향과 무관하게 맨 뒤.
+        return candDrawdown(c) ?? 0;
       default:
         return c.rank ?? 9999;
     }
   };
   rows.sort((a, b) => {
+    const miss = sortKey === "drawdown" ? drawdownMissingLast(a, b) : null;
+    if (miss !== null) return miss;
     const va = val(a);
     const vb = val(b);
     const cmp = va < vb ? -1 : va > vb ? 1 : 0;
@@ -483,7 +487,7 @@ function CandidateTable({
           {S("one_month", "1M")}
           {S("three_month", "3M")}
           {S("excess", "동일기간 KODEX 1M")}
-          {S("drawdown", "고점대비")}
+          {S("drawdown", DD_LABEL)}
         </span>
         <span className="holdings-sortbar-hint">
           같은 항목을 다시 누르면 오름/내림 전환
@@ -574,9 +578,9 @@ function CandidateTable({
                   </div>
                 </div>
                 <div className="wb-hm-ex">
-                  <span className="k">고점대비</span>
-                  <span className="v" style={{ color: directionColor(dd) }}>
-                    {fmtPlainPct(dd)}
+                  <span className="k">{DD_LABEL}</span>
+                  <span className={dd != null ? "v" : "v wb-dd-none"} style={{ color: ddColor(ddView(c), directionColor) }}>
+                    {dd != null ? ddPct(dd, fmtPlainPct) : ddDetail(ddView(c), fmtPlainPct)}
                   </span>
                 </div>
               </div>
@@ -783,7 +787,7 @@ function SelectedDetail({
           )}
         />
         <DetailCell label="동일 기간 KODEX200 대비 1M" v={samePeriodDetail(c, ev)} />
-        <DetailCell label="고점 대비" v={fmtPlainPct(candDrawdown(c))} />
+        <DetailCell label={DD_LABEL} v={ddDetail(ddView(c), fmtPlainPct)} />
         <DetailCell label="보유 여부" v={relLabel(heldSt, "보유 중", "미보유")} />
         <DetailCell
           label="후보 포함"

@@ -157,7 +157,7 @@ function openHelp(label: string): string {
   return text;
 }
 
-describe("정상 자료 — 위 두 줄만 · 후보마다 날짜 반복 없음", () => {
+describe("정상 자료 — 위 줄만(POC5-25 셋째 줄 포함) · 후보마다 날짜 반복 없음", () => {
   it("카드: 기간 한 줄 + KODEX200 비교 한 줄 · 후보 표시 0 · %p", () => {
     render(
       <CandidateCards
@@ -169,6 +169,8 @@ describe("정상 자료 — 위 두 줄만 · 후보마다 날짜 반복 없음"
     expect(lines()).toEqual([
       "1개월 수익률 계산 기간 | 2026-09-14 → 2026-10-14 종가 · 표시 후보 2개 모두 같음",
       "동일 기간 KODEX200 대비 1M · 3M | 후보와 같은 시작 · 끝 날짜의 KODEX200 종가로 뺀 차이 (%p)",
+      // POC5-25 — 셋째 줄(이 픽스처는 새 고점 대비 객체가 없는 응답 → 값 없음 수만 · 옛 값으로 채우지 않음).
+      "20저장일 종가 고점 대비 | 값 없음 2개",
     ]);
     const list = screen.getByTestId("candidate-card-list");
     expect(list.querySelectorAll(".rp-note")).toHaveLength(0);
@@ -233,6 +235,7 @@ describe("날짜 차이 — 시작일 여러 종류 · 끝일 다름 · 확인 �
     expect(lines()).toEqual([
       "1개월 수익률 계산 기간 | 확인 불가 — 응답에 사용 종가 날짜가 없습니다",
       "동일 기간 KODEX200 대비 1M · 3M | 응답에 동일 기간 비교가 없습니다",
+      "20저장일 종가 고점 대비 | 값 없음 1개", // POC5-25 셋째 줄
     ]);
     expect(screen.getByTestId("candidate-card-list").querySelectorAll(".rp-note, .wb-hb.mute").length).toBe(1); // '미보유'만
   });
