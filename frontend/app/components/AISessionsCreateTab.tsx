@@ -23,6 +23,8 @@ import {
 import { fetchMlBaselineEvidenceSnapshot } from "@/lib/api/mlBaselineV0";
 import {
   clearAISessionsDraft,
+  isSelectedPreviewRecord,
+  kstDateTimeLabel,
   type AISessionsDraft,
 } from "@/lib/aiSessionsDraft";
 
@@ -53,18 +55,17 @@ const VERDICT_OPTIONS: DecisionUserVerdict[] = [
   "hold",
 ];
 
-function FiltersSummary({ draft }: { draft: AISessionsDraft }) {
-  const f = draft.filters;
+function filtersText(f: AISessionsDraft["filters"]): string {
   const items: string[] = [];
   if (f.exclude_inverse) items.push("인버스 제외");
   if (f.exclude_leveraged) items.push("레버리지 제외");
   if (f.exclude_synthetic) items.push("합성 제외");
   if (f.exclude_futures) items.push("선물형 제외");
-  return (
-    <div className="helper">
-      {items.length > 0 ? items.join(" · ") : "필터 없음"}
-    </div>
-  );
+  return items.length > 0 ? items.join(" · ") : "필터 없음";
+}
+
+function FiltersSummary({ draft }: { draft: AISessionsDraft }) {
+  return <div className="helper">{filtersText(draft.filters)}</div>;
 }
 
 function CandidatesSummary({ draft }: { draft: AISessionsDraft }) {
@@ -82,7 +83,47 @@ function CandidatesSummary({ draft }: { draft: AISessionsDraft }) {
   );
 }
 
+// POC5-24 — 선택 근거 모드: 선택 종목 · 생성 · 근거 날짜 · (가격 기준일 없으면) 기록 기준일 · 당시 화면 필터.
+function SelectedTarget({ draft }: { draft: AISessionsDraft }) {
+  const c = draft.candidate_snapshot[0];
+  const sp = c?.selected_preview;
+  const kind = sp?.target_kind === "holding" ? "보유" : "후보";
+  const gen = sp?.generated_at ? kstDateTimeLabel(sp.generated_at) : "-";
+  const priceDate = sp?.evidence_as_of?.target_as_of_date || null;
+  return (
+    <div className="ais-selected">
+      <div>
+        <span className="k">선택 종목 </span>
+        <strong>{c?.name ?? c?.ticker ?? "-"}</strong> ({c?.ticker ?? "-"}) · {kind}
+        {c?.rank != null ? ` · 화면 목록 ${c.rank}위` : ""}
+      </div>
+      <div>
+        <span className="k">미리보기 생성 </span>
+        {gen}
+        <span className="k"> · 가격 기준일 </span>
+        {priceDate ?? "미확인"}
+        <span className="k"> · KODEX200 </span>
+        {sp?.evidence_as_of?.kodex200_as_of_date ?? "-"}
+        <span className="k"> · VIX </span>
+        {sp?.evidence_as_of?.vix_as_of_date ?? "-"}(미국 날짜)
+      </div>
+      {priceDate ? null : (
+        <div>
+          <span className="k">기록 기준일 </span>
+          {draft.asof}
+          <span className="k"> — 미리보기 생성일 사용</span>
+        </div>
+      )}
+      <div>
+        <span className="k">당시 화면의 후보 목록 필터 </span>
+        {filtersText(draft.filters)}
+      </div>
+    </div>
+  );
+}
+
 export default function AISessionsCreateTab({ draft, onSaved }: Props) {
+  const selectedMode = isSelectedPreviewRecord(draft?.source_screen, draft?.candidate_snapshot);
   const initialQuestion = useMemo(
     () => (draft ? draft.question_text : ""),
     [draft],
@@ -132,7 +173,7 @@ export default function AISessionsCreateTab({ draft, onSaved }: Props) {
     try {
       const res = await createDecisionSession({
         asof: draft.asof,
-        source_screen: "market_discovery",
+        source_screen: draft.source_screen ?? "market_discovery",
         filters: draft.filters,
         candidate_snapshot: draft.candidate_snapshot,
         question_text: questionText,
@@ -160,8 +201,10 @@ export default function AISessionsCreateTab({ draft, onSaved }: Props) {
         // 재계산 / feature 재생성 / 외부 호출 / ML 학습 0건. fetch 실패 시에도
         // 조용히 빠지지 않도록 status="error" 정규화 snapshot 으로 채움
         // (지시문 §4.7).
-        ml_baseline_evidence_snapshot:
-          draft.ml_baseline_evidence_snapshot ??
+        // POC5-24 — 선택 근거 모드는 최신 ML 기준선(선택 종목과 무관)을 자동 보충하지 않는다(설계 §3).
+        ml_baseline_evidence_snapshot: selectedMode
+          ? null
+          : draft.ml_baseline_evidence_snapshot ??
           (await (async () => {
             try {
               return (await fetchMlBaselineEvidenceSnapshot()) as unknown as Record<
@@ -217,6 +260,7 @@ export default function AISessionsCreateTab({ draft, onSaved }: Props) {
     userVerdict,
     nextChecksRaw,
     onSaved,
+    selectedMode,
   ]);
 
   if (!draft) {
@@ -235,29 +279,44 @@ export default function AISessionsCreateTab({ draft, onSaved }: Props) {
     <div className="card decision-card">
       <h2>새 기록 저장</h2>
       <p className="helper" style={{ marginBottom: 8 }}>
-        Market Discovery 에서 넘어온 후보를 기반으로 외부 AI(GPT / Gemini /
-        Claude) 답변과 사용자 메모 / 1차 판정을 저장합니다. AI 를 직접 호출하지
-        않습니다.
+        {selectedMode
+          ? "「보유와 비교」 판단 근거 미리보기에서 넘어온 선택 종목"
+          : "Market Discovery 에서 넘어온 후보"}
+        를 기반으로 외부 AI(GPT / Gemini / Claude) 답변과 사용자 메모 / 1차
+        판정을 저장합니다. AI 를 직접 호출하지 않습니다.
       </p>
 
-      <h3>기준일 (asof)</h3>
-      <div className="decision-pre" style={{ padding: "8px 12px" }}>
-        {draft.asof}
-      </div>
+      {selectedMode ? (
+        <>
+          <h3>선택 종목 판단 근거</h3>
+          <SelectedTarget draft={draft} />
+        </>
+      ) : (
+        <>
+          <h3>기준일 (asof)</h3>
+          <div className="decision-pre" style={{ padding: "8px 12px" }}>
+            {draft.asof}
+          </div>
 
-      <h3>필터 조건</h3>
-      <FiltersSummary draft={draft} />
+          <h3>필터 조건</h3>
+          <FiltersSummary draft={draft} />
 
-      <h3>후보 스냅샷</h3>
-      <CandidatesSummary draft={draft} />
+          <h3>후보 스냅샷</h3>
+          <CandidatesSummary draft={draft} />
+        </>
+      )}
 
-      <label htmlFor="ais-question">AI 에게 보낸 질문 (자동 채움 / 편집 가능)</label>
+      <label htmlFor="ais-question">
+        {selectedMode
+          ? "AI 에게 보낼 질문 — 판단 근거 미리보기 원문 (편집 가능 · 넘겨받은 원문은 따로 보관)"
+          : "AI 에게 보낸 질문 (자동 채움 / 편집 가능)"}
+      </label>
       <textarea
         id="ais-question"
         className="decision-textarea"
         value={questionText}
         onChange={(e) => setQuestionText(e.target.value)}
-        rows={8}
+        rows={selectedMode ? 16 : 8}
       />
 
       <label htmlFor="ais-gpt">GPT 답변</label>

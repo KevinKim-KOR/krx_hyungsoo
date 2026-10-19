@@ -41,6 +41,19 @@ export interface DecisionCandidateSnapshot {
   tags: string[];
   // POC5-22 — 화면 · 질문 본문과 같은 동일 기간 KODEX200 비교 객체(선택 · 이전 기록에는 없음).
   same_period_kodex200?: SamePeriodKodex200 | null;
+  // POC5-24 — 「보유와 비교」 판단 근거 미리보기에서 넘긴 원문 · 날짜(선택 · 저장 JSON 안).
+  selected_preview?: SelectedPreviewSnapshot | null;
+}
+
+export interface SelectedPreviewSnapshot {
+  target_kind: "holding" | "candidate";
+  generated_at: string;
+  evidence_as_of: {
+    target_as_of_date: string | null;
+    kodex200_as_of_date: string | null;
+    vix_as_of_date: string | null;
+  } | null;
+  preview_text: string;
 }
 
 export interface CreateDecisionSessionRequest {
@@ -88,6 +101,8 @@ export interface DecisionSessionSummary {
   has_gpt_answer: boolean;
   has_gemini_answer: boolean;
   has_claude_answer: boolean;
+  // POC5-24 — 선택 근거 기록만 '이름(티커)'(목록에서 종목 알아보기 · Q1 (a)).
+  target_label?: string | null;
 }
 
 export interface ListDecisionSessionsResponse {

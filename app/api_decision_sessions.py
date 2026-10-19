@@ -18,6 +18,7 @@ from typing import Literal, Optional
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
+from app.api_decision_draft_preview import PreviewEvidenceAsOf
 from app.api_market_topn_models import SamePeriodKodex200
 from app.decision_evidence_store import (
     ALLOWED_USER_VERDICTS,
@@ -44,6 +45,15 @@ class DecisionFiltersModel(BaseModel):
     exclude_futures: bool = Field(...)
 
 
+class SelectedPreviewSnapshot(BaseModel):
+    # POC5-24 — 「보유와 비교」 판단 근거 미리보기 응답 그대로(원문 · 대상 종류 · 생성 시각 · 근거 날짜).
+    # 저장 = candidate_snapshot_json 안 선택 필드 · 선택 근거 모드 규칙은 app.decision_selected_preview.
+    target_kind: Literal["holding", "candidate"]
+    generated_at: str = Field(..., min_length=1)
+    evidence_as_of: Optional[PreviewEvidenceAsOf] = None
+    preview_text: str = Field(..., min_length=1)
+
+
 class DecisionCandidateSnapshot(BaseModel):
     rank: Optional[int] = None
     ticker: Optional[str] = None
@@ -54,6 +64,8 @@ class DecisionCandidateSnapshot(BaseModel):
     tags: list[str] = []
     # POC5-22 — 화면 · 질문 본문과 같은 동일 기간 KODEX200 비교 객체(선택 · 저장 JSON 안 · 과거 기록은 없음).
     same_period_kodex200: Optional[SamePeriodKodex200] = None
+    # POC5-24 — 선택 근거 모드 기록의 처음 넘긴 미리보기(선택 · 과거 기록은 없음).
+    selected_preview: Optional[SelectedPreviewSnapshot] = None
 
 
 class CreateDecisionSessionRequest(BaseModel):
@@ -104,6 +116,8 @@ class DecisionSessionSummary(BaseModel):
     has_gpt_answer: bool
     has_gemini_answer: bool
     has_claude_answer: bool
+    # POC5-24 — 선택 근거 모드 기록만 '이름(티커)' · 그 밖 None.
+    target_label: Optional[str] = None
 
 
 class ListDecisionSessionsResponse(BaseModel):

@@ -28,6 +28,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
 
+from app.decision_selected_preview import selected_preview_error, selected_target_label
+
 DEFAULT_DB_PATH = Path("state/decision/decision_evidence.sqlite")
 
 # 사용자 1차 판정 enum (지시문 §9).
@@ -341,6 +343,22 @@ def insert_record(
     _validate_user_verdict(user_verdict)
     if not isinstance(next_checks, list):
         raise DecisionValidationError("next_checks must be a list.")
+    # POC5-24 — 선택 근거 모드(「보유와 비교」 미리보기 → AI 세션) 규칙 · 그 밖 기록은 그대로 통과.
+    sp_error = selected_preview_error(
+        asof=asof,
+        source_screen=source_screen,
+        candidate_snapshot=candidate_snapshot,
+        other_snapshots={
+            "market_context_snapshot": market_context_snapshot,
+            "constituent_snapshot": constituent_snapshot,
+            "overlap_snapshot": overlap_snapshot,
+            "short_term_momentum_snapshot": short_term_momentum_snapshot,
+            "data_quality_snapshot": data_quality_snapshot,
+            "ml_baseline_evidence_snapshot": ml_baseline_evidence_snapshot,
+        },
+    )
+    if sp_error:
+        raise DecisionValidationError(sp_error)
 
     now_iso = _kst_now_iso()
     new_id = _generate_id()
@@ -525,6 +543,10 @@ def list_recent_records(
                 "has_gpt_answer": bool(full["gpt_answer_text"].strip()),
                 "has_gemini_answer": bool(full["gemini_answer_text"].strip()),
                 "has_claude_answer": bool(full["claude_answer_text"].strip()),
+                # POC5-24 — 선택 근거 모드 기록만 '이름(티커)' · 그 밖 None(읽을 때 계산 · 저장 구조 변경 없음).
+                "target_label": selected_target_label(
+                    full["source_screen"], full["candidate_snapshot"]
+                ),
             }
         )
     return out

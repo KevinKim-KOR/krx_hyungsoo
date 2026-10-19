@@ -36,6 +36,7 @@ import {
 } from "./holdings_compare/CompareCards";
 import SelectedDetail from "./holdings_compare/SelectedDetail";
 import SelectedHoldingDetail from "./holdings_compare/SelectedHoldingDetail";
+import type { MenuKey } from "./LeftSidebar";
 
 // 2026-08-29 POC3-ML-02 REJECT Closeout — `"score"` 리터럴을 타입에서 뺐다.
 // 타입 수준에서 참고점수 정렬의 재도입을 막는다.
@@ -46,9 +47,11 @@ type SortDirection = "desc" | "asc";
 
 interface Props {
   data: MarketTopNResponse;
+  // POC5-24 — 판단 근거 미리보기 [AI 세션에서 검토] 이동.
+  onNavigate?: (key: MenuKey) => void;
 }
 
-export default function HoldingsCompareView({ data }: Props) {
+export default function HoldingsCompareView({ data, onNavigate }: Props) {
   const [enrichedRaw, setEnrichedRaw] = useState<EnrichedHolding[]>([]);
   const [enrichedLoading, setEnrichedLoading] = useState<boolean>(false);
   const [enrichedError, setEnrichedError] = useState<string | null>(null);
@@ -438,6 +441,9 @@ export default function HoldingsCompareView({ data }: Props) {
                   ticker={selectedCandidate.ticker}
                   displayName={selectedCandidate.name ?? selectedCandidate.ticker}
                   listQuery={listQuery}
+                  screenFilters={data.filters}
+                  rank={selectedCandidate.rank ?? null}
+                  onNavigate={onNavigate}
                 />
               </div>
             ) : null}
@@ -469,6 +475,8 @@ export default function HoldingsCompareView({ data }: Props) {
                       targetKind="holding"
                       ticker={h.ticker}
                       displayName={h.name ?? h.ticker}
+                      screenFilters={data.filters}
+                      onNavigate={onNavigate}
                     />
                   </div>
                 </div>

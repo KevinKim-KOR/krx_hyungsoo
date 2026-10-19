@@ -2139,6 +2139,17 @@ textarea.decision-textarea {
   white-space: pre-wrap; font-family: inherit; font-size: 0.82rem; line-height: 1.6;
   margin: 0; border: 0; background: transparent; padding: 0; border-radius: 0;
 }
+/* POC5-24 — [AI 세션에서 검토] 저장 안 한 초안 바꾸기 확인 줄 · AI 세션 작성 화면 선택 종목 묶음. */
+.ddp-replace {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px; padding: 8px 10px;
+  border: 1px solid var(--warn); border-radius: 6px; background: #fffbeb; font-size: 0.85rem;
+}
+.ddp-replace .ddp-cancel { background: transparent; color: var(--fg); border: 1px solid var(--border); }
+.ais-selected {
+  display: grid; gap: 4px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px;
+  background: var(--bg-muted, #f8f8f8); font-size: 0.9rem;
+}
+.ais-selected .k { color: var(--muted); }
 
 /* POC3-02 Judgment Workbench (고밀도 표 · 탭 · 상세) */
 .wb-root h1 { margin-bottom: 8px; }

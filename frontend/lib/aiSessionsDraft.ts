@@ -40,6 +40,81 @@ export interface AISessionsDraft {
   // 룩백 report snapshot. 기본은 null (Market Discovery 직접 흐름에서는 비어있음).
   // AISessionsCreateTab 가 GET /ml/baseline-v0/latest 결과를 옮겨 담는다.
   ml_baseline_evidence_snapshot?: Record<string, unknown> | null;
+  // POC5-24 — 저장 시 source_screen(없으면 기존 "market_discovery"). 「보유와 비교」 판단 근거 미리보기에서
+  // 넘긴 초안은 "holdings_compare_preview"(선택 종목 1건 · 질문 = 미리보기 원문 · ML 자동 보충 안 함).
+  source_screen?: string;
+}
+
+export const SELECTED_PREVIEW_SOURCE = "holdings_compare_preview";
+
+// POC5-24 — 선택 근거 모드 = 화면 값 · 후보 1건 · selected_preview 객체가 모두 맞을 때만(백엔드
+// app/decision_selected_preview.is_selected_preview_record 와 같은 판정 · 일반 후보 1건 기록은 아님).
+export function isSelectedPreviewRecord(
+  sourceScreen: string | undefined | null,
+  candidates: DecisionCandidateSnapshot[] | undefined | null,
+): boolean {
+  return (
+    sourceScreen === SELECTED_PREVIEW_SOURCE &&
+    Array.isArray(candidates) &&
+    candidates.length === 1 &&
+    candidates[0]?.selected_preview != null &&
+    typeof candidates[0].selected_preview === "object"
+  );
+}
+
+// 지금 남아 있는 초안이 어디서 왔는지 한 줄(덮어쓰기 확인용 · 판단 없음) + 넘긴 시각(KST · 없으면 생략).
+// 「ETF 구성종목」 초안은 구성종목 · 중복 칸을 늘 넣는다(분석 전이면 null) · 「요즘 잘 오르는 ETF」 초안에는 그 칸이 없다.
+export function describeDraftOrigin(d: AISessionsDraft): string {
+  let origin: string;
+  if (isSelectedPreviewRecord(d.source_screen, d.candidate_snapshot)) {
+    const c = d.candidate_snapshot[0];
+    origin = `「보유와 비교」 판단 근거 미리보기 · ${c?.name ?? c?.ticker ?? "-"}`;
+  } else if ("constituent_snapshot" in d || "overlap_snapshot" in d) {
+    origin = `「ETF 구성종목」 · 후보 ${d.candidate_snapshot.length}개`;
+  } else {
+    origin = `「요즘 잘 오르는 ETF」 · 후보 ${d.candidate_snapshot.length}개`;
+  }
+  const at = typeof d.draft_created_at === "string" && d.draft_created_at.trim();
+  return at ? `${origin} · ${kstDateTimeLabel(d.draft_created_at)}` : origin;
+}
+
+// 시간대가 없는 값은 KST 로 본다(백엔드 app/decision_selected_preview.kst_date_of 와 같은 규칙) ·
+// 앞뒤 공백 무시 · 날짜만이면 그날 00:00 KST · 'YYYY-MM-DD HH:MM' 사이 공백은 T 로.
+function withKstOffset(raw: string): string {
+  let s = raw.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return `${s}T00:00:00+09:00`;
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(s)) s = s.replace(" ", "T");
+  if (/T\d{2}:\d{2}/.test(s) && !/(Z|[+-]\d{2}:?\d{2})$/i.test(s)) return `${s}+09:00`;
+  return s;
+}
+
+// POC5-24 — 시각을 Asia/Seoul(KST) 기준으로 읽는다(브라우저 시간대와 무관 · 해석 못 하면 null).
+function kstParts(iso: string | null | undefined): Record<string, string> | null {
+  if (!iso) return null;
+  const d = new Date(withKstOffset(iso));
+  if (Number.isNaN(d.getTime())) return null;
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(d);
+  return Object.fromEntries(parts.map((x) => [x.type, x.value]));
+}
+
+// 'YYYY-MM-DD HH:MM'(KST) · 해석 못 하면 원문 그대로(저장 문자열은 바꾸지 않는다).
+export function kstDateTimeLabel(iso: string): string {
+  const p = kstParts(iso);
+  return p ? `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}` : iso;
+}
+
+// 'YYYY-MM-DD'(KST) · 해석 못 하면 null.
+export function kstDateOf(iso: string | null | undefined): string | null {
+  const p = kstParts(iso);
+  return p ? `${p.year}-${p.month}-${p.day}` : null;
 }
 
 function safeStorage(): Storage | null {

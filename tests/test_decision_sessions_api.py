@@ -189,15 +189,19 @@ def test_get_decision_session_detail_not_found(api_client):
 
 def test_decision_db_is_separate_from_market_db(api_client):
     """AC-17 — decision_evidence.sqlite 는 market_data.sqlite 와 분리."""
-    import importlib
+    import inspect
 
     from app import market_data_store
 
     assert decision_evidence_store.DEFAULT_DB_PATH != market_data_store.DEFAULT_DB_PATH
-    fresh = importlib.import_module("app.decision_evidence_store")
-    importlib.reload(fresh)
-    assert "decision" in str(fresh.DEFAULT_DB_PATH).replace("\\", "/")
-    assert "decision_evidence.sqlite" in str(fresh.DEFAULT_DB_PATH).replace("\\", "/")
+    # 모듈 기본 경로 = init_db 기본 인자(정의 때 고정). 모듈을 다시 읽으면(reload) 예외 클래스가
+    # 갈라져 이후 시험의 저장 검증 422 가 500 이 된다(POC5-24 에서 확인) → 다시 읽지 않는다.
+    default = (
+        inspect.signature(decision_evidence_store.init_db).parameters["db_path"].default
+    )
+    assert default != market_data_store.DEFAULT_DB_PATH
+    assert "decision" in str(default).replace("\\", "/")
+    assert "decision_evidence.sqlite" in str(default).replace("\\", "/")
 
 
 def test_post_decision_sessions_accepts_default_user_verdict(api_client):

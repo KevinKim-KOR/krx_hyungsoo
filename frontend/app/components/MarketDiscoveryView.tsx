@@ -651,7 +651,7 @@ export default function MarketDiscoveryView({
           <SummaryHeader data={data} />
         </>
       ) : (
-        <HoldingsCompareView data={data} />
+        <HoldingsCompareView data={data} onNavigate={onNavigate} />
       )}
     </section>
   );

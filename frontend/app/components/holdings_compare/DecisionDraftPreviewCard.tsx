@@ -15,7 +15,17 @@ import {
   type DecisionDraftListQuery,
   type DecisionDraftPreviewResponse,
   type DecisionDraftTargetKind,
+  type DecisionFilters,
 } from "@/lib/api";
+import {
+  SELECTED_PREVIEW_SOURCE,
+  describeDraftOrigin,
+  kstDateOf,
+  loadAISessionsDraft,
+  saveAISessionsDraft,
+  type AISessionsDraft,
+} from "@/lib/aiSessionsDraft";
+import type { MenuKey } from "../LeftSidebar";
 import { SAME_PERIOD_LIMIT } from "@/lib/samePeriodKodex";
 import { VOLUME_HELP } from "@/lib/storedVolume";
 import HelpPopover from "../holdings_risk_evidence/HelpPopover";
@@ -27,6 +37,45 @@ interface Props {
   displayName?: string;
   // 후보만 — 화면 목록 조건(같은 목록에서 찾기).
   listQuery?: DecisionDraftListQuery;
+  // POC5-24 — [AI 세션에서 검토]: 화면 목록 필터(세션 필수 항목) · 후보 순위 · 메뉴 이동.
+  screenFilters?: DecisionFilters;
+  rank?: number | null;
+  onNavigate?: (key: MenuKey) => void;
+}
+
+// POC5-24 — 지금 보이는 응답 그대로 AI 세션 초안(재생성 · 재계산 없음 · 질문 = 원문).
+// 기록 기준일(asof) = 가격 기준일 · 없으면 생성 시각의 KST 날짜(가격 기준일 칸은 비운 채 그대로).
+// 원문 · 생성 시각이 없거나 날짜를 정할 수 없으면 null(넘기지 않음).
+export function buildSelectedPreviewDraft(
+  res: DecisionDraftPreviewResponse,
+  target: { kind: DecisionDraftTargetKind; ticker: string; name: string; rank: number | null },
+  filters: DecisionFilters,
+): AISessionsDraft | null {
+  if (res.status !== "ok" || !res.preview_text || !res.generated_at) return null;
+  const asof = res.evidence_as_of?.target_as_of_date || kstDateOf(res.generated_at);
+  if (!asof) return null;
+  return {
+    asof,
+    filters,
+    candidate_snapshot: [
+      {
+        rank: target.kind === "candidate" ? target.rank : null,
+        ticker: target.ticker,
+        name: target.name,
+        tags: [],
+        selected_preview: {
+          target_kind: target.kind,
+          generated_at: res.generated_at,
+          evidence_as_of: res.evidence_as_of ?? null,
+          preview_text: res.preview_text,
+        },
+      },
+    ],
+    question_text: res.preview_text,
+    linked_market_refresh_id: null,
+    draft_created_at: new Date().toISOString(),
+    source_screen: SELECTED_PREVIEW_SOURCE,
+  };
 }
 
 const FAILURE_TEXT = "판단 근거 미리보기를 생성하지 못했습니다. 다시 시도하세요.";
@@ -57,8 +106,15 @@ export default function DecisionDraftPreviewCard({
   ticker,
   displayName,
   listQuery,
+  screenFilters,
+  rank,
+  onNavigate,
 }: Props) {
+  // POC5-24 — 저장 안 한 기존 초안이 있으면 바꾸기 전에 묻는다(Q2 (a)).
+  const [pendingReplace, setPendingReplace] = useState<string | null>(null);
   const [result, setResult] = useState<DecisionDraftPreviewResponse | null>(null);
+  // 결과가 어느 대상(종류 · 종목 · 목록 조건)의 것인지 — 다른 대상 이름에 예전 원문을 붙이지 않도록.
+  const [resultFor, setResultFor] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
@@ -69,21 +125,26 @@ export default function DecisionDraftPreviewCard({
     [targetKind, listQuery],
   );
 
-  // 대상(종류 · 종목 · 후보 목록 조건)이 바뀌면 이전 미리보기 폐기.
+  const targetKey = `${targetKind}|${ticker}|${queryKey}`;
+
+  // 대상(종류 · 종목 · 후보 목록 조건)이 바뀌면 이전 미리보기 폐기 · 초안 교체 확인도 닫는다.
   useEffect(() => {
     setResult(null);
     setError(null);
     setLoading(false);
     setCopyState("idle");
+    setPendingReplace(null);
     currentReqIdRef.current += 1;
   }, [targetKind, ticker, queryKey]);
 
   const handleGenerate = useCallback(async () => {
     if (loading || !ticker) return;
     const reqId = ++currentReqIdRef.current;
+    const reqFor = targetKey;
     setLoading(true);
     setError(null);
     setCopyState("idle");
+    setPendingReplace(null);
     try {
       const res = await postDecisionDraftPreview(targetKind, ticker, listQuery);
       if (reqId !== currentReqIdRef.current) return;
@@ -93,6 +154,8 @@ export default function DecisionDraftPreviewCard({
         setResult(null);
       } else {
         setResult(res);
+        setResultFor(reqFor);
+        setPendingReplace(null);
       }
     } catch {
       if (reqId !== currentReqIdRef.current) return;
@@ -101,7 +164,7 @@ export default function DecisionDraftPreviewCard({
     } finally {
       if (reqId === currentReqIdRef.current) setLoading(false);
     }
-  }, [loading, targetKind, ticker, listQuery]);
+  }, [loading, targetKind, ticker, listQuery, targetKey]);
 
   const handleCopy = useCallback(() => {
     const text = result?.preview_text;
@@ -116,9 +179,42 @@ export default function DecisionDraftPreviewCard({
     );
   }, [result]);
 
+  const reviewDraft = useMemo(
+    () =>
+      result && resultFor === targetKey && screenFilters
+        ? buildSelectedPreviewDraft(
+            result,
+            { kind: targetKind, ticker, name: displayName ?? ticker, rank: rank ?? null },
+            screenFilters,
+          )
+        : null,
+    [result, resultFor, targetKey, screenFilters, targetKind, ticker, displayName, rank],
+  );
+
+  // [AI 세션에서 검토] · [바꾸고 이동] — 저장하지 않은 초안이 있으면 먼저 묻는다(force 면 교체).
+  const goReview = useCallback(
+    (force: boolean) => {
+      if (!reviewDraft || loading) {
+        setPendingReplace(null);
+        return;
+      }
+      const old = loadAISessionsDraft();
+      if (old && !force) {
+        setPendingReplace(describeDraftOrigin(old));
+        return;
+      }
+      saveAISessionsDraft(reviewDraft);
+      setPendingReplace(null);
+      onNavigate?.("ai_sessions");
+    },
+    [reviewDraft, loading, onNavigate],
+  );
 
   const label = targetKind === "holding" ? "보유" : "후보";
-  const ok = result && result.status === "ok" && result.preview_text ? result : null;
+  const ok =
+    result && resultFor === targetKey && result.status === "ok" && result.preview_text
+      ? result
+      : null;
   const gen = ok?.generated_at ? ok.generated_at.replace("T", " ").slice(0, 16) : DASH;
 
   return (
@@ -144,12 +240,30 @@ export default function DecisionDraftPreviewCard({
             복사
           </button>
         ) : null}
+        {ok && reviewDraft && onNavigate && !loading ? (
+          <button type="button" className="btn-md" onClick={() => goReview(false)}>
+            AI 세션에서 검토
+          </button>
+        ) : null}
         {copyState === "copied" ? (
           <span className="ddp-copied">복사했습니다 — AI 대화창에 붙여 넣으세요.</span>
         ) : copyState === "failed" ? (
           <span className="ddp-copied">{COPY_FAILED_TEXT}</span>
         ) : null}
       </div>
+      {pendingReplace ? (
+        <div className="ddp-replace" role="alert">
+          <span>
+            저장하지 않은 AI 세션 초안이 있습니다({pendingReplace}). 바꾸면 그 초안은 사라집니다.
+          </span>
+          <button type="button" className="btn-md" onClick={() => goReview(true)}>
+            바꾸고 이동
+          </button>
+          <button type="button" className="btn-md ddp-cancel" onClick={() => setPendingReplace(null)}>
+            취소
+          </button>
+        </div>
+      ) : null}
       {error ? (
         <div className="message error" style={{ marginTop: 8 }}>
           {error}

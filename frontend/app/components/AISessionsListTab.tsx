@@ -15,6 +15,7 @@ import {
   type DecisionSessionDetail,
   type DecisionSessionSummary,
 } from "@/lib/api";
+import { isSelectedPreviewRecord, kstDateTimeLabel } from "@/lib/aiSessionsDraft";
 
 interface Props {
   // 부모 (AISessionsView) 가 저장 직후 reload 트리거할 수 있도록 buster 사용.
@@ -79,12 +80,19 @@ function DetailCard({
   detail: DecisionSessionDetail;
   onClose: () => void;
 }) {
+  // POC5-24 — 선택 근거 모드 기록(「보유와 비교」 판단 근거 미리보기에서 넘김)만 따로 표시.
+  const sel = isSelectedPreviewRecord(detail.source_screen, detail.candidate_snapshot);
+  const sp = sel ? detail.candidate_snapshot[0].selected_preview : null;
+  const priceDate = sp?.evidence_as_of?.target_as_of_date || null;
   return (
     <div className="card decision-card decision-detail-card">
       <h2>기록 상세 — {detail.id}</h2>
       <ul className="dashboard-status-list">
         <li>생성일시: <strong>{detail.created_at}</strong></li>
-        <li>기준일: <strong>{detail.asof}</strong></li>
+        <li>
+          {sel ? "기록 기준일" : "기준일"}: <strong>{detail.asof}</strong>
+          {sel && !priceDate ? " — 미리보기 생성일 사용 · 가격 기준일 미확인" : ""}
+        </li>
         <li>화면: <strong>{detail.source_screen}</strong></li>
         <li>
           판정:{" "}
@@ -100,7 +108,7 @@ function DetailCard({
         ) : null}
       </ul>
 
-      <h3>필터 조건</h3>
+      <h3>{sel ? "당시 화면의 후보 목록 필터" : "필터 조건"}</h3>
       <ul>
         <li>인버스 제외: {detail.filters.exclude_inverse ? "예" : "아니오"}</li>
         <li>레버리지 제외: {detail.filters.exclude_leveraged ? "예" : "아니오"}</li>
@@ -108,15 +116,51 @@ function DetailCard({
         <li>선물형 제외: {detail.filters.exclude_futures ? "예" : "아니오"}</li>
       </ul>
 
-      <h3>후보 스냅샷 (저장 시점)</h3>
-      <ul>
-        {detail.candidate_snapshot.map((c, idx) => (
-          <li key={`${c.ticker ?? "x"}-${idx}`}>
-            {c.rank ?? idx + 1}. {c.name ?? "-"} ({c.ticker ?? "-"})
-          </li>
-        ))}
-      </ul>
+      {sel ? (
+        // POC5-24 — 선택 종목 1건 · 보유에 목록 번호를 붙이지 않는다 · 후보 순위는 전달 당시 화면 목록 순위
+        // (미리보기 원문의 'n위'는 생성 시각 서버 목록 · 그 사이 시장 자료가 바뀌면 다를 수 있다).
+        <>
+          <h3>선택 종목 (저장 시점)</h3>
+          <ul>
+            {detail.candidate_snapshot.slice(0, 1).map((c) => (
+              <li key={c.ticker ?? "x"}>
+                {c.selected_preview?.target_kind === "holding"
+                  ? "보유"
+                  : `후보${c.rank != null ? ` · 당시 화면 목록 ${c.rank}위` : ""}`}{" "}
+                · {c.name ?? "-"} ({c.ticker ?? "-"})
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : (
+        <>
+          <h3>후보 스냅샷 (저장 시점)</h3>
+          <ul>
+            {detail.candidate_snapshot.map((c, idx) => (
+              <li key={`${c.ticker ?? "x"}-${idx}`}>
+                {c.rank ?? idx + 1}. {c.name ?? "-"} ({c.ticker ?? "-"})
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
 
+      {(() => {
+        // POC5-24 — 넘겨받은 판단 근거 원문(저장 JSON 안) · 질문(편집본)과 구분해 보인다.
+        if (!sp) return null;
+        const edited = sp.preview_text !== detail.question_text;
+        return (
+          <>
+            <h3>넘겨받은 판단 근거 (원문)</h3>
+            <div className="helper">
+              {sp.target_kind === "holding" ? "보유" : "후보"} · 미리보기 생성{" "}
+              {kstDateTimeLabel(sp.generated_at)} · 가격 기준일 {priceDate ?? "미확인"} ·{" "}
+              {edited ? "아래 AI 질문은 저장 때 편집됨" : "아래 AI 질문과 같은 글"}
+            </div>
+            {edited ? <pre className="decision-pre">{sp.preview_text}</pre> : null}
+          </>
+        );
+      })()}
       <h3>AI 질문</h3>
       <pre className="decision-pre">{detail.question_text}</pre>
 
@@ -294,7 +338,11 @@ export default function AISessionsListTab({ reloadTrigger }: Props) {
                       hasClaude={r.has_claude_answer}
                     />
                   </td>
-                  <td>{r.summary || "-"}</td>
+                  <td>
+                    {/* POC5-24 — 선택 근거 기록만 '[이름(티커)]'(Q1 (a)). */}
+                    {r.target_label ? <strong>[{r.target_label}] </strong> : null}
+                    {r.summary || "-"}
+                  </td>
                   <td>
                     <button
                       type="button"
