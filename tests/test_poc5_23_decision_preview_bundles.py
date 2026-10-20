@@ -496,7 +496,7 @@ def _sections(text: str) -> list[str]:
     return [sec.split("\n", 1)[0] for sec in secs]
 
 
-def test_real_previews_have_eight_bundles_and_regime_from_each_screen(
+def test_real_previews_have_nine_bundles_and_regime_from_each_screen(
     seeded: TestClient,
 ) -> None:
     ev = seeded.get("/holdings/market-evidence/latest").json()
@@ -513,7 +513,11 @@ def test_real_previews_have_eight_bundles_and_regime_from_each_screen(
     ]
     h = _preview(seeded, "holding", HELD_ETF)["preview_text"]
     c = _preview(seeded, "candidate", CAND, **LIST_PARAMS)["preview_text"]
-    assert _sections(h) == titles and _sections(c) == titles
+    # POC6-01 — '시장' 다음에 시장 흐름 묶음(서버 공통 글 · 기본 6개월 · 제목 줄에 기간 · 날짜).
+    for text in (h, c):
+        secs = _sections(text)
+        assert secs[2].startswith("[시장 흐름 — 수급 · 환율 · 유가 · 기간 6개월")
+        assert secs[:2] + secs[3:] == titles
     # 국면 = 각 화면 응답 그대로 · 날짜 = KODEX200 최신 저장일(보유 = PC 비교 기준일).
     mp = ev["judgment_summary"]["market_position"]
     ref = ev["price_basis"]["reference_date"]
@@ -758,7 +762,7 @@ def test_huge_stored_volume_keeps_the_preview(seeded: TestClient) -> None:
         assert (
             "2026-10-14 거래량 10,000,000,000,000,000,000,000주" in body["preview_text"]
         )
-        assert len(body["preview_text"].split("\n\n")) == 8
+        assert len(body["preview_text"].split("\n\n")) == 9  # POC6-01 시장 흐름 묶음
 
 
 def test_negative_zero_decline_value_matches_screen() -> None:
@@ -893,3 +897,20 @@ def test_number_rules_match_browser_js_on_random_doubles(tmp_path: Path) -> None
     ]
     assert len(expected) == len(vals)
     assert mismatch == []
+
+
+def test_preview_flow_period_uses_screen_period_and_same_server_text(
+    seeded: TestClient,
+) -> None:
+    """POC6-01 — 시장 흐름 묶음 = 화면에서 고른 기간의 서버 글 그대로 · 모르는 기간은 일반 실패."""
+    from app.supply_fx_oil_context import build_market_flow_context
+
+    db = api_decision_draft_preview.DEFAULT_DB_PATH
+    for code, label in (("1M", "1개월"), ("3M", "3개월"), ("YTD", "연초 이후")):
+        body = _preview(seeded, "holding", HELD_ETF, flow_period=code)
+        sec = body["preview_text"].split("\n\n")[2]
+        assert sec.startswith(f"[시장 흐름 — 수급 · 환율 · 유가 · 기간 {label}")
+        assert sec == build_market_flow_context(db_path=db)["ai_text"][code]
+    bad = _preview(seeded, "holding", HELD_ETF, flow_period="2M")
+    assert bad["status"] == "error"
+    assert "preview_text" not in bad or not bad["preview_text"]

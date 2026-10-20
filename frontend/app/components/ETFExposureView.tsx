@@ -203,6 +203,8 @@ export default function ETFExposureView({ onNavigate }: Props) {
         candidates: draft.market_candidates,
         marketContext: draft.market_context_full ?? null,
         constituentsAnalysis: analysis,
+        // POC6-01 — 넘길 때의 시장 흐름 글(예전 draft 면 구간 없음).
+        marketFlowText: draft.market_flow_text,
       }),
       linked_market_refresh_id: null,
       draft_created_at: new Date().toISOString(),

@@ -11,6 +11,8 @@ export const DASH_KEY_MARKET =
 export const DASH_KEY_HOLDINGS = "dashboard:holdings/enriched";
 export const DASH_KEY_EVIDENCE = "dashboard:holdings/market-evidence";
 export const DASH_KEY_NAV = "dashboard:nav-discount/latest";
+// POC6-01 — 시장 흐름(수급 · 환율 · 유가). 「오늘의 투자 점검」 · 「요즘 잘 오르는 ETF」 · 복사문이 같은 키.
+export const MARKET_FLOW_KEY = "market:flow-context";
 
 // ── Workbench 조회 키 ──────────────────────────────────────────────────────
 // §9: "동일 endpoint·동일 요청 조건에만 같은 cache key". Holdings/Evidence/NAV 는
@@ -37,4 +39,5 @@ export const MARKET_INVALIDATION_KEYS = [
   DASH_KEY_MARKET,
   DASH_KEY_EVIDENCE,
   WB_KEY_CAND,
+  MARKET_FLOW_KEY, // POC6-01 — 시장 갱신이 수급 · 환율 · 유가를 새로 받는다
 ];

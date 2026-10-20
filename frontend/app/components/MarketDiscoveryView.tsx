@@ -40,6 +40,7 @@ import {
 import { heldTickerSet } from "./workbench/helpers";
 import MarketContextCard from "./MarketContextCard";
 import MarketRiskReferenceCard from "./MarketRiskReferenceCard";
+import MarketFlowCard from "./marketflow/MarketFlowCard";
 import HoldingsCompareView from "./HoldingsCompareView";
 // 2026-08-01 승인·알림 역할 분리 C구간 — 신규 ETF 관찰 후보 갱신을 이 화면으로 이동.
 import UniverseRefreshPanel from "./UniverseRefreshPanel";
@@ -616,6 +617,8 @@ export default function MarketDiscoveryView({
       <MarketContextCard ctx={data.market_context ?? null} />
       {/* 2026-07-03 Market Risk Reference v1 — KODEX200 + VIX 일별 맥락. */}
       <MarketRiskReferenceCard reference={data.market_risk_reference ?? null} />
+      {/* POC6-01 — 시장 흐름(수급 · 환율 · 유가 · 기간 요약 · 최근 큰 변화 · 같은 날짜 축 차트 · 해석). */}
+      <MarketFlowCard />
       {/* 2026-06-21 ML 축1 — 상대상승 참고점수 계산 실행 카드. 성공 시
           loadTopn() 으로 후보 표 재조회 (지시문 — 성공 후 후보 목록 갱신).
           result / errorMessage 는 부모가 보유 — 카드 unmount/remount 와 무관하게

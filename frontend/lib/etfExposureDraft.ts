@@ -34,6 +34,8 @@ export interface ETFExposureDraft {
   // shape 만 안전하면 OK (런타임 typeof 검증 없음 — 호출자 책임).
   market_context_full?: MarketContext | null;
   market_candidates: MarketCandidate[];
+  // POC6-01 — 넘길 때의 시장 흐름 글(서버 공통 글 · 고른 기간). 예전 draft 에는 없다(없으면 구간 없음).
+  market_flow_text?: string;
   // 본 draft 가 생성된 시각 (디버깅 + "언제 넘긴 후보냐" 안내).
   draft_created_at: string;
 }
@@ -88,12 +90,14 @@ export function buildETFExposureDraftFromMarketDiscovery({
   candidates,
   marketContext,
   marketContextSnapshot,
+  marketFlowText,
 }: {
   asof: string;
   filters: DecisionFilters;
   candidates: MarketCandidate[];
   marketContext: MarketContext | null;
   marketContextSnapshot: Record<string, unknown> | null;
+  marketFlowText?: string;
 }): ETFExposureDraft {
   return {
     asof,
@@ -112,6 +116,7 @@ export function buildETFExposureDraftFromMarketDiscovery({
     market_context_snapshot: marketContextSnapshot,
     market_context_full: marketContext,
     market_candidates: candidates,
+    market_flow_text: marketFlowText,
     draft_created_at: new Date().toISOString(),
   };
 }

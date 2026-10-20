@@ -4,6 +4,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import DecisionDraftPreviewCard, { splitPreviewSections } from "./DecisionDraftPreviewCard";
+import { __resetMarketFlowPeriod, setMarketFlowPeriod } from "@/lib/marketFlowPeriod";
 
 const TEXT = [
   "[대상]\n- 후보 장비 ETF (333333) · 후보 ETF · 현재 목록 2위(3개월 기준)",
@@ -110,11 +111,22 @@ describe("판단 근거 미리보기 카드", () => {
       <DecisionDraftPreviewCard targetKind="candidate" ticker="0223A0" listQuery={q} />,
     );
     await generate();
-    expect(pending[0].body).toEqual({ target_kind: "candidate", ticker: "0223A0", ...q });
+    expect(pending[0].body).toEqual({ target_kind: "candidate", ticker: "0223A0", flow_period: "6M", ...q });
     unmount();
     render(<DecisionDraftPreviewCard targetKind="holding" ticker="111111" listQuery={q} />);
     await generate();
-    expect(pending[1].body).toEqual({ target_kind: "holding", ticker: "111111" });
+    expect(pending[1].body).toEqual({ target_kind: "holding", ticker: "111111", flow_period: "6M" });
+  });
+
+  it("POC6-01 — 시장 흐름 카드에서 고른 기간을 요청에 싣는다(기본 6개월)", async () => {
+    setMarketFlowPeriod("1M");
+    try {
+      render(<DecisionDraftPreviewCard targetKind="holding" ticker="111111" />);
+      await generate();
+      expect(pending[0].body).toEqual({ target_kind: "holding", ticker: "111111", flow_period: "1M" });
+    } finally {
+      __resetMarketFlowPeriod();
+    }
   });
 
   it("종목이 바뀐 뒤 늦게 온 응답은 버린다", async () => {

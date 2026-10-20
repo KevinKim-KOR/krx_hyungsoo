@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import Optional
 
 from app.market_data_store import HOLDINGS_EQUITY_PRICE_LOG_SOURCE, latest_refresh_log
+from app.supply_fx_oil_store import MARKET_FLOW_LOG_SOURCES
 
 REQUIRED_TABLES = ("etf_master", "etf_daily_price", "market_refresh_log")
 
@@ -210,8 +211,10 @@ def _empty_exclusion_buckets() -> dict[str, dict[str, int]]:
 def _latest_refresh_payload(db_path: Path) -> Optional[dict]:
     # POC5-10 — '마지막 전체 갱신'은 PC 갱신의 보유 개별주 단계 요약 행을 고르지 않는다(그 단계는
     # 종목별 기록 행을 남기지 않으므로 이 한 출처만 빼면 단계가 없을 때와 같은 행이 된다).
+    # POC6-01 — 시장 흐름 단계 요약 행(새 출처 2개)도 뺀다(마지막 전체 갱신 = 그대로 KOSPI 행).
     log = latest_refresh_log(
-        db_path=db_path, exclude_source=HOLDINGS_EQUITY_PRICE_LOG_SOURCE
+        db_path=db_path,
+        exclude_source=(HOLDINGS_EQUITY_PRICE_LOG_SOURCE, *MARKET_FLOW_LOG_SOURCES),
     )
     if not log:
         return None

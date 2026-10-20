@@ -478,8 +478,9 @@ HOLDINGS_EQUITY_PRICE_LOG_SOURCE = "FinanceDataReader/holdings-equity-prices"
 def latest_refresh_log(
     source: Optional[str] = None,
     db_path: Path = DEFAULT_DB_PATH,
-    exclude_source: Optional[str] = None,
+    exclude_source: Optional[str | tuple[str, ...]] = None,
 ) -> Optional[dict]:
+    """가장 최근 갱신 기록 행. `exclude_source` = 뺄 출처 하나 또는 여럿(POC6-01 · 단계 요약 행)."""
     with _connection(db_path) as con:
         if source:
             cur = con.execute(
@@ -490,12 +491,18 @@ def latest_refresh_log(
                 (source,),
             )
         elif exclude_source:
+            excluded = (
+                (exclude_source,)
+                if isinstance(exclude_source, str)
+                else tuple(exclude_source)
+            )
+            marks = ", ".join("?" for _ in excluded)
             cur = con.execute(
                 "SELECT run_id, source, asof, attempted_count, success_count, "
                 "fail_count, runtime_seconds, error_summary, created_at "
-                "FROM market_refresh_log WHERE source != ? "
+                f"FROM market_refresh_log WHERE source NOT IN ({marks}) "
                 "ORDER BY created_at DESC, rowid DESC LIMIT 1",
-                (exclude_source,),
+                excluded,
             )
         else:
             cur = con.execute(

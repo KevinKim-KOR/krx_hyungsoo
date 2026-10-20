@@ -3597,3 +3597,34 @@ button.help-pop-btn[aria-expanded="true"] .help-pop-dot, button.help-pop-btn:hov
 .mbd-row .mbd-now { color: var(--accent); font-weight: 700; }
 .mbd-row .mbd-note { color: var(--warn); font-weight: 600; }
 .mbd-row .mbd-err { flex-basis: 100%; color: var(--danger); font-weight: 600; }
+
+/* POC6-01 — 시장 흐름(수급 · 환율 · 유가) 카드 · 「오늘의 투자 점검」 두 줄 */
+.mf-card { display: flex; flex-direction: column; gap: 10px; }
+.mf-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.mf-head h2 { margin: 0; }
+.mf-period { font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.mf-top { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+@media (max-width: 1100px) { .mf-top { grid-template-columns: minmax(0, 1fr); } }
+.mf-box { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.mf-box-title { font-size: 12px; font-weight: 700; color: var(--muted); }
+.mf-sub { font-size: 12px; font-weight: 700; color: var(--muted); margin-top: 6px; border-top: 1px solid var(--border-soft); padding-top: 6px; }
+.mf-line { font-size: 13px; font-variant-numeric: tabular-nums; line-height: 1.55; overflow-wrap: anywhere; }
+.mf-event { font-size: 12.5px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.mf-flag { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 10px; font-size: 11.5px; font-weight: 700; color: #92400e; background: #fef3c7; }
+.mf-flag-na { color: var(--muted); background: #f3f4f6; }
+.mf-flag-late { color: #9a3412; background: #ffedd5; }
+.mf-charts { display: flex; flex-direction: column; gap: 8px; }
+.mf-chart { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.mf-chart-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
+.mf-chart-title { font-size: 12px; font-weight: 700; color: var(--muted); }
+.mf-legend { display: inline-flex; flex-wrap: wrap; gap: 4px 10px; font-size: 12px; }
+.mf-legend i { display: inline-block; width: 12px; height: 3px; margin-right: 4px; vertical-align: middle; border-radius: 2px; }
+.mf-zero { stroke: var(--fg); stroke-width: 1; opacity: 0.55; }
+.mf-mark { position: absolute; width: 11px; height: 11px; border-radius: 50%; border: 2px solid; background: var(--card); transform: translate(-50%, -50%); pointer-events: none; }
+@media (max-width: 640px) { .rc-x > span.mf-x-odd { display: none; } }
+.mf-interp-row { display: flex; flex-direction: column; gap: 1px; font-size: 13px; padding: 2px 0; }
+.mf-status { font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 2px; }
+.mf-today { display: flex; flex-direction: column; gap: 2px; padding-top: 10px; }
+.mf-today-main { font-size: 13.5px; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.mf-today-sub { font-size: 12.5px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+

@@ -5,6 +5,7 @@
 // 책임별로 분리했다. 분리 때는 JSX·문구·className·핸들러·호출 조건을 고치지 않았다
 // (파일 배치와 import/export 줄만). 그 뒤 화면은 POC5-09 · POC5-UI-03 에서 바뀌었다.
 
+import TodayFlowLines from "@/app/components/marketflow/TodayFlowLines";
 import { useState } from "react";
 import type { QueryState } from "@/lib/api/queryCache";
 import type {
@@ -115,6 +116,9 @@ export default function KospiHeadline({ market }: { market: QueryState<MarketTop
           </div>
         </div>
       </div>
+
+      {/* POC6-01 — 시장 흐름 짧은 두 줄(6개월 요약 · 최근 큰 변화 · 카드 안). */}
+      <TodayFlowLines />
 
       <div className="tc-fold-row tc-divider">
         <button

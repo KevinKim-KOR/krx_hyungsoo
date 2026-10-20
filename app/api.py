@@ -64,6 +64,7 @@ from app.api_ml_readiness import router as ml_readiness_router
 from app.api_ml_sanity import router as ml_sanity_router
 from app.api_nav_discount import router as nav_discount_router
 from app.api_oci_startup_status import router as oci_startup_status_router
+from app.api_supply_fx_oil import router as market_flow_router
 from app.api_price_series import router as price_series_router
 from app.api_intraday_config import router as intraday_config_router
 from app.api_three_push_param import router as three_push_param_router
@@ -167,6 +168,8 @@ app.include_router(oci_startup_status_router)
 # POST /holdings/apply: 사용자 명시 클릭에서만. 저장(PUT /holdings)과 별도 동작.
 # 실패 시 기존 OCI active 보존. secret/target/raw 미노출.
 app.include_router(holdings_oci_apply_router)
+# POC6-01 — 시장 흐름(수급 · 환율 · 유가) 읽기 전용 조회.
+app.include_router(market_flow_router)
 # POC2 3-PUSH Message Contract 정렬 (2026-06-12, FIX r2 — 설계자 수용):
 # 신규 PUSH endpoint 신설 금지선 (§3 / §11) 준수.
 # PUSH-1 / PUSH-3 은 기존 POST /runs/generate 의 input_data.push_kind 분기로 통합.

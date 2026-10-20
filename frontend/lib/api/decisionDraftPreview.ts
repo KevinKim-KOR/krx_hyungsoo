@@ -37,10 +37,12 @@ export async function postDecisionDraftPreview(
   target_kind: DecisionDraftTargetKind,
   ticker: string,
   listQuery?: DecisionDraftListQuery,
+  flowPeriod?: string, // POC6-01 — 시장 흐름 묶음 기간(화면에서 고른 값 · 없으면 서버 기본 6개월)
 ): Promise<DecisionDraftPreviewResponse> {
-  return request<DecisionDraftPreviewResponse>(
-    "POST",
-    "/decision-draft/preview",
-    { target_kind, ticker, ...(target_kind === "candidate" ? listQuery ?? {} : {}) },
-  );
+  return request<DecisionDraftPreviewResponse>("POST", "/decision-draft/preview", {
+    target_kind,
+    ticker,
+    ...(target_kind === "candidate" ? listQuery ?? {} : {}),
+    ...(flowPeriod ? { flow_period: flowPeriod } : {}),
+  });
 }

@@ -99,6 +99,9 @@ export interface BuildCopyTextInput {
   // [구성종목 / 중복 노출] 섹션 + AI 요청 문구가 독립 테마 vs 반복 노출 해석을
   // 요구하는 형태로 강화.
   constituentsAnalysis?: ConstituentsAnalysisResponse | null;
+  // POC6-01 — 시장 흐름(수급 · 환율 · 유가) 구간 = 서버 공통 글 그대로(`marketFlowCopySection`).
+  // 넘기지 않으면(undefined) 구간 없음 · 넘기면 그 글(자료 없음 문구 포함)을 [시스템 시장 판정] 다음에.
+  marketFlowText?: string;
 }
 
 function appendConstituentsSection(
@@ -390,6 +393,10 @@ export function buildMarketDiscoveryCopyText(input: BuildCopyTextInput): string 
   lines.push("");
   appendMarketContextSection(lines, input.marketContext);
   lines.push("");
+  if (input.marketFlowText !== undefined) {
+    lines.push(input.marketFlowText);
+    lines.push("");
+  }
   appendCandidateStrengthSection(lines, input.candidates);
   // 2026-06-01 Market Discovery Evidence Closeout 1차 — 단기 흐름 + 데이터 품질
   // 섹션 (지시문 §15). candidates 에 응답 payload 가 들어있을 때만 노출.

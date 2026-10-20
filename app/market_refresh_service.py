@@ -32,6 +32,7 @@ from typing import Callable, Optional
 
 from app.etf_nav_service import refresh_nav_universe
 from app.pc_vix_refresh import VIX_STEP_FAILED_TEXT, refresh_pc_vix
+from app.supply_fx_oil_refresh import MARKET_FLOW_STEP_FAILED_TEXT, refresh_market_flow
 from app.holdings_equity_refresh import (
     HOLDINGS_EQUITY_STEP_FAILED_TEXT,
     refresh_holdings_equity_prices,
@@ -440,6 +441,20 @@ def _execute_refresh_job(
     except Exception:  # noqa: BLE001 — NAV 실패도 thread 안에서 격리
         pass
 
+    # POC6-01 — 시장 흐름(원/달러 · WTI · 코스피 투자자별 수급 · NAV 뒤 · 맨 끝). 기록 행은 새 출처로
+    # 남기고 '마지막 전체 갱신' 조회에서는 뺀다(KOSPI 행 그대로). 실패해도 다른 단계 · 최종 판정은
+    # 그대로이고 한국어 문구만 완료 사유 끝에 붙인다(`app/supply_fx_oil_refresh.py`).
+    try:
+        flow_msg = refresh_market_flow(
+            db_path=db_path,
+            now_utc=_utcnow(),
+            refresh_id=refresh_id,
+            asof=end_date_for_prices.isoformat(),
+        )
+    except Exception:  # noqa: BLE001 — 시장 흐름 실패도 thread 안에서 격리
+        logger.exception("market flow step failed")
+        flow_msg = MARKET_FLOW_STEP_FAILED_TEXT
+
     elapsed = time.perf_counter() - t0
     finished = _utcnow()
     success_overall = universe_ok and (price_success > 0 or price_attempted == 0)
@@ -453,12 +468,15 @@ def _execute_refresh_job(
         and holdings_equity_msg is None
         and kospi_ok
         and nav_ok
+        and flow_msg is None  # POC6-01 — 시장 흐름도 실패했으면 'VIX 만 실패'가 아니다
         and vix_msg is not None
     )
     # POC5-10 — 보유 개별주 단계 문구는 기존(ETF · KOSPI) 요약 뒤에 붙인다(그 판정은 그대로).
-    # POC5-11 — VIX 문구는 그 뒤.
+    # POC5-11 — VIX 문구는 그 뒤. POC6-01 — 시장 흐름 문구는 맨 뒤.
     error_summary = (
-        " · ".join(x for x in (error_summary, holdings_equity_msg, vix_msg) if x)
+        " · ".join(
+            x for x in (error_summary, holdings_equity_msg, vix_msg, flow_msg) if x
+        )
         or None
     )
 

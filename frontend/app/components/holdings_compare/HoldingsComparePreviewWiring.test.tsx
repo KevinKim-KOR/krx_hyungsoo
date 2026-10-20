@@ -93,6 +93,7 @@ describe("보유와 비교 → 판단 근거 미리보기", () => {
       n: 10,
       basis: "three_month",
       order: "desc",
+      flow_period: "6M",
       ...FILTERS,
     });
 
@@ -100,6 +101,6 @@ describe("보유와 비교 → 판단 근거 미리보기", () => {
     fireEvent.click(screen.getByText("보유 반도체 ETF"));
     fireEvent.click(await screen.findByRole("button", { name: /판단 근거 미리보기 생성/ }));
     await waitFor(() => expect(bodies).toHaveLength(2));
-    expect(bodies[1]).toEqual({ target_kind: "holding", ticker: "111111" });
+    expect(bodies[1]).toEqual({ target_kind: "holding", ticker: "111111", flow_period: "6M" });
   });
 });

@@ -9,6 +9,9 @@
 //
 // 별도 파일로 분리해 MarketDiscoveryView KS-10 영향 최소화.
 
+import { useMarketFlowContext } from "@/app/components/marketflow/useMarketFlowContext";
+import { useMarketFlowPeriod } from "@/lib/marketFlowPeriod";
+import { marketFlowCopySection } from "@/lib/marketFlowText";
 import { useCallback } from "react";
 import {
   type MarketCandidate,
@@ -40,6 +43,10 @@ export default function TransferToETFExposureCard({
   onNavigate,
   compact = false,
 }: Props) {
+  // POC6-01 — 시장 흐름 글(서버 공통 · 고른 기간)을 함께 넘긴다(「ETF 구성종목」 AI 글에 같은 구간).
+  const flow = useMarketFlowContext();
+  const flowPeriod = useMarketFlowPeriod();
+  const flowText = marketFlowCopySection(flow.phase === "success" ? flow.data : null, flowPeriod);
   const handleTransfer = useCallback(() => {
     if (candidates.length === 0) return;
     const draft = buildETFExposureDraftFromMarketDiscovery({
@@ -48,10 +55,11 @@ export default function TransferToETFExposureCard({
       candidates,
       marketContext,
       marketContextSnapshot: toMarketContextSnapshot(marketContext, candidates),
+      marketFlowText: flowText,
     });
     saveETFExposureDraft(draft);
     onNavigate?.("etf_exposure");
-  }, [asof, filters, candidates, marketContext, onNavigate]);
+  }, [asof, filters, candidates, marketContext, onNavigate, flowText]);
 
   if (compact) {
     return (

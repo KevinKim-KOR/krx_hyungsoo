@@ -11,6 +11,9 @@
 // MarketDiscoveryView.tsx 가 KS-10 near 850 라인을 넘어 891 라인까지 갔다.
 // 본 카드를 분리해서 라인 수를 다시 near 미만으로 낮춘다 (지시문 §18 / KS-10).
 
+import { useMarketFlowContext } from "@/app/components/marketflow/useMarketFlowContext";
+import { useMarketFlowPeriod } from "@/lib/marketFlowPeriod";
+import { marketFlowCopySection } from "@/lib/marketFlowText";
 import { useCallback } from "react";
 import {
   type MarketCandidate,
@@ -136,6 +139,9 @@ export default function TransferToAISessionsCard({
   onNavigate,
   compact = false,
 }: Props) {
+  const flow = useMarketFlowContext();
+  const flowPeriod = useMarketFlowPeriod();
+  const flowText = marketFlowCopySection(flow.phase === "success" ? flow.data : null, flowPeriod);
   const handleTransfer = useCallback(() => {
     if (candidates.length === 0) return;
     const draft: AISessionsDraft = {
@@ -159,6 +165,7 @@ export default function TransferToAISessionsCard({
         filters,
         candidates,
         marketContext,
+        marketFlowText: flowText, // POC6-01 — 화면 · 미리보기와 같은 서버 글 · 고른 기간
       }),
       linked_market_refresh_id: linkedMarketRefreshId,
       draft_created_at: new Date().toISOString(),
@@ -178,6 +185,7 @@ export default function TransferToAISessionsCard({
     linkedMarketRefreshId,
     marketContext,
     onNavigate,
+    flowText,
   ]);
 
   if (compact) {

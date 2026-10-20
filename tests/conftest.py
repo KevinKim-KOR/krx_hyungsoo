@@ -643,6 +643,49 @@ def _block_live_krx_api(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _neutral_market_flow_step(monkeypatch):
+    """POC6-01 — PC 갱신 서비스의 시장 흐름 단계를 기본으로 '성공 · 문구 없음' stub 으로 바꾸고,
+    어댑터의 기본 전송(Yahoo `requests.get` · 키움 `requests.post`)을 막고, 새 표 쓰기가 라이브
+    시장 DB 로 가지 못하게 한다(저장 계층 · 경로 비교 · VIX · benchmark 가드와 같은 방식).
+
+    경계 시험(`tests/test_poc6_01_*`)은 가짜 전송(`http_get` · `http_post`)과 tmp DB 를 직접 준다.
+    """
+    from app import supply_fx_oil_refresh as _mfr
+    from app import supply_fx_oil_store as _mfs
+    from app import market_refresh_service
+    from app import kiwoom_investor_flow as _kw
+    from app import yahoo_daily_series as _yh
+    from app.market_data_store import DEFAULT_DB_PATH as _LIVE
+
+    monkeypatch.setattr(market_refresh_service, "refresh_market_flow", lambda **_: None)
+
+    def _no_network(*_a, **_k):
+        raise AssertionError(
+            "시험에서 실제 Yahoo · 키움 호출 금지 — http_get · http_post 를 준다"
+        )
+
+    monkeypatch.setattr(_yh, "_default_get", _no_network)
+    monkeypatch.setattr(_kw, "_default_post", _no_network)
+    live = Path(_LIVE).resolve()
+    for name in (
+        "upsert_macro_daily",
+        "upsert_investor_flows",
+        "init_market_flow_tables",
+    ):
+        real = getattr(_mfs, name)
+
+        def _guarded(*a, _real=real, _name=name, **kw):
+            target = Path(kw.get("db_path", a[0] if a else _LIVE)).resolve()
+            if target == live:
+                raise AssertionError(f"테스트가 라이브 시장 DB 에 {_name} 하려 했다")
+            return _real(*a, **kw)
+
+        monkeypatch.setattr(_mfs, name, _guarded)
+        if hasattr(_mfr, name):
+            monkeypatch.setattr(_mfr, name, _guarded)
+
+
+@pytest.fixture(autouse=True)
 def _neutral_pc_vix_step(monkeypatch):
     """POC5-11 — PC 갱신 서비스의 VIX 단계를 기본으로 '성공 · 문구 없음' stub 으로 바꾼다.
 

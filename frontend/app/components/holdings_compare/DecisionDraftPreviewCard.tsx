@@ -8,6 +8,7 @@
 // - 대상 종목 · 종류 · 후보 목록 조건이 바뀌면 이전 결과를 비우고 늦은 응답은 버린다(판정 §4).
 // - 저장 · 발송 · 승인 · LLM 호출 없음.
 
+import { getMarketFlowPeriod } from "@/lib/marketFlowPeriod";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
@@ -146,7 +147,7 @@ export default function DecisionDraftPreviewCard({
     setCopyState("idle");
     setPendingReplace(null);
     try {
-      const res = await postDecisionDraftPreview(targetKind, ticker, listQuery);
+      const res = await postDecisionDraftPreview(targetKind, ticker, listQuery, getMarketFlowPeriod());
       if (reqId !== currentReqIdRef.current) return;
       if (res.status !== "ok" || !res.preview_text) {
         // 서버 사유(예: 현재 목록 조건에 없음)가 있으면 그대로 · 없으면 기본 문구.

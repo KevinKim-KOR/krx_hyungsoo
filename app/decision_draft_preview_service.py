@@ -17,6 +17,8 @@
 
 from __future__ import annotations
 
+import logging
+
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -39,6 +41,8 @@ from app.decision_preview_lines import (
     volume_lines,
 )
 from app.market_data_store import DEFAULT_DB_PATH
+
+logger = logging.getLogger(__name__)
 
 TARGET_KIND_HOLDING = "holding"
 TARGET_KIND_CANDIDATE = "candidate"
@@ -177,6 +181,17 @@ def _candidate_sections(
     )
 
 
+def _market_flow_section(db_path: Path, period: str) -> str:
+    """POC6-01 — 시장 흐름(수급 · 환율 · 유가) 묶음 = 화면 · AI 복사문과 같은 서버 글(빈 줄 없음)."""
+    try:
+        from app.supply_fx_oil_context import build_market_flow_context
+
+        return build_market_flow_context(db_path=db_path)["ai_text"][period]
+    except Exception:  # noqa: BLE001 — 이 묶음만 실패로 적고 미리보기는 그대로
+        logger.exception("market flow section failed")
+        return "[시장 흐름 — 수급 · 환율 · 유가]\n- 시장 흐름 자료를 만들지 못했습니다"
+
+
 def build_preview_text(
     *,
     target_kind: str,
@@ -184,6 +199,7 @@ def build_preview_text(
     target_evidence: dict[str, Any],
     db_path: Path = DEFAULT_DB_PATH,
     generated_at: Optional[datetime] = None,
+    flow_period: str = "6M",
 ) -> PreviewResult:
     """선택 종목 하나의 preview_text 를 결정적으로 조립(부작용 없음).
 
@@ -212,6 +228,8 @@ def build_preview_text(
         "중복 · 자료 상태",
     ]
     sections = [_section(t, b) for t, b in zip(titles, bodies)]
+    # POC6-01 — '시장' 바로 다음에 시장 흐름(화면에서 고른 기간 · 서버 공통 글).
+    sections.insert(2, _market_flow_section(db_path, flow_period))
     sections.append(_section("AI에게 요청", AI_REQUEST))
     return PreviewResult(
         status="ok",

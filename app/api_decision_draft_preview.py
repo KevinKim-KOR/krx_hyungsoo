@@ -55,6 +55,11 @@ class PreviewRequest(BaseModel):
     exclude_leveraged: Optional[bool] = None
     exclude_synthetic: Optional[bool] = None
     exclude_futures: Optional[bool] = None
+    # POC6-01 — 시장 흐름 묶음 기간(화면 선택 · 없으면 6개월). 허용 밖 = 실패 응답.
+    flow_period: Optional[str] = None
+
+
+FLOW_PERIODS = ("1M", "3M", "6M", "YTD")
 
 
 class PreviewEvidenceAsOf(BaseModel):
@@ -265,6 +270,9 @@ def post_decision_draft_preview(req: PreviewRequest) -> PreviewResponse:
     query = _list_query(req)
     if req.target_kind != TARGET_KIND_HOLDING and not query.is_valid():
         return PreviewResponse(status="error", message=_FAILURE_MESSAGE)
+    flow_period = req.flow_period or "6M"
+    if flow_period not in FLOW_PERIODS:
+        return PreviewResponse(status="error", message=_FAILURE_MESSAGE)
     try:
         if req.target_kind == TARGET_KIND_HOLDING:
             target_evidence = _load_holdings_evidence(ticker)
@@ -300,6 +308,7 @@ def post_decision_draft_preview(req: PreviewRequest) -> PreviewResponse:
             ticker=ticker,
             target_evidence=target_evidence,
             db_path=DEFAULT_DB_PATH,
+            flow_period=flow_period,
         )
     except Exception as exc:  # noqa: BLE001 — endpoint 경계 응답 계약 유지
         _preview_logger.error(
