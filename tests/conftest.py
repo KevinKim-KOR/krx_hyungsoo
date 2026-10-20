@@ -348,6 +348,22 @@ def _isolated_runtime_state_db(tmp_path, monkeypatch):
     monkeypatch.setattr(
         _api, "_SYNC_STATUS_PATH", test_param_dir / "param_sync_status_latest.json"
     )
+    # POC5-27 — 적용 결과 파일도 격리 · ① 캐시는 시험 끝에 되돌리고 · 실제 OCI 연결은 막는다
+    # (적용 시험은 `three_push_param_activation.Remote` 를 바꿔 끼운다).
+    from app import oci_startup_status as _oss
+    from app import three_push_param_activation as _act
+
+    monkeypatch.setattr(
+        _api,
+        "_ACTIVATION_STATUS_PATH",
+        test_param_dir / "param_activation_status_latest.json",
+    )
+    monkeypatch.setattr(_oss, "_snapshot", _oss._snapshot)
+
+    def _no_oci(*_a, **_k):
+        raise RuntimeError("시험에서 실제 OCI 연결 금지 — Remote 를 바꿔 끼운다")
+
+    monkeypatch.setattr(_act, "default_remote", _no_oci)
     monkeypatch.setattr(_create, "_LATEST_PATH", test_latest_path)
     monkeypatch.setattr(_create, "_HISTORY_DIR", test_history_dir)
     monkeypatch.setattr(_create, "_PARAM_DIR", test_param_dir)

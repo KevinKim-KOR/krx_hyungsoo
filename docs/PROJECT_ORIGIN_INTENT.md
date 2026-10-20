@@ -361,6 +361,7 @@ threshold / label / 모델 / 학습 데이터는 본 시점에 확정하지 않�
      · **PARAM 은 JSON 파일이 아니라 DB 의 version / approval / active 상태로
        관리**한다. PC 에서 계산·승인된 PARAM 은 DB 기반 발행 절차로 OCI 에
        반영한다. JSON PARAM handoff 를 새 운영 경로로 만들지 않는다.
+       > 2026-10-20 POC5-27 한정 해석: 사용자가 PC에서 명시 승인한 현행 허용 PARAM 값을 OCI 로컬 도구가 그대로 검증·발행·활성 확인하는 경로를 허용한다. PC의 OCI DB 직접 접속·개방과 OCI의 자율 PARAM 계산·선정·생성/승격 금지는 유지한다. 근거는 POC5-27 PLAN §1~§5의 소스 대조 및 사용자 원격 쓰기 구현 승인이다. 이 허용은 새 정책 생성·ML·seed 변경·자동 발송으로 확대되지 않는다. (출처: `docs/ai_design/POC5/POC5-27_PC_TO_OCI_RUNTIME_PARAM_ACTIVATION_PLAN_DECISION_2026-10-20.md` §1)
      · **로그를 제외한 활성 데이터는 DB 로 관리**한다. JSON 은 로그 · archive ·
        API request/response · 테스트 fixture 에만 허용한다. 현재 활성 JSON 은
        DB 전환 대상과 순서를 먼저 측정한다. 전환 전 기존 JSON 을 임의 삭제하거나

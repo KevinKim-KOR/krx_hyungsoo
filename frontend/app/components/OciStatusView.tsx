@@ -145,8 +145,9 @@ function summaryOf(s: OciStartupStatus): { icon: string; title: string; sub: str
 export default function OciStatusPanel({
   reloadKey = 0,
 }: {
-  // POC3-02D-OPS-04 — ② 전달이 끝나면 바뀐다. 다시 읽어도 OCI 는 재조회하지 않는다
-  // (백엔드 캐시 + '운영 기준 활성' 행만 지금 PC 운영 기준과 다시 비교).
+  // POC3-02D-OPS-04 — ② 적용이 끝나면 바뀐다. 다시 읽어도 OCI 는 재조회하지 않는다
+  // (백엔드 캐시 + '운영 기준 활성' 행만 지금 PC 운영 기준과 다시 비교 · POC5-27 부터는 적용
+  // 요청 안에서 읽은 값 · 시각으로).
   reloadKey?: number;
 } = {}) {
   const [status, setStatus] = useState<OciStartupStatus | null>(null);
@@ -228,7 +229,8 @@ export default function OciStatusPanel({
 
             <p className="helper" style={{ marginTop: 12 }}>
               PC 백엔드를 시작할 때 한 번 읽은 값입니다. 새로고침해도 OCI 를 다시 읽지
-              않습니다.
+              않습니다. &lsquo;운영 기준 활성&rsquo; 행만 ② [현재 기준 OCI 적용] 때 다시 읽은
+              값으로 바뀝니다.
             </p>
           </div>
         )}

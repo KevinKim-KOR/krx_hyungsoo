@@ -8,6 +8,7 @@
           못 읽으면 숫자를 보이지 않는다(0 · 정상 아님)
 활성      OCI 러너가 쓰는 유효값과 PC 운영 기준을 같은 펼침 규칙으로 비교(Q7 b) — 버전 ID 가
           달라도 값이 같으면 일치 · `param_id` 는 꺼내지 않는다 · DB 는 mode=ro(Q8 a)
+          POC5-27 — 값을 읽은 때(기동 때 / 적용 때) · 묶음별 다른 값 수 · 적용 확인 불가 표시
 ```
 """
 
@@ -206,22 +207,58 @@ def parse_param_values(raw: str) -> Optional[dict[str, tuple]]:
         return None
 
 
+# POC5-27 — 다른 값을 묶음별로 센다(어느 쪽 기준이 다른지 · 키 이름은 보이지 않는다).
+_GROUP_LABEL = (
+    ("runtime_policy.", "실행 정책"),
+    ("evidence_policy.", "근거 정책"),
+    ("safety_policy.", "안전 정책"),
+)
+
+
+def _diff_groups(pc: dict[str, tuple], oci: dict[str, tuple]) -> str:
+    """`알림 종류 2 · 안전 정책 1` 처럼 묶음별 다른 값 수(0 인 묶음은 빼고)."""
+    kinds = [
+        {v for k, v in vals.items() if _ENABLED_KEY.match(k)} for vals in (pc, oci)
+    ]
+    counts: dict[str, int] = {}
+    if kinds[0] ^ kinds[1]:
+        counts["알림 종류"] = len(kinds[0] ^ kinds[1])
+    for key in set(pc) | set(oci):
+        if _ENABLED_KEY.match(key) or pc.get(key) == oci.get(key):
+            continue
+        label = next((lb for pre, lb in _GROUP_LABEL if key.startswith(pre)), "기타")
+        counts[label] = counts.get(label, 0) + 1
+    order = ["알림 종류", "실행 정책", "근거 정책", "안전 정책", "기타"]
+    return " · ".join(f"{lb} {counts[lb]}" for lb in order if lb in counts)
+
+
 def param_active_job(
     oci_values: Optional[dict[str, tuple]],
     pc_json_path: Path,
-    last_sync_ok: Optional[bool],
+    *,
+    read_at: Optional[str] = None,
+    source: str = "startup",
+    unconfirmed: bool = False,
 ) -> "OciJobStatus":
     """'운영 기준 활성' 행(설계자 Q7 b) — 러너가 실제로 쓰는 유효값으로 비교한다.
 
     PC 운영 기준 JSON 을 PARAM 버전을 만들 때와 같은 규칙(`flatten_param_dict` ·
     `_split_value_columns`)으로 펼쳐 OCI 활성값과 비교한다. 버전 ID 가 달라도 값이 같으면
-    일치다. '전달만 되고 활성화되지 않음' 은 마지막 전달이 성공했을 때만 붙인다(전달 실패
-    날에는 사실이 아니다).
+    일치다. POC5-27 판정 §3 — 값을 실제로 읽은 때(기동 때 / 적용 때)를 행 끝에 붙이고,
+    적용 결과를 확인하지 못했으면 '확인 불가'다(예전 '전달만 되고 활성화되지 않음' 꼬리는 없앴다).
     """
     from app.runtime_param_store import _split_value_columns, flatten_param_dict
 
+    stamp = _kst_stamp(read_at) if read_at else None
+    if unconfirmed:
+        when = f" · 적용 {stamp}" if stamp else ""
+        return _job(
+            "param_active",
+            "UNKNOWN",
+            f"적용 뒤 OCI 활성값을 확인하지 못함 — 다시 적용하면 먼저 실제 값을 읽음{when}",
+        )
     if not oci_values:
-        return _job("param_active", "UNKNOWN", "OCI 에서 쓰는 값을 읽지 못함")
+        return _job("param_active", "UNKNOWN", "OCI 활성값을 읽지 못함")
     try:
         data = json.loads(pc_json_path.read_text(encoding="utf-8"))
         pc = {
@@ -229,19 +266,21 @@ def param_active_job(
             for k, vt, v in flatten_param_dict(data)
         }
     except Exception:  # noqa: BLE001 - 파일 없음 · 손상 · 표현 불가 → 이 행만 확인 불가
-        return _job("param_active", "UNKNOWN", "전달한 운영 기준을 읽지 못함")
+        return _job("param_active", "UNKNOWN", "지금 PC 기준을 읽지 못함")
     n, diff = _compare_values(pc, oci_values)
+    how = "적용 때 확인" if source == "apply" else "기동 때 확인"
+    tail = f" · {how} {stamp}" if stamp else ""
     if not diff:
         return _job(
             "param_active",
             "SUCCESS",
-            f"전달한 운영 기준이 OCI 에서 쓰는 값과 같음 ({n}/{n})",
+            f"지금 PC 기준과 OCI 활성값이 같음 ({n}/{n}){tail}",
         )
-    tail = " — 전달만 되고 활성화되지 않음" if last_sync_ok else ""
     return _job(
         "param_active",
         "STALE",
-        f"OCI 는 다른 값으로 동작 중 ({n}개 중 {diff}개 다름){tail}",
+        f"OCI 는 다른 값으로 동작 중 ({n}개 중 {diff}개 다름 · "
+        f"{_diff_groups(pc, oci_values)}){tail}",
     )
 
 

@@ -332,6 +332,8 @@ Mobile Decision Operating Sequence Anchor (`docs/handoff/POC2/POC2_MOBILE_DECISI
 
 OCI 계속 금지: 신규 전략 · 신규 후보 선정 · **전체 시장 후보 탐색** · factor 추가 · threshold 변경 · 추천 알고리즘 변경 · ML 학습·튜닝 · Holdings 수량·평단 변경 · **seed 임의 추가·삭제** · PARAM 생성/승격 · Market Discovery 구조 변경 · Published Evidence 임의 수정 · 자동 매수·매도 · 주문 실행.
 
+> 2026-10-20 POC5-27 한정 해석: 사용자가 PC에서 명시 승인한 현행 허용 PARAM 값을 OCI 로컬 도구가 그대로 검증·발행·활성 확인하는 경로를 허용한다. PC의 OCI DB 직접 접속·개방과 OCI의 자율 PARAM 계산·선정·생성/승격 금지는 유지한다. 근거는 POC5-27 PLAN §1~§5의 소스 대조 및 사용자 원격 쓰기 구현 승인이다. 이 허용은 새 정책 생성·ML·seed 변경·자동 발송으로 확대되지 않는다. (출처: `docs/ai_design/POC5/POC5-27_PC_TO_OCI_RUNTIME_PARAM_ACTIVATION_PLAN_DECISION_2026-10-20.md` §1)
+
 ### Published Evidence ↔ Operational Derived Evidence ↔ Runtime Evidence
 
 - **Published Evidence** (PC 생성·승인·publish → OCI read-only): seed · active PARAM · factor · threshold · 후보 선정 규칙 · 전략/판단 기준 · Market Discovery 후보 · Universe 후보 · ML baseline · PENDING 초안 snapshot · 분석 factor 결과. OCI 가 임의 수정 X.

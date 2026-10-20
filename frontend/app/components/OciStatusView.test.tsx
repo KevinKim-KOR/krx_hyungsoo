@@ -241,4 +241,15 @@ describe("OciStatusPanel — 장중 대표 ETF · 운영 기준 활성 행", () 
     await screen.findByText("정상 운영 중");
     expect(fetchOciStartupStatus).toHaveBeenCalledTimes(2);
   });
+
+  it("아래 안내: '운영 기준 활성' 행만 ② 적용 때 다시 읽은 값으로 바뀐다(POC5-27)", async () => {
+    fetchOciStartupStatus.mockResolvedValue(operating());
+    render(<OciStatusPanel />);
+    await screen.findByText("정상 운영 중");
+    expect(
+      screen.getByText(
+        "PC 백엔드를 시작할 때 한 번 읽은 값입니다. 새로고침해도 OCI 를 다시 읽지 않습니다. ‘운영 기준 활성’ 행만 ② [현재 기준 OCI 적용] 때 다시 읽은 값으로 바뀝니다.",
+      ),
+    ).toBeInTheDocument();
+  });
 });

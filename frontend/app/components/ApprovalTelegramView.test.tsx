@@ -133,23 +133,23 @@ describe("OCI 운영·적용 — ① 읽기 · ② 적용 합친 화면 (2026-09
     expect(
       param.compareDocumentPosition(intraday) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
-    // POC3-02D-OPS-04 항목 6 — 운영 기준 카드 버튼은 '전달'(② 제목 · 화면 안내는 그대로).
-    expect(within(apply).getByRole("button", { name: "현재 기준 OCI 전달" })).toBeTruthy();
+    // POC5-27 — 운영 기준 카드 버튼은 다시 '적용'(실제 활성화 · ② 제목 · 화면 안내는 그대로).
+    expect(within(apply).getByRole("button", { name: "현재 기준 OCI 적용" })).toBeTruthy();
   });
 
-  it("② 운영 기준 전달이 끝나면 ① 을 다시 읽는다(POC3-02D-OPS-04 항목 6)", async () => {
+  it("② 운영 기준 적용이 끝나면 ① 을 다시 읽는다(POC3-02D-OPS-04 항목 6 · POC5-27)", async () => {
     applyThreePushParamToOci.mockResolvedValue({
-      status: "applied",
+      status: "activated",
       display_label: "기본 운영 기준",
-      applied_at: "2026-10-06 10:30",
+      applied_at: "2026-10-20 10:12",
       oci_verified: true,
-      message: "OCI 에 전달되었습니다.",
+      message: "OCI 활성값을 지금 기준으로 바꾸고 다시 읽어 같음을 확인했습니다 (14/14). 다음 실행부터 이 기준을 씁니다.",
       content_sha256: null,
     });
     await renderView();
     const before = fetchOciStartupStatus.mock.calls.length;
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "현재 기준 OCI 전달" }));
+      fireEvent.click(screen.getByRole("button", { name: "현재 기준 OCI 적용" }));
     });
     await waitFor(() =>
       expect(fetchOciStartupStatus.mock.calls.length).toBe(before + 1),

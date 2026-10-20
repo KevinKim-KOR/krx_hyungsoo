@@ -71,11 +71,11 @@ beforeEach(() => {
     note: "",
   });
   fetchThreePushParamState.mockResolvedValue({
-    status: "applied",
+    status: "active_same",
     display_label: "기본 운영 기준",
     applied_at: "2026-09-25 15:40",
     oci_verified: true,
-    message: "OCI 반영 확인됨",
+    message: "OCI 활성값이 이미 지금 기준과 같습니다 (14/14). 새로 바꾼 것은 없습니다.",
   });
   fetchIntradayConfigState.mockResolvedValue({
     active_version_id: "intraday-20260910T000000-000001",

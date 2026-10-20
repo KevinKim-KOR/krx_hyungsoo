@@ -12,6 +12,10 @@ POC3-02D-OPS-04 항목 6(설계자 Q7 b): '운영 기준 활성' 행은 요청 �
 행 목록은 고치지 않고 새 목록을 만든다. 비교가 어떤 이유로 실패해도 이 행만 '확인 불가'다
 (응답은 늘 200 — 첫 화면 한 줄도 같은 응답을 쓴다).
 
+POC5-27 판정 §3: [현재 기준 OCI 적용] 요청 **안에서** 읽은 값이 있으면 그 값 · 시각으로 비교한다
+(명시 적용 결과 반영 — 이 엔드포인트가 OCI 를 다시 읽지는 않는다). 행이 200 으로 오는 것과
+'값 확인 성공 · 일치'는 다르다(상태 SUCCESS 만 일치).
+
 민감정보는 스냅샷 자체에 없다(app.oci_startup_status 가 담지 않음).
 """
 
@@ -50,11 +54,13 @@ def _param_active_row(
         return oci_startup_status.param_active_job(
             snap.oci_param_values,
             param_api.latest_param_path(),
-            param_api.last_sync_succeeded(),
+            read_at=snap.oci_param_read_at,
+            source=snap.oci_param_source,
+            unconfirmed=snap.oci_param_unconfirmed,
         )
     except Exception:  # noqa: BLE001 - 이 행만 확인 불가 · 응답은 그대로
         return oci_startup_status.OciJobStatus(
-            "param_active", "UNKNOWN", "전달한 운영 기준과 비교하지 못함"
+            "param_active", "UNKNOWN", "지금 PC 기준과 비교하지 못함"
         )
 
 
@@ -62,7 +68,9 @@ def _param_active_row(
 def get_oci_startup_status() -> OciStartupStatusResponse:
     """기동 시 1회 읽은 OCI 상태 스냅샷 반환(OCI 재조회 없음 · 운영 기준 활성 행만 요청 때 비교)."""
     snap = oci_startup_status.get_snapshot()
-    jobs = [*snap.jobs, _param_active_row(snap)] if snap.reachable else list(snap.jobs)
+    # POC5-27 — 기동 읽기가 실패했어도 적용 요청에서 읽은(또는 확인 못 한) 결과는 행으로 보인다.
+    show = snap.reachable or snap.oci_param_source == "apply"
+    jobs = [*snap.jobs, _param_active_row(snap)] if show else list(snap.jobs)
     return OciStartupStatusResponse(
         checked_at=snap.checked_at,
         reachable=snap.reachable,

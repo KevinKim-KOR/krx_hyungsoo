@@ -149,13 +149,18 @@ def _pc_json(tmp_path, d) -> Path:
     return p
 
 
+READ_AT = "2026-10-20T00:00:05+00:00"  # KST 10/20 09:00
+
+
 def test_param_row_same_values_different_version_is_match(tmp_path):
     active, sent = _param(), _param()
     assert active["param_id"] != sent["param_id"]
-    job = oss.param_active_job(_oci_values(active), _pc_json(tmp_path, sent), True)
+    job = oss.param_active_job(
+        _oci_values(active), _pc_json(tmp_path, sent), read_at=READ_AT
+    )
     assert (job.status, job.detail) == (
         "SUCCESS",
-        "전달한 운영 기준이 OCI 에서 쓰는 값과 같음 (14/14)",
+        "지금 PC 기준과 OCI 활성값이 같음 (14/14) · 기동 때 확인 10/20 09:00",
     )
     assert "param-" not in job.detail
 
@@ -163,36 +168,69 @@ def test_param_row_same_values_different_version_is_match(tmp_path):
 def test_param_row_enabled_kinds_order_only_is_match(tmp_path):
     active = _param()
     sent = _param(enabled_push_kinds=list(reversed(active["enabled_push_kinds"])))
-    job = oss.param_active_job(_oci_values(active), _pc_json(tmp_path, sent), True)
+    job = oss.param_active_job(_oci_values(active), _pc_json(tmp_path, sent))
     assert job.status == "SUCCESS"
 
 
 @pytest.mark.parametrize(
-    "last_sync_ok, tail",
-    [(True, " — 전달만 되고 활성화되지 않음"), (False, ""), (None, "")],
+    "source, how", [("startup", "기동 때 확인"), ("apply", "적용 때 확인")]
 )
-def test_param_row_different_value(tmp_path, last_sync_ok, tail):
+def test_param_row_different_value(tmp_path, source, how):
+    """POC5-27 — 예전 '— 전달만 되고 활성화되지 않음' 꼬리 대신 값을 읽은 때 · 묶음별 다른 수."""
     active = _param()
     sent = _param(enabled_push_kinds=["market_briefing", "holdings_briefing"])
     job = oss.param_active_job(
-        _oci_values(active), _pc_json(tmp_path, sent), last_sync_ok
+        _oci_values(active), _pc_json(tmp_path, sent), read_at=READ_AT, source=source
     )
     assert job.status == "STALE"
-    assert job.detail == f"OCI 는 다른 값으로 동작 중 (14개 중 2개 다름){tail}"
+    assert job.detail == (
+        f"OCI 는 다른 값으로 동작 중 (14개 중 2개 다름 · 알림 종류 2) · {how} 10/20 09:00"
+    )
+    assert "전달만" not in job.detail
+
+
+def test_param_row_groups_count_policy_differences(tmp_path):
+    active = _param()
+    sent = _param()
+    sent["safety_policy"]["block_secret_exposure"] = False
+    sent["runtime_policy"]["data_unavailable_behavior"] = "skip"
+    sent["evidence_policy"]["use_runtime_timestamp"] = False
+    sent["enabled_push_kinds"] = ["market_briefing"]
+    job = oss.param_active_job(_oci_values(active), _pc_json(tmp_path, sent))
+    assert job.detail == (
+        "OCI 는 다른 값으로 동작 중 (14개 중 6개 다름 · 알림 종류 3 · 실행 정책 1 · "
+        "근거 정책 1 · 안전 정책 1)"
+    )
 
 
 def test_param_row_unknown_cases(tmp_path):
     d = _param()
-    assert oss.param_active_job(None, _pc_json(tmp_path, d), True).detail == (
-        "OCI 에서 쓰는 값을 읽지 못함"
+    assert oss.param_active_job(None, _pc_json(tmp_path, d)).detail == (
+        "OCI 활성값을 읽지 못함"
     )
-    assert oss.param_active_job({}, _pc_json(tmp_path, d), True).status == "UNKNOWN"
+    assert oss.param_active_job({}, _pc_json(tmp_path, d)).status == "UNKNOWN"
     missing = tmp_path / "none.json"
     bad = tmp_path / "bad.json"
     bad.write_text("{broken", "utf-8")
     for path in (missing, bad):
-        job = oss.param_active_job(_oci_values(d), path, True)
-        assert (job.status, job.detail) == ("UNKNOWN", "전달한 운영 기준을 읽지 못함")
+        job = oss.param_active_job(_oci_values(d), path)
+        assert (job.status, job.detail) == ("UNKNOWN", "지금 PC 기준을 읽지 못함")
+
+
+def test_param_row_unconfirmed_apply_is_unknown_even_with_old_match(tmp_path):
+    """POC5-27 판정 §3 — 적용 결과를 확인하지 못했으면 기동 때의 일치 값을 성공처럼 보이지 않는다."""
+    d = _param()
+    job = oss.param_active_job(
+        _oci_values(d),
+        _pc_json(tmp_path, d),
+        read_at="2026-10-20T01:12:00+00:00",
+        source="apply",
+        unconfirmed=True,
+    )
+    assert (job.status, job.detail) == (
+        "UNKNOWN",
+        "적용 뒤 OCI 활성값을 확인하지 못함 — 다시 적용하면 먼저 실제 값을 읽음 · 적용 10/20 10:12",
+    )
 
 
 def test_parse_param_values():
@@ -252,7 +290,7 @@ def test_remote_blocks_run_in_bash_read_only(tmp_path):
     assert vid not in raw and "param-" not in raw  # 버전 ID 를 꺼내지 않는다
     values = oss.parse_param_values(raw)
     assert values is not None and len(values) == 14
-    job = oss.param_active_job(values, _pc_json(tmp_path, _param()), True)
+    job = oss.param_active_job(values, _pc_json(tmp_path, _param()))
     assert job.detail.endswith("(14/14)")
     # mode=ro — DB 가 바뀌지 않는다.
     assert hashlib.sha256(db.read_bytes()).hexdigest() == digest
@@ -321,6 +359,7 @@ def _snap(values):
         jobs=[oss.OciJobStatus("crontab", "SUCCESS", "ok")],
         note="n",
         oci_param_values=values,
+        oci_param_read_at="2026-10-06T00:00:00+00:00" if values else None,
     )
 
 
@@ -340,11 +379,11 @@ def test_api_appends_param_row_per_request_without_mutating_cache(client, monkey
     assert "param-" not in first.text and "oci_param_values" not in first.text
 
 
-def test_api_param_row_follows_current_pc_json_and_sync_status(client, monkeypatch):
-    """같은 세션에서 다른 값을 전달하면 다음 조회부터 '다름'(OCI 재조회 없음).
+def test_api_param_row_follows_current_pc_json_not_delivery_record(client, monkeypatch):
+    """같은 세션에서 PC 기준이 바뀌면 다음 조회부터 '다름'(OCI 재조회 없음).
 
-    '— 전달만 되고 활성화되지 않음' 은 지금 PC 기준이 전달된 경우에만 붙는다 — 전달 기록이
-    실패이거나 다른 PARAM 의 기록이면 붙이지 않는다(식별자는 내부 비교만 · 응답에 없음).
+    POC5-27 — 전달 기록과 상관없이 같은 문구다(예전 '— 전달만 되고 활성화되지 않음' 꼬리 폐기 ·
+    식별자는 응답에 없음). 값을 읽은 때는 기동 때 확인 시각이다.
     """
     monkeypatch.setattr(oss, "_snapshot", _snap(_oci_values(_param())))
     sent = _param(enabled_push_kinds=["market_briefing"])
@@ -357,18 +396,16 @@ def test_api_param_row_follows_current_pc_json_and_sync_status(client, monkeypat
         return client.get("/oci/startup-status")
 
     ok = {"status": "success", "verify_status": "success"}
-    r = _sync(**ok, param_id=sent["param_id"])
-    row = r.json()["jobs"][-1]
-    assert row["status"] == "STALE"
-    assert row["detail"].endswith("— 전달만 되고 활성화되지 않음")
-    assert sent["param_id"] not in r.text
     for rec in (
+        {**ok, "param_id": sent["param_id"]},
         {"status": "failed", "param_id": sent["param_id"]},
-        {**ok, "param_id": "param-other"},  # 다른 PARAM 의 전달 기록
-        {**ok},  # 식별자 없는 옛 기록
+        {**ok},
     ):
-        row = _sync(**rec).json()["jobs"][-1]
+        r = _sync(**rec)
+        row = r.json()["jobs"][-1]
         assert row["status"] == "STALE" and "전달만" not in row["detail"]
+        assert row["detail"].endswith("· 기동 때 확인 10/6 09:00")
+        assert sent["param_id"] not in r.text
 
 
 def test_api_bad_pc_json_or_compare_error_keeps_200(client, monkeypatch):
@@ -381,7 +418,7 @@ def test_api_bad_pc_json_or_compare_error_keeps_200(client, monkeypatch):
     assert r.json()["jobs"][-1] == {
         "job": "param_active",
         "status": "UNKNOWN",
-        "detail": "전달한 운영 기준을 읽지 못함",
+        "detail": "지금 PC 기준을 읽지 못함",
     }
 
     def _boom(*a, **k):
@@ -390,7 +427,7 @@ def test_api_bad_pc_json_or_compare_error_keeps_200(client, monkeypatch):
     monkeypatch.setattr(oss, "param_active_job", _boom)
     r = client.get("/oci/startup-status")
     assert r.status_code == 200
-    assert r.json()["jobs"][-1]["detail"] == "전달한 운영 기준과 비교하지 못함"
+    assert r.json()["jobs"][-1]["detail"] == "지금 PC 기준과 비교하지 못함"
 
 
 def test_api_unreachable_has_no_param_row(client, monkeypatch):

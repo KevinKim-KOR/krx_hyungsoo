@@ -30,8 +30,8 @@ import ThreePushParamCard from "./ThreePushParamCard";
 import IntradayConfigCard from "./IntradayConfigCard";
 
 export default function ApprovalTelegramView() {
-  // POC3-02D-OPS-04 항목 6 — ② 운영 기준 전달이 끝나면 ① 을 다시 읽어 '운영 기준 활성'
-  // 행이 바로 바뀌게 한다(OCI 는 다시 읽지 않는다).
+  // POC3-02D-OPS-04 항목 6 · POC5-27 — ② 운영 기준 적용이 끝나면 ① 을 다시 읽어 '운영 기준 활성'
+  // 행이 적용 때 읽은 값으로 바로 바뀌게 한다(① 을 다시 읽을 때 OCI 는 다시 읽지 않는다).
   const [ociReload, setOciReload] = useState(0);
   const onDelivered = useCallback(() => setOciReload((k) => k + 1), []);
   return (

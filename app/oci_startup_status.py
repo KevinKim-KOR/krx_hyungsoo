@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import logging
 import subprocess
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 
@@ -70,6 +70,11 @@ class OciStartupSnapshot:
     # POC3-02D-OPS-04 — OCI 활성 PARAM 값 `{param_key: (type, num, text, bool)}`. 응답에 싣지
     # 않는다(API 가 요청 때 PC 운영 기준과 비교만 한다). 못 읽으면 None.
     oci_param_values: Optional[dict[str, tuple]] = None
+    # POC5-27 판정 §3 — 그 값을 실제로 읽은 시각 · 경로(startup = 기동 1회 · apply = 명시 적용 요청 안)
+    # · 적용 결과를 확인하지 못했는가(그러면 '운영 기준 활성' 행은 확인 불가).
+    oci_param_read_at: Optional[str] = None
+    oci_param_source: str = "startup"
+    oci_param_unconfirmed: bool = False
 
 
 # 프로세스 로컬 캐시. 기동 시 1회 채워지고 이후 재조회하지 않는다.
@@ -292,11 +297,42 @@ def refresh_snapshot() -> OciStartupSnapshot:
             "기동 시 1회 읽은 읽기 전용 스냅샷입니다. crontab 필수 push-kind 등록 "
             "여부와 artifact 최신성을 표시합니다. 개별 PUSH job 의 최신 성공/실패는 "
             "기존 단일 status 파일만으로 신뢰성 있게 구분할 수 없어 UNKNOWN 으로 둡니다. "
-            "운영 기준 활성 행은 기동 때 읽은 OCI 활성값과 조회 때의 PC 운영 기준을 비교합니다."
+            "운영 기준 활성 행은 기동 때(또는 마지막 [현재 기준 OCI 적용] 때) 읽은 OCI 활성값과 "
+            "지금 PC 운영 기준을 비교합니다."
         ),
         oci_param_values=oci_param_values,
+        oci_param_read_at=checked_at if oci_param_values else None,
     )
     return _snapshot
+
+
+def record_param_apply(
+    values: Optional[dict[str, tuple]], at: str, *, unconfirmed: bool
+) -> None:
+    """POC5-27 판정 §3 — [현재 기준 OCI 적용] 요청 **안에서** 읽은 OCI 활성값으로 '운영 기준 활성'
+    캐시만 바꾼다(다른 행 · 다른 OCI 상태는 다시 읽지 않는다 · 폴링 없음).
+
+    - 확인 불가 → 그 상태로 둔다(기동 때의 일치 값을 방금 확인한 것처럼 보이지 않게).
+    - 실제로 읽은 값이 있으면 그 값과 읽은 시각.
+    - 읽은 값이 없으면(OCI 에 쓰기 전 실패 등) 캐시를 그대로 둔다 — 읽지 않은 값 · 시각을 채우지 않는다.
+    """
+    global _snapshot
+    if unconfirmed:
+        _snapshot = replace(
+            _snapshot,
+            oci_param_values=None,
+            oci_param_read_at=at,
+            oci_param_source="apply",
+            oci_param_unconfirmed=True,
+        )
+    elif values:
+        _snapshot = replace(
+            _snapshot,
+            oci_param_values=values,
+            oci_param_read_at=at,
+            oci_param_source="apply",
+            oci_param_unconfirmed=False,
+        )
 
 
 _KST = timezone(timedelta(hours=9))
