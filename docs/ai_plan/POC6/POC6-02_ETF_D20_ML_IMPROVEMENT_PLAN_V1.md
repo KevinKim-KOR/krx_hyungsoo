@@ -3,7 +3,7 @@
 작성 2026-10-21 · 작성자: 개발자(VSCode Claude) · 수신: 설계자 · 사용자
 
 ```text
-STATUS   = PLAN 제출(2026-10-21) · 질문 3 → 설계자 PASS_TO_IMPLEMENT_WITH_CORRECTIONS(2026-10-21 · Q1 (b) 최소 4종 · Q3 개발자 해석 · Q2 맥북 개발 · CPU 실행 + RTX PC 는 작은 GPU 실행 묶음만 · §9) → 구현 2026-10-21 · 독립 검토 1회 반영 · 맥북 공식 CPU 실행 1회(2026-10-21 · POOLED_HGB RESEARCH_PROMISING · POOLED_GPU_MLP GPU_NOT_RUN · 완료 범위 CPU_PARTIAL_GPU_PENDING) · 검증자 r1(CPU 선행) REJECTED → 정정(결과서 §4-5) · 검증자 r2(CPU 선행) REJECTED → 정정(결과서 §4-6) · 검증자 r3(CPU 선행) VERIFIED(결과서 §13) · RTX PC GPU 실행 대기 · 결과서 `docs/ai_result/POC6/POC6-02_ETF_D20_ML_IMPROVEMENT_RESULT.md`
+STATUS   = PLAN 제출(2026-10-21) · 질문 3 → 설계자 PASS_TO_IMPLEMENT_WITH_CORRECTIONS(2026-10-21 · Q1 (b) 최소 4종 · Q3 개발자 해석 · Q2 맥북 개발 · CPU 실행 + RTX PC 는 작은 GPU 실행 묶음만 · §9) → 구현 2026-10-21 · 독립 검토 1회 반영 · 맥북 공식 CPU 실행 1회(2026-10-21 · POOLED_HGB RESEARCH_PROMISING · POOLED_GPU_MLP GPU_NOT_RUN · 완료 범위 CPU_PARTIAL_GPU_PENDING) · 검증자 r1(CPU 선행) REJECTED → 정정(결과서 §4-5) · 검증자 r2(CPU 선행) REJECTED → 정정(결과서 §4-6) · 검증자 r3(CPU 선행) VERIFIED(결과서 §13) · RTX PC GPU 실행 · 맥북 취합 완료(2026-10-21 · 완료 범위 FULL · POOLED_GPU_MLP REJECT · POOLED_HGB RESEARCH_PROMISING · 4종 한정) · GPU 부분 검증자 r1 VERIFIED(2026-10-21 · 결과서 §14) · 설계자 RESULT PASS · IMPLEMENTED_VERIFIED_CLOSED(2026-10-21 · 결과서 §15 · completion FULL · 운영 채택 없음) · 결과서 `docs/ai_result/POC6/POC6-02_ETF_D20_ML_IMPROVEMENT_RESULT.md`
 DESIGN   = docs/ai_design/POC6/POC6-02_ETF_D20_ML_IMPROVEMENT_DESIGN_V1.md(개정 2 · 개정 1 은 전달 전 대체)
 DECISION = docs/ai_design/POC6/POC6-02_ETF_D20_ML_IMPROVEMENT_PLAN_DECISION_2026-10-21.md(판정이 설계와 충돌하면 판정 우선)
 범위     = 설계 §9 여섯 확인만 · 코드 변경 0 · 시장 DB mode=ro · 보유 문서 읽기만 · 외부 호출 0

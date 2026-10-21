@@ -3,13 +3,14 @@
 작성 2026-10-21 · 작성자: 개발자(VSCode Claude) · 수신: 검증자(Codex) · 설계자
 
 ```text
-STATUS        = IMPLEMENTED_CPU_PARTIAL_GPU_PENDING — 구현 완료(2026-10-21) → 독립 검토 1회 반영(§4 · 13건) → 변이 45종 모두 잡힘(§9)
+STATUS        = IMPLEMENTED_VERIFIED_CLOSED — 구현 완료(2026-10-21) → 독립 검토 1회 반영(§4 · 13건) → 변이 45종 모두 잡힘(§9)
                 → 맥북 공식 CPU 실행 1회(2026-10-21 10:41 · COMPLETED · 완료 범위 CPU_PARTIAL_GPU_PENDING · §8)
                 → 검증자 r1(CPU 선행) REJECTED(2026-10-21 · §11 · snapshot 날짜를 해석하지 않은 P2)
                 → 개발자 정정(2026-10-21 · §4-5 · 같은 종류 세 층 · 공식 결과 · 묶음 불변 확인)
                 → 검증자 r2(CPU 선행) REJECTED(2026-10-21 · §12 · 취합이 행 종목코드 손상을 놓친 P2 · r1 날짜 결함 CLOSED)
                 → 개발자 정정(2026-10-21 · §4-6 · 칸별 대조 → 잠긴 입력에서 CPU 보고서 전체 재계산 비교) → 검증자 r3(CPU 선행) VERIFIED(2026-10-21 · §13 · r1/r2 P2 CLOSED)
-                → RTX PC GPU 실행 대기(사용자 · §7) → 취합 → 검증자(GPU 부분) → 설계자 RESULT 판정
+                → RTX PC GPU 실행 1회(사용자 · 2026-10-21 · OK · §8-7) → 맥북 취합(2026-10-21 20:00 · 완료 범위 FULL · §8-7)
+                → 검증자 GPU 부분 r1 VERIFIED(2026-10-21 · §14) → 설계자 RESULT PASS(2026-10-21 · §15 · completion FULL) → 종료(§15)
 STEP_ID       = POC6-02 ML 고도화: ETF D20 추정 개선 검증(공동 학습 HGB · CUDA MLP 대 기존 두 기준)
 DESIGN        = docs/ai_design/POC6/POC6-02_ETF_D20_ML_IMPROVEMENT_DESIGN_V1.md(개정 2)
 DECISION      = docs/ai_design/POC6/POC6-02_ETF_D20_ML_IMPROVEMENT_PLAN_DECISION_2026-10-21.md(PASS_TO_IMPLEMENT_WITH_CORRECTIONS)
@@ -20,6 +21,8 @@ GPU_BUNDLE    = state/ml/research/poc6_02/20261021T104103_129a89b0/gpu_bundle.zi
 SCOPE         = PC 수동 연구 CLI 하나 + 연구 모듈(app/d20_pooled) + RTX PC 실행 묶음 · 화면 · API · OCI · PUSH · PARAM 변경 없음
 CHECKS        = §9
 VERIFIER_CPU  = r3 VERIFIED(2026-10-21 · CPU 구현·공식 결과·RTX 묶음 준비 범위 한정 · r1/r2 P2 CLOSED · §13 · GPU 실제 실행 미완료)
+DESIGNER      = RESULT PASS(2026-10-21 · docs/ai_design/POC6/POC6-02_ETF_D20_ML_IMPROVEMENT_RESULT_DECISION_2026-10-21.md · §15)
+VERIFIER_GPU  = r1 VERIFIED(2026-10-21 · GPU 실행 기록·취합 결과 범위 · §14 · 완료 범위 FULL)
 ```
 
 ## 0. 요약
@@ -31,12 +34,18 @@ VERIFIER_CPU  = r3 VERIFIED(2026-10-21 · CPU 구현·공식 결과·RTX 묶음 
 - **맥북 공식 CPU 결과**(기준일 T = 2026-10-19 · 적격 4종 · 3구간 × 63일 · 시험 756행 / 189날짜):
   - 날짜 균형 MAE: MEDIAN 6.9662 · RIDGE_EXISTING 6.8702 · **POOLED_HGB 6.2666 %p**.
   - **POOLED_HGB = RESEARCH_PROMISING**. 대 MEDIAN 10.04% 개선 · 3구간 모두 우위 / 대 RIDGE 8.79% 개선 · 3구간 모두 우위. 경계 근처 없음.
-  - **POOLED_GPU_MLP = GPU_NOT_RUN**(RTX PC 실행 결과 취합 전). **CPU · GPU 비교 전체 완료가 아니다**(설계 §5-1 · 판정 §5-4).
+- **RTX PC GPU 결과 취합(완료 범위 FULL · §8-7)**: RTX 4070 SUPER · CUDA 12.4 · torch 2.6.0 에서 200 epoch 공식 학습, 같은 입력 두 번 학습 예측 차 0.
+  - POOLED_GPU_MLP 날짜 균형 MAE 6.5527 %p(1 · 2 · 3구간 4.3016 · 5.4887 · 9.8678).
+  - **POOLED_GPU_MLP = REJECT**. 대 MEDIAN 전체 5.94% 개선이지만 1 · 2구간이 19.2% · 11.9% 나빠졌고, 대 RIDGE 전체 4.62%(< 5%) · 1 · 2구간 8.2% · 7.3% 나빠짐. 경계 근처 없음.
+  - 3구간(9.8678)과 D20 ≤ −8% 행(MAE 12.3870 · 과소 추정 11.5920 %p)은 네 방법 중 가장 작지만 주 판정을 바꾸지 않는다(보조 진단).
+  - 같은 MLP 의 CPU / CUDA 속도(PC 안 비교): CUDA 가 0.92배(더 느림). 이번 작은 표본(학습 3,925행 · 5 feature) · 설정 · 측정에서는 GPU 속도 이점을 확인하지 못했다(GPU 일반 성능 · 다른 크기 자료로 일반화하지 않음 · 장비 한계 활용 시험 아님).
 - **범위 한정**: 결과는 적격 4종(367760 · 381170 · 395160 · 442580)에 한정한다.
   - 보유 ETF 26종 중 22종이 제외됐다: 상장 기간 부족 14종 · 가격 경계로 시험 날짜 부족 8종.
   - 시장 전체 · 보유 26종의 개선 입증이 아니다. 겹치는 20일 목표라 756행이 756개의 독립 사례가 아니다.
 - **운영 아님**: 연구 유망 ≠ 투자 유효성 · 운영 채택(`ML_OPERATION_PROMOTION=NOT_APPROVED` · `CURRENT_DEPLOYABLE_ML_MODEL=none`). 매수/매도 지시가 아니다.
-- **다음**: CPU 선행 검증 r3 VERIFIED(§13) · 사용자가 RTX PC 에서 묶음을 한 번 실행한다(§7 · 묶음 경로 그대로) → 맥북 `merge` → 이 결과서의 §0 · §8 · §9 를 GPU 결과로 교체 → 검증자(GPU 부분).
+- **종료**: CPU 범위 검증 r3 VERIFIED(§13) · GPU 실행 · 취합 완료(§8-7) · 검증자 GPU 부분 r1 VERIFIED(§14) → 설계자 RESULT PASS(2026-10-21 · §15) · `IMPLEMENTED_VERIFIED_CLOSED` · completion FULL.
+  - HGB = 원래 4종 한정 RESEARCH_PROMISING 보존 · GPU MLP(이번 설정) = REJECT 보존 · 운영 채택 없음.
+  - 후속 모델 사용 판단은 POC6-04 RESULT 판정의 통합 결론을 따른다(이 고정 D20 후보 비교 · 확장 연구 마무리 · 자동 후속 개발 없음).
 
 ## 1. 처리한 요구사항
 
@@ -50,20 +59,20 @@ VERIFIER_CPU  = r3 VERIFIED(2026-10-21 · CPU 구현·공식 결과·RTX 묶음 
 | 6 | 판정 = 두 기준 각각 세 조건 · 기준 0 = REJECT · 반올림 전 · 경계 근처 표시만 | DONE | 경계 parametrize 시험 · §8-4 |
 | 7 | 보조 보고(D20 ≤ -8% 행 오차 · 위험 과소 추정 · ETF별 개선/악화) | DONE | §8-5 |
 | 8 | CPU 1스레드 · 절반 · 전체 실측 | DONE | §8-6 |
-| 9 | GPU microbatch 예비 측정 · 같은 MLP CPU/CUDA 비교 · 재현 ≤ 1e-6 · 결정적 · TF32 끔 | PARTIAL | 코드 · 맥북 CPU 시험 완료. **실제 CUDA 실행은 RTX PC 대기** |
+| 9 | GPU microbatch 예비 측정 · 같은 MLP CPU/CUDA 비교 · 재현 ≤ 1e-6 · 결정적 · TF32 끔 | DONE | RTX PC 실행 2026-10-21(§8-7) · 예비 측정 256 · 3,925 · 재현 차 0 · CPU/CUDA 0.92배 |
 | 10 | RTX PC 작은 묶음(저장소 · DB · 키 · 인터넷 불필요 · CUDA 없으면 GPU_NOT_RUN · 설치 범위 안내) | DONE | `gpu_bundle/` · 맥북에서 실제 묶음 실행 = GPU_NOT_RUN(§9-6) |
-| 11 | 취합 — study ID · 입력/recipe/묶음 digest · 구간 · 행 ID 완전 일치 · 누락 · 중복 · 다른 실험 거절 | DONE | 거절 시험(GPU 결과 손상 13종 + CPU 폴더 손상 18종 + digest 까지 맞춘 다시 만든 묶음 + 맥북 묶음 코드 바뀜 + smoke 폴더) · 실제 묶음 사본 취합(§9-6). 실제 GPU 결과 취합은 대기 |
+| 11 | 취합 — study ID · 입력/recipe/묶음 digest · 구간 · 행 ID 완전 일치 · 누락 · 중복 · 다른 실험 거절 | DONE | 거절 시험(GPU 결과 손상 13종 + CPU 폴더 손상 18종 + digest 까지 맞춘 다시 만든 묶음 + 맥북 묶음 코드 바뀜 + smoke 폴더) · 실제 묶음 사본 취합(§9-6) · 실제 GPU 결과 공식 취합(§8-7 · FULL) |
 | 12 | 상태 구분(DATA_SHORT · CHECK_REQUIRED · RUN_FAILED · GPU_NOT_RUN) | DONE | snapshot 문제 · 파일 손상 · 실행기 실패 경로 시험 |
 | 13 | 결과 폴더 · 원자 쓰기 · 출력 실패 = 실패 · CPU 보고서 덮지 않음 | DONE | 출력 실패 시험 · 취합 쓰기 실패 시험 |
 | 14 | 읽기 전용 · 외부 호출 0 · 라이브 불변 · 기존 연구 산출물 불변 | DONE | 네트워크 차단 시험 · 공식 실행 전후 라이브 파일 해시 같음(§9-5) |
-| 15 | 공식 실행 1회 · smoke | DONE(CPU) | §8 · smoke 는 구현 중 임시 폴더 |
+| 15 | 공식 실행 1회 · smoke | DONE | §8 · §8-7 · 장비별 실행 완료 · smoke 는 구현 중 임시 폴더 |
 | 16 | 조건부 아이디어 3건 백로그 등재(설계 §12) | DONE | `BACKLOG.md` #63 · #64 · #65 · 조건부 44 · 합계 65 |
 | 17 | 백로그 ML 4건 대조 | DONE | PLAN §6(이번 목표로 해결되지 않음 · 완료 선언 없음) |
-| 18 | RESULT — 4종 한정 · 제외 22종 · 가격 경계 · 장비/버전 · 자원 · 판정 이유 · 부분 완료 명시 | DONE(CPU) | 이 문서 §8 · GPU 부분은 취합 뒤 교체 |
+| 18 | RESULT — 4종 한정 · 제외 22종 · 가격 경계 · 장비/버전 · 자원 · 판정 이유 · 부분 완료 명시 | DONE | 이 문서 §8 · §8-7(취합 뒤 완료 범위 FULL 명시) |
 | 19 | 독립 검토 1회 · 의미 있는 변이 · 관련 검사 · 전체 회귀 1회 | DONE | §4 · §9 |
 | 20 | PROGRAM_TRUTH · STATE 갱신 | DONE | §2 |
 
-**전체 = PARTIAL**: 9 · 11 의 실제 CUDA 실행 · 취합이 남았다(사용자 RTX PC 실행 · §7).
+**전체 = DONE**: 실제 CUDA 실행 · 취합까지 완료(§8-7) · CPU 범위 r3 VERIFIED(§13) · GPU 부분 r1 VERIFIED(§14) · 설계자 RESULT PASS(§15).
 
 ## 2. 변경된 파일 목록
 
@@ -89,6 +98,7 @@ VERIFIER_CPU  = r3 VERIFIED(2026-10-21 · CPU 구현·공식 결과·RTX 묶음 
 | `docs/STATE_LATEST.md` | 수정 | 최종 업데이트 · POC6 상태 칸 |
 | `docs/ai_result/POC6/POC6_DESIGNER_CARRYOVER_FROM_0726_MASTER_HANDOFF_2026-10-21.md` | 신규 | 앞 작업(7-26 문서 설계자 인계 메모 · 사용자 지시 2026-10-21) — 이번 커밋에 함께 |
 
+- 위 표 = CPU 단계(커밋 `6a6fa39e`). **GPU 취합 단계 변경은 문서 4파일만**(이 결과서 · PLAN 상태 줄 · `docs/PROGRAM_TRUTH.md` · `docs/STATE_LATEST.md` · 코드 0 · §10).
 - 제외: `docs/handoff/INVESTMENT_MODEL_V2_MASTER_HANDOFF_2026-07-26.md`(사용자 보존 파일 · stage 하지 않음).
 - 연구 산출물 `state/ml/research/poc6_02/` 는 gitignored(`.gitignore:233 state/ml/research/`).
 
@@ -177,7 +187,10 @@ VERIFIER_CPU  = r3 VERIFIED(2026-10-21 · CPU 구현·공식 결과·RTX 묶음 
 
 ## 5. 알려진 한계 / 미완성
 
-1. **GPU 미실행(부분 완료)**: POOLED_GPU_MLP 는 실제 CUDA 학습 전이다. RTX PC 실행 → 취합 전에는 'CPU · GPU 비교 완료'나 'RTX 활용 완료'가 아니다.
+1. **장비 · 판 차이(§8-7)**: MLP 는 Windows 11 · Python 3.13.12 · torch 2.6.0+cu124 에서, 세 CPU 방법은 macOS · Python 3.12.13 · scikit-learn 1.9.0 에서 계산했다.
+   - 같은 시험 행 · 같은 정답으로 비교하지만 장치 · 판 사이 bit 동일성은 요구하지 않는다(판정 §3-2).
+   - GPU 가속 판단은 PC 안 같은 MLP 의 CPU/CUDA 비교(0.92배)만 근거로 하며, 맥북 HGB 시간과 비교하지 않는다.
+   - PC 의 최대 RAM(peak_rss_mb)은 값 없음(Windows 측정 함수가 값을 돌려주지 않음 · 원인 미확인)이다. VRAM 최대 약 70MB 는 기록됐다.
 2. **4종 한정**: 적격 4종은 이름상 모두 기술 · 반도체 · 네트워크 관련 테마 ETF 이고, 4종 모두 가격 경계가 없다(§8-2). 비슷한 스타일의 소수 ETF 결과다. HGB 유망이 공동 학습과 비선형성 중 무엇 때문인지는 구분하지 않았다(설계 §5).
 3. **가격 경계**: 06 판정 그대로이며 연결 · change 수정 · 재수집은 하지 않았다.
    - 2026-04-20 경계(16종 공통) 하나로 6종이 2 · 3구간 시험 날짜 부족(5 · 41 < 42)이 됐다.
@@ -188,7 +201,7 @@ VERIFIER_CPU  = r3 VERIFIED(2026-10-21 · CPU 구현·공식 결과·RTX 묶음 
    - 지연이 아니라 공개 일정이다. 연구는 공통 T 를 쓰므로 영향은 시험 기간이 하루 앞서는 것뿐이다.
 5. **시간 분리는 지키지만 진정한 당시 가용 자료 검증은 아니다.** 저장 종가는 사후 수정이 가능하다. 이미 조사한 역사 구간이라 신규 독립 확증도 아니다.
 6. **가속 비교는 RTX PC 안에서만**: 같은 MLP 의 CPU/CUDA 비교만 가속 근거다. 맥북 HGB 시간과 PC MLP 시간을 비교하지 않는다.
-7. **HGB 스레드**: 1구간 공동 학습 3,925행에서는 스레드를 늘리면 오히려 느려졌다(1 = 0.119초 · 4 = 0.134초 · 8 = 0.299초). 자료가 작아 병렬 이득이 없다는 실측이며, 장비 한계 시험이 아니다.
+7. **HGB 스레드**: 1구간 공동 학습 3,925행에서는 스레드를 늘리면 오히려 느려졌다(1 = 0.119초 · 4 = 0.134초 · 8 = 0.299초). 이번 작은 표본에서 병렬로 빨라지지 않았다는 실측이며(일반화하지 않음), 장비 한계 시험이 아니다.
 8. **관찰(범위 밖 · 이 연구와 무관)**: PC 시장 DB 의 US500 · IXIC · ^SOX 저장 최신일은 2026-09-04 다.
    - 이 셋은 OCI 배치(`app/market_benchmark_batch.py`)가 받는다. PC 갱신 경로에서 찾은 벤치마크 수집은 KOSPI(`market_benchmark_kospi_retry`) · VIX(`pc_vix_refresh`)뿐이다(grep).
    - PC 코드는 이 셋을 읽지 않는다(`app/api_price_series.py` 허용 = KOSPI).
@@ -202,7 +215,7 @@ VERIFIER_CPU  = r3 VERIFIED(2026-10-21 · CPU 구현·공식 결과·RTX 묶음 
    - `hgb_get_params`(설치 판 기본값)는 `recipe_resolved` 에 따로 기록하고 digest 에 넣지 않았다.
    - scikit-learn 판이 바뀌어 기본값이 달라져도 digest 는 같다. 대신 판 번호와 전체 설정이 보고서에 남는다.
 4. **threadpoolctl 직접 import**: 하위 의존성이다(§3). requirements 에 명시할지는 판단에 맡긴다.
-5. **실행 파일의 `where python`**: Windows 'App 실행 별칭'(Microsoft Store 의 python.exe)이 먼저 잡히면 실행되지 않을 수 있다. README 의 '명령 프롬프트 · 가상환경 같은 창' 안내로 대응한다. 실제 Windows 실행은 아직이다.
+5. **실행 파일의 `where python`**: Windows 'App 실행 별칭'(Microsoft Store 의 python.exe)이 먼저 잡히면 실행되지 않을 수 있다. README 의 '명령 프롬프트 · 가상환경 같은 창' 안내로 대응한다. 2026-10-21 사용자 Windows 11 실행은 정상(OK · §8-7)이었다.
 6. **변이 P1**: '이미 있음' 거절 검사를 지우면 운영체제 이름 바꾸기도 실패해 같은 오류 종류가 나와 처음엔 살아남았다. 거절 문구까지 시험에 고정해 잡았다.
 7. **변이 S16 시간 초과**: 큰 JSON 문자열의 `not in` 단언에서 pytest 가 차이 설명을 만드느라 멈췄다. 칸 목록 비교 + 참/거짓 단언으로 바꿔 잡았다.
 8. **학습 정답 끝 < 시작**: 공동 학습 최댓값(구간 표)과 ETF 별 값(ETF × 구간 표)을 둘 다 보고서에 남겼다. 4종 모두 각 구간 직전 거래일이다(§8-3).
@@ -219,12 +232,8 @@ VERIFIER_CPU  = r3 VERIFIED(2026-10-21 · CPU 구현·공식 결과·RTX 묶음 
 
 ## 7. 사용자 확인이 필요한 항목
 
-1. **RTX PC 에서 GPU 실행 1회**(판정 §5-3):
-   1. `state/ml/research/poc6_02/20261021T104103_129a89b0/gpu_bundle.zip` 을 RTX 4070 SUPER PC 로 옮겨 풉니다.
-   2. 명령 프롬프트에서 그 폴더로 이동해 (가상환경이 있으면 켜고) `run_gpu.bat` 를 실행합니다.
-   3. 생긴 `gpu_result.json` 을 맥북으로 옮겨 주시면 개발자가 `merge` 합니다.
-2. **CUDA 용 PyTorch 가 없으면** 결과는 GPU_NOT_RUN(원인 기록)입니다. 설치 범위는 PyTorch 하나이며(README 예: `pip install torch --index-url https://download.pytorch.org/whl/cu124`), 설치는 사용자 승인 뒤에만 합니다.
-3. GPU 실행을 하지 않기로 명시하시면 '부분 완료(GPU 미실행)'로 검증자에게 넘깁니다(설계 §5-1).
+1. **RTX PC GPU 실행 — 완료**(2026-10-21 · 사용자 실행 · 결과 파일 `state/ml/research/poc6_02/20261021T104103_129a89b0/gpu_result.json` · 개발자 취합 §8-7). 추가 설치는 없었다(PC 의 기존 torch 2.6.0+cu124).
+2. 결과 해석 · 다음 쓰임은 설계자 RESULT 판정 몫이다(MLP REJECT · HGB RESEARCH_PROMISING · 4종 한정).
 
 ## 8. 공식 실행 결과 (맥북 CPU · 2026-10-21 10:41 KST · study `20261021T104103_129a89b0`)
 
@@ -285,7 +294,7 @@ ETF × 구간 학습 행(마지막 학습 정답 끝일은 4종 모두 위 표�
 | MEDIAN | 6.9662 | 3.6090 | 4.9033 | 12.3862 | 189 | 756 |
 | RIDGE_EXISTING | 6.8702 | 3.9767 | 5.1177 | 11.5164 | 189 | 756 |
 | POOLED_HGB | 6.2666 | 3.3973 | 4.8783 | 10.5242 | 189 | 756 |
-| POOLED_GPU_MLP | GPU_NOT_RUN | | | | | |
+| POOLED_GPU_MLP(RTX PC · §8-7) | 6.5527 | 4.3016 | 5.4887 | 9.8678 | 189 | 756 |
 
 - **POOLED_HGB = RESEARCH_PROMISING**:
   - 대 MEDIAN: 전체 개선 10.04%(≥ 5%) · 이긴 구간 3(≥ 2) · 5% 넘게 나빠진 구간 없음.
@@ -321,6 +330,33 @@ ETF × 구간 학습 행(마지막 학습 정답 끝일은 4종 모두 위 표�
 - HGB 전체 설정(`recipe_resolved.hgb_get_params`)은 고정 11개 + `interaction_cst None · max_features 1.0 · monotonic_cst None · n_iter_no_change 10 · quantile None · scoring loss · tol 1e-07 · validation_fraction 0.1 · verbose 0 · warm_start False` 이다(early_stopping=False 라 n_iter_no_change · validation_fraction 은 쓰이지 않음).
 - RTX PC 묶음 입력: 구간 학습 3,925 / 4,177 / 4,429행 · 시험 252행씩 · `gpu_input.json` 2,369,207B · zip 733,466B.
   - `code_sha256`: mlp.py `930095c0…593a2` · gpu_runner.py `13909933…538102`.
+
+### 8-7. RTX PC GPU 실행 · 맥북 취합 (2026-10-21)
+
+```text
+PC 실행    사용자 RTX PC · run_gpu.bat 한 번 · 결과 gpu_result.json(sha256 d5dac74d483dc754094defe2b2ce0eef6db7137d983703f8e6821fa1b17a2b6a)
+           상태 OK · study 20261021T104103_129a89b0 · 입력 · recipe · 묶음 digest = 묶음 입력 · 코드 해시 = 묶음(mlp.py 930095c0… · gpu_runner.py 13909933…)
+환경       Windows-11-10.0.26200 · AMD64(16 논리 CPU) · Python 3.13.12 · torch 2.6.0+cu124 · CUDA 12.4 · cuDNN 90100
+           NVIDIA GeForce RTX 4070 SUPER(VRAM 12,878,086,144B) · 벽시계 7.29초 · 최대 VRAM 70,295,040B · 최대 RAM 값 없음
+취합       PYTHONDONTWRITEBYTECODE=1 .venv/bin/python scripts/run_d20_pooled_research.py merge \
+             --run-dir state/ml/research/poc6_02/20261021T104103_129a89b0 --gpu-result <같은 폴더>/gpu_result.json → rc 0
+           gpu_merged/report_with_gpu.json(85b67c58…) · .md(84dd6bc8…) · 상태 COMPLETED · 완료 범위 FULL · 2026-10-21T20:00:38+09:00
+```
+
+- **예비 측정(1구간 학습 3,925행 · warm-up 1 + 3 epoch)**: microbatch 256 → 0.00845초/epoch · 3,925(=N · 4096 은 N 과 같아 중복 제거) → 0.00082초/epoch. OOM 0 → 3,925 사용.
+- **같은 MLP 의 CPU / CUDA(PC 안 · 전송 제외)**: CPU 0.000748초/epoch(8 스레드) · CUDA 0.000817초/epoch → 가속 0.92배. 이번 작은 표본 · 설정 · 측정에서는 GPU 속도 이점을 확인하지 못했다(설계 §5-1 '그 사실이 유효한 결과' · 일반화하지 않음).
+- **공식 학습**: 구간마다 200 epoch 학습 · 예측 0.17 / 0.26 / 0.25초 · 같은 입력 두 번 학습 예측 차 0.0(허용 1e-6).
+- **취합 확인**: study ID · 입력/recipe/묶음 digest · 코드 해시 · 구간 · 행 ID 일치 + 잠긴 입력으로 CPU 단계를 다시 계산해 `report.json` 전체와 같음(§4-6). 원래 `report.json` · `input_snapshot.json` 해시는 취합 전후 같다(700c55a8… · eccfce45…).
+- **판정(반올림 전 · 세 조건 · 두 기준 각각)**:
+
+| 대 | 전체 개선 | 구간별 MLP/기준 − 1 | 세 조건 |
+|---|---:|---|---|
+| MEDIAN | 5.94% | +19.19% · +11.94% · −20.33% | 전체 ≥5% 예 · 2구간 이상 우위 아니오 · 5% 넘는 악화 없음 아니오 |
+| RIDGE_EXISTING | 4.62% | +8.17% · +7.25% · −14.32% | 전체 ≥5% 아니오 · 2구간 이상 우위 아니오 · 5% 넘는 악화 없음 아니오 |
+
+  → **POOLED_GPU_MLP = REJECT**(경계 근처 없음). POOLED_HGB = RESEARCH_PROMISING 은 그대로다(CPU 점수 취합 전후 같음).
+- **보조(주 판정 불변)**: D20 ≤ −8% 230행 · MLP MAE 12.3870 · 과소 추정 11.5920 %p(HGB 14.3406 · 14.3370). ETF 별 MLP 대 MEDIAN 개선 4 · 악화 0 / 대 RIDGE 개선 3 · 악화 1. ETF 별 MLP MAE 367760 8.4182 · 381170 2.6805 · 395160 8.2077 · 442580 6.9043.
+- 결과를 본 뒤 모델 · 기간 · 임계 · seed 를 바꾸지 않았다(설계 §7).
 
 ## 9. 검증 실측 (2026-10-21 · 검증자 r2 정정 뒤 · 마지막 코드)
 
@@ -358,40 +394,41 @@ ETF × 구간 학습 행(마지막 학습 정답 끝일은 4종 모두 위 표�
      - 공식 폴더 사본에 실제 묶음 결과(GPU_NOT_RUN)를 취합했다. 전체 재계산 비교를 통과해 PARTIAL_GPU_NOT_RUN · rc 0 · 2.7초.
      - 검증자 r2 재현(공식 폴더 사본 `rows_by_block[0][0].ticker` 367760 → 381170 · ID 그대로)은 '`report.json` 이 잠긴 입력에서 다시 계산한 결과와 다름(칸 rows_by_block)'으로 거절됐다. rc 2 · 폴더 생성 0.
 7. **외부 호출 0**: 결과 폴더 시험에서 `socket.connect` 를 막은 채 `run` 이 완료된다.
+8. **GPU 부분(2026-10-21 · 코드 변경 없음)**: 사용자 PC 실행 결과를 공식 폴더에 그대로 취합했다(§8-7 · rc 0 · FULL). 이 단계에서 코드 · 시험 · CPU 공식 결과를 바꾸지 않았고, 전체 회귀 · CPU 공식 실행을 다시 하지 않았다(판정 2026-10-21 §2).
 
-## 10. git 상태 (검증자 r2 정정 뒤 다시 stage · 실측 2026-10-21)
+## 10. git 상태 (GPU 취합 뒤 · 종료 기록 뒤 · 커밋 직전 실측 2026-10-21)
+
+- CPU 단계(검증자 r3 VERIFIED 범위)는 커밋 `6a6fa39e` 로 반영됐다(`git show --stat 6a6fa39e` 로 확인 가능).
+- 이번 검증 대상(GPU 부분)은 그 뒤 바뀐 문서 4파일이다: 이 결과서 · `docs/ai_plan/POC6/POC6-02_ETF_D20_ML_IMPROVEMENT_PLAN_V1.md` · `docs/PROGRAM_TRUTH.md` · `docs/STATE_LATEST.md`(뒤 둘은 POC6-04 줄과 같은 파일). 코드 변경 0(GPU 취합은 커밋된 `merge` 명령 그대로).
+- GPU 실행 · 취합 산출물(`state/ml/research/poc6_02/20261021T104103_129a89b0/gpu_result.json` · `gpu_merged/`)은 gitignore 대상이라 git 에 없다(§8-7 해시).
 
 `git status --short --untracked-files=all`:
 
 ```text
-A  app/d20_pooled/__init__.py
-A  app/d20_pooled/env.py
-A  app/d20_pooled/gpu_runner.py
-A  app/d20_pooled/mlp.py
-A  app/d20_pooled/report.py
-A  app/d20_pooled/runner.py
-A  app/d20_pooled/snapshot.py
-A  app/d20_pooled/study.py
-M  app/reentry_review/model.py
+A  app/d20_expand/__init__.py
+A  app/d20_expand/checks.py
+A  app/d20_expand/inputs.py
+A  app/d20_expand/render.py
+A  app/d20_expand/runner.py
 M  docs/PROGRAM_TRUTH.md
 M  docs/STATE_LATEST.md
-A  docs/ai_design/POC6/POC6-02_ETF_D20_ML_IMPROVEMENT_DESIGN_V1.md
-A  docs/ai_design/POC6/POC6-02_ETF_D20_ML_IMPROVEMENT_PLAN_DECISION_2026-10-21.md
-A  docs/ai_plan/POC6/POC6-02_ETF_D20_ML_IMPROVEMENT_PLAN_V1.md
-A  docs/ai_result/POC6/POC6-02_ETF_D20_ML_IMPROVEMENT_RESULT.md
-A  docs/ai_result/POC6/POC6_DESIGNER_CARRYOVER_FROM_0726_MASTER_HANDOFF_2026-10-21.md
-M  docs/backlog/BACKLOG.md
-A  scripts/run_d20_pooled_research.py
-A  tests/test_poc6_02_d20_pooled.py
+A  docs/ai_design/POC6/POC6-02_ETF_D20_ML_IMPROVEMENT_RESULT_DECISION_2026-10-21.md
+A  docs/ai_design/POC6/POC6-04_D20_EXPANDED_SAMPLE_REPRODUCTION_PLAN_DECISION_2026-10-21.md
+A  docs/ai_design/POC6/POC6-04_D20_EXPANDED_SAMPLE_REPRODUCTION_RESULT_DECISION_2026-10-21.md
+M  docs/ai_plan/POC6/POC6-02_ETF_D20_ML_IMPROVEMENT_PLAN_V1.md
+A  docs/ai_plan/POC6/POC6-04_D20_EXPANDED_SAMPLE_REPRODUCTION_PLAN_V1.md
+M  docs/ai_result/POC6/POC6-02_ETF_D20_ML_IMPROVEMENT_RESULT.md
+A  docs/ai_result/POC6/POC6-04_D20_EXPANDED_SAMPLE_REPRODUCTION_RESULT.md
+A  scripts/run_d20_expanded_check.py
+A  tests/test_poc6_04_d20_expand.py
 ?? docs/handoff/INVESTMENT_MODEL_V2_MASTER_HANDOFF_2026-07-26.md
 ```
 
-- staged 19파일(A 15 · M 4) · 오른쪽 칸 공백(unstaged 0).
+- staged 16파일(A 12 · M 4) · 오른쪽 칸 공백(unstaged 0). 검증자 판정 때 14파일 + 종료 기록 때 설계자 RESULT 판정 원문 2개(POC6-02 · POC6-04) 추가.
 - untracked 1 = 사용자 보존 handoff(의도적 제외 · stage 하지 않음).
+- 같은 staged 묶음 = POC6-04(A 10) + POC6-02 GPU 부분 문서(POC6-02 결과서 · PLAN) + 공용 `docs/PROGRAM_TRUTH.md` · `docs/STATE_LATEST.md`(두 작업 줄 모두).
+- `git diff --cached --check`: 설계자 원문 3개의 머리 줄 끝 공백 7건만 남음(POC6-04 PLAN 판정 3 · 4행 · POC6-02 RESULT 판정 3 · 4행 · POC6-04 RESULT 판정 3 ~ 5행 · 원문 그대로 · `~/Downloads` 원본과 `cmp` 동일 · 손대지 않음). 그 밖 0건.
 - 커밋 · push 없음(종료 때 사용자 승인으로).
-- `git diff --cached --check` 0건.
-- 라이브 `market_data.sqlite` · `holdings_latest.json` 의 크기 · 수정 시각 · 해시가 공식 실행 전 기록과 같다(r2 정정 작업 뒤 재확인).
-
 
 ## 11. 검증자 r1 — CPU 구현·공식 결과·RTX 실행 묶음 선행 검증 (2026-10-21)
 
@@ -571,3 +608,133 @@ MongoDB·신규 UI 프레임워크·새 서비스 도입 없음. 신규 문서 �
 ### 13-7. 사용자에게 한마디
 
 CPU 범위 검증은 통과했습니다. 기존 경로의 RTX 묶음을 사용하면 되며, GPU 실제 실행·최종 결과 확인이 남아 있습니다. 이번 VERIFIED는 전체 연구 종료·운영 모델 채택·커밋·push 승인이 아닙니다.
+
+## 14. 검증자 GPU 부분 r1 — 2026-10-21
+
+검증자: Codex · 적용: `.agents/skills/krx-verify/SKILL.md` · 기준 HEAD `6a6fa39e3aa175cdc2a75424188926da85bd2fa7`.
+이번 대상은 §8-7·§9-8·§10의 GPU 실행·취합과 문서 4파일이다. CPU 구현은 §13 r3 검증 근거를 유지한다. 같은 index의 POC6-04는 그 결과서 §11에서 별도로 판정했다.
+
+### 1) A. 기능/산출물 검증
+
+- **A-1 지시 일치: 통과.** 원래 4종·3구간의 같은 입력·recipe·시험 행으로 CUDA 실행을 마쳤다. 원래 RTX 묶음의 두 실행 코드 해시가 반환 결과와 현재 커밋 코드 모두에 일치한다. GPU 결과의 환경·microbatch 예비 측정·CPU/CUDA 속도 비교·재현 차·VRAM·RAM 미측정 표시가 설계·PLAN 판정의 경계와 맞는다.
+- **A-2 보고 정확성: 통과(완료 메타 직접 정정).** §1 요구 15·18행에 남아 있던 CPU 한정 완료 표기를 현재 장비별 실행·취합 완료 사실에 맞췄다. 코드 결함이 아니다. GPU 부분 코드·시험 변경 0, 문서 4파일이라는 보고와 실제 diff가 일치한다.
+- **A-3 산출물 정합성: 통과.** `gpu_result.json` SHA-256 `d5dac74d483dc754094defe2b2ce0eef6db7137d983703f8e6821fa1b17a2b6a`, study ID·입력/recipe/묶음 digest·코드 해시·구간별 시험 ID를 대조했다. 기존 CPU 기록과 반환 결과를 메모리에서 다시 취합한 내용이 공식 `report_with_gpu.json`과 취합 시각을 제외하고 완전히 같다. 별도 산식으로 756행의 날짜 균형 MAE와 세 조건을 다시 계산해 MLP 전체 6.5526885976%p·구간 4.3016393561/5.4886656109/9.8677608257%p, 두 기준 상대 우위 구간 각 1개, **MLP REJECT·HGB RESEARCH_PROMISING**을 확인했다. 완료 범위 FULL도 맞다.
+- **A-4 금지사항 위반: 없음.** 모델·기간·임계 변경, 신규 수집·설치·운영 연결이 없다.
+
+### 2) B. 구현 규칙/구조 품질 검증
+
+- **B-1 fallback 위반: 없음.** 실제 CUDA 결과 OK이며 CPU 실행으로 바꾸어 성공 처리한 흔적이 없다. 미측정 RAM은 null로 보존됐다.
+- **B-2 단일 책임 위반: 없음.** 실행 기록 확인과 기존 취합의 범위를 유지한다.
+- **B-3 파일 책임 과다: 없음.** 이번 GPU 반영에 코드 증가는 없다.
+- **B-4 실험/운영 경계 위반: 없음.** PC 수동 연구 산출물이며 운영 모델 승격은 승인되지 않았다.
+- **B-5 실행 경로 영향: 없음.** 기존 커밋된 실행기·취합기를 사용했다. 연구 산출물은 Git 비관리이며 실제 경로로 전달해야 한다.
+- **B-6 구조적 퇴행: 없음.** CPU 공식 기록을 덮지 않고 별도 `gpu_merged/`에 취합했다. 네 방법을 같은 행·정답으로 보고하고 불리한 MLP 판정을 유지한다.
+
+### 3) 기반 문서 준수
+
+- 위반 없음. CPU r3 판정은 당시의 CPU 한정 기록으로 보존했고, 이번 GPU 확인으로 필요한 장비별 실행 완료를 보완한다. 운영 ML 승인·자동 채택은 없다.
+
+### 4) 코드 안전성
+
+- **위험 수준: NONE(이번 변경).** 새 실행 코드는 없다. GPU 반환 예측의 유한값·행 수·순서와 재현 차 0.0을 확인했다.
+- 같은 PC의 MLP CPU/CUDA 초당 비용으로 다시 구한 가속은 0.9153503939배다. 맥북 HGB 시간을 GPU 가속 근거로 쓰지 않았다. 최대 VRAM 70,295,040B·최대 RAM null 표기도 원본과 같다.
+- GPU 학습이나 기존 CPU 공식 실험·전체 회귀를 검증 때문에 다시 실행하지 않았다. CPU r3 근거와 현재 코드 동일성을 재사용했다.
+- 연구 입력·산출물은 임시 사본에서 확인했다. 동시 검증에 읽은 연구 원본 19파일의 SHA-256은 전후 같다. 라이브 시장 DB·보유 파일은 검증자가 열지 않았다.
+- 검증 근거: `/private/tmp/poc602gpu-604-r1-verify-v316i71e/`의 `gpu-audit.json`·`gpu-audit.log`·원본 해시 기록.
+
+### 5) 범위 폭주
+
+- **폭주 수준: NONE.** 장비별로 나눈 원래 실험의 GPU 부분 완료다. 4종 한정 결과를 26종이나 시장 전체로 확대하지 않았다.
+
+### 6) 종합 판정
+
+**VERIFIED — GPU 실행 기록·취합 결과 범위.** CPU r3 판정과 합쳐 필요한 실행 완료 범위는 FULL이다. 이는 연구 모델 채택·운영 승격·커밋 승인이 아니다. 코드·시험 수정 0.
+
+### 7) 사용자에게 한마디
+
+다음은 설계자 RESULT 판정이다. 이 결과서와 실제 `gpu_merged/report_with_gpu.md`를 전달한다. MLP의 성능 기각은 구현 검증 반려를 뜻하지 않으며, 커밋·push는 사용자 별도 승인 전 실행하지 않았다.
+
+## 15. 설계자 RESULT 판정 원문 · 종료 기록 (2026-10-21)
+
+### 15-1. 판정 원문 (`docs/ai_design/POC6/POC6-02_ETF_D20_ML_IMPROVEMENT_RESULT_DECISION_2026-10-21.md`)
+
+> # POC6-02 RESULT 판정 — ETF D20 ML 개선 비교
+>
+> 작성: 설계자 · 2026-10-21
+> 판정: **PASS — 구현 · 공식 CPU/CUDA 실행 · 취합 · 연구 보고 완료**
+> 종료 상태: **IMPLEMENTED_VERIFIED_CLOSED · completion FULL**
+>
+> ## 1. 판정 근거
+>
+> 제출된 POC6-02 결과서와 실제 gpu_merged/report_with_gpu.md를 검토했다. CPU 범위 r3 VERIFIED와 GPU 부분 r1 VERIFIED를 합쳐 원래 요구한 실행 범위가 완료됐음을 수용한다.
+>
+> 검증자의 잠긴 입력 재계산, GPU 결과의 입력/recipe/코드 해시·행 연결 확인, 독립 MAE/판정 대조와 원본 불변 근거를 사용한다. 설계자가 사용자 PC에서 학습을 직접 재실행한 판정은 아니다.
+>
+> r1/r2 입력·취합 결함의 정정, 공개 median 별칭, 부분 완료 상태, 원본을 덮지 않는 취합 폴더, CPU 보고서 전체 재계산 대조 등 결과서 §4의 판단을 수용한다. 추가 설치·수집·운영 연결 없이 실제 CUDA 실행과 취합까지 마쳤다.
+>
+> ## 2. 연구 결과 판정
+>
+> | 후보 | 날짜 균형 MAE | 연구 판정 |
+> |---|---:|---|
+> | MEDIAN | 6.9662%p | 기존 비교 기준 |
+> | RIDGE_EXISTING | 6.8702%p | 기존 비교 기준 |
+> | POOLED_HGB | 6.2666%p | **RESEARCH_PROMISING 유지 — 원래 적격 4종 한정** |
+> | POOLED_GPU_MLP | 6.5527%p | **REJECT 유지** |
+>
+> HGB는 MEDIAN 대비 10.04%, RIDGE 대비 8.79% 개선하고 세 구간 모두 우위였다는 원래 결과를 보존한다. 이는 기술·반도체·네트워크 관련 4종의 고정 회고 연구 결과다. 보유 26종이나 시장 전체의 개선으로 확대하지 않는다. POC6-04의 확장 결과와 함께 읽는다.
+>
+> MLP는 MEDIAN 대비 전체 개선 5.94%여도 앞의 두 구간이 약 19.19%·11.94% 나빠졌고, RIDGE 대비 전체 개선도 4.62%로 사전 기준에 못 미쳤다. 세 번째 구간이나 큰 하락 행의 보조 결과가 좋다는 이유로 주 판정을 바꾸지 않는다.
+>
+> **후보 성능 기각은 개발 실패가 아니다. 두 결과를 정확히 얻고 보고한 구현은 PASS다.**
+>
+> ## 3. CPU/GPU 실측 요구의 처리
+>
+> RTX 4070 SUPER에서 실제 CUDA 학습·예측을 했고 같은 입력의 반복 학습 예측 차 0을 확인했다. CPU 실행을 GPU 성공으로 대체하지 않았다.
+>
+> 같은 Windows PC의 같은 MLP 예비 측정에서 CPU/CUDA 가속은 **0.91535배**다. 이번 작은 표본·설정·측정에서는 GPU 속도 이점을 확인하지 못했다. 이 값을 GPU 일반 성능이나 다른 크기 자료의 성능으로 일반화하지 않는다.
+>
+> 최대 VRAM 약 70MB와 최대 RAM 미측정(null)은 그대로 기록한다. CPU/GPU 실제 사용·비교 요구는 완료했지만 **장비 한계까지 활용하는 시험을 완료했다고 쓰지 않는다.** 자료가 작았다는 결과를 보존하며, 장비 부하를 높이기 위한 복제 자료·epoch 증가·별도 부하 시험을 추가하지 않는다.
+>
+> ## 4. 운영 채택 · 범위
+>
+> - ML_OPERATION_PROMOTION = **NOT_APPROVED**
+> - CURRENT_DEPLOYABLE_ML_MODEL = **none**
+> - ASSUMPTIONS Q6 = **OPEN 유지**
+>
+> 이번 결과로 PUSH · PARAM · 실제 투자 판단 · 매매 규칙에 HGB/MLP를 연결하지 않는다. 기존 수동 연구 기능은 현재 동작을 유지한다. HGB는 4종 연구 후보로 보존하고 GPU MLP의 이번 설정은 기각 결과로 보존한다.
+>
+> ## 5. 종료 기록 지시
+>
+> 1. 결과서 §15에 이 판정 원문과 종료 기록을 넣고 최상단·PLAN·STATE·PROGRAM_TRUTH의 현재 상태를 종료로 맞춘다.
+> 2. 결과서 §1 끝의 “GPU 부분은 검증자 확인 대기”는 CPU r3·GPU r1 VERIFIED와 이번 PASS에 맞게 고친다. §11~§13의 당시 GPU 대기 기록은 역사 기록으로 보존한다.
+> 3. 현재 완료 범위는 FULL이다. Windows RAM 미측정, 작은 표본, 사후 가격, 비PIT, 겹치는 목표 창 등 한계는 삭제하지 않는다.
+> 4. 문서 정정·종료 기록만 반영하면 학습·회귀·GPU 실행·검증자 검증을 다시 하지 않는다. OCI pull·사용자 실화면 확인·별도 handoff 문서는 종료 조건으로 추가하지 않는다.
+> 5. 커밋·push는 기존 사용자 승인 범위에 따라 처리한다. GPU 원본·취합 보고서와 연구 입력은 원래 경로/해시로 보존한다.
+>
+> 이 단계의 종료가 프로젝트 전체나 기존 미해결 ML 요구의 완료를 뜻하지는 않는다. 후속 모델 사용 판단은 POC6-04 RESULT 판정의 통합 결론을 따른다.
+
+### 15-2. 종료 기록
+
+- **판정**: PASS — 구현 · 공식 CPU/CUDA 실행 · 취합 · 연구 보고 완료. 상태 = `IMPLEMENTED_VERIFIED_CLOSED` · completion FULL.
+- **연구 결과(보존)**: 날짜 균형 MAE MEDIAN 6.9662 · RIDGE_EXISTING 6.8702 · POOLED_HGB 6.2666 · POOLED_GPU_MLP 6.5527 %p.
+  - POOLED_HGB = RESEARCH_PROMISING(원래 적격 4종 한정 · 고정 회고 연구 · 보유 26종 · 시장 전체로 확대하지 않음 · POC6-04 확장 결과와 함께 읽음).
+  - POOLED_GPU_MLP(이번 설정) = REJECT. 3구간 · 큰 하락 행의 보조 결과로 주 판정을 바꾸지 않는다.
+  - 후보 성능 기각은 개발 실패가 아니다(판정 §2).
+- **CPU/GPU 실측(판정 §3)**: 같은 Windows PC 의 같은 MLP CPU/CUDA 가속 0.91535배 · 최대 VRAM 70,295,040B · 최대 RAM 미측정(null).
+  - 이번 작은 표본 · 설정 · 측정에서는 GPU 속도 이점을 확인하지 못했다. 장비 한계까지 활용하는 시험을 완료했다고 쓰지 않는다.
+  - 부하를 높이기 위한 복제 자료 · epoch 증가 · 별도 부하 시험은 추가하지 않는다.
+- **반영한 문구 정정(판정 §5)**:
+  - §1 끝 'GPU 부분은 검증자 확인 대기' → CPU r3 · GPU r1 VERIFIED · 이번 PASS 로.
+  - 머리 STATUS · §0 '다음' → 종료. PLAN · STATE · PROGRAM_TRUTH 의 현재 상태 → 종료.
+  - GPU · 스레드 속도 해석 3곳(§0 · §4-7 · §8-7): '자료가 작아 이득이 없다'는 원인 단정을 '이번 작은 표본 · 설정 · 측정에서 이점 미확인 · 일반화하지 않음'으로 좁혔다(판정 §3 문구에 맞춤 · 수치 변경 없음).
+  - §11 ~ §13 의 당시 GPU 대기 기록은 역사 기록으로 그대로 둔다.
+- **유지하는 한계**: Windows RAM 미측정 · 작은 표본(적격 4종 · 756행이 독립 사례 아님) · 사후 가격 · 비PIT · 겹치는 목표 창.
+- **운영**: `ML_OPERATION_PROMOTION=NOT_APPROVED` · `CURRENT_DEPLOYABLE_ML_MODEL=none` · ASSUMPTIONS Q6 OPEN 유지. PUSH · PARAM · 실제 투자 판단 · 매매 규칙에 HGB/MLP 를 연결하지 않는다. 기존 수동 연구 기능은 그대로.
+- **보존한 산출물(경로 · sha256 · 종료 기록 때 다시 잼)** — `state/ml/research/poc6_02/20261021T104103_129a89b0/`:
+  - `gpu_result.json` d5dac74d483dc754094defe2b2ce0eef6db7137d983703f8e6821fa1b17a2b6a
+  - `gpu_merged/report_with_gpu.json` 85b67c587828ca39297addff273482be09174c25043ddc60f8c7a1435f7f4bfe
+  - `gpu_merged/report_with_gpu.md` 84dd6bc8cde17d5c74c01b4b816ecd563618380377417d4c7b1167bb7ba07e3e
+  - `report.json` 700c55a832834536941055a2e117cab4fb115d53f175f89baa9e79946c71312a · `input_snapshot.json` eccfce451d20e4f082c2f28b79a29a796a72f7b80979789665bc4b1d6eb1d57b
+- **하지 않은 것(판정 §5-4)**: 학습 · 회귀 · GPU 재실행 · 검증자 재검증(문서 정정 · 종료 기록만). OCI pull · 사용자 실화면 · 별도 handoff 는 종료 조건이 아니다.
+- **기존 요구**: #3 · #55 · #57 · #62 는 미완료 유지(POC6-04 RESULT 판정 §5 표). 이 종료는 프로젝트 전체나 기존 미해결 ML 요구의 완료가 아니다.
+- **다음**: 이 고정 D20 후보 비교 · 확장 연구는 POC6-04 와 함께 마무리한다. 새 모델 · GPU 설정 변경 · 새 feature · 유리한 ETF 부분집합이나 기간 선택을 자동 후속 개발로 붙이지 않는다.
