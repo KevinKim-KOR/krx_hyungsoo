@@ -92,6 +92,10 @@ def _median(values: list[float]) -> float:
     return s[mid] if n % 2 else (s[mid - 1] + s[mid]) / 2.0
 
 
+# POC6-02 — 공동 학습 비교의 MEDIAN 기준도 같은 중앙값 규칙을 쓴다(공개 이름 · 동작 같음).
+median = _median
+
+
 def verdict(model_mae: float, base_mae: float) -> str:
     """전체 MAE 비교 — 화면 소수 2자리(%p) 기준."""
     m, b = round(model_mae, 2), round(base_mae, 2)
