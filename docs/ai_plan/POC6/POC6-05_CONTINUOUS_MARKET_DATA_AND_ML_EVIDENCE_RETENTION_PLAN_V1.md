@@ -3,7 +3,7 @@
 작성 2026-10-22 · 작성자: 개발자(VSCode Claude) · 수신: 설계자
 
 ```text
-STATUS   = PLAN 제출(2026-10-22) · 질문 4(§7) → 설계자 PASS_WITH_REQUIRED_CORRECTIONS(2026-10-22 · Q1 ~ Q4 모두 (a) · 필수 보완 반영 = §11 · 재제출 없음) → 격리 구현 · 독립 검토 반영 · 변이 47종 · 전체 회귀 4300 passed(2026-10-22) → 결과서 `docs/ai_result/POC6/POC6-05_CONTINUOUS_MARKET_DATA_AND_ML_EVIDENCE_RETENTION_RESULT.md` → 검증자 r1 REJECTED(2026-10-22 · P2 3건) → 정정(결과서 §4-3) → 검증자 r2 VERIFIED(2026-10-22 · 결과서 §12) → 설계자 RESULT PASS_TO_DEPLOY(2026-10-22 · 결과서 §13) → 실제 OCI 연결 대기
+STATUS   = PLAN 제출(2026-10-22) · 질문 4(§7) → 설계자 PASS_WITH_REQUIRED_CORRECTIONS(2026-10-22 · Q1 ~ Q4 모두 (a) · 필수 보완 반영 = §11 · 재제출 없음) → 격리 구현 · 독립 검토 반영 · 변이 47종 · 전체 회귀 4300 passed(2026-10-22) → 결과서 `docs/ai_result/POC6/POC6-05_CONTINUOUS_MARKET_DATA_AND_ML_EVIDENCE_RETENTION_RESULT.md` → 검증자 r1 REJECTED(2026-10-22 · P2 3건) → 정정(결과서 §4-3) → 검증자 r2 VERIFIED(2026-10-22 · 결과서 §12) → 설계자 RESULT PASS_TO_DEPLOY(2026-10-22 · 결과서 §13) → 실제 연결 확인(배포 8bda752f · 수집 3회 · 업로드 · 복원 · cron · 키움) → IMPLEMENTED_VERIFIED_DEPLOYED_CLOSED(2026-10-22 · 결과서 §14) · 첫 정기 실행 = 정기 운영 확인 대기
 DECISION = docs/ai_design/POC6/POC6-05_CONTINUOUS_MARKET_DATA_AND_ML_EVIDENCE_RETENTION_PLAN_DECISION_2026-10-22.md
 DESIGN   = docs/ai_design/POC6/POC6-05_CONTINUOUS_MARKET_DATA_AND_ML_EVIDENCE_RETENTION_DESIGN_V1.md
 조사     = 저장소 읽기 + OCI 읽기 전용 확인(2026-10-22 11:23 ~ · ssh · crontab -l · DB mode=ro · 로그 읽기) · 외부 조회 0 · 쓰기 0
