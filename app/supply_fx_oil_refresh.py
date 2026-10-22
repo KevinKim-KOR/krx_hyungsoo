@@ -21,7 +21,7 @@ import logging
 import time
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 
 from app.config import optional_env
 from app.kiwoom_investor_flow import KiwoomAuthError, KiwoomClient, KiwoomFlowError
@@ -74,8 +74,13 @@ def refresh_fx_wti(
     now_utc: datetime,
     start: date,
     http_get: Optional[Callable] = None,
+    capture: Optional[Any] = None,
 ) -> list[str]:
-    """원/달러 · WTI. 돌려주는 값 = 실패한 계열 이름(성공이면 빈 목록)."""
+    """원/달러 · WTI. 돌려주는 값 = 실패한 계열 이름(성공이면 빈 목록).
+
+    `capture`(POC6-05 OCI 수집만 · PC 갱신은 None = 기존 동작 그대로)가 있으면 받은 행을 **표에 쓰기 전에**
+    보관한다. 보관이 실패하면 그 계열은 upsert 하지 않는다(계열마다 격리 그대로).
+    """
     failed = []
     today = now_utc.astimezone(KST).date()
     for sid, symbol in YAHOO_SYMBOL.items():
@@ -97,6 +102,8 @@ def refresh_fx_wti(
             rows = fetch_completed_daily(
                 symbol, since, now_utc=now_utc, http_get=http_get
             )
+            if capture is not None:
+                capture.fx_received(sid, rows, since)
             unit, provider, basis = MACRO_SERIES[sid]
             upsert_macro_daily(
                 series_id=sid,
@@ -110,6 +117,8 @@ def refresh_fx_wti(
         except Exception as e:  # noqa: BLE001 — 계열마다 격리
             logger.warning("market flow %s failed: %s", sid, type(e).__name__)
             failed.append(SERIES_LABEL[sid])
+            if capture is not None:
+                capture.fx_fail(sid, type(e).__name__)
     return failed
 
 
@@ -121,8 +130,12 @@ def refresh_investor_flows(
     client: Optional[KiwoomClient] = None,
     sleep: Callable[[float], None] = time.sleep,
     clock: Callable[[], float] = time.monotonic,
+    capture: Optional[Any] = None,
 ) -> Optional[str]:
     """코스피 투자자별 순매수. 돌려주는 값 = 실패 사유(한국어 · 성공이면 None).
+
+    `capture`(POC6-05 · 기본 None = PC 동작 그대로)는 조회 계획 · 날짜별 받은 값(표 반영 전) · 실패 사유 ·
+    멈춘 사유를 받는다. 받은 값 보관이 실패한 날짜는 실패로 세고 upsert 하지 않는다.
 
     최신 날짜부터 조회한다 — 오래된 날짜가 계속 실패해도 새 날짜는 받는다(연속 3회 실패 멈춤 · 호출 상한 ·
     시간 상한에 걸려도 남는 것은 오래된 날짜). 남은 날짜는 다음 갱신의 '빠진 날'로 다시 조회된다.
@@ -147,6 +160,8 @@ def refresh_investor_flows(
         {d for d in days if d not in have} | set(days[-FLOW_OVERLAP_TRADING_DAYS:]),
         reverse=True,
     )[:MAX_FLOW_CALLS]
+    if capture is not None:
+        capture.flow_planned(want)
     rows: list[tuple[str, str, int]] = []
     fails = consecutive = 0
     auth_failed = timed_out = False
@@ -163,24 +178,41 @@ def refresh_investor_flows(
                 raise KiwoomFlowError(
                     f"{d} 지수값 {index_close} ≠ 저장 코스피 {kospi[d]}"
                 )
+            if capture is not None:
+                capture.flow_received(d, nets, index_close)
             rows += [(d, inv, net) for inv, net in nets.items()]
             consecutive = 0
         except KiwoomAuthError as e:
             logger.warning("market flow investor auth failed: %s", e)
             auth_failed = True
+            if capture is not None:
+                capture.flow_failed(d, "인증 실패")
             break
         except KiwoomFlowError as e:
             fails += 1
             consecutive += 1
             logger.warning("market flow investor %s failed: %s", d, e)
+            if capture is not None:
+                capture.flow_failed(d, str(e)[:160])
             if consecutive >= MAX_CONSECUTIVE_FAILS:
                 break
         except Exception as e:  # noqa: BLE001 — 연결 · 시간 초과
             fails += 1
             consecutive += 1
             logger.warning("market flow investor %s failed: %s", d, type(e).__name__)
+            if capture is not None:
+                capture.flow_failed(d, type(e).__name__)
             if consecutive >= MAX_CONSECUTIVE_FAILS:
                 break
+    if capture is not None:
+        stop = None
+        if auth_failed:
+            stop = "인증 실패"
+        elif timed_out:
+            stop = f"시간 제한 {FLOW_TIME_BUDGET_S}초"
+        elif consecutive >= MAX_CONSECUTIVE_FAILS:
+            stop = f"연속 실패 {MAX_CONSECUTIVE_FAILS}회"
+        capture.flow_stopped(stop)
     if rows:
         upsert_investor_flows(rows=rows, db_path=db_path)
     done = len({d for d, _, _ in rows})

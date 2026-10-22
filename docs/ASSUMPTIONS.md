@@ -328,6 +328,7 @@ Mobile Decision Operating Sequence Anchor (`docs/handoff/POC2/POC2_MOBILE_DECISI
 - 승인된 seed·PARAM·기존 산식으로 운영 artifact (Universe 등) 생성
 - freshness · 실패 · 중복 상태 기록
 - **대상 경계**: 갱신 가능 대상 = `승인 seed ticker ∪ 현재 Holdings ticker`. 전체 시장 수집 · seed 외 종목 자동 추가 · 신규 후보 탐색 금지.
+  > 2026-10-22 POC6-05 연구 증거 수집·보관 한정 예외: 기존 ETF 마스터의 유효 국내 상장 ETF를 seed·현재 보유 여부와 독립적으로 조회하여, 원천별 수신 창·실제 확보 시각·정정 판과 함께 OCI `state/ml/evidence/`에 보존할 수 있다. POC6-01의 원/달러·WTI·코스피 투자자 순매수 수집과 두 시장 흐름 표 반영, 허용된 기존 연구 증거의 추가 보관·PC 전송을 포함한다. 기존 OCI 운영 가격 표의 갱신 대상 확대, 후보 탐색, ML 학습·추론, PUSH/PARAM·선정/경보 기준 변경은 허용하지 않는다. 다른 단계의 전체 시장 수집·ML 예외로 확대하지 않는다. (출처: `docs/ai_design/POC6/POC6-05_CONTINUOUS_MARKET_DATA_AND_ML_EVIDENCE_RETENTION_PLAN_DECISION_2026-10-22.md` §2)
 - 구분 원칙: `PC = 대상·기준·전략 결정` / `OCI = 승인된 대상과 기준의 반복 계산·운영`.
 
 OCI 계속 금지: 신규 전략 · 신규 후보 선정 · **전체 시장 후보 탐색** · factor 추가 · threshold 변경 · 추천 알고리즘 변경 · ML 학습·튜닝 · Holdings 수량·평단 변경 · **seed 임의 추가·삭제** · PARAM 생성/승격 · Market Discovery 구조 변경 · Published Evidence 임의 수정 · 자동 매수·매도 · 주문 실행.

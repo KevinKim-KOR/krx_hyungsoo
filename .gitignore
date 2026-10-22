@@ -232,6 +232,9 @@ state/ml/baselines/**/relative_upside_validity_v1_run_latest.json
 # POC4-01 KRX 과거 universe 연구 DB — PC 전용 (KRX 약관: 제3자 제공 금지 · 원천 데이터 비공유).
 state/ml/research/
 
+# POC6-05 연구 증거 보관소(OCI 원본 · PC 사본 · 쓰기 전용 · 내용 해시 object · 완료 manifest).
+state/ml/evidence/
+
 # ML evidence refresh job status (2026-06-11 UI 안전실행) — UI 실행마다 갱신, 운영 artifact.
 state/ml/ml_job_status_latest.json
 

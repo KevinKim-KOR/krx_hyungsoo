@@ -144,6 +144,7 @@
 - **PC 비의존 OCI 운영 목적**: Market·Holdings 는 이미 OCI 자율 운영 중. Spike 도 PC 상시 구동 없이 반복 운영하기 위한 경계 확장.
 - **유지되는 금지**: seed 임의 변경 · 전체 시장 후보 탐색 · 신규 factor·threshold · PARAM 생성·승격 · 전략 변경 · ML · Holdings 수량·평단 변경 · 자동 주문. Published Evidence read-only 유지.
   > 2026-10-20 POC5-27 한정 해석: 사용자가 PC에서 명시 승인한 현행 허용 PARAM 값을 OCI 로컬 도구가 그대로 검증·발행·활성 확인하는 경로를 허용한다. PC의 OCI DB 직접 접속·개방과 OCI의 자율 PARAM 계산·선정·생성/승격 금지는 유지한다. 근거는 POC5-27 PLAN §1~§5의 소스 대조 및 사용자 원격 쓰기 구현 승인이다. 이 허용은 새 정책 생성·ML·seed 변경·자동 발송으로 확대되지 않는다. (출처: `docs/ai_design/POC5/POC5-27_PC_TO_OCI_RUNTIME_PARAM_ACTIVATION_PLAN_DECISION_2026-10-20.md` §1)
+  > 2026-10-22 POC6-05 연구 증거 수집·보관 한정 예외: 기존 ETF 마스터의 유효 국내 상장 ETF를 seed·현재 보유 여부와 독립적으로 조회하여, 원천별 수신 창·실제 확보 시각·정정 판과 함께 OCI `state/ml/evidence/`에 보존할 수 있다. POC6-01의 원/달러·WTI·코스피 투자자 순매수 수집과 두 시장 흐름 표 반영, 허용된 기존 연구 증거의 추가 보관·PC 전송을 포함한다. 기존 OCI 운영 가격 표의 갱신 대상 확대, 후보 탐색, ML 학습·추론, PUSH/PARAM·선정/경보 기준 변경은 허용하지 않는다. 다른 단계의 전체 시장 수집·ML 예외로 확대하지 않는다. (출처: `docs/ai_design/POC6/POC6-05_CONTINUOUS_MARKET_DATA_AND_ML_EVIDENCE_RETENTION_PLAN_DECISION_2026-10-22.md` §2)
 - **현재 상태**: 경계 정의만 · 구현 전. `spike_operation = DISABLED` (구현 시점까지) · `market_holdings_operation = ACTIVE`.
 
 **기록 위치**:
