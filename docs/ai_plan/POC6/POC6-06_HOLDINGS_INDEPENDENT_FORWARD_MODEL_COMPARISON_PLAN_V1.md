@@ -4,7 +4,7 @@
 
 ```text
 STATUS   = PLAN 제출(2026-10-22) · 질문 2(§7) → 설계자 PASS(2026-10-22 · Q1 = 판정 §1 문장 · Q2 = (a) · 정정 반영 = §9 · 재제출 없음) → 격리 구현
-           → 사용자 승인 묶음 · 실제 연결(2026-10-23) → 검증자 r1 REJECTED(F1 · F2 · F3) · r2 REJECTED(F3 잔여) → 정정 → 검증자 r3 VERIFIED → 설계자 RESULT PASS_TO_DEPLOY(2026-10-23) → OCI 반영 진행(결과서 docs/ai_result/POC6/POC6-06_HOLDINGS_INDEPENDENT_FORWARD_MODEL_COMPARISON_RESULT.md §4-5)
+           → 사용자 승인 묶음 · 실제 연결(2026-10-23) → 검증자 r1 REJECTED(F1 · F2 · F3) · r2 REJECTED(F3 잔여) → 정정 → 검증자 r3 VERIFIED → 설계자 RESULT PASS_TO_DEPLOY → IMPLEMENTED_VERIFIED_DEPLOYED_CLOSED(2026-10-23 · 결과서 docs/ai_result/POC6/POC6-06_HOLDINGS_INDEPENDENT_FORWARD_MODEL_COMPARISON_RESULT.md §15)
 DECISION = docs/ai_design/POC6/POC6-06_HOLDINGS_INDEPENDENT_FORWARD_MODEL_COMPARISON_PLAN_DECISION_2026-10-22.md
 DESIGN   = docs/ai_design/POC6/POC6-06_HOLDINGS_INDEPENDENT_FORWARD_MODEL_COMPARISON_DESIGN_V1.md
 조사     = PC 증거 보관소 · PC 시장 DB(mode=ro) · POC6-03 사본(mode=ro) 읽기 · 코드 읽기 · 외부 조회 0 · 쓰기 0

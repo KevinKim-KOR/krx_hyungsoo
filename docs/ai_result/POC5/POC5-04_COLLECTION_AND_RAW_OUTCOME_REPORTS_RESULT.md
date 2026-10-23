@@ -4,6 +4,7 @@
 
 ```text
 STATUS                 = IMPLEMENTED_VERIFIED_CLOSED — 검증자 r2 VERIFIED(2026-10-08) · 설계자 RESULT `PASS`(2026-10-08 · 개발 종료 수용 · 지시문 외 변경 5/5 · 재작업 · 추가 검증 없음) · 커밋 · push 는 사용자 승인 · 공식 R0 = 별도 1회 운영 점검(10-22 종가 배치 완료 근거 + 그 뒤 동기화 사본 · 10-23 이후 · 미실행이 이 단계의 미완성이 아님)
+                         → 공식 R0 실행(2026-10-23 14:29 KST · 인계 §2 절차 · 판정 COLLECTION_OK · §10) · 설계자 보고 대기
 STEP_ID                = POC5-04 R0 수집 점검 · R1 원시 결과 리포트
 DESIGNER_RESULT        = PASS(2026-10-08 · DEVELOPMENT_ACCEPTANCE ACCEPTED · CODE_REWORK NONE · OFFICIAL_R0 PENDING_SEPARATE_OPERATIONAL_CHECK) — 원문 = 설계서 끝
 VERIFIER               = r2 VERIFIED(2026-10-08 · A-1 ~ A-4 통과 · B-1 ~ B-6 없음 · 검증자 시험 12 추가 통과 · PLAN 말미 빈 줄은 검증자가 정리) · r1 REJECTED(2026-10-08 · A-1 · A-3 · B-1 — ① 필수 사본 표 누락을 COLLECTION_OK 로 · 결과 표 생성 기록 뒤 표 누락을 정상 대기로 ② --iterations 0 이하에서 계산 없이 bootstrap OK) → 정정(§6-3) · PLAN 말미 공백은 검증자가 직접 정리
@@ -48,7 +49,7 @@ python scripts/run_ledger_report.py r1 --end <종료일>
 | AC6 날짜 묶음 · 연속 블록(비원형) · 빈 날 보존 · 소표본 구간 없음 | DONE | `test_bootstrap_needs_at_least_one_iteration` · `test_cli_rejects_non_positive_iterations`(r1 정정) · `test_bootstrap_non_circular_contiguous_date_bundles` · `…insufficient_and_undefined_resamples` · `test_r1_block_and_empty_days_on_axis` · `test_long_period_axis_is_not_cut_at_120_days` |
 | AC7 입력 DB · 원장 행 · 라이브 파일 불변 · SSH · Telegram · 외부 0 | DONE | `test_cli_writes_new_folder_and_never_touches_db`(sha256) · `test_new_modules_have_no_network_ssh_or_telegram`(AST) · 전체 회귀 전후 라이브 해시(§8-5) |
 | AC8 전체 회귀 · 정적 검사 · KS-10 | DONE | §8 |
-| 공식 R0 실행(2026-10-23 이후) | SKIPPED | 설계 §10 — 개발 종료와 무관한 별도 1회 운영 점검 |
+| 공식 R0 실행(2026-10-23 이후) | DONE(2026-10-23 · §10) | 별도 1회 운영 점검 · 판정 COLLECTION_OK |
 
 ## 2. 변경된 파일 목록
 
@@ -83,7 +84,7 @@ python scripts/run_ledger_report.py r1 --end <종료일>
 
 ## 5. 알려진 한계 / 미완성
 
-1. **공식 R0 는 아직 실행하지 않았다** — D10 = 2026-10-22(운영 캘린더 실측). 10-22 종가를 적재한 배치(10-23 08:10 · 09:20)의 완료 근거와 그 뒤 동기화한 PC 사본으로 개발자가 1회 실행한다.
+1. **공식 R0 는 2026-10-23 에 1회 실행했다(§10)** — D10 = 2026-10-22. 10-22 종가를 적재한 배치(10-23 08:10 · 09:20)의 완료 근거와 그 뒤 동기화한 PC 사본(14:27:25)으로 실행 · 판정 COLLECTION_OK. COLLECTION_OK 는 수집 계약 점검 결과이며 투자 효과를 뜻하지 않는다.
 2. **대조 근거 · 운영 근거는 개발자가 만든 텍스트다** — 01B 대조 CLI 에 실행 시각 출력이 없어 `captured_at=` 줄을 붙인다. 근거의 진위 자체는 리포트가 검증하지 않는다(형식 · 기간 · 시작 일치만).
 3. **누적 대조 근거** — 01B CLI 는 누적 결과라, 종료일 뒤 실행까지 포함한 오류 건수를 종료일 이전 정확한 건수로 바꿀 수 없다(`includes_after_end` 로 표시).
 4. **digest 범위** — 입력 원장 행 + 최신 평가만. 대조 · 운영 근거 · 캘린더 파일 · 동기화 시각은 digest 밖이고 리포트 본문에 그대로 싣는다.
@@ -130,7 +131,7 @@ python scripts/run_ledger_report.py r1 --end <종료일>
 
 ## 7. 사용자 확인이 필요한 항목
 
-없음(화면 없음 · 리포트는 개발자가 실행). 공식 R0 는 2026-10-23 이후 개발자가 실행해 보고한다.
+없음(화면 없음 · 리포트는 개발자가 실행). 공식 R0 는 2026-10-23 개발자가 실행했다(§10 · 사용자 [원장 새로고침] 1회 · 설계자 보고 대기).
 
 ## 8. 검증 실측 (2026-10-08)
 
@@ -171,3 +172,27 @@ python scripts/run_ledger_report.py r1 --end <종료일>
 - staged **17** = 신규(`A`) 13 · 수정(`M`) 4 · unstaged 0
 - `??` 1 = `docs/handoff/INVESTMENT_MODEL_V2_MASTER_HANDOFF_2026-07-26.md` — 사용자 소유 · 이 작업과 무관 · stage 하지 않는다(작업 중 `git add -A docs/` 로 한 번 올라갔다가 `git restore --staged` 로 내림 · 파일 내용 불변)
 - 배포 경로(OCI) 파일 0 — PC 수동 도구
+
+## 10. 공식 R0 실행 기록 (2026-10-23 · 인계 `docs/handoff/POC5-04_COLLECTION_AND_RAW_OUTCOME_REPORTS_HANDOFF_2026-10-08.md` §2 절차 · 개발자 1회)
+
+**판정: `COLLECTION_OK`** — 수집 계약 점검 결과이며 투자 효과를 뜻하지 않는다. `not_ready_reasons` 0 · `problems` 0.
+
+| 단계 | 근거 · 결과 |
+|---|---|
+| 1. 배치 완료(OCI 읽기 · 14:2x KST) | `logs/oci_market_data_batch.log`: 10-23 08:10 배치 `status=success price_as_of=2026-10-22`(08:11:02 완료) · 09:20 KRX 보강 `status=ok target=2026-10-22 attempted=False`(finished_at 09:20:01.79 · 10-22 이미 확보) · 원장 오류(`decision ledger`) = `three_push_runtime_cron.log` 0 · `low_freq_push_cron.log` 0 · 10-08 ~ 10-22 PUSH 완료 줄 = sent · skipped(non_trading_day · intraday_daily_cap_reached · no_new_or_worsened)만 · failed 0 |
+| 2. 대조 근거(OCI 읽기 · 같은 SSH 명령) | `captured_at=2026-10-23T14:25:16+09:00` · `status=OK floor=2026-10-07T23:30:02.273319+00:00` · `ok=129 missing_in_ledger=0 started_gap=0 ledger_only=0` |
+| 3. 운영 근거(scratchpad · 저장소 밖) | `price_batch_price_date=2026-10-22` · `price_batch_status=success` · `price_batch_completed_at=2026-10-23T09:20:01+09:00` · `ops_error_count=0` · 메모(위 1 요약 · 비밀값 없음) |
+| 4. PC 동기화(사용자 [원장 새로고침] 1회) | 마지막 성공 2026-10-23T14:27:25+09:00(배치 완료 09:20:01 뒤) · 이전 성공 10-12 13:09 · evaluation_run 129(새 100 · 같음 29 = 대조 ok 129 와 같음) · signal_item 새 4,387 |
+| 5. 실행 | `.venv/bin/python scripts/run_ledger_report.py r0 --end 2026-10-22 --reconcile-evidence <scratchpad>/reconcile_2026-10-23.txt --ops-evidence <scratchpad>/ops_2026-10-23.txt` → `status=OK report=R0 end=2026-10-22 verdict=COLLECTION_OK` · 출력 `state/ml/research/poc5_04/r0_2026-10-22_20261023T142950/`(report.json 4,651 bytes · report.md 3,098 bytes · git 제외) |
+
+리포트 주요 칸(`report.json`):
+
+- **기간**: 2026-10-08 ~ 2026-10-22 · 거래일 10 · D10 = 2026-10-22.
+- **대조**: 상태 OK · 기간 = 첫 활성(2026-10-07T23:30:02Z) ~ 확보 시각(10-23 14:25:16 KST · 종료일 뒤 실행 포함 `includes_after_end=true`) · ok 129 · 누락 · STARTED 잔류 · 원장에만 = 0.
+- **예정 실행**: 예정 110 · 예정대로 기록 110 · **누락 0** · 중복 0 · 예정 밖 0 · 휴장일 실행 11.
+- **종류별 기록**(10-08 ~ 10-22): 보유 브리핑 sent 30 · skipped 3 · 보유 급락 알림 sent 40 · skipped 37 · 시장 브리핑 sent 10 · skipped 1 · 실행 실패 0 · 전달 failed 0 · partial 0.
+- **무결성**: 전달 없는 FINALIZED · 고아 전달 · 고아 항목 · 고아 결과 · 대상 아닌 결과 · 기간 안 STARTED · 행 있는 STARTED = 모두 0 · 묶음 PRIMARY_LIVE(보유 브리핑 35 · 급락 알림 82 · 시장 브리핑 12 · 사본 전체 기준).
+- **가격 슬롯**: 예상 14,373 · 기록 7,617(모두 MATURED) · **도래했는데 미기록(`PENDING_DUE`) 0** · 아직 도래 전(`PENDING_NOT_DUE`) 6,756.
+- **입력**: PC 사본 `state/decision/decision_evidence.sqlite`(mode=ro) · 계약 3종 v1 · 배포 판 `4e92d0c5` · PRIMARY 시작일 2026-10-08 · 사본 행 수 = 실행 129 · 전달 129 · 항목 5,154 · 가격 결과 7,617 · 피드백 있는 사건 1 · digest `a86de7ac…c427ea`.
+
+하지 않은 것: 과거 기록 삭제 · 재발송 · PRIMARY 시작일 재설정 · 같은 기간 반복 점검 없음. OCI 쓰기 0(로그 · 대조 = 읽기 전용). 사본 변경은 사용자 [원장 새로고침] 1회뿐(기존 동기화 경로).
