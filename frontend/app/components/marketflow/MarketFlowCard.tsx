@@ -77,7 +77,18 @@ function Section({ data }: { data: MarketFlowContext }) {
       wti: fromBoundary(s.wti?.points, p.boundary),
       flows,
       steps: kospi.map((q) => q[0]).filter((d) => d > p.boundary),
-      marks: data.events.filter((e) => e.date > p.boundary).map((e) => ({ date: e.date, key: MARK_KEY[e.series] ?? e.series })),
+      // 같은 자료 · 같은 날 사건이 여러 개(예: 변화 확대 + 범위 아래)여도 점은 하나(같은 위치 · 값) — React key 중복 방지
+      // (POC6-07 실화면 중 발견 · 2026-10-23 · 사건 줄 · 문장은 그대로 모두 보인다).
+      marks: Array.from(
+        new Map(
+          data.events
+            .filter((e) => e.date > p.boundary)
+            .map((e) => {
+              const key = MARK_KEY[e.series] ?? e.series;
+              return [`${key}|${e.date}`, { date: e.date, key }] as const;
+            }),
+        ).values(),
+      ),
     };
   }, [data, p, D]);
   const [picked, setPicked] = useState<string | null>(null);

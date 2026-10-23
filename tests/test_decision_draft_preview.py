@@ -355,7 +355,7 @@ def test_endpoint_response_does_not_leak_internals(stub_evidence) -> None:
         "/decision-draft/preview",
         json={"target_kind": "holding", "ticker": "069500"},
     ).json()
-    # 응답 key 집합(POC5-23 — 생성 시각 선택 필드 하나 추가).
+    # 응답 key 집합(POC5-23 — 생성 시각 선택 필드 · POC6-07 — 이동평균 선택 필드).
     allowed = {
         "status",
         "target_kind",
@@ -364,6 +364,7 @@ def test_endpoint_response_does_not_leak_internals(stub_evidence) -> None:
         "evidence_as_of",
         "generated_at",
         "message",
+        "moving_average",
     }
     assert set(body.keys()) - allowed == set()
     # preview_text 안에 LLM 관련 표현 미포함.

@@ -71,7 +71,7 @@
   - NAV / 괴리율 시계열 (현재 not_integrated)
   - 변동성 지표: PC 저장 종가의 최근·직전 20구간 관측값 계산 가능(POC5-16 · 2026-10-16). 운영 분류 factor 채택·타당성 검증은 미확정. (2026-06-06 기록 당시: not_calculated)
   - 거래량 / 유동성 시계열 (현재 partial)
-  - 외국인 / 기관 수급 (현재 not_collected)
+  - 외국인 / 기관 수급 — 자료 범위(2026-10-23): 코스피 시장 전체의 투자자별 순매수는 POC6-01/05로 수집·보관한다. 종목별 외국인·기관 수급은 미수집이며 시장 전체 수급을 종목 수급으로 대체하지 않는다. Q6 운영 계약은 OPEN이고 이 자료 확보만으로 종합 위험 분류의 검증이 완료된 것은 아니다. (출처: `docs/ai_design/POC6/POC6-07_SELECTED_ETF_ENTRY_AND_HOLDING_EVIDENCE_PLAN_DECISION_2026-10-23.md` §7 · 2026-06-06 기록 당시: not_collected)
   - 시장 폭 지표 (현재 not_collected)
   - 구성종목 가격 시계열 (현재 not_integrated)
   - 일별 종가 시계열 (현재 확보 — 2026-06-30 시장 시계열 Closeout STEP 완료). 요청 시작일 2014-04-07, 네이버/FDR 실측 KODEX200 최초 관측일 2014-04-09, universe 실측 normal 1007 / missing_confirm 138 / failed 0 (missing_confirm 은 기존 저장값과 명시 소스 반환값 차이 — 지시문 §8.1 자동 덮어쓰기 금지 정책 그대로). 소스: NAVER_FDR primary (`NAVER:<ticker>`) + YAHOO_FDR secondary (`YAHOO:<ticker>.KS`).

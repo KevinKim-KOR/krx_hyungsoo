@@ -496,7 +496,7 @@ def _sections(text: str) -> list[str]:
     return [sec.split("\n", 1)[0] for sec in secs]
 
 
-def test_real_previews_have_nine_bundles_and_regime_from_each_screen(
+def test_real_previews_have_ten_bundles_and_regime_from_each_screen(
     seeded: TestClient,
 ) -> None:
     ev = seeded.get("/holdings/market-evidence/latest").json()
@@ -510,6 +510,7 @@ def test_real_previews_have_nine_bundles_and_regime_from_each_screen(
         "[가격 흔들림]",
         "[중복 · 자료 상태]",
         "[AI에게 요청]",
+        "[검토 질문]",  # POC6-07 판정 Q3 (a) — 기존 9개 + 검토 질문 = 10개
     ]
     h = _preview(seeded, "holding", HELD_ETF)["preview_text"]
     c = _preview(seeded, "candidate", CAND, **LIST_PARAMS)["preview_text"]
@@ -762,7 +763,8 @@ def test_huge_stored_volume_keeps_the_preview(seeded: TestClient) -> None:
         assert (
             "2026-10-14 거래량 10,000,000,000,000,000,000,000주" in body["preview_text"]
         )
-        assert len(body["preview_text"].split("\n\n")) == 9  # POC6-01 시장 흐름 묶음
+        # POC6-01 시장 흐름 묶음 · POC6-07 검토 질문 묶음
+        assert len(body["preview_text"].split("\n\n")) == 10
 
 
 def test_negative_zero_decline_value_matches_screen() -> None:

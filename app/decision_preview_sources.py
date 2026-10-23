@@ -31,6 +31,7 @@ from app.market_data_store import DEFAULT_DB_PATH, list_etf_tickers
 from app.market_topn import DEFAULT_BASIS, DEFAULT_N, DEFAULT_ORDER
 from app.pc_price_basis import load_recent_price_rows
 from app.pc_price_volatility import build_price_volatility
+from app.pc_selected_moving_average import etf_class, for_candidate, for_holding
 from app.short_term_momentum import KODEX200_TICKER
 from app.stored_volume_evidence import compute_stored_volume_evidence
 
@@ -76,15 +77,29 @@ def load_holding_bundle(
     item = next((h for h in evidence.holdings if h.ticker == ticker), None)
     if item is None:
         return None
-    is_etf = ticker in _etf_tickers(db_path)
+    etfs = _etf_tickers(db_path)
+    is_etf = ticker in etfs
+    # POC6-07 RESULT 판정 §2(F3) — 같은 읽기의 3상태 분류(etf · stock · unknown)를 대상 · 상태 줄도 쓴다.
+    kind = etf_class(ticker, etfs)
     overlap = item.constituents_overlap
+    item_dump = item.model_dump()
+    reference_date = (
+        evidence.price_basis.reference_date if evidence.price_basis else None
+    )
     return {
-        "item": item.model_dump(),
+        "item": item_dump,
         "is_etf": is_etf,
+        "etf_class": kind,
         "market_position": (evidence.judgment_summary or {}).get("market_position"),
-        "reference_date": (
-            evidence.price_basis.reference_date if evidence.price_basis else None
-        ),
+        "reference_date": reference_date,
+        # POC6-07 — 종목 이동평균(같은 응답의 기준일 · 흐름 값과 대조 · 선택 종목 1회 읽기).
+        "moving_average": for_holding(
+            ticker,
+            item_dump,
+            reference_date=reference_date,
+            kind=kind,
+            db_path=db_path,
+        ).model_dump(),
         # 겹침을 계산한 구성종목 저장일(builder 와 같은 `latest_constituent_asof` · 응답에는 없는 값).
         "constituents_asof": (
             latest_constituent_asof(ticker, db_path=db_path)
@@ -182,8 +197,9 @@ def load_candidate_bundle(
         ]
         overlap = _candidate_overlap(ticker, held_etfs, db_path=db_path)
 
+    cand_dump = cand.model_dump()
     return {
-        "candidate": cand.model_dump(),
+        "candidate": cand_dump,
         "market_context": (
             resp.market_context.model_dump() if resp.market_context else None
         ),
@@ -193,6 +209,10 @@ def load_candidate_bundle(
         "end_date": end_date,
         "stored_volume": compute_stored_volume_evidence(ticker, mine).model_dump(),
         "price_volatility": volatility.model_dump(),
+        # POC6-07 — 종목 이동평균(위 미리보기 읽기 행 · 목록 응답 흐름 값과 대조 · 선택 종목 1회 읽기).
+        "moving_average": for_candidate(
+            ticker, cand_dump.get("short_term_momentum"), mine, db_path=db_path
+        ).model_dump(),
         "direct_holding": direct,
         "overlap": overlap,
     }

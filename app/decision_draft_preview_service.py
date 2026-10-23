@@ -10,9 +10,13 @@
   묶음별 글로만 옮긴다 — 새 산식 · 점수 · 등급 · 결론 없음. 값이 없으면 줄을 빼거나 0 · 다른 값으로
   채우지 않고 그 묶음 안에 사유를 남긴다.
 
-묶음 순서: [대상] [시장] [가격 흐름 · PC 저장 종가] [KODEX200 동일 기간 비교] [거래량] [가격 흔들림]
-[중복 · 자료 상태] [AI에게 요청]. 숫자 표시 정밀도는 화면 규칙과 같다(%·%p 소수 둘째 · 거래량 저장값 그대로 ·
-평균 · 배수 소수 둘째 · 하락 구간 판정값 소수 첫째).
+묶음 순서: [대상] [시장] [시장 흐름 …] [가격 흐름 · PC 저장 종가] [KODEX200 동일 기간 비교] [거래량]
+[가격 흔들림] [중복 · 자료 상태] [AI에게 요청] [검토 질문]. 숫자 표시 정밀도는 화면 규칙과 같다(%·%p 소수 둘째 ·
+거래량 저장값 그대로 · 평균 · 배수 소수 둘째 · 하락 구간 판정값 소수 첫째).
+
+POC6-07 — 가격 흐름 묶음의 '변화율 …' 줄 다음(없으면 묶음 끝)에 종목 이동평균 세 줄
+(`app/pc_selected_moving_average.py` · 값은 자료 모으기가 만든 객체 그대로 · 응답 선택 필드와 같은 객체) ·
+끝에 [검토 질문] 묶음(판정 Q3 (a)).
 """
 
 from __future__ import annotations
@@ -27,6 +31,7 @@ from typing import Any, Optional
 from app.decision_preview_lines import (
     AI_REQUEST,
     BASIS_LABEL,
+    REVIEW_QUESTIONS,
     candidate_flow_lines,
     candidate_overlap_lines,
     daily_check_line,
@@ -41,6 +46,7 @@ from app.decision_preview_lines import (
     volume_lines,
 )
 from app.market_data_store import DEFAULT_DB_PATH
+from app.pc_selected_moving_average import ETF_UNKNOWN_REASON, moving_average_lines
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +74,8 @@ class PreviewResult:
     evidence_as_of: Optional[EvidenceAsOfPayload] = None
     generated_at: Optional[str] = None
     message: Optional[str] = None
+    # POC6-07 — 원문 이동평균 줄을 만든 같은 객체(응답 선택 필드 · 보유 근거 응답에 없는 종목은 None).
+    moving_average: Optional[dict[str, Any]] = None
 
 
 # ─── 조립 ──────────────────────────────────────────────────────────────
@@ -78,14 +86,36 @@ def _section(title: str, lines: list[str]) -> str:
     return f"[{title}]\n{body}"
 
 
-def _holding_sections(
-    ev: dict[str, Any], db_path: Path
-) -> tuple[list[str], dict[str, Optional[str]]]:
+# 가격 흐름 묶음의 저장일 변화율 줄(`decision_preview_lines._returns_line`) 머리.
+_RETURNS_HEAD = "변화율 "
+
+
+def _with_moving_average(flow: list[str], ma: Optional[dict[str, Any]]) -> list[str]:
+    """POC6-07 — 변화율 줄 다음(흐름 값이 없어 그 줄이 없으면 묶음 끝)에 이동평균 줄."""
+    add = moving_average_lines(ma)
+    i = next((k for k, ln in enumerate(flow) if ln.startswith(_RETURNS_HEAD)), None)
+    if i is None:
+        return [*flow, *add]
+    head, tail = flow[: i + 1], flow[i + 1 :]  # noqa: E203 — black 슬라이스 공백
+    return [*head, *add, *tail]
+
+
+Sections = tuple[list[list[str]], dict[str, Optional[str]], Optional[dict[str, Any]]]
+_KIND_LABEL = {
+    "etf": "(ETF)",
+    "stock": "(개별 종목)",
+}  # 그 밖(unknown) = '(구분 확인 불가)'
+
+
+def _holding_sections(ev: dict[str, Any], db_path: Path) -> Sections:
     bundle = ev.get("bundle") or None
     item = (bundle or {}).get("item") or {}
     ref = (bundle or {}).get("reference_date")
     is_etf = (bundle or {}).get("is_etf")
-    kind = "" if bundle is None else ("(ETF)" if is_etf else "(개별 종목)")
+    # POC6-07 RESULT 판정 §2(F3) — 분류 자료가 비면 '개별 종목'으로 단정하지 않는다(이동평균과 같은 분류 ·
+    # 분류 필드가 없는 예전 묶음은 기존 is_etf 그대로).
+    cls = (bundle or {}).get("etf_class") or ("etf" if is_etf else "stock")
+    kind = "" if bundle is None else _KIND_LABEL.get(cls, "(구분 확인 불가)")
     target_asof = (item.get("price_dates") or {}).get("end_date")
     mp = (bundle or {}).get("market_position") or {}
     regime = (
@@ -112,32 +142,34 @@ def _holding_sections(
         return (
             [target, market, no, no, no, no, no],
             {"target": None, "kodex200": k_asof, "vix": v_asof},
+            None,
         )
-    status_lines = (
-        [
+    if cls == "etf":
+        status_lines = [
             *holding_overlap_lines(item, bundle.get("constituents_asof")),
             nav_line(item.get("nav_discount")),
         ]
-        if is_etf
-        else ["구성종목 겹침 · NAV 괴리율: 대상 아님(개별 종목)"]
-    )
+    elif cls == "stock":
+        status_lines = ["구성종목 겹침 · NAV 괴리율: 대상 아님(개별 종목)"]
+    else:
+        status_lines = [f"구성종목 겹침 · NAV 괴리율: 확인 불가({ETF_UNKNOWN_REASON})"]
+    ma = bundle.get("moving_average")
     return (
         [
             target,
             market,
-            holding_flow_lines(item, ref),
+            _with_moving_average(holding_flow_lines(item, ref), ma),
             same_period_lines(item.get("same_period_kodex200"), True),
             volume_lines(item.get("stored_volume"), ref),
             volatility_lines(item.get("price_volatility"), ref),
             status_lines,
         ],
         {"target": target_asof, "kodex200": k_asof, "vix": v_asof},
+        ma,
     )
 
 
-def _candidate_sections(
-    ev: dict[str, Any], db_path: Path
-) -> tuple[list[str], dict[str, Optional[str]]]:
+def _candidate_sections(ev: dict[str, Any], db_path: Path) -> Sections:
     cand = ev.get("candidate") or {}
     ref = ev.get("reference_date")
     mc = ev.get("market_context") or {}
@@ -167,17 +199,19 @@ def _candidate_sections(
     status_lines = candidate_overlap_lines(ev.get("direct_holding"), ev.get("overlap"))
     status_lines.append(nav_line(dq.get("nav_discount")))
     status_lines.append(daily_check_line(dq.get("daily_return_check")))
+    ma = ev.get("moving_average")
     return (
         [
             target,
             market,
-            candidate_flow_lines(cand),
+            _with_moving_average(candidate_flow_lines(cand), ma),
             same_period_lines(cand.get("same_period_kodex200"), False),
             volume_lines(ev.get("stored_volume"), ref),
             volatility_lines(ev.get("price_volatility"), ref),
             status_lines,
         ],
         {"target": target_asof, "kodex200": k_asof, "vix": v_asof},
+        ma,
     )
 
 
@@ -211,9 +245,9 @@ def build_preview_text(
 
     gen = (generated_at or datetime.now(_KST)).astimezone(_KST)
     if target_kind == TARGET_KIND_HOLDING:
-        bodies, asof = _holding_sections(target_evidence, db_path)
+        bodies, asof, ma = _holding_sections(target_evidence, db_path)
     else:
-        bodies, asof = _candidate_sections(target_evidence, db_path)
+        bodies, asof, ma = _candidate_sections(target_evidence, db_path)
     bodies[0] = bodies[0] + [
         f"생성 {gen.strftime('%Y-%m-%d %H:%M')} · 가격 기준일 {asof['target'] or '확인 불가'}"
         "(이 종목 마지막 저장 종가) · 생성 시각에 다시 계산한 값이라 화면 목록과 날짜가 다를 수 있습니다."
@@ -231,6 +265,7 @@ def build_preview_text(
     # POC6-01 — '시장' 바로 다음에 시장 흐름(화면에서 고른 기간 · 서버 공통 글).
     sections.insert(2, _market_flow_section(db_path, flow_period))
     sections.append(_section("AI에게 요청", AI_REQUEST))
+    sections.append(_section("검토 질문", REVIEW_QUESTIONS))
     return PreviewResult(
         status="ok",
         target_kind=target_kind,
@@ -242,4 +277,5 @@ def build_preview_text(
             vix_as_of_date=asof["vix"],
         ),
         generated_at=gen.isoformat(timespec="seconds"),
+        moving_average=ma,
     )

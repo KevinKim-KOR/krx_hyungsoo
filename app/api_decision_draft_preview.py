@@ -34,6 +34,7 @@ from app.decision_preview_sources import (
     load_holding_bundle,
 )
 from app.market_data_store import DEFAULT_DB_PATH
+from app.pc_selected_moving_average import MovingAverageEvidence
 
 router = APIRouter()
 
@@ -77,6 +78,8 @@ class PreviewResponse(BaseModel):
     # POC5-23 — 생성 시각(KST · 선택 필드).
     generated_at: Optional[str] = None
     message: Optional[str] = None
+    # POC6-07 — 원문 이동평균 줄을 만든 같은 객체(선택 필드 · 화면은 원문만 그린다 · 실패 응답에는 없음).
+    moving_average: Optional[MovingAverageEvidence] = None
 
 
 def _load_holdings_evidence(ticker: str) -> Optional[dict[str, Any]]:
@@ -343,6 +346,11 @@ def post_decision_draft_preview(req: PreviewRequest) -> PreviewResponse:
             vix_as_of_date=(
                 result.evidence_as_of.vix_as_of_date if result.evidence_as_of else None
             ),
+        ),
+        moving_average=(
+            MovingAverageEvidence.model_validate(result.moving_average)
+            if result.moving_average is not None
+            else None
         ),
     )
 

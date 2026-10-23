@@ -636,3 +636,81 @@ describe("기록 조회 — 목록 대상 · 상세 선택 종목 · 넘겨받�
     expect(t).not.toContain("넘겨받은 판단 근거");
   });
 });
+
+// POC6-07 — 이동평균 세 줄 · [검토 질문] 이 든 원문(10개 묶음)도 화면 · [복사] · 초안 · 저장이 같은 글.
+// 화면은 응답 선택 필드(moving_average)로 숫자 글을 다시 만들지 않는다 · 과거(이동평균 없는) 기록은 그대로.
+const TEXT_607 = [
+  "[대상]\n- 시험 ETF (0015K0) · 보유 종목(ETF)\n- 평가비중 +1.00% · 손익률 -2.00%",
+  "[시장]\n- 시장 국면: 하락장 · 8거래일째 (KODEX200 2026-10-20 기준)",
+  "[시장 흐름 — 수급 · 환율 · 유가 · 기간 6개월 · 2026-04-20 ~ 2026-10-19]\n- 코스피 6,191.92 → 5,768.01 (-6.85%)",
+  "[가격 흐름 · PC 저장 종가]\n- 변화율 5저장일 -10.37% · 10저장일 -14.67% · 20저장일 -7.17% (2026-09-16 → 2026-10-20)\n" +
+    "- 종목 이동평균: MA20 18,896.75원 · MA60 18,769.25원\n" +
+    "- 표시값 기준 위치: MA20 > MA60 > 종가 (종가 16,775.00원)\n" +
+    "- 이동평균 계산 구간: MA20 = 저장 종가 20개(2026-09-17 → 2026-10-20) · MA60 = 저장 종가 60개(2026-07-22 → 2026-10-20)\n" +
+    "- 단기 KODEX200 차이(저장일 수 기준) 5저장일 -1.45%p",
+  "[KODEX200 동일 기간 비교]\n- 1개월 · 3개월: 값 없음",
+  "[거래량]\n- 2026-10-20 거래량 210,255주",
+  "[가격 흔들림]\n- 최근 20구간 2.35% · 직전 20구간 1.70% · 직전보다 커짐",
+  "[중복 · 자료 상태]\n- NAV 괴리율 -0.46% (NAV 16,852 · 시장가 16,775 · 2026-10-20)",
+  "[AI에게 요청]\n- 위 관측값을 ① 함께 확인되는 사실 ② 가능한 다른 해석 ③ 추가로 확인할 사항으로 나눠 정리해 주세요.",
+  "[검토 질문]\n- 진입 검토: 이 ETF를 검토할 때 유리한 근거와 반대 근거는 무엇인가요?\n" +
+    "- 보유 점검: 이미 보유 중이라면 어떤 변화와 주의 요인을 확인해야 하나요?\n" +
+    "- 판단 한계: 지금 자료로 판단할 수 없는 부분과 추가 확인할 정보는 무엇인가요?",
+].join("\n\n");
+// 원문과 일부러 다른 숫자 — 화면이 이 필드로 글을 만들면 드러난다.
+const MA_FIELD = { status: "ok", d: "2026-10-20", close: 1, close_shown: "1.00", relation: "종가 > MA20 > MA60" };
+
+describe("POC6-07 — 이동평균 줄 · 검토 질문이 든 원문", () => {
+  it("상자 10개 · 상자 글 = 원문 · [복사] = 원문 · 초안 질문 · 원문 보관 = 같은 글 · 선택 필드는 쓰지 않음", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    routes["POST /decision-draft/preview"] = okBody({ ticker: "0015K0", preview_text: TEXT_607, moving_average: MA_FIELD });
+    const { container } = card({ ticker: "0015K0", displayName: "시험 ETF" });
+    await generate();
+    const secs = Array.from(container.querySelectorAll(".ddp-sec"));
+    expect(secs).toHaveLength(10);
+    expect(secs.map((s) => s.querySelector(".ddp-sec-t")?.textContent).slice(-2)).toEqual(["AI에게 요청", "검토 질문"]);
+    const rebuilt = secs
+      .map((s) => `[${s.querySelector(".ddp-sec-t")?.textContent}]\n${s.querySelector(".ddp-sec-b")?.textContent}`)
+      .join("\n\n");
+    expect(rebuilt).toBe(TEXT_607);
+    expect(container.textContent).not.toContain("1.00원"); // 선택 필드 숫자를 그리지 않음
+    fireEvent.click(screen.getByRole("button", { name: "복사" }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith(TEXT_607));
+    fireEvent.click(screen.getByRole("button", { name: "AI 세션에서 검토" }));
+    const d = loadAISessionsDraft()!;
+    expect(d.question_text).toBe(TEXT_607);
+    expect(d.candidate_snapshot[0].selected_preview?.preview_text).toBe(TEXT_607);
+    expect(JSON.stringify(d)).not.toContain("moving_average"); // 세션 구조 그대로(새 필드 없음)
+  });
+
+  it("작성 화면 — 질문을 고쳐 저장해도 넘겨받은 원문(이동평균 · 질문 포함)은 그대로 보관", async () => {
+    routes["POST /decision/sessions"] = { status: "ok", id: "decision_607", created_at: "t" };
+    const draft = selectedDraft({ question_text: TEXT_607 }, { preview_text: TEXT_607 });
+    const { container } = render(<AISessionsCreateTab draft={draft} onSaved={vi.fn()} />);
+    const q = container.querySelector("#ais-question") as HTMLTextAreaElement;
+    expect(q.value).toBe(TEXT_607);
+    fireEvent.change(q, { target: { value: "진입 검토만 해 주세요." } });
+    fireEvent.change(container.querySelector("#ais-gpt")!, { target: { value: "GPT 답변" } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "기록 저장" }));
+    });
+    await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.path === "/decision/sessions")).toBe(true));
+    const body = calls.find((c) => c.method === "POST" && c.path === "/decision/sessions")!.body as {
+      question_text: string;
+      candidate_snapshot: { selected_preview: { preview_text: string } }[];
+    };
+    expect(body.question_text).toBe("진입 검토만 해 주세요.");
+    expect(body.candidate_snapshot[0].selected_preview.preview_text).toBe(TEXT_607);
+  });
+
+  it("이동평균 없는 과거 기록 — 당시 원문 그대로 · 현재 값으로 보충하지 않음", async () => {
+    const { container } = await openList(record({ id: "decision_old607" }), [row("decision_old607")]);
+    const detail = container.querySelector(".decision-detail-card")!;
+    const pres = Array.from(detail.querySelectorAll("pre")).map((p) => p.textContent);
+    expect(pres).toContain(TEXT);
+    expect(detail.textContent).not.toContain("종목 이동평균");
+    expect(detail.textContent).not.toContain("검토 질문");
+    expect(calls.some((c) => c.path.startsWith("/decision-draft"))).toBe(false); // 다시 만들지 않음
+  });
+});

@@ -208,6 +208,23 @@ describe("「요즘 잘 오르는 ETF」 시장 흐름 카드", () => {
     expect(screen.getByTestId("mf-chart-kospi-mark-kospi-2026-10-16")).toBeInTheDocument();
   });
 
+  it("같은 자료 · 같은 날 사건 두 개(변화 확대 + 범위 아래)는 점 하나 · 사건 줄은 둘 다 · key 중복 경고 없음", async () => {
+    // POC6-07 실화면 중 발견(2026-10-23) — 10/13 · 10/15 코스피에 두 종류 사건이 함께 있으면 같은 key 점이 두 번 생겼다.
+    const twin = { date: "2026-10-16", series: "코스피", kind: "range", text: "10/16 코스피 직전 20개 관측 범위 아래" };
+    serve(ctx({ events: [...ctx().events, twin] }));
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      render(<MarketFlowCard />);
+      await screen.findByText("6개월 요약 줄(6M)");
+      expect(screen.getAllByTestId("mf-chart-kospi-mark-kospi-2026-10-16")).toHaveLength(1);
+      expect(screen.getByText("10/16 코스피 변화 확대")).toBeInTheDocument();
+      expect(screen.getByText("10/16 코스피 직전 20개 관측 범위 아래")).toBeInTheDocument();
+      expect(err.mock.calls.some((c) => String(c[0]).includes("same key"))).toBe(false);
+    } finally {
+      err.mockRestore();
+    }
+  });
+
   it("1조원 아래 누적은 억원 정수(-0조원으로 보이지 않음)", async () => {
     const small = ctx();
     small.series.flows!.investors.foreign = pts((i) => (i === DAYS.length - 1 ? -4.8e10 : 0));

@@ -176,3 +176,16 @@ describe("판단 근거 미리보기 카드", () => {
     expect(screen.queryByRole("button", { name: "복사" })).not.toBeInTheDocument();
   });
 });
+
+describe("POC6-07 — 도움말(?) 문단", () => {
+  it("가격 흐름 다음에 종목 이동평균 · 검토 질문 정의(요청마다 다른 날짜는 원문 줄)", async () => {
+    const { PREVIEW_HELP } = await import("./DecisionDraftPreviewCard");
+    const heads = PREVIEW_HELP.map((p) => p.split(" — ")[0]);
+    const i = heads.indexOf("가격 흐름");
+    expect(heads.slice(i, i + 3)).toEqual(["가격 흐름", "종목 이동평균", "검토 질문"]);
+    const ma = PREVIEW_HELP[i + 1];
+    for (const s of ["저장 종가 20개 · 60개", "달력 20일 · 60일이나 장중 이동평균이 아님", "'=' 로 묶습니다", "ETF 만 대상", "NAVER_FDR"]) {
+      expect(ma).toContain(s);
+    }
+  });
+});
