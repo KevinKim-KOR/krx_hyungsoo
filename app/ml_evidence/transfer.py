@@ -7,6 +7,8 @@
   `.incoming/<upload_id>/` 로
   보내고, OCI 의 `accept-upload` 가 검사 · 공개한다. 임의 원격 경로 쓰기 도구가 아니다.
 - `accept-upload`(OCI): 이름 = 해시 · manifest 해시 · kind · 허용 실험 · 모든 object 해시를 검사한 뒤에만 공개.
+- POC6-06 산출물 묶음(`FORWARD_RESEARCH_ARTIFACTS`)도 같은 길로 올린다 — `forward_artifacts.problems`(정규화 상대 경로 ·
+  schema · training.json 참조 · 해시)를 통과해야만 공개 · 모델 파일은 bytes 로만 보관(load 0).
 """
 
 from __future__ import annotations
@@ -21,7 +23,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Callable, Optional
 
-from app.ml_evidence import research, store
+from app.ml_evidence import forward_artifacts, research, store
 
 REMOTE_ROOT = "/home/ubuntu/krx_hyungsoo"
 REMOTE_EVIDENCE = f"{REMOTE_ROOT}/state/ml/evidence"
@@ -32,6 +34,7 @@ SCP_TIMEOUT_SEC = 300
 ACCEPT_TIMEOUT_SEC = 180
 CHUNK = 40
 UPLOAD_ID = re.compile(r"^up_\d{8}T\d{6}Z_[0-9a-f]{8}$")
+UPLOAD_KINDS = ("RESEARCH_REGISTRATION", forward_artifacts.KIND)
 
 
 @dataclass
@@ -275,8 +278,8 @@ def pull(
 def upload_research(*, root: Path, remote: Remote, run_id: str, now: datetime) -> dict:
     runs, _ = store.list_runs(root)
     run = next((r for r in runs if r.run_id == run_id), None)
-    if run is None or run.manifest["kind"] != "RESEARCH_REGISTRATION":
-        raise store.EvidenceError(f"연구 등록 묶음 아님: {run_id}")
+    if run is None or run.manifest["kind"] not in UPLOAD_KINDS:
+        raise store.EvidenceError(f"연구 등록 · POC6-06 산출물 묶음 아님: {run_id}")
     bad_here = store.damaged_objects(root, run.manifest)
     if bad_here:
         raise store.EvidenceError(f"PC 사본 손상 · 없음 {len(bad_here)} — 올리지 않음")
@@ -402,7 +405,19 @@ def accept_upload(
         m = json.loads(data.decode("utf-8"))
     except (UnicodeDecodeError, ValueError):
         return {"status": "CHECK_REQUIRED", "reason": "manifest 해석 불가"}
-    problems = store.validate_manifest(m) or _research_problems(m)
+    problems = store.validate_manifest(m)
+    if not problems and m.get("kind") == forward_artifacts.KIND:
+
+        def read(sha: str) -> Optional[bytes]:
+            p = names.get(sha)
+            if p is not None:
+                data = p.read_bytes()
+                return data if store.sha256_bytes(data) == sha else None
+            return store.read_object(root, sha) if store.object_ok(root, sha) else None
+
+        problems = forward_artifacts.problems(m, read)
+    elif not problems:
+        problems = _research_problems(m)
     shas = store.manifest_object_shas(m) if not problems else []
     extra = set(names) - {"manifest.json"} - set(shas)
     if extra:

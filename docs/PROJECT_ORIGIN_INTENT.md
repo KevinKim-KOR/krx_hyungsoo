@@ -333,6 +333,9 @@ threshold / label / 모델 / 학습 데이터는 본 시점에 확정하지 않�
 - **2026-10-11 POC5-08 연구 예외** (POC5-08 설계 V1 §2 확정문 · 원문 그대로):
   > 2026-10-11 POC5-08 연구 예외: 사용자 요청에 따라 PC에서 수동 실행하는 알림 사후평가를 구현한다. 기존 원장 스냅샷과 확정 +5 가격 결과로 고정 Ridge와 중앙값 기준을 시간 분리 비교한다. 자동·운영 ML, 추천 모델 채택, PUSH/PARAM 변경, 주문은 승인하지 않는다. CURRENT_DEPLOYABLE_ML_MODEL=none과 ML_OPERATION_PROMOTION=NOT_APPROVED를 유지한다. POC4의 REJECT나 Q6 운영 가설의 해결을 선언하지 않는다.
   위 POC5-06 예외와 별개의 한정 예외다. 01~04 의 ML 미포함 · 06 의 별도 연구 목적 · 기존 실패 실험 기록은 그대로다. 기준 문서는 `docs/ai_design/POC5/POC5-08_ALERT_RETROSPECTIVE_ML_EVALUATION_DESIGN_V1.md` §2 · §12(PLAN 판정).
+- **2026-10-22 POC6-06 연구 한정 예외** (POC6-06 PLAN 판정 §1 확정문 · 원문 그대로):
+  > 연구 한정 예외(2026-10-22, POC6-06 PLAN 판정): 보유·seed·사용자 평가와 독립된 고정 ETF 표본 최대 24종을 대상으로, PC에서 기존 MEDIAN·RIDGE·HGB·MLP의 고정 recipe를 사용한 전향 D20 예측 기록·성숙 결과 비교 및 월 최대 1회 조건부 재학습을 허용한다. MLP는 이번 단계에서 CPU로 실행한다. 초기 장기 자료의 추가 조회와 OCI 증거 보관은 명시한 사용자 승인 범위로 수행한다. OCI는 수집·보관 역할을 유지한다. 이 예외는 운영 경보·종목 추천·자동 매매의 허용이 아니며, ML_OPERATION_PROMOTION=NOT_APPROVED, CURRENT_DEPLOYABLE_ML_MODEL=none, Q6 OPEN을 유지한다. 기존 POC6-02·04 결과와 미완료 요구 #3·#55·#57·#62는 변경하지 않는다. (출처: `docs/ai_design/POC6/POC6-06_HOLDINGS_INDEPENDENT_FORWARD_MODEL_COMPARISON_PLAN_DECISION_2026-10-22.md` §1)
+  위 축 2 의 표현 정의(불변)와 POC5-06 · 08 예외는 그대로다. 자료 손상 · 시각 누출 등 나머지 중단 조건도 그대로 적용한다.
 
 ### 2026-06-06 시점의 한계
 

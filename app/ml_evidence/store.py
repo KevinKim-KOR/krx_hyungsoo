@@ -29,7 +29,11 @@ from typing import Any, Callable, Iterator, Optional
 
 EVIDENCE_ROOT = Path("state/ml/evidence")
 SCHEMA = "poc6_05_evidence_manifest_v1"
-KINDS = ("DAILY_COLLECTION", "RESEARCH_REGISTRATION")
+KINDS = (
+    "DAILY_COLLECTION",
+    "RESEARCH_REGISTRATION",
+    "FORWARD_RESEARCH_ARTIFACTS",  # POC6-06 산출물(`forward_artifacts` 규칙 · PLAN 판정 2026-10-22 §6)
+)
 STATUSES = ("OK", "PARTIAL", "FAILED", "SKIPPED_NO_NEW")
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 RUN_ID = re.compile(r"^\d{8}T\d{6}Z_[0-9a-f]{8}$")
