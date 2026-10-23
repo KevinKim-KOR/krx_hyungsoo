@@ -5,7 +5,7 @@
 ```text
 STATUS   = PLAN 제출(2026-10-23) · 사용자 목업 확인 완료(2026-10-23 · 주 목업 = Q1 (a) · Q2 (a) · Q3 (a)) · 질문 3(§6)
            → 설계자 PASS(2026-10-23 · Q1 · Q2 · Q3 = (a) · 판정 §3 해석 = §7 반영 · 재제출 없음) → 구현 · 사용자 실화면 확인(2026-10-23)
-           → 검증자 r1 REJECTED(P2 1) → 정정 → r2 VERIFIED → 설계자 RESULT CONDITIONAL_PASS → F3 · 대조 설명 정정 → 검증자 변경분 VERIFIED → 사용자 승인 커밋 · push(결과서 docs/ai_result/POC6/POC6-07_SELECTED_ETF_ENTRY_AND_HOLDING_EVIDENCE_RESULT.md)
+           → 검증자 r1 REJECTED(P2 1) → 정정 → r2 VERIFIED → 설계자 RESULT CONDITIONAL_PASS → F3 · 대조 설명 정정 → 검증자 변경분 VERIFIED → 사용자 승인 커밋 · push → IMPLEMENTED_VERIFIED_CLOSED(2026-10-23 · 구현 커밋 a87fcfa2 · 결과서 docs/ai_result/POC6/POC6-07_SELECTED_ETF_ENTRY_AND_HOLDING_EVIDENCE_RESULT.md)
 DECISION = docs/ai_design/POC6/POC6-07_SELECTED_ETF_ENTRY_AND_HOLDING_EVIDENCE_PLAN_DECISION_2026-10-23.md
 DESIGN   = docs/ai_design/POC6/POC6-07_SELECTED_ETF_ENTRY_AND_HOLDING_EVIDENCE_DESIGN_V1.md
 조사     = 코드 읽기 · PC 시장 DB(mode=ro) 선택 종목 읽기 · 사용자 PC 서버 미리보기 1회씩(저장 없는 경로) · 외부 조회 0 · 쓰기 0
