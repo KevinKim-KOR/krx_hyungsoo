@@ -337,6 +337,8 @@ threshold / label / 모델 / 학습 데이터는 본 시점에 확정하지 않�
   > 연구 한정 예외(2026-10-22, POC6-06 PLAN 판정): 보유·seed·사용자 평가와 독립된 고정 ETF 표본 최대 24종을 대상으로, PC에서 기존 MEDIAN·RIDGE·HGB·MLP의 고정 recipe를 사용한 전향 D20 예측 기록·성숙 결과 비교 및 월 최대 1회 조건부 재학습을 허용한다. MLP는 이번 단계에서 CPU로 실행한다. 초기 장기 자료의 추가 조회와 OCI 증거 보관은 명시한 사용자 승인 범위로 수행한다. OCI는 수집·보관 역할을 유지한다. 이 예외는 운영 경보·종목 추천·자동 매매의 허용이 아니며, ML_OPERATION_PROMOTION=NOT_APPROVED, CURRENT_DEPLOYABLE_ML_MODEL=none, Q6 OPEN을 유지한다. 기존 POC6-02·04 결과와 미완료 요구 #3·#55·#57·#62는 변경하지 않는다. (출처: `docs/ai_design/POC6/POC6-06_HOLDINGS_INDEPENDENT_FORWARD_MODEL_COMPARISON_PLAN_DECISION_2026-10-22.md` §1)
 - **2026-10-24 POC6-08 연구 한정 예외** (POC6-08 PLAN 판정 §5 · 원문 그대로):
   > 연구 한정 예외: 기반 문서의 미래 하락 추정·ML 연구 제한에 대해, 본 POC6-08의 고정 표본·고정 입력 조합·PC 회고 D20 비교만 허용한다. 운영 경보·매매·새 모델 탐색 허용으로 확대하지 않는다. (출처: `docs/ai_design/POC6/POC6-08_VOLUME_AND_RELATIVE_STRENGTH_FEATURE_VALUE_PLAN_DECISION_2026-10-24.md` §5)
+- **2026-10-25 POC6-09 연구 한정 예외** (POC6-09 PLAN 판정 §5 · 원문 그대로):
+  > POC6-09는 POC6-08의 고정 시험 예측·정답·기존 입력을 재학습 없이 분석하여, 큰 하락에 해당한 종목을 같은 검토 수에서 모으는 효용을 회고 비교하는 PC 연구로만 허용한다. 새 모델·입력·전향 예측·운영 위험 분류·알림 연결은 허용하지 않으며 Q6 OPEN과 운영 ML 미승격은 유지한다. (출처: `docs/ai_design/POC6/POC6-09_EXISTING_MODEL_REVIEW_PRIORITY_VALIDATION_PLAN_DECISION_2026-10-25.md` §5)
   위 축 2 의 표현 정의(불변)와 POC5-06 · 08 예외는 그대로다. 자료 손상 · 시각 누출 등 나머지 중단 조건도 그대로 적용한다.
 
 ### 2026-06-06 시점의 한계

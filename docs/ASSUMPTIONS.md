@@ -59,6 +59,9 @@
   **별도 연구 계약 — POC6-08 (2026-10-24 · 한정 예외 · Q6 해결 아님)**: 02B 연구 종료(REJECT_ACCEPTED)와 운영 계약 OPEN 은 그대로다.
   > 연구 한정 예외: 기반 문서의 미래 하락 추정·ML 연구 제한에 대해, 본 POC6-08의 고정 표본·고정 입력 조합·PC 회고 D20 비교만 허용한다. 운영 경보·매매·새 모델 탐색 허용으로 확대하지 않는다. (출처: `docs/ai_design/POC6/POC6-08_VOLUME_AND_RELATIVE_STRENGTH_FEATURE_VALUE_PLAN_DECISION_2026-10-24.md` §5)
   연구 계약: `docs/ai_design/POC6/POC6-08_VOLUME_AND_RELATIVE_STRENGTH_FEATURE_VALUE_DESIGN_V1.md` · PLAN 판정 §1 ~ §6.
+  **별도 연구 계약 — POC6-09 (2026-10-25 · 한정 예외 · Q6 해결 아님)**: 운영 계약 OPEN · 운영 ML 미승격은 그대로다. 05 일일 보관 · 06 전향 기록 · 월별 학습을 바꾸지 않는다.
+  > POC6-09는 POC6-08의 고정 시험 예측·정답·기존 입력을 재학습 없이 분석하여, 큰 하락에 해당한 종목을 같은 검토 수에서 모으는 효용을 회고 비교하는 PC 연구로만 허용한다. 새 모델·입력·전향 예측·운영 위험 분류·알림 연결은 허용하지 않으며 Q6 OPEN과 운영 ML 미승격은 유지한다. (출처: `docs/ai_design/POC6/POC6-09_EXISTING_MODEL_REVIEW_PRIORITY_VALIDATION_PLAN_DECISION_2026-10-25.md` §5)
+  연구 계약: `docs/ai_design/POC6/POC6-09_EXISTING_MODEL_REVIEW_PRIORITY_VALIDATION_DESIGN_V1.md` · PLAN 판정 §1 ~ §6.
 
   **관측 대조 — POC5-20 (2026-10-17 · Q6 해결 아님)**: 현재 보유 ETF 의 PC 저장 자료로 같은 가격 하락 구간 안 거래량(반올림 전 배수 1 초과 / 이하) × 흔들림(커짐 / 커지지 않음) 네 조합과 이후 20거래일 두 결과(끝점 · 최저 종가 변화)를 한 번 대조했다(종료일 2026-10-14 고정 · 공통 표본 1,633 · 리포트 `state/ml/research/poc5_20/2026-10-14_20261017T164233155811/` · git 추적 밖). 학습 · 예측 · 기준 탐색 · 점수 · 위험 등급은 없다. **설계자 RESULT 판정(2026-10-17 · PASS · 종료) 연구 결론: '일부 가격 구간에서 흔들림 비교와 이후 경로 차이가 함께 관측됐으나, 거래량·흔들림 조합의 보편적 위험 순서는 확인되지 않았다'** — 현재 관측 표시 유지 · 새 조합 점수 · 위험 등급 · 경보 문구 없음 · 검증된 거래량 해석 · 종합 위험 분류 완료나 운영 ML 승인으로 기록하지 않는다(P-06 · P-10 부분 완료 유지 · 판정 원문 결과서 §13). 운영 계약 OPEN · ML_OPERATION_PROMOTION NOT_APPROVED · CURRENT_DEPLOYABLE_ML_MODEL none 유지. 연구 계약: `docs/ai_design/POC5/POC5-20_OBSERVED_EVIDENCE_COMBINATION_REVIEW_DESIGN_V1.md` · PLAN 판정 `..._PLAN_DECISION_2026-10-17.md`.
   **PC 현재 상태 조합 표시 후보 — POC5-15 (2026-10-15 · Q6 해결 아님 · 운영 계약 OPEN 그대로)** — 설계자 PLAN 판정 §2 Q2 문장 그대로:
