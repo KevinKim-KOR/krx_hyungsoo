@@ -4,7 +4,7 @@
 
 ```text
 STATUS   = PLAN 제출(2026-10-25) · 질문 없음(확인받을 사실만 §6) → 설계자 PASS(2026-10-25 · 판정 §3 = §7 반영 · 재제출 없음) → 구현
-           → 검증자 r1 VERIFIED → 설계자 RESULT PASS(2026-10-25 · 결과서 §12 · 고정 가설 마무리)
+           → 검증자 r1 VERIFIED → 설계자 RESULT PASS(2026-10-25 · 결과서 §12 · 고정 가설 마무리) → IMPLEMENTED_VERIFIED_CLOSED(2026-10-25 · 구현 커밋 49f5ab88 · push · PC 전용) · 결과서 §13
 DECISION = docs/ai_design/POC6/POC6-09_EXISTING_MODEL_REVIEW_PRIORITY_VALIDATION_PLAN_DECISION_2026-10-25.md
 DESIGN   = docs/ai_design/POC6/POC6-09_EXISTING_MODEL_REVIEW_PRIORITY_VALIDATION_DESIGN_V1.md
 조사     = 08 정정 실행 파일의 해시 · 키 · 개수 · 연결 · 유한성 · 단위만(저장소 밖 임시 스크립트 · 읽기만)
