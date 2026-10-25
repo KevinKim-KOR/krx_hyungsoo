@@ -4,7 +4,7 @@
 
 ```text
 STATUS   = PLAN 제출(2026-10-24) · 질문 없음 → 설계자 PASS(2026-10-24 · 판정 §3 해석 = §7 반영 · 재제출 없음) → 구현
-           → 검증자 r1 REJECTED → 정정 · 정정 잠금 재실행 → r2 VERIFIED → 설계자 RESULT PASS(2026-10-25 · 결과서 §13)
+           → 검증자 r1 REJECTED → 정정 · 정정 잠금 재실행 → r2 VERIFIED → 설계자 RESULT PASS(2026-10-25 · 결과서 §13) → IMPLEMENTED_VERIFIED_CLOSED(2026-10-25 · 구현 커밋 3df43539 · push · PC 전용) · 결과서 §14
 DECISION = docs/ai_design/POC6/POC6-08_VOLUME_AND_RELATIVE_STRENGTH_FEATURE_VALUE_PLAN_DECISION_2026-10-24.md
 DESIGN   = docs/ai_design/POC6/POC6-08_VOLUME_AND_RELATIVE_STRENGTH_FEATURE_VALUE_DESIGN_V1.md
 조사     = 저장 파일 읽기 · 해시 · 날짜 · 개수만(저장소 밖 임시 스크립트) · 목표 크기 · 오차 · 상관 · 수익률 순위 계산 0 · 라이브 DB · OCI 접근 0
