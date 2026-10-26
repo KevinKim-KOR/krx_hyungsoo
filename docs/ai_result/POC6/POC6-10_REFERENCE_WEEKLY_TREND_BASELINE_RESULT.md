@@ -3,7 +3,9 @@
 작성 2026-10-26 · 작성자: 개발자(VSCode Claude) · 수신: 검증자(Codex) → 설계자
 
 ```text
-STATUS        = IMPLEMENTED · 공식 6조합 1회 · verify OK(2026-10-26) → 검증자 r1 VERIFIED(2026-10-26 · §12) → 설계자 RESULT PASS(2026-10-26 · §13) → (나) 보관 · 문서만 공개(사용자 승인 2026-10-26) · 종료 기록 §14
+STATUS        = IMPLEMENTED_VERIFIED_CLOSED(2026-10-26 · §14) — CODE_DISTRIBUTION LOCAL_ONLY(research/poc6-10-local 6779a31c · 원격 없음)
+                · PUBLICATION DOCS_ONLY(공개 문서 커밋 9a0859d3 push · 종료 기록 = 종료 커밋(git log 로 확인)) · 운영 채택 없음
+                구현 · 공식 6조합 1회 · verify OK → 검증자 r1 VERIFIED(§12) → 설계자 RESULT PASS(§13) → 사용자 (나) 선택 · 커밋 · 문서 push 승인(§14)
                 설계 V1 → PLAN(질문 7 + 사용자 승인 1) → 설계자 PLAN PASS(2026-10-26 · 보완 반영 = PLAN §8 · 재제출 없음)
                 → 기반 문서 3곳 판정 §6 문장 → 라이선스 좁은 확인(PLAN §8) → 설치 사용자 승인(2026-10-26) → 엔진 격리 실증
                 → 구현 · 시험 → 독립 검토 1회(4관점 · 확인 14 · 모두 반영) → 변이 64종 전부 잡힘
@@ -98,7 +100,7 @@ PUBLIC_PUSH   = (나) 사용자 선택(2026-10-26 · RESULT 판정 §4) — CODE
 | `tests/test_poc6_10_prices_rules.py` | 신규 | 가격 어댑터 · 규칙 39개(tmp 봉인 판) |
 | `tests/test_poc6_10_report_flow.py` | 신규 | 지표 · 판정 · run · verify · 변조 · 엔진 확인 · CLI 38개(tmp 봉인 판) |
 | `docs/PROJECT_ORIGIN_INTENT.md` · `docs/KILL_SWITCHES.md` · `docs/ASSUMPTIONS.md` | 수정 | 판정 §6 연구 한정 예외 문장 원문 + 출처 |
-| `docs/PROGRAM_TRUTH.md` · `docs/STATE_LATEST.md` · `docs/backlog/BACKLOG.md` | 수정 | 연구 CLI · 산출물 · 결과 기록(#3 완료 아님 · 검증자 r1 VERIFIED(2026-10-26) → 설계자 RESULT PASS(2026-10-26 · NO_REFERENCE_CASE 수용) → (나) 연구 코드 로컬 전용 브랜치 `research/poc6-10-local` · 공개 main 문서만(사용자 승인 2026-10-26)) |
+| `docs/PROGRAM_TRUTH.md` · `docs/STATE_LATEST.md` · `docs/backlog/BACKLOG.md` | 수정 | 연구 CLI · 산출물 · 결과 기록(#3 완료 아님 · 검증자 r1 VERIFIED(2026-10-26) → 설계자 RESULT PASS(2026-10-26 · NO_REFERENCE_CASE 수용) → IMPLEMENTED_VERIFIED_CLOSED(2026-10-26 · CODE_DISTRIBUTION LOCAL_ONLY = 로컬 연구 브랜치 `research/poc6-10-local` 구현 커밋 6779a31c(원격 없음) · PUBLICATION DOCS_ONLY = 공개 문서 커밋 9a0859d3 push · PC 전용)) |
 | `docs/ai_design/POC6/POC6-10_…_DESIGN_V1.md` · `…_PLAN_DECISION_2026-10-26.md` · `POC6_EXTERNAL_STRATEGY_REFERENCE_AND_BASELINE_DESIGN_PREPARATION_2026-10-25.md` | 신규 | 설계자 원문 보관 |
 | `docs/ai_plan/POC6/POC6-10_…_PLAN_V1.md` | 신규 | PLAN(§8 판정 반영 · 라이선스 확인) |
 | `docs/ai_result/POC6/POC6-10_…_RESULT.md` | 신규 | 이 결과서 |
@@ -580,3 +582,43 @@ PUBLICATION        = DOCS_ONLY (공개 문서 push 성공 시)
 [1] [Backtrader LICENSE — GPLv3 §2·§4·§5](https://github.com/mementum/backtrader/blob/master/LICENSE). 비배포 사용과 배포 조건을 구분한 근거. 실제 설치 판 고지/본문은 결과서의 기록을 사용한다.
 
 [2] [GitHub Docs — Licensing a repository](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/licensing-a-repository). 공개 저장소와 라이선스 허락이 같은 뜻이 아님을 확인한 근거.
+
+## 14. 종료 기록 (2026-10-26 · 설계자 RESULT 판정 §4-2 · §5)
+
+```text
+STATUS             = IMPLEMENTED_VERIFIED_CLOSED
+RESEARCH_STATUS    = NO_REFERENCE_CASE
+CODE_DISTRIBUTION  = LOCAL_ONLY
+PUBLICATION        = DOCS_ONLY
+운영 채택          = 없음
+```
+
+- **사용자 선택 · 승인(2026-10-26)**: (나) — 연구 코드는 로컬 전용 브랜치에 보관하고, 공개 main 에는 코드 없는 문서만 커밋 · push 한다.
+- **공개 문서 커밋**: `9a0859d3`(부모 `50a728df` · 문서 12파일 · docs/ 밖 경로 0).
+  - 포함: 설계 · 준비 · PLAN 판정 · RESULT 판정 원문 · PLAN · 결과서 · 기반 문서 3곳 · PROGRAM_TRUTH · STATE · BACKLOG.
+  - push 실측: `50a728df..9a0859d3  main -> main` · 그 뒤 `origin/main` = `9a0859d3`.
+  - 이 종료 기록도 문서만의 커밋으로 main 에 이어 붙인다. 그 커밋 번호는 이 문서에 적지 않는다(자기 참조 · `git log` 로 확인).
+- **로컬 연구 브랜치**: `research/poc6-10-local` · 구현 커밋 `6779a31c`.
+  - 부모는 `9a0859d3` 이다. 따라서 base `50a728df` 와 공개 문서도 함께 참조한다.
+  - 코드 12파일: app/reference_trend 7 · scripts/run_reference_trend.py · 시험 3 · requirements-research.txt.
+  - 원격 연결이 없다(`git branch -vv` 에 upstream 없음). 원격에 올리지 않는다.
+- **분리 확인(실측)**:
+  - `git merge-base --is-ancestor 6779a31c main` → 조상 아님(공개 main 이력에 연구 코드 커밋 없음).
+  - main 작업 트리에는 연구 코드가 없다. git 이 추적하지 않는 컴파일 캐시 `app/reference_trend/__pycache__/` 는 남아 있다.
+    - 실행 영향은 없다(원본 소스 없이는 import 되지 않음).
+    - 파일 삭제 승인 범위 밖이라 그대로 두었다.
+- **코드 · 산출물 무변경 확인**: 공식 protocol `code.sha256` 17파일이 같다.
+  - 12파일 = 커밋 `6779a31c` 의 내용, 재사용 5파일 = main 작업 트리다.
+  - 공식 8산출물(PC_ONLY · gitignored)은 그대로다. report.md `9c644e57…23bd` · report.json `3cae49f0…3031`.
+- **미래 검산**: `git switch research/poc6-10-local` 뒤 연구 의존성 설치(`requirements-research.txt`) → `python scripts/run_reference_trend.py verify`(고정 봉인 입력 · 실행 ID `20261026T043938020344Z_104cf57b`).
+  - main 에서는 이 CLI 를 제공하지 않는다.
+- **하지 않은 것**:
+  - 연구 코드 공개 push · main 에 연구 코드 커밋을 merge 한 뒤 삭제하는 방식.
+  - 라이선스 결합 범위 해결 선언 · 재라이선스.
+  - OCI 업로드 · cron · 키 · 화면 · 운영 변경.
+  - 추가 학습 · 공식 재실행 · 전체 회귀 · 별도 handoff.
+- **가설 마무리(설계자 RESULT 판정 §6)**: 고정 EMA20/60 · 주간 5슬롯 · 주중 이탈 구조는 사전 가격지수 사례 미관측으로 닫는다.
+  - 같은 자료에서 EMA · 종목 · 필터 · 비용 · 기준을 바꿔 합격을 찾는 후속은 자동으로 열지 않는다.
+  - 가격/신호 · 거래/현금 연결 · 비용 · 검산 구조와 공식 음성 결과는 비교 근거로 보존한다.
+  - 05 보관 · 06 전향 기록/월별 학습 · Q6 OPEN · 운영 ML 미승격 · `CURRENT_DEPLOYABLE_ML_MODEL=none` 을 유지한다.
+  - #3 · #55 · #57 · #62 는 미완료로 유지한다.

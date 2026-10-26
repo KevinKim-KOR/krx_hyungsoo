@@ -5,7 +5,7 @@
 ```text
 STATUS   = PLAN 제출(2026-10-26) · 질문 7 + 사용자 승인 1(§7) → 설계자 PASS(2026-10-26 · 보완 반영 = §8 · 재제출 없음)
            → 설치 사용자 승인(2026-10-26) → 엔진 격리 실증 → 구현 · 독립 검토 반영 · 변이 64종 → 공식 6조합 1회 · verify OK(2026-10-26)
-           → 검증자 r1 VERIFIED(2026-10-26) → 설계자 RESULT PASS(2026-10-26 · NO_REFERENCE_CASE 수용) → (나) 연구 코드 로컬 전용 브랜치 `research/poc6-10-local` · 공개 main 문서만(사용자 승인 2026-10-26) · 공개 = (나) 연구 코드 로컬 전용 · 문서만 공개(사용자 선택 2026-10-26 · RESULT 판정 §4 · §5 가 §8 '공개 조건 미결정이면 종료 아님'을 보완) · 결과서 docs/ai_result/POC6/POC6-10_REFERENCE_WEEKLY_TREND_BASELINE_RESULT.md
+           → 검증자 r1 VERIFIED(2026-10-26) → 설계자 RESULT PASS(2026-10-26 · NO_REFERENCE_CASE 수용) → IMPLEMENTED_VERIFIED_CLOSED(2026-10-26 · CODE_DISTRIBUTION LOCAL_ONLY = 로컬 연구 브랜치 `research/poc6-10-local` 구현 커밋 6779a31c(원격 없음) · PUBLICATION DOCS_ONLY = 공개 문서 커밋 9a0859d3 push · PC 전용) · 공개 = (나) 연구 코드 로컬 전용 · 문서만 공개(사용자 선택 2026-10-26 · RESULT 판정 §4 · §5 가 §8 '공개 조건 미결정이면 종료 아님'을 보완) · 결과서 docs/ai_result/POC6/POC6-10_REFERENCE_WEEKLY_TREND_BASELINE_RESULT.md
 DECISION = docs/ai_design/POC6/POC6-10_REFERENCE_WEEKLY_TREND_BASELINE_PLAN_DECISION_2026-10-26.md
 DESIGN   = docs/ai_design/POC6/POC6-10_REFERENCE_WEEKLY_TREND_BASELINE_DESIGN_V1.md
 조사     = 봉인 판 읽기 전용(mode=ro&immutable=1) · 해시 · 날짜 · 개수 · 원시 OHLC 관계만(저장소 밖 임시 스크립트)
