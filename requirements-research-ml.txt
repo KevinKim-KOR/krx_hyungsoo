@@ -1,0 +1,7 @@
+# POC6-11 연구 전용(PC .venv) — 운영 requirements.txt · OCI · GPU 환경과 무관.
+# 설치: uv pip install --python .venv/bin/python --require-hashes --no-deps -r requirements-research-ml.txt
+# macOS arm64 휠은 libomp(Homebrew `brew install libomp`)가 필요하다(PLAN §6 · 판정 §2).
+# 의존(numpy · scipy · narwhals)은 이미 설치된 판을 쓰고 갱신하지 않는다(--no-deps).
+# LightGBM — MIT License (https://github.com/lightgbm-org/LightGBM/blob/main/LICENSE)
+lightgbm==4.7.0 \
+    --hash=sha256:129535462686f274df179133643118c5c5c5667167fe6c3a28d955f0b3c8e868
