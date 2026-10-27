@@ -7,7 +7,7 @@ STATUS   = PLAN 제출(2026-10-26) · 질문 4(§5 · Q1 = 환경 차단 · Q2 =
            → 설치 사용자 승인 · 설치(2026-10-27) → 구현 · 공식 실행 1회 · verify OK → RESULT 제출(검증자 대기)
            → 검증 r1 ~ r5 · 정정 실행 4회(RESULT §4-5 ~ §4-8 · §11 ~ §15) → 설계자 검증 범위 · 실행 보완 판정(2026-10-27 · 반영 = §7)
            → 검증자 r5 보충 VERIFIED(RESULT §16) → 설계자 최종 RESULT PASS(2026-10-27 · RESULT §17 · H1 = PRICE_GAIN_NOT_SHOWN
-           · NOT_CANDIDATE · 운영 미채택) → 사용자 승인 커밋 · push → 종료 기록
+           · NOT_CANDIDATE · 운영 미채택) → 사용자 승인 커밋 · push(구현 커밋 549af63c) → IMPLEMENTED_VERIFIED_CLOSED(2026-10-27 · RESULT §17-4)
 RESULT   = docs/ai_result/POC6/POC6-11_WEEKLY_ETF_RELATIVE_RETURN_SELECTION_RESULT.md
 DECISION = docs/ai_design/POC6/POC6-11_WEEKLY_ETF_RELATIVE_RETURN_SELECTION_PLAN_DECISION_2026-10-26.md(PLAN 판정 · §6)
            docs/ai_design/POC6/POC6-11_VERIFICATION_SCOPE_AND_EXECUTION_AMENDMENT_DECISION_2026-10-27.md(검증 범위 · 실행 보완 판정 · §7)
