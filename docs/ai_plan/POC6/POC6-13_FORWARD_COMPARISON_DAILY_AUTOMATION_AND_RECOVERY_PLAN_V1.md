@@ -6,9 +6,10 @@
 STATUS   = PLAN 제출(2026-10-28 · 설계 §10 다섯 묶음 · 질문 3)
            → 설계자 PASS_WITH_REQUIRED_CORRECTIONS(2026-10-28 · Q1 = C 전체를 사용자 소유 다른 물리 저장소로 · Q2 = (b) · Q3 = 활성화 전 확인)
            → 판정 반영 = 이 문서 본문 정정 + §7(재제출 없음) → 격리 구현 → 검증자 r1 · r2 REJECTED → 정정 → r3 VERIFIED
-           → 설계자 RESULT PASS(V1.1 · 2026-10-29 · …_RESULT_DECISION_2026-10-29.md) · 맥북 보조 A/B 설치됨(2026-10-29) · 첫 정기 실행 확인 대기 · C 목적 기기 PC 확정/연결 준비 대기
+           → 설계자 RESULT PASS(V1.1 · 2026-10-29 · …_RESULT_DECISION_2026-10-29.md) · 맥북 보조 A/B 설치됨(2026-10-29) · 첫 정기 실행 확인 대기 · C 목적 기기 PC 확정(→ 아래 줄에서 완료)
            → C 별도 PC 연결 보완 계획 §8(윈도우 공유 폴더 · SMB 한 가지 · 질문 2) → 설계자 PASS_WITH_REQUIRED_CORRECTIONS(2026-10-29 · §8-6)
-           → C 보완 구현 · 변경분 시험(결과서 §15) → 검증자 변경분 REJECTED(C-F1 · 결과서 §16) → 정정(결과서 §15-6) → 재확인 대기
+           → C 보완 구현 · 변경분 시험(결과서 §15) → 검증자 변경분 REJECTED(C-F1 · 결과서 §16) → 정정(결과서 §15-6) → C r2 VERIFIED(결과서 §17)
+           → 사용자 승인(2026-10-30) · 구현 커밋 941044d9 push → 실제 PC 사본 · 해제 · 재연결 · RESTORE_VERIFIED(결과서 §15-7) = C 완료
 DESIGN   = docs/ai_design/POC6/POC6-13_FORWARD_COMPARISON_DAILY_AUTOMATION_AND_RECOVERY_DESIGN_V1.md
 DECISION = docs/ai_design/POC6/POC6-13_FORWARD_COMPARISON_DAILY_AUTOMATION_AND_RECOVERY_PLAN_DECISION_2026-10-28.md
 조사     = 맥북 읽기(OS · 파이썬 · 시간대 · 전원 설정 · launchd · crontab) · 06 / 05 코드와 기존 06 산출물 읽기

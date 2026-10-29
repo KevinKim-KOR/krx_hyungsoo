@@ -1,6 +1,6 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-10-29 (**`POC6-13` 전향 비교 정기 실행 · 연구 증거 별도 보관 — 설계자 PLAN 판정 PASS_WITH_REQUIRED_CORRECTIONS(Q1 = C 전체 외장 장치 · 봉인 DB OCI 미전송 유지 · Q2 = 업로드 작업당 OCI 목록 1회 · Q3 = 활성화 전 확인) → 격리 구현 · 시험 · 독립 검토 1회 반영 → 검증자 r1 · r2 REJECTED → 정정 → 검증자 r3 VERIFIED(격리 구현 범위) → 설계자 RESULT PASS(V1.1 · 2026-10-29) · 맥북 보조 A/B 설치됨(2026-10-29) · 첫 정기 실행 확인 대기 · C 목적 기기 PC 확정/연결 준비 대기 · 맥북 LaunchAgent 설치됨(2026-10-29 20:54 · 사용자 승인) · 첫 정기 실행 확인 대기 · C 쓰기 0** · `POC6-12` = HOLD_SOURCE_CONFIRMATION · 원천 확인 1회 완료 · SEIBro API 가입 = 사업자등록번호 필요(사용자 10-29) · 설계자 판단 대기 · 06 전향 D = 10-28 결측 · 아래 POC6 칸)
+최종 업데이트: 2026-10-29 (**`POC6-13` 전향 비교 정기 실행 · 연구 증거 별도 보관 — 설계자 PLAN 판정 PASS_WITH_REQUIRED_CORRECTIONS(Q1 = C 전체 외장 장치 · 봉인 DB OCI 미전송 유지 · Q2 = 업로드 작업당 OCI 목록 1회 · Q3 = 활성화 전 확인) → 격리 구현 · 시험 · 독립 검토 1회 반영 → 검증자 r1 · r2 REJECTED → 정정 → 검증자 r3 VERIFIED(격리 구현 범위) → 설계자 RESULT PASS(V1.1 · 2026-10-29) · 맥북 보조 A/B 설치됨(2026-10-29) · 첫 정기 실행 확인 대기 · C 별도 PC 사본 · 복원 확인 완료(2026-10-30 · 결과서 §15-7) · 맥북 LaunchAgent 설치됨(2026-10-29 20:54 · 사용자 승인) · 첫 정기 실행 확인 대기 · C 별도 PC 사본 완료** · `POC6-12` = HOLD_SOURCE_CONFIRMATION · 원천 확인 1회 완료 · SEIBro API 가입 = 사업자등록번호 필요(사용자 10-29) · 설계자 판단 대기 · 06 전향 D = 10-28 결측 · 아래 POC6 칸)
 
 ## POC6 — 시장 흐름 통합 · ML 고도화 (PC · OCI·PUSH 영향 0)
 
@@ -118,15 +118,15 @@ POC6-12  ETF 분배 · 총수익 자료 검증 = PLAN 제출 → 설계자 HOLD_
 POC6-13  전향 비교 정기 실행 · 연구 증거 별도 보관 = PLAN → 설계자 PASS_WITH_REQUIRED_CORRECTIONS(2026-10-28 · Q1 = C 전체를 사용자 소유 다른 물리 저장소 ·
                봉인 DB OCI 미전송 계약 유지 · Q2 = 업로드 작업당 OCI 목록 1회 · Q3 = 활성화 전 가동 여건 확인) → 격리 구현 · 시험 · 독립 검토 1회 반영
                → 검증자 r1 REJECTED(F1 ~ F4) → 정정 → r2 REJECTED(F3 외장 사본 파일 링크 · F4 조회 오류 = 해제 OK 잔여) → 정정
-               · 독립 검토 같은 종류 6건(외장끼리 해시 비교 · 원본 상위 링크 · 기록 읽기 오류 · git 실패 · 알림 실패 · caffeinate) 정정 → 검증자 r3 VERIFIED(2026-10-29 · 격리 구현 범위 · 결과서 §12) → 설계자 RESULT PASS(V1.1 · 2026-10-29) · 맥북 보조 A/B 설치됨(2026-10-29) · 첫 정기 실행 확인 대기 · C 목적 기기 PC 확정/연결 준비 대기(결과서 §13)
+               · 독립 검토 같은 종류 6건(외장끼리 해시 비교 · 원본 상위 링크 · 기록 읽기 오류 · git 실패 · 알림 실패 · caffeinate) 정정 → 검증자 r3 VERIFIED(2026-10-29 · 격리 구현 범위 · 결과서 §12) → 설계자 RESULT PASS(V1.1 · 2026-10-29) · 맥북 보조 A/B 설치됨(2026-10-29) · 첫 정기 실행 확인 대기 · C 별도 PC 사본 · 복원 확인 완료(2026-10-30 · 결과서 §15-7)(결과서 §13)
          설계 docs/ai_design/POC6/POC6-13_FORWARD_COMPARISON_DAILY_AUTOMATION_AND_RECOVERY_DESIGN_V1.md · 판정 …_PLAN_DECISION_2026-10-28.md · PLAN …_PLAN_V1.md(§7)
          결과서 docs/ai_result/POC6/POC6-13_FORWARD_COMPARISON_DAILY_AUTOMATION_AND_RECOVERY_RESULT.md
-         맥북 LaunchAgent 설치됨(2026-10-29 20:54 · 사용자 승인) · 구현 커밋 e0a94175 push → 맥북이 10:00 ~ 15:20 에 깨어 있는 날은 자동 · 아닌 날은 수동 run --pull 1회 · C 쓰기 0
+         맥북 LaunchAgent 설치됨(2026-10-29 20:54 · 사용자 승인) · 구현 커밋 e0a94175 push → 맥북이 10:00 ~ 15:20 에 깨어 있는 날은 자동 · 아닌 날은 수동 run --pull 1회
          사용자 답(2026-10-28): 평일 사용 가능 · 장담 불가(매일 기록 보장 아님) · 외장 장치 없음 · 'PC 2TB' 언급(다른 컴퓨터면 연결 · 비공유 범위 별도 확인) → C = WAITING_TARGET
          사용자 답(2026-10-29): 백업은 PC(2TB · 맥북 내장 494GB 와 다른 컴퓨터)에만 → 설계자 V1.1 §5: C 목적 기기 = 별도 PC 확정 · 백업 크기 ≈ 2.4GB
          사용자 답(2026-10-29): PC = 윈도우 · 유선 랜 · 맥북 = 와이파이 · 잠깐 같은 공유기 연결 가능 → 보완 계획 = PLAN §8(윈도우 공유 폴더 SMB 한 가지) → 설계자 PASS_WITH_REQUIRED_CORRECTIONS(2026-10-29 · …_PC_SMB_BACKUP_SUPPLEMENT_DECISION_2026-10-29.md · PLAN §8-6)
                → `--pc-share` 구현 · 변경분 시험(결과서 §15) → 검증자 변경분 REJECTED(C-F1 = 이름 바꾼 뒤 동기화 실패 사본이 verify 에서 완료로 · 결과서 §16)
-               → 정정(되돌리기 · verify = 마지막 복사 기록 COPY_HASH_OK 일 때만 · 결과서 §15-6) · 백업 시험 81 · 관련 298 passed → 재확인 대기 · 실제 PC 연결 · 쓰기 0(승인 전)
+               → 정정(되돌리기 · verify = 마지막 복사 기록 COPY_HASH_OK 일 때만 · 결과서 §15-6) · 백업 시험 81 · 관련 298 passed → C r2 VERIFIED(결과서 §17) → 사용자 승인(10-30) · 구현 커밋 941044d9 push → 실제 PC 사본 COPY_HASH_OK · 해제 · 재연결 · RESTORE_VERIFIED(결과서 §15-7) = C 완료
          OCI 일별 추론 = 읽기 전용 사실 확인 완료(결과서 부록 A · 판정 없음 · OCI 954MB · 스왑 없음 · scikit-learn · torch 미설치 · 맥북 참고 추론 RSS 310MiB)
          다음 = 10-30 10:05 첫 정기 실행 확인(D = 10-29) → 결과서 §14-4 · 종료 기록 커밋 · push(승인됨)
 POC6 다음  방향 문서 docs/ai_design/POC6/POC6_INVESTMENT_DECISION_AND_ML_DIRECTION_ROADMAP_2026-10-26.md(설계자 V1 · 2026-10-26 · handoff 아님)
