@@ -235,6 +235,9 @@ state/ml/research/
 # POC6-05 연구 증거 보관소(OCI 원본 · PC 사본 · 쓰기 전용 · 내용 해시 object · 완료 manifest).
 state/ml/evidence/
 
+# POC6-13 전향 비교 정기 실행 · 보관 · 백업 상태(맥북 전용 · 시도 기록 · latest · 백업 단계 기록).
+state/ml/operations/
+
 # ML evidence refresh job status (2026-06-11 UI 안전실행) — UI 실행마다 갱신, 운영 artifact.
 state/ml/ml_job_status_latest.json
 

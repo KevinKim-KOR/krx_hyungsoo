@@ -275,7 +275,15 @@ def pull(
     }
 
 
-def upload_research(*, root: Path, remote: Remote, run_id: str, now: datetime) -> dict:
+def upload_research(
+    *,
+    root: Path,
+    remote: Remote,
+    run_id: str,
+    now: datetime,
+    listing: Optional[tuple[list[dict], list[str]]] = None,
+) -> dict:
+    """묶음 하나를 OCI 로 올린다. `listing` 을 주면 그 원격 완료 목록을 쓰고, 없으면 스스로 조회한다."""
     runs, _ = store.list_runs(root)
     run = next((r for r in runs if r.run_id == run_id), None)
     if run is None or run.manifest["kind"] not in UPLOAD_KINDS:
@@ -283,7 +291,8 @@ def upload_research(*, root: Path, remote: Remote, run_id: str, now: datetime) -
     bad_here = store.damaged_objects(root, run.manifest)
     if bad_here:
         raise store.EvidenceError(f"PC 사본 손상 · 없음 {len(bad_here)} — 올리지 않음")
-    remote_rows, problems = _remote_list(remote)
+    remote_rows, problems = _remote_list(remote) if listing is None else listing
+    problems = list(problems)
     there = next((r for r in remote_rows if r["run_id"] == run_id), None)
     if there is not None and there["manifest_sha256"] != run.manifest_sha256:
         return {
@@ -329,6 +338,61 @@ def upload_research(*, root: Path, remote: Remote, run_id: str, now: datetime) -
         "accept": result,
         "problems": problems,
     }
+
+
+def upload_research_many(
+    *, root: Path, remote: Remote, run_ids: list[str], now: datetime
+) -> dict[str, dict]:
+    """업로드 작업 한 번 = 원격 완료 목록 1회 조회 · 작업 안에서 재사용(POC6-13 PLAN 판정 §3).
+
+    묶음마다 `upload_research` 의 판정(일치 · 없음 · 손상 · 충돌 · accept-upload)을 그대로 거친다.
+    원격 accept 가 OK 인 묶음만 작업 안 목록에 반영한다(실패는 넣지 않음 · 다음 호출은 새로 조회).
+    목록 조회 실패는 예외 그대로(빈 목록으로 바꾸지 않음). 올릴 묶음이 없으면 조회도 하지 않는다.
+    한 묶음의 예외(EvidenceError)는 그 묶음만 FAILED 로 두고 나머지를 계속 올린 뒤, 끝에서 예외로 알린다
+    (호출부 계약 = 예외면 CHECK_REQUIRED · 묶음별 결과는 예외의 `results`).
+    """
+    if not run_ids:
+        return {}
+    rows, problems = _remote_list(remote)
+    rows = list(rows)
+    local = {r.run_id: r for r in store.list_runs(root)[0]}
+    out: dict[str, dict] = {}
+    failed: dict[str, str] = {}
+    for rid in run_ids:
+        try:
+            rep = upload_research(
+                root=root, remote=remote, run_id=rid, now=now, listing=(rows, problems)
+            )
+        except (
+            store.EvidenceError
+        ) as e:  # 한 묶음 실패가 뒤 묶음을 막지 않게 — 끝에서 알린다
+            failed[rid] = str(e)
+            out[rid] = {"status": "FAILED", "error": str(e)}
+            continue
+        out[rid] = rep
+        acc = rep.get("accept") or {}
+        if (
+            rep.get("status") == "OK"
+            and acc.get("status") == "OK"
+            and acc.get("run_id") == rid
+            and acc.get("manifest_sha256") == local[rid].manifest_sha256
+        ):
+            rows = [r for r in rows if r["run_id"] != rid] + [
+                {
+                    "run_id": rid,
+                    "manifest_sha256": acc["manifest_sha256"],
+                    "objects": store.manifest_object_shas(local[rid].manifest),
+                    "damaged": [],
+                }
+            ]
+    if (
+        failed
+    ):  # 기존 계약 그대로 예외(CLI = CHECK_REQUIRED) · 묶음별 결과는 예외에 붙여 둔다
+        first = "; ".join(f"{k}: {v}" for k, v in list(failed.items())[:3])
+        err = store.EvidenceError(f"업로드 실패 {len(failed)}/{len(run_ids)} — {first}")
+        err.results = out  # type: ignore[attr-defined]
+        raise err
+    return out
 
 
 def _last_result(out: bytes) -> Optional[dict]:

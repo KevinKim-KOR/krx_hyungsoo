@@ -51,11 +51,12 @@ def _emit(result: dict) -> int:
     return RC.get(result.get("status", "FAILED"), 1)
 
 
-def _upload(ev: Path, run_id: str) -> dict:
+def _upload(ev: Path, run_ids: list[str]) -> dict:
+    """업로드 작업 한 번에 OCI 목록 1회(POC6-13 PLAN 판정 §3 · 묶음별 판정은 기존 그대로)."""
     from app.ml_evidence import transfer
 
-    return transfer.upload_research(
-        root=ev, remote=transfer.default_remote(), run_id=run_id, now=store.utc_now()
+    return transfer.upload_research_many(
+        root=ev, remote=transfer.default_remote(), run_ids=run_ids, now=store.utc_now()
     )
 
 
@@ -75,7 +76,7 @@ def _archive(root: Path, ev: Path, upload: bool, commit: Optional[str]) -> dict:
     }
     if upload:
         _, ids = archive.registered(ev)
-        out["uploads"] = {rid: _upload(ev, rid) for rid in ids}
+        out["uploads"] = _upload(ev, ids)
     out["local"] = archive.local_state(root, ev)
     return out
 
