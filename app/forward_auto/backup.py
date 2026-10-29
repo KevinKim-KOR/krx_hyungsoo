@@ -50,29 +50,44 @@ BACKUP_ID = re.compile(r"^backup_\d{8}T\d{6}Z_[0-9a-f]{8}$")
 # ── 쓰기 · 대조 ────────────────────────────────────────────────────────────
 
 
-def _fsync_full(fd: int) -> None:
-    """macOS 는 fsync 가 장치 캐시까지 비우지 않는다 — 가능하면 F_FULLFSYNC."""
+# F_FULLFSYNC 를 그 파일 시스템이 '지원하지 않음'으로 답할 때만 fsync 로 대신한다(SMB 등 · 보완 판정 §3).
+# 입출력 오류 · 연결 끊김 · 권한 오류는 대신하지 않고 그대로 실패로 올린다.
+UNSUPPORTED = {errno.ENOTSUP, errno.EOPNOTSUPP, errno.EINVAL, errno.ENOTTY}
+
+
+def _fsync_full(fd: int) -> str:
+    """macOS 는 fsync 가 장치 캐시까지 비우지 않는다 — 가능하면 F_FULLFSYNC. 쓴 방식을 돌려준다."""
     try:
         fcntl.fcntl(fd, fcntl.F_FULLFSYNC)
-    except (AttributeError, OSError):
-        os.fsync(fd)
+        return "F_FULLFSYNC"
+    except AttributeError:
+        pass
+    except OSError as e:
+        if e.errno not in UNSUPPORTED:
+            raise
+    os.fsync(fd)
+    return "fsync"
 
 
-def _sync_all(folder: Path) -> None:
-    """목적지 칸의 모든 파일과 폴더 자체를 장치까지 동기화(이름 바꾸기 전)."""
+def _sync_all(folder: Path) -> dict[str, int]:
+    """목적지 칸의 모든 파일과 폴더 자체를 장치까지 동기화(이름 바꾸기 전) — 방식별 개수."""
+    used: dict[str, int] = {}
     for p in sorted(folder.iterdir()):
         fd = os.open(p, os.O_RDONLY)
         try:
-            _fsync_full(fd)
+            k = _fsync_full(fd)
         finally:
             os.close(fd)
-    _fsync_dir(folder)
+        used[k] = used.get(k, 0) + 1
+    k = _fsync_dir(folder)
+    used[k] = used.get(k, 0) + 1
+    return used
 
 
-def _fsync_dir(folder: Path) -> None:
+def _fsync_dir(folder: Path) -> str:
     fd = os.open(folder, os.O_RDONLY)
     try:
-        _fsync_full(fd)
+        return _fsync_full(fd)
     finally:
         os.close(fd)
 
@@ -192,6 +207,7 @@ def run(
     git: Callable = SRC.git_bytes,
     git_ok: Callable = SRC.git_rc,
     awake_fn: Optional[Callable] = None,
+    pc_share: Optional[str] = None,
 ) -> dict[str, Any]:
     from app.forward_auto.runner import awake
 
@@ -199,7 +215,10 @@ def run(
     now = clock()
     if not S.backup_allowed(now):
         return {"status": "REFUSED", "reason": "10:00 ~ 15:45 KST 에는 시작하지 않음"}
-    dev = SRC.device_check(target, repo, disk_info)
+    try:
+        dev = SRC.target_check(target, repo, pc_share, disk_info)
+    except SRC.BackupError as e:
+        return {"status": "REFUSED", "reason": str(e)}
     if not dev["ok"]:
         return {"status": "WAITING_TARGET", "reason": dev["reason"]}
     inv = SRC.inventory(repo)
@@ -221,18 +240,21 @@ def run(
         if not ok:
             return {"status": "REFUSED", "reason": "다른 백업 실행 중"}
         _record(paths.ops, bid, "COPY_INCOMPLETE", now, detail="복사 중", target=dev)
+        renamed = False
         try:
             with (
                 awake_fn or awake
             )() as aw:  # 쓰기 · 대조 · 이름 바꾸기 전체가 작업 생애
                 out = _write(repo, inv, sealed, part, seal, git, git_ok, t0)
-                _sync_all(part)
+                sync = _sync_all(part)
                 msha = _check_written(part, out, repo, git_ok, ext_dev)
                 os.rename(part, final)
-                _fsync_dir(final.parent)
+                renamed = True
+                sync["rename_dir:" + _fsync_dir(final.parent)] = 1
         except (
             Exception
         ) as e:  # noqa: BLE001 — .partial 은 남기고(정상 목록 아님) 사유 기록
+            extra = {"after_rename": _undo_rename(final, part)} if renamed else {}
             _record(
                 paths.ops,
                 bid,
@@ -240,11 +262,13 @@ def run(
                 clock(),
                 detail=f"{type(e).__name__}: {str(e)[:300]}",
                 target=dev,
+                **extra,
             )
             return {
                 "status": "COPY_INCOMPLETE",
                 "backup_id": bid,
                 "error": f"{type(e).__name__}: {e}",
+                **extra,
             }
         _record(
             paths.ops,
@@ -255,13 +279,47 @@ def run(
             target=dev,
             manifest_sha256=msha,
             awake=aw,
+            sync=sync,
         )
     return {
         "status": "COPY_HASH_OK",
         "backup_id": bid,
         "path": str(final),
         "manifest_sha256": msha,
+        "sync": sync,
     }
+
+
+def _undo_rename(final: Path, part: Path) -> str:
+    """이름 바꾼 뒤 실패(예: 부모 폴더 동기화 오류) — 완료 이름을 .partial 로 되돌린다(검증자 C-F1).
+    되돌리지 못해도 COPY_HASH_OK 기록이 없으므로 verify 는 복원 확인 대상으로 받지 않는다."""
+    try:
+        os.rename(final, part)
+        return "이름 바꾼 뒤 실패 → .partial 로 되돌림"
+    except OSError as e:
+        return (
+            f"이름 바꾼 뒤 실패 · .partial 로 되돌리지 못함({type(e).__name__}) — 최종 이름 폴더가 "
+            "남았지만 COPY_HASH_OK 기록이 없어 복원 확인 대상 아님"
+        )
+
+
+def _copy_refusal(ops: Path, bid: str) -> Optional[str]:
+    """복원 확인 전제 — 그 id 의 마지막 복사 단계 기록(순번 기준)이 COPY_HASH_OK 여야 한다. 폴더가
+    있다는 사실만으로 받지 않는다(검증자 C-F1). 기록 이름만 본다(내용 읽기 · 대조는 `_recorded_manifest`)."""
+    steps = []
+    for f in (
+        (ops / "backup").glob(f"{bid}.*.json") if (ops / "backup").is_dir() else []
+    ):
+        parts = f.name.removeprefix(f"{bid}.").split(".")
+        if len(parts) == 3 and parts[0].isdigit():
+            if parts[1] in ("COPY_INCOMPLETE", "COPY_HASH_OK"):
+                steps.append((int(parts[0]), parts[1]))
+    if not steps:
+        return "복사 기록 없음 — 복원 확인 대상 아님"
+    last = max(steps)[1]
+    if last != "COPY_HASH_OK":
+        return f"마지막 복사 기록 = {last}(COPY_HASH_OK 아님) — 복원 확인 대상 아님"
+    return None
 
 
 def _limit(t0: float) -> None:
@@ -427,8 +485,10 @@ def verify(
     git_ok: Callable = SRC.git_rc,
     awake_fn: Optional[Callable] = None,
     keep: bool = False,
+    pc_share: Optional[str] = None,
 ) -> dict[str, Any]:
-    """외장 최종 폴더 → 맥북 빈 임시 칸 → 풀기 · 해시 · 커밋 7개(RESTORE_VERIFIED). 라이브 위로 풀지 않는다."""
+    """외장 · PC 공유 최종 폴더 → 맥북 빈 임시 칸 → 풀기 · 해시 · 커밋 7개(RESTORE_VERIFIED).
+    라이브 위로 풀지 않는다. 시작할 때 목적지(장치 또는 공유 연결)를 다시 확인한다."""
     from app.forward_auto.runner import awake
 
     paths = ST.Paths.default(repo)
@@ -436,9 +496,13 @@ def verify(
         return {"status": "REFUSED", "reason": "backup_id 형식 아님"}
     if not S.backup_allowed(clock()):
         return {"status": "REFUSED", "reason": "10:00 ~ 15:45 KST 에는 시작하지 않음"}
-    dev = SRC.device_check(target, repo, disk_info)
+    try:
+        dev = SRC.target_check(target, repo, pc_share, disk_info)
+    except SRC.BackupError as e:
+        return {"status": "REFUSED", "reason": str(e)}
     if not dev["ok"]:
-        return {"status": "REFUSED", "reason": f"목적지 장치 아님: {dev['reason']}"}
+        what = "PC 공유 아님" if pc_share else "목적지 장치 아님"
+        return {"status": "REFUSED", "reason": f"{what}: {dev['reason']}"}
     try:
         final = _dest(target) / backup_id
     except SRC.BackupError as e:
@@ -455,16 +519,23 @@ def verify(
     with store.file_lock(paths.ops / ".backup.lock", wait_s=0.0) as ok:
         if not ok:
             return {"status": "REFUSED", "reason": "다른 백업 실행 중"}
+        why = _copy_refusal(paths.ops, backup_id)
+        if why:
+            return {"status": "REFUSED", "reason": why}
         restore.mkdir(parents=True)
         try:
             with (awake_fn or awake)():
                 with _open_ext(final / "manifest.json", ext_dev) as fh:
                     mbytes = fh.read()
                 rec = _recorded_manifest(paths.ops, backup_id)
-                if rec is not None and store.sha256_bytes(mbytes) != rec:
+                if (
+                    rec is None
+                ):  # 위 확인 뒤 기록이 사라진 경우 — 대조 없이 진행하지 않음
+                    raise SRC.BackupError("복사 완료 기록 없음")
+                if store.sha256_bytes(mbytes) != rec:
                     raise SRC.BackupError("외장 manifest 가 복사 때 기록한 해시와 다름")
                 res = _restore(final, restore, git_ok, mbytes, ext_dev)
-                res["manifest_recorded"] = rec is not None
+                res["manifest_recorded"] = True
         except Exception as e:  # noqa: BLE001
             res = {"ok": False, "error": f"{type(e).__name__}: {str(e)[:300]}"}
         finally:
@@ -483,6 +554,7 @@ def verify(
             detail=res.get("error")
             or "바이트 복원 · 커밋 확인 완료(완전 재현 보장 아님)",
             result=res,
+            target=dev,
         )
     return {"status": stage, "backup_id": backup_id, **res}
 

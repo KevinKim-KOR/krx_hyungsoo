@@ -7,9 +7,11 @@ STATUS        = IMPLEMENTED_ISOLATED(2026-10-28) — 격리 구현 · 시험 →
                 → 개발자 정정(§4-3 · 같은 종류 포함) → 변이 4종 · 전체 회귀 → 검증자 r2 REJECTED(§11 · F3/F4 잔여 경로)
                 → 개발자 정정(§4-3 · 외장 사본 파일 경계 · launchctl 응답 3갈래) → 독립 검토 1회(§4-4 · 같은 종류 6건 재현) → 정정
                 → 변이 22종 · 전체 회귀(§8) → 검증자 r3 VERIFIED(격리 구현 범위 · §12)
-                → 설계자 RESULT PASS(V1.1 · 2026-10-29 · §13) · 맥북 보조 A/B 활성화 승인/확인 대기 · C 목적 기기 PC 확정/연결 준비 대기
-                실제 설치(LaunchAgent) · 자동 업로드 활성화 · 외장 장치 쓰기 · 커밋 = 사용자 승인 전(모두 0)
+                → 설계자 RESULT PASS(V1.1 · 2026-10-29 · §13) · 맥북 보조 A/B 설치됨(2026-10-29 20:54 · §14) · 첫 정기 실행 확인 대기 · C 목적 기기 PC 확정/연결 준비 대기
+                → C 보완(별도 PC 공유 폴더 · SMB) 판정 PASS_WITH_REQUIRED_CORRECTIONS → 구현 · 변경분 시험(§15) → 검증자 변경분 REJECTED(§16 · C-F1) → 정정(§15-6) → C 보완 r2 VERIFIED(§17 · 격리 구현 범위)
+                사용자 승인(2026-10-29) → 구현 커밋 e0a94175 push · LaunchAgent 설치(§14) · C(별도 PC) 쓰기 0
 VERIFIER      = Codex r3 VERIFIED — r1·r2 독립 재현 10건 · 관련 시험 263건 통과 · 격리 구현 범위(실제 설치·연결·외장 백업 승인 전)
+VERIFIER_C    = Codex C SMB 보완 r2 VERIFIED — C-F1 정정 · 관련 시험 298건 · 독립 대조 6건 통과(§17 · 실제 PC 연결/백업 승인 전)
 STEP_ID       = POC6-13 전향 비교 정기 실행 · 연구 증거 별도 보관
 DESIGN        = docs/ai_design/POC6/POC6-13_FORWARD_COMPARISON_DAILY_AUTOMATION_AND_RECOVERY_DESIGN_V1.md
 DECISION      = docs/ai_design/POC6/POC6-13_FORWARD_COMPARISON_DAILY_AUTOMATION_AND_RECOVERY_PLAN_DECISION_2026-10-28.md
@@ -596,3 +598,280 @@ POC6-12의 원천 존재 확인과 필수 필드/이용 범위 미확인은 유�
 **개발자에게 지금 전달할 결정:** 격리 구현 PASS는 유지한다. 맥북 자동화의 실제 활성화는 기존 §4의 구체적인 승인 범위로 진행할 수 있다. 사용자 설명을 설치 거부·매일 가동 확약·즉시 설치 승인 어느 것으로도 바꾸지 않는다. C는 별도 PC 연결 보완만 준비하고, OCI는 위 읽기 전용 확인만 병행한다. POC6-12 API 보류와 실제 운영 ML 미승격은 그대로다.
 
 [1] [scikit-learn 모델 보관·서빙 환경 설명](https://scikit-learn.org/stable/model_persistence.html). 특정 추론 형식의 채택이나 기존 모델 변환 성공을 확인한 근거는 아니다.
+
+## 14. 실제 반영 기록(RESULT 판정 V1.1 §4 · 개발자)
+
+### 14-1. 사용자 승인(2026-10-29 · 20:5x KST)
+
+§4 승인 묶음을 한 번에 제시했고, 사용자가 ① 커밋 · push → ② 맥북 설치 → ③ 첫 실행 확인 뒤 종료 기록 커밋 · push 를 모두 승인했다. C(별도 PC 백업) 쓰기는 이 승인에 넣지 않았다.
+
+### 14-2. ① 커밋 · push
+
+- 코드 유지 확인: 코드 · 시험 파일의 마지막 수정 = 19:12:16 KST(`backup.py` · `status.py`) < 최종 전체 회귀 시작 19:14:13(§8-2). 그 뒤 바뀐 것은 문서뿐이다.
+- 구현 커밋 `e0a94175`(25파일 · 사용자 handoff · 상태 폴더 · 연구 산출물 제외) → `git push origin main`(`da643ed5..e0a94175`) · 원격과 차이 0 · 로컬 연구 브랜치 `research/poc6-10-local` 은 원격에 없음.
+
+### 14-3. ② 설치(같은 맥북 · 저장소 `.venv` 파이썬)
+
+| 시각(KST) | 확인 | 결과 |
+|---|---|---|
+| 20:53:43 | `install`(dry-run) | DRY_RUN · plist = 자기 Label 1개 · 절대 경로 파이썬 · 스크립트 · 일정 10:05 · 12:05 · 14:35 · 15:25 · RunAtLoad · KeepAlive 없음 · 쓰기 0 |
+| 20:53 | launchd 와 같은 빈 환경(`env -i` · PATH 4개)에서 `ssh -o BatchMode=yes oci-krx true` | 종료 코드 0(비대화형 접속 가능) |
+| 20:54:10 | `install --apply` | OK · bootstrap 종료 코드 0 · 등록 확인 = 올라 있음 · 로그 폴더 있음 · plist 내용 같음 |
+| 20:54 | 설치 순간 tick(RunAtLoad) | launchd `runs = 1` · `last exit code = 0` · RESULT `actions: []`(06 호출 · 업로드 0 · 창 밖) · 예측 AUTO_WINDOW_CLOSED · 알림 1건 요청(REQUESTED_DELIVERY_UNKNOWN · 'D 확인 불가 AUTO_WINDOW_CLOSED') |
+| 20:54 | `status` | 일정 설치됨 · 활성 · 다음 10-30 10:05 · 보관 NOT_TRIED · 미등록 4 · 미확인 묶음 1 · 백업 WAITING_TARGET |
+
+- 만든 것: `~/Library/LaunchAgents/com.krx-hyungsoo.poc6-13.forward-auto.plist` · `state/ml/operations/poc6_13/`(`launchd.log` · `latest.json` · `latest.txt` · `notified.json` · `.auto.lock` · git 제외). 그 밖의 폴더 · 작업 · crontab · 전원 설정 변경 0.
+- 해제: `python scripts/run_forward_auto.py uninstall --apply`('서비스 없음' 확인 뒤에만 plist 삭제).
+
+### 14-4. ③ 첫 정기 실행 확인 — 대기
+
+2026-10-30 10:05 KST 일정(맥북이 깨어 있을 때)에서 D = 10-29 의 입력 수신 · 주 기록 · 마감 전 영수증 · 월별 학습 조건 · B 보관 결과를 확인해 이 절에 적는다.
+
+## 부록 A. OCI 일별 추론 가능성 — 읽기 전용 사실 확인(RESULT 판정 V1.1 §8-3 · 2026-10-29 20:56 ~ 20:59 KST · 약 3분)
+
+OCI 쓰기 · 패키지 설치 · 모델 load/predict · 프로세스 실행 · cron · 운영 역할 변경 0. 맥북 측정은 읽기만(로컬 · 쓰기 0). **가능 · 불가능을 판정하지 않는다.**
+
+### A-1. 06 네 방법의 학습 · 추론 접점(코드 읽기 · `app/forward_compare/models.py`)
+
+| 방법 | 저장 형식 | 추론에 필요한 것 | 판 검사 |
+|---|---|---|---|
+| MEDIAN | `median.json` | 순수 파이썬 | 없음 |
+| RIDGE | `ridge.json`(mean · scale · coef · intercept) | 순수 파이썬 식(`ridge_raw`) | 없음 |
+| HGB | `hgb.joblib`(scikit-learn HistGradientBoosting) | scikit-learn · scipy · joblib · numpy | 학습 때 판과 다르면 ENV_MISMATCH(읽지 않음) |
+| MLP_CPU | `mlp_state.pt` + `mlp_norm.json`(5 → 64 → 32 → 1) | torch | 같음(torch 판) |
+
+- 모델 판 1개 = 6파일 140KB(`training.json` 포함 · 현재 `mv_e926e0661c261324`). 학습 환경 = 맥북 arm64 · Python 3.12.13 · scikit-learn 1.9.0 · numpy 2.4.6 · scipy 1.18.0 · joblib 1.5.3 · torch 2.13.0.
+- 분리 접점: 학습 `models.train`(메모리 모델 + 저장 bytes) ↔ 추론 `models.Loaded`(해시 · 판 확인 뒤 방법별 로드) · `Loaded.predict`. 지금 06 `run` 은 입력 수신 → 성숙 → 학습 결정(월 최대 1회) → 예측 기록 → 공개 확인 영수증을 한 명령으로 묶는다.
+- 특징값 계산 경로(`inputs.py` · `reentry_review.model`)의 외부 패키지 의존은 전수 확인하지 않았다(학습 함수 안의 numpy · scikit-learn import 만 확인).
+
+### A-2. OCI 실측(읽기 전용 SSH 4회 · 20:56 ~ 20:57 KST · 한 번 측정 · 낮 피크 아님)
+
+- CPU x86_64 · AMD EPYC 7551 · 2 vCPU / 메모리 954MB · 그 시각 사용 가능 538MB · **스왑 없음** / 디스크 45G 중 여유 39G / Ubuntu 24.04.4 · load 0.04.
+- 운영 가상환경 `/home/ubuntu/krx_hyungsoo/venv`(402MB) = Python 3.12.3 · numpy 2.4.6 · pandas 2.3.3 · **scikit-learn · scipy · joblib · torch 없음**. 시스템 python3 에도 없음.
+- cron: 평일 08:10 · 09:20 시장 배치 · 08:30 · 09:15 · 09:30 · 10:30 · 11:30 · 12:30(2줄) · 13:30 · 14:30 · 15:20 · 15:40 PUSH runtime · 매일 09:40 증거 수집.
+- OCI `state/ml/evidence` = 42MB(06 입력 묶음 있음) · `state/ml/research` 없음(06 연구 폴더는 PC 에만).
+
+### A-3. 맥북 참고 측정(arm64 macOS · OCI 보증값 아님)
+
+- 06 모델 판 4방법 로드 + 가짜 입력 24행 예측 = 최대 RSS 325,140,480 바이트(약 310MiB) · 2.7초 · 96/96 OK.
+- import 만: numpy 27MiB · `sklearn.ensemble` + joblib 150MiB · torch 199MiB.
+- 특징 계산 · 입력 읽기 · 기록 쓰기 메모리는 넣지 않았다. macOS arm64 와 Linux x86_64 의 RSS 는 다르다.
+
+### A-4. 제안 경로 한 가지와 검증 범위
+
+- **경로**: 학습은 PC(맥북 또는 별도 PC)에서 지금 recipe 그대로 → 모델 판 묶음(06 archive 로 이미 OCI 보관되는 형식) → OCI 의 **추론 전용 명령**이 그 판으로 네 방법 예측 · 기록만 한다. OCI 운영 가상환경과 분리된 별도 가상환경에 학습 판과 같은 판의 scikit-learn · scipy · joblib · threadpoolctl · torch(CPU)를 둔다. 실행 시각은 09:40 수집 뒤 PUSH runtime 과 겹치지 않는 칸이다. 성숙 · 보고 · 학습 예제 편입은 PC 에 남긴다.
+- **먼저 필요한 작은 시험(승인 뒤)**: ① 별도 가상환경 설치 크기 ② 4방법 로드 + 24행 예측의 최대 RSS · 시간(낮 운영 작업이 도는 시간대 여유 포함) ③ 같은 D 의 맥북 기록과 예측값 대조(MEDIAN · RIDGE 는 같은 식 · HGB · MLP 는 arm64 → x86_64 차이의 허용 범위를 미리 정함) ④ arm64 맥북에서 만든 joblib · torch 파일을 x86_64 에서 읽을 수 있는지.
+- 메모리: 그 시각 사용 가능 538MB(한 번 측정)와 맥북 참고 310MiB(추론만)의 차이로는 여유를 단정할 수 없다. 스왑이 없어 초과하면 같은 서버의 PUSH 에 영향이 갈 수 있다.
+
+### A-5. 이 경로가 지금 06 계약과 달라지는 곳
+
+1. **모델 판 · 월별 갱신**: 재학습이 OCI 실행과 분리된다. PC 학습이 늦으면 OCI 는 이전 판으로 계속 예측한다(지금 = '조건을 처음 만족하는 유효 예측 실행에서 재학습'). 늦어질 때의 동작을 정해야 한다.
+2. **환경 판 검사**: 학습(arm64 맥북)과 추론(x86_64 OCI) 환경이 다르다. 지금의 ENV_MISMATCH 는 라이브러리 판만 본다.
+3. **공개 마감 · 영수증**: 지금은 PC 가 만든 기록을 OCI 에 올려 마감 전 공개를 확인한다. OCI 에서 만들면 '공개' = OCI 쓰기 시각이 되어 영수증의 뜻이 바뀐다.
+4. **기록 흐름**: 기록이 OCI 에서 생겨 PC 로 내려오는 반대 흐름이 된다(OCI 에는 06 연구 폴더가 없음).
+5. **특징 계산**: 입력은 OCI 에 이미 있으나 특징 계산 코드의 OCI 실행 의존은 미확인이다(A-1 마지막 줄).
+6. **운영 격리**: 운영 가상환경 · cron · PUSH 와 분리해야 한다(A-4 메모리 줄).
+
+## 15. C 보완 — 별도 PC 윈도우 공유 폴더(SMB) 구현(보완 판정 2026-10-29 · 변경분 · 검증자 REJECTED §16 → C-F1 정정 §15-6 → r2 VERIFIED §17)
+
+판정: `docs/ai_design/POC6/POC6-13_PC_SMB_BACKUP_SUPPLEMENT_DECISION_2026-10-29.md`(PASS_WITH_REQUIRED_CORRECTIONS) · 반영 = PLAN §8-6. 실제 PC 공유 설정 · 연결 · 백업 쓰기 = 0(승인 전).
+
+### 15-1. 바뀐 것
+
+| 파일 | 변경 |
+|---|---|
+| `app/forward_auto/backup_source.py` | `parse_share` · `smb_source` · `mount_table` · `resolve_host` · `own_addresses` · `share_check` · `target_check`(외장 / 공유 분기) · `plan(pc_share=)` |
+| `app/forward_auto/backup.py` | `run` · `verify(pc_share=)` → `target_check` · 승인값 오류 = REFUSED · verify 거부 문구 'PC 공유 아님' · `_fsync_full` 대체 조건을 '지원 안 함' 4종으로 좁힘 · 쓴 방식 기록(`sync`) · 복원 기록에 목적지 정보 · C-F1 정정(§15-6: `_undo_rename` · `_copy_refusal`) |
+| `scripts/run_forward_auto.py` | `backup plan/run/verify --pc-share //서버/공유` 인자 · 전달 |
+| `tests/test_poc6_13_backup.py` | 시험 +35(46 → 81 · C-F1 정정 시험 5 포함) · 복사 기록을 None 으로 우회하던 기존 시험 3개를 '기록까지 함께 변조'로 바꿈(§15-6) |
+
+- 06 · A(tick) · B 경로 코드 변경 0: `git diff e0a94175 -- app/forward_auto/{runner,status,schedule,view,launchd}.py app/forward_compare app/ml_evidence scripts/run_forward_compare.py` = 0줄. CLI 변경은 backup 하위 명령의 인자 · 전달뿐이다. 설치된 LaunchAgent 는 작업 폴더 코드를 쓰므로 10-30 첫 tick 은 이 변경이 들어간 작업 트리에서 돈다(tick 경로 같음).
+
+### 15-2. 판정 §4 경계별 시험
+
+| 경계 | 시험 |
+|---|---|
+| 목적지 | 승인 서버 · 공유 통과 · 별칭(같은 주소) 통과 / 다른 공유 · 다른 서버 · 별칭 주소 확인 불가 · 서버 주소 확인 불가 · localhost · 맥북 자신 · 공인 주소 · 마운트 표 확인 불가 · 자기 주소 확인 불가 · 공유 해제(로컬 폴더만) · AFP 공유 · 저장소와 같은 볼륨 · 공유 밖 폴더 · 표로는 공유 안이지만 장치가 다른 자리 거부 / 승인값의 사용자 · 포트 · IPv6 · 형식 오류 거부 / 마운트 원문의 사용자 부분 미기록 |
+| 분리 | 플래그 없음 = 외장 검사만(공유 검사 호출 0) · 공유 경로 = 외장 검사 호출 0 · 실제 외장 검사는 공유 폴더를 통과시키지 않음 |
+| 실패 | F_FULLFSYNC '지원 안 함'(ENOTSUP · EINVAL) = fsync 로 대신 · 방식 기록 / 입출력 · 연결 끊김 오류 = 실패 / 대신한 fsync 실패 = 실패 / 폴더 동기화 입출력 오류(이름 바꾸기 전 · 뒤 모두) · 쓰는 중 연결 끊김 = COPY_INCOMPLETE · 최종 이름 폴더 없음(.partial 로 남거나 되돌림) / 되돌리기마저 실패해 최종 이름 폴더가 남아도 verify = REFUSED |
+| 복원 | 공유 사본 → 빈 칸 복원 RESTORE_VERIFIED / 사본 손상 = RESTORE_FAILED(사본은 지우지 않음) / 공유 해제 뒤 verify = REFUSED · run = WAITING_TARGET(새로 쓰지 않음) / 그 id 의 마지막 복사 기록이 COPY_HASH_OK 가 아니면(기록 없음 · 뒤에 미완료) verify = REFUSED |
+
+- 가짜 마운트 표 · 주소 확인 · 장치 번호로 tmp 폴더를 smbfs 처럼 보이게 한 시험이다. **실제 SMB 호환성 확인이 아니다**(판정 §4).
+- 맥북 실제 읽기(쓰기 0 · 2026-10-29): `mount_table` = 11줄(apfs · autofs · devfs) 해석 · `own_addresses` = 12개(127.0.0.1 · ::1 포함) · 일반 폴더(`/tmp`)는 'SMB 공유 아님(apfs)'으로 거부.
+
+### 15-3. 실측
+
+- `black --check` 13 unchanged · `flake8` 0 · `py_compile` 통과.
+- 줄 수: `backup_source.py` 431 · `backup.py` **625** · `run_forward_auto.py` 121 · `test_poc6_13_backup.py` 1,148. KS-10 상한(백엔드 650 · 시험 1,500) 안이지만 `backup.py` 는 **사전 경고선(백엔드 600) 위**다. 다음에 이 파일에 책임을 더하면 먼저 나눈다.
+- 백업 시험 81 · 관련 05 · 06 · 13 시험 6파일 298 passed(100.3초 · 최종 코드).
+- 변이 14종(smbfs · 공유 이름 · 별칭 주소 · localhost / 자신 · 로컬 대역 · 마운트 위 · 같은 볼륨 · 승인값 인증 정보 · 사용자 부분 기록 · 분기 2 · 대체 조건 · 마운트 표 확인 불가 · 자기 주소 확인 불가)을 하나씩 되돌림 → 모두 새 시험이 잡음(C-F1 정정 뒤 최종 코드로 다시 실행 · 2026-10-29). C-F1 정정 변이 5종은 §15-6.
+- 전체 회귀는 판정 §4 대로 하지 않았다(06 · A · B 경로 변경 0).
+
+### 15-6. 검증자 C-F1 정정(2026-10-29 · §16)
+
+같은 종류 = '사본 폴더가 있다는 사실만으로 완료로 취급'. 두 층에서 막았다.
+
+| 층 | 정정 | 시험 |
+|---|---|---|
+| run(복사) | 이름 바꾼 뒤 실패(부모 폴더 동기화 오류 등)하면 `_undo_rename` 이 최종 이름을 `.partial` 로 되돌린다. 되돌리기도 실패하면 그 사실을 결과 · 기록의 `after_rename` 에 남긴다(최종 이름 폴더가 남아도 COPY_HASH_OK 기록이 없음) | 이름 바꾸기 전 · 뒤 동기화 입출력 오류(매개변수 2) → COPY_INCOMPLETE · 최종 이름 없음 · `.partial` 있음 · 마지막 상태 COPY_INCOMPLETE · 되돌리기 실패 → 최종 이름 남음 · 사유 기록 |
+| verify(복원 확인) | `_copy_refusal`: 잠금 안에서 그 id 의 마지막 복사 단계 기록(순번)이 COPY_HASH_OK 일 때만 시작 — 기록 없음 · 마지막이 COPY_INCOMPLETE 면 REFUSED. 확인 뒤 기록이 사라져 `_recorded_manifest` 가 None 이면 대조 생략 대신 RESTORE_FAILED | 최종 이름만 남은 사본 → REFUSED · COPY_HASH_OK 기록 쓰기 실패(run 예외) → REFUSED · 성공 뒤 미완료 기록 → REFUSED · 기록 삭제 → REFUSED · 확인 뒤 기록 사라짐 → RESTORE_FAILED |
+
+- 바뀐 동작: 복사 성공 기록이 없는 사본은 복원 확인을 하지 않는다. 다른 맥에서 이 기록 없이 복원 확인하는 경로는 범위 밖이다(지금 설계 = 같은 맥북의 복원 확인).
+- 기존 시험 3개(`test_verify_refuses_partial_and_unsafe_tar_member` · `test_verify_reads_only_the_fixed_artifacts` · `test_verify_requires_the_fixed_commits`)는 복사 기록을 지우거나 None 으로 우회해 뒤쪽 검사(허용 밖 tar 항목 · 정해진 묶음 5개 · 커밋 목록)를 보던 시험이다. 이제 그 우회는 앞에서 REFUSED 되므로 '기록까지 변조 manifest 와 같은 해시'로 바꿔 뒤쪽 검사를 계속 시험한다.
+- run 이 COPY_HASH_OK 기록을 쓰다 실패하면 run 은 예외로 끝난다(CLI = FAILED · 종료 코드 1). 그 사본은 verify 가 받지 않는다.
+- 변이 5종(되돌리기 제거 · verify 기록 확인 제거 · 기록 None 일 때 대조 생략 · '마지막' 대신 '하나라도' · 기록 없음 통과) 모두 잡힘. 검증자 독립 재현 4개(`test_independent_smb.py` 사본 · 출력 경로만 개발자 임시 폴더) = 4 passed(이전 실패 1 포함).
+
+### 15-4. 한계(판정 §3 · PLAN §8-3)
+
+- 공유 경로의 RESTORE_VERIFIED = 지정한 PC 공유의 사본에서 되가져와 빈 맥북 경로의 복원 내용이 목록 · 해시 · 필요 커밋과 일치했고 서버가 성공을 응답했다는 뜻이다. 전원 상실 뒤 보존 · 매체 영구 무결성 · 실험 재실행 가능성은 보장하지 않는다.
+- 연결은 PC 의 IP 주소로 한다. Bonjour 서비스 이름(`…._smb._tcp.local`)은 주소 확인이 안 되면 거부한다. IPv6 주소 · 포트 지정은 지원하지 않는다.
+- 첫 실제 확인 = 복사 → Finder 해제 · 재연결 → `verify --pc-share`. 두 기록의 `mount_dev` 는 관측값이다(같은 번호가 다시 배정될 수 있고, 캐시 제거 증명이 아님).
+- 백업할 때 맥북과 PC 가 같은 공유기에 있어야 한다. 복원 확인은 맥북에 약 2.8GB 임시 공간(사본 2.4GB + 풀린 연구 파일)을 쓰고 끝나면 지운다(맥북 여유 약 379GB · 2026-10-29).
+
+### 15-5. 다음
+
+검증자 변경분 재확인(C-F1 · 판정 §4 경계) → 사용자 승인 묶음(판정 §5-3: PC · 폴더 · 계정 / 연결 범위 · 예상 용량 2.4GB · 복원 임시 경로 `state/ml/operations/poc6_13/restore/<id>`) → 구현 커밋 · 첫 실제 복사 · 재연결 · 복원 확인 → 이 절에 시각 · 바이트 · 파일 수 · 동기화 방식 · 결과 기록.
+
+## 16. 검증자 C 보완 변경분 판정 — 2026-10-29 · Codex
+
+### 1) A. 기능/산출물 검증
+
+- **A-1 지시 일치: 일부 위반(C-F1).** 보완 판정 §2의 승인 서버/공유·실제 smbfs·자기 주소 거절·외장 경로 분리, §3의 미지원만 fsync 대체·방식 기록, §4의 정상 복원/손상 거절 경로는 코드 및 관련 시험과 일치한다. 그러나 이름 변경 직후 동기화 실패 경로는 §3·§4의 미완료 보존 및 실패를 완료로 올리지 않는 계약을 충족하지 못한다.
+- **A-2 보고 정확성: 일부 위반(C-F1).** 검증 시작 시 staged 9개(A 1·M 8), unstaged 0, 사용자 handoff untracked 1개다. 변경 코드/시험 4개와 문서 5개가 제출 목록과 같고, §15-3의 줄 수·관련 시험 293건도 실측과 일치한다. 다만 §15-2의 동기화 실패→미완료(최종 폴더 없음) 보장은 이름 변경 뒤 오류에는 성립하지 않는다. PLAN §8의 지난 '판정 대기' 및 PROGRAM_TRUTH의 지난 최종 반영 날짜는 검증자가 직접 정정했다. 이 메타 정정은 반려 사유가 아니다.
+- **A-3 산출물 정합성: 위반(C-F1).** 동기화 오류로 COPY_INCOMPLETE를 기록한 같은 id가 추가 동기화 성공 확인 없이 RESTORE_VERIFIED로 올라가며 최신 상태의 복사 실패가 가려진다. 아래 독립 재현은 정상/오류 위치 대조를 포함한다.
+- **A-4 금지사항 위반: 없음.** 신규 의존성·외부 API·DB 스키마·삭제·실제 PC 공유 설정·SMB 연결/쓰기·OCI 작업은 없다. 기존 A/B 실제 설치 기록은 과거 사실로 보존했고 이번에는 해당 OS 상태나 라이브 자료를 읽지 않았다.
+
+**C-F1 [P2] — 이름 변경 뒤 동기화 실패한 사본이 완료 폴더로 남아 verify에서 완료로 승격됨**
+
+- 위치: `app/forward_auto/backup.py:250~266`의 이름 변경/부모 폴더 동기화 예외 처리, `474~494`의 복원 대상/복사 기록 확인, `504`의 완료 판정.
+- `.partial`을 최종 이름으로 바꾼 뒤 `_fsync_dir(final.parent)`를 수행한다. 여기서 I/O 오류가 나면 COPY_INCOMPLETE로 보고하지만 폴더는 이미 최종 이름이고 `.partial`은 없다. 이후 verify는 이 폴더를 완료 대상으로 받는다. COPY_HASH_OK 기록이 없다는 사실도 '비교할 manifest 기록 없음'으로 받아 바이트 복원만 수행하고 RESTORE_VERIFIED를 남긴다.
+- 독립 재현은 임시 저장소·임시 공유 경로·가짜 smbfs/주소 응답을 사용했다. 이름 변경 뒤 부모 디렉터리 동기화에만 EIO를 발생시켰다. 결과는 다음과 같다.
+  - run = **COPY_INCOMPLETE**, 최종 폴더 있음, `.partial` 없음.
+  - COPY_HASH_OK 기록 없음. verify = **RESTORE_VERIFIED**, `manifest_recorded=false`.
+  - 기록 순서 = COPY_INCOMPLETE → COPY_INCOMPLETE → RESTORE_VERIFIED. 마지막 상태도 RESTORE_VERIFIED가 된다.
+- 같은 자료의 정상 대조군은 COPY_HASH_OK → RESTORE_VERIFIED로 통과했다. 이름 변경 **전** 폴더 동기화에 동일한 EIO를 넣으면 `.partial`만 남고 verify는 REFUSED로 통과했다. 승인 서버 별칭/다른 주소 및 인증 원문 미기록 대조도 통과했다.
+- 이는 매체의 영구 내구성을 추가로 요구하는 판정이 아니다. 명확하게 발생한 동기화 오류를 미완료로 유지하는 기존 판정 §3과, 실패가 COPY_HASH_OK/RESTORE_VERIFIED로 올라가지 않는 §4 경계의 문제다. 실제 PC의 SMB에서 오류가 발생했다거나 자료가 손실됐다는 보고도 아니다. 모든 기록을 함께 위조하는 시험은 하지 않았다.
+
+### 2) B. 구현 규칙/구조 품질 검증
+
+- **B-1 암묵 fallback 위반: 있음(C-F1).** 이 id의 복사 미완료 기록과 복사 성공 기록 부재를 구분하지 않고, 성공 manifest 기록이 없다는 이유로 비교를 생략한 채 완료 대상처럼 진행한다.
+- **B-2 단일 책임 위반: 없음.** 목적지 분류·SMB 관측은 source, 복사/복원·동기화는 backup, 인자 전달은 CLI에 있다.
+- **B-3 파일 책임 과다: 없음.** 변경 코드 581·431·121줄, 시험 1,036줄로 KS-10 상한 안이다.
+- **B-4 실험/운영 경계 위반: 없음.** 06·tick·보관 경로의 HEAD 대비 diff 0을 확인했다. 이번 판정은 C 변경분이며 기존 A/B r3 통과 판정이나 설치 사실을 재판정하지 않는다.
+- **B-5 배포/실행 경로 영향: 누락 없음.** CLI와 모듈·문서 모두 index에 추적돼 있고 파일 이동이 없다. Dockerfile/OCI 배포/cron 변경도 없다. 실제 PC 연결·첫 사본·Finder 해제/재연결·복원은 승인 후 단계다.
+- **B-6 기술부채/구조적 퇴행: 위 실패 상태 공백 외 없음.** 새 전송 프로그램·윈도우 서비스·별도 인증 체계·범용 백업 계층을 추가하지 않는다. mount 정보는 서버/공유·주소·장치 번호를 관측한 것으로 기록하며 PC 물리 디스크를 인증했다고 쓰지 않는다.
+
+### 3) 기반 문서 준수
+
+신규 Markdown은 제출된 설계자 보완 판정 원문 1개이며 신고돼 있다. MongoDB·새 UI/의존성·운영 계산 복제는 없다. 봉인 DB의 OCI 미전송, 사용자 handoff 제외, 로컬 연구 브랜치 비공개 경계를 유지한다. C 실제 쓰기 승인은 이 판정으로 대체되지 않는다.
+
+### 4) 코드 안전성
+
+**위험 수준: MEDIUM.** 알려진 동기화 오류가 발생한 사본을 이후 상태에서 완료로 보이게 할 수 있다. 실제 SMB 호환성/캐시/전원 상실 뒤 내구성은 시험하지 않았고, 해당 공개 한계를 코드 결함과 구분했다. 이번 독립 시험은 가짜 마운트·주소와 작은 임시 자료만 사용했다.
+
+### 5) 범위 폭주
+
+**폭주 수준: MINOR.** 미지원 대체 조건의 강화가 기존 외장 경로에도 적용되고 복원 기록에 목적지 관측값이 추가됐으나, 모두 공개돼 있고 보완 판정과 직접 연결된다. A/B·공식 연구·운영 모델·외부 전송 범위는 늘지 않았다.
+
+### 6) 종합 판정
+
+**종합 판정: REJECTED — C SMB 보완 변경분(C-F1).** 기존 A/B r3 VERIFIED 판정은 유지한다. 문서 수치나 메타 불일치가 반려 사유가 아니다.
+
+| 검증 | 실측 결과 |
+|---|---|
+| 관련 05·06·13 시험 | **293 passed**, 98.49초. 백업 시험 76건 포함 |
+| 독립 변경분 대조 | **1 failed·3 passed**, 4.09초. 실패 = 이름 변경 뒤 동기화 오류. 대조군 = 정상·이름 변경 전 오류·서버 주소/인증 원문 미기록 |
+| 정적 검사 | 이번 변경 Python 4파일 black --check·flake8·py_compile 모두 통과. 나머지 기존 코드의 이전 검증 근거는 유지 |
+| 줄 수 | `backup.py` 581, `backup_source.py` 431, CLI 121, 백업 시험 1,036. 제출값과 일치 |
+| 범위 | HEAD `e0a94175f563cfc2d77c050866cf931a65801ab7`, staged 9개·unstaged 0. A/B·06·보관 경로 diff 0 및 검증 중 소스 일치 확인 |
+| 생략 | 판정 §4에 따라 전체 회귀·A/B 전체 재검증·공식 연구 실행 안 함. 개발자의 변이 14종 보고를 참고했고 반복하지 않음 |
+| 실제 작업 | 공유 설정·실제 SMB 연결/쓰기·외장 장치 쓰기·LaunchAgent 변경·알림·OCI·라이브 자료 접근·커밋·push 모두 없음 |
+
+근거: `/private/tmp/poc613-smb-verify-alcqx85r/`의 `diffs/`, `related.log`, `test_independent_smb.py`, `independent.log`, `sync-none.json`, `sync-before_rename.json`, `sync-after_rename.json`, `share-identity.json`, `checks.json`, `black.log`, `flake8.log`. 시험의 마운트/주소/장치 응답은 주입값이므로 실제 SMB 실행 근거가 아니다.
+
+검증자가 직접 수정한 곳:
+
+| 파일·위치 | 수정 전 → 수정 후 |
+|---|---|
+| 결과서 상단 STATUS·VERIFIER_C, §15 제목 | C 변경분 확인 대기 → C 변경분 REJECTED(C-F1, §16). 기존 r3 VERIFIED 이력 유지 |
+| 결과서 §16 | 없음 → 이번 C 변경분 재현·근거·판정 추가. 기존 §10~§14·부록 A 및 §15 본문 보존 |
+| PLAN §8 제목 | 설계자 판정 대기 → 설계자 판정 반영. §8-6과 원문에 맞춘 상태 메타 정정 |
+| PROGRAM_TRUTH 머리 최종 반영 날짜 | 2026-10-28 → 2026-10-29. 현재 반영 내용의 날짜와 맞춤 |
+
+코드·시험·판정 원문·STATE 및 다른 파일은 수정하지 않았다. 사용자 handoff 문서는 읽거나 stage하지 않았다.
+
+### 7) 사용자에게 한마디
+
+다음은 C 보완의 개발자 정정이다. 이번 문제는 판정에 이미 포함된 실패 처리 경계이며 새 설계 판단이 필요하지 않다. A/B 첫 정기 실행 확인은 C와 별도로 유지한다. 실제 PC 공유 설정·연결·첫 백업 승인은 변경분 재검증 뒤에 진행한다.
+
+## 17. 검증자 C 보완 r2 재확인 — 2026-10-30 · Codex
+
+### 1) A. 기능/산출물 검증
+
+- **A-1 지시 일치: 통과(C 보완 격리 구현·정정 범위).** C-F1의 이름 변경 뒤 동기화 실패 재현이 해결됐다. 실패하면 `.partial`로 되돌리고, 되돌리기 실패 시에도 완료 복사 기록이 없으므로 verify가 거절한다. 복원 진입은 로컬 기록 파일명의 순번으로 마지막 복사 단계가 COPY_HASH_OK인지 확인하며, 안쪽에서는 필수 manifest 기록의 해시를 대조한다. 기록이 없어졌을 때 대조를 생략하던 경로도 제거됐다.
+- **A-2 보고 정확성: 통과.** staged 9개(A 1·M 8), unstaged 0, 사용자 handoff untracked 1개가 제출 상태와 같다. 직전 C 검증 이후 변경은 backup.py·백업 시험·문서 4개(총 6개)이며 보고와 일치한다. 줄 수 625·431·121·1,148과 관련 시험 298건도 실측과 같다. 새 메타/수치 오기는 발견하지 않았다.
+- **A-3 산출물 정합성: 통과.** 기존 독립 재현 4건을 같은 입력·오류 위치로 다시 실행해 모두 통과했다. 이름 변경 뒤 오류는 COPY_INCOMPLETE·최종 폴더 없음·`.partial` 유지·verify REFUSED가 된다. 정상 대조군은 COPY_HASH_OK→RESTORE_VERIFIED를 유지했다. 아래 두 추가 대조에서도 미완료/기록 소실이 완료로 올라가지 않았다.
+- **A-4 금지사항 위반: 없음.** 신규 의존성·외부 API·DB 스키마·파일 이동/삭제·실제 PC 공유 설정/연결/쓰기가 없다. 검증은 저장소 밖 사본·임시 Git/DB·가짜 마운트/주소 응답만 사용했다. 기존 LaunchAgent·실제 상태·운영 자료·OCI에는 접근하지 않았다.
+
+**정정 경계 확인**
+
+| 경계 | 확인 결과 |
+|---|---|
+| 이름 변경 전/뒤 동기화 오류 | 기존 독립 재현 모두 통과. 앞/뒤 어느 오류도 COPY_HASH_OK/RESTORE_VERIFIED로 올라가지 않고 COPY_INCOMPLETE를 유지 |
+| 되돌리기 실패 | 관련 시험에서 최종 폴더가 남아도 결과/기록에 사유가 남고 verify는 REFUSED |
+| 폴더 존재와 완료 구분 | 독립 추가 대조: 미완료 `.partial`을 시험에서 직접 최종 이름으로 돌려놔도 마지막 복사 기록이 미완료라 REFUSED. 최신 상태도 COPY_INCOMPLETE 유지 |
+| 진입 확인 뒤 기록 소실 | 독립 추가 대조: verify가 manifest를 열 때 실제 임시 COPY_HASH_OK 기록 파일을 삭제. 이후 RESTORE_FAILED·'복사 완료 기록 없음'이며 완료로 진행하지 않음 |
+| 기록 부재/마지막 미완료 | 관련 시험에서 COPY_HASH_OK 기록 쓰기 실패·삭제·뒤에 남은 COPY_INCOMPLETE를 거절. 기록 없는 사본을 자동 복원 확인하지 않는 동작은 §15-6에 공개 |
+| 기존 안전 검사 | 수정한 기존 시험 3개는 기록까지 같은 해시로 바뀐 조건에서도 위험한 tar 항목·정해진 묶음 5개·커밋 목록을 계속 검사한다. 앞단 검사를 제거해 결함을 숨긴 시험이 아님 |
+
+### 2) B. 구현 규칙/구조 품질 검증
+
+- **B-1 암묵 fallback 위반: 없음.** C-F1의 복사 성공 기록 부재→manifest 대조 생략은 제거됐다. 미완료는 진입 거절, 진입 뒤 기록 부재는 복원 실패로 구분한다.
+- **B-2 단일 책임 위반: 없음.** 되돌리기·복원 전제 확인 도우미가 기존 백업 책임 안에 있다. 목적지 분류/CLI 책임은 그대로다.
+- **B-3 파일 책임 과다: 상한 위반 없음.** backup.py 625줄로 KS-10 경고선 600을 넘지만 상한 650 이내다. 이 근접 상태와 다음 기능 추가 전 분리 방침을 §15-3에 공개했다. 시험은 1,148줄로 상한 1,500 이내다.
+- **B-4 실험/운영 경계 위반: 없음.** 06·tick·보관·설치 관련 경로는 구현 HEAD 대비 diff 0이다. 기존 A/B 통과 판정을 재판정하거나 실제 정기 실행이 성공했다고 간주하지 않았다.
+- **B-5 배포/실행 경로 영향: 없음.** CLI·모듈·판정/PLAN/결과서가 모두 index에 추적돼 있다. 파일 이동·Dockerfile·OCI 배포/cron 변경이 없다. 이번 코드 변경은 백업 흐름 한 파일이며 실행 경로는 유지된다.
+- **B-6 기술부채/구조적 퇴행: 추가 위반 없음.** 새 위조 방지 체계·범용 복구기·실험 계산을 추가하지 않았다. 복사 기록이 없는 다른 컴퓨터에서의 자동 복원 확인은 현재 범위 밖이라는 동작 변경을 공개했다. 과거 산출물을 현재 결과로 대체하지 않는다.
+
+### 3) 기반 문서 준수
+
+신규 문서는 기존에 신고된 C 보완 판정 원문이며 이번 정정에서 파일이 늘지 않았다. MongoDB·새 UI/의존성·운영 계산 복제는 없다. 봉인 DB OCI 미전송·사용자 handoff 제외·연구 브랜치 비공개 경계를 유지한다. 실제 C 설정/연결/쓰기는 여전히 별도 승인 후다.
+
+### 4) 코드 안전성
+
+**위험 수준: LOW(공개 한계·실제 연결 미확인).** 검증 범위에서 차단할 결함은 발견하지 않았다. 실제 SMB 호환성·PC 저장 계층 내구성·모든 캐시 제거·동시 교체 방어를 확인했다고 쓰지 않는다. 복원 확인에 현재 맥북의 로컬 복사 성공 기록이 필요하다는 제약은 공개돼 있다. backup.py 근접선 상태는 위 B-3과 같다.
+
+### 5) 범위 폭주
+
+**폭주 수준: MINOR.** C-F1의 되돌리기·복원 진입 조건 보강과 기존 시험 3개의 조건 정정이 공개돼 있고 실패 처리 요구에 직접 연결된다. 추가 플랫폼/외부 전송/자동 실행 범위는 없다.
+
+### 6) 종합 판정
+
+**종합 판정: VERIFIED — C SMB 보완 격리 구현 및 C-F1 정정 범위.** A/B 기존 통과 판정은 유지한다. 실제 C 백업 완료나 오늘 첫 자동 실행 성공을 뜻하지 않는다.
+
+| 검증 | 실측 결과 |
+|---|---|
+| 관련 05·06·13 시험 | **298 passed**, 103.72초. 그 안의 백업 시험 81건 포함 |
+| 기존 독립 재현 | **4 passed**. 정상·이름 변경 전/뒤 오류·서버 주소/인증 원문 미기록 |
+| 추가 독립 경계 대조 | **2 passed**. 미완료 폴더를 최종 이름으로 직접 바꿈·진입 확인 뒤 실제 기록 파일 삭제. 독립 시험 합계 **6 passed**, 4.85초 |
+| 정적 검사 | 이번 stage의 Python 4파일 black --check·flake8·py_compile 통과 |
+| 줄 수 | backup.py 625, backup_source.py 431, CLI 121, 백업 시험 1,148. 제출값과 일치 |
+| 소스·기록 보존 | HEAD `e0a94175f563cfc2d77c050866cf931a65801ab7`, staged 9개·unstaged 0. 검증 중 소스 일치 확인. 기존 검증자 §16 원문 및 변경 없는 SMB 목적지 검사·CLI·판정 원문 확인 |
+| 근거 재사용/생략 | 개발자의 최종 코드 정정 변이 5종·SMB 변이 14종 보고를 참고했고 반복하지 않음. 보완 판정 §4에 따라 전체 회귀·A/B 전체 재검증·공식 연구 실행도 하지 않음 |
+| 실제 작업 | 공유 설정·실제 SMB/외장 쓰기·LaunchAgent 변경·알림·OCI·라이브 상태/자료 접근·커밋·push 모두 없음 |
+
+근거: `/private/tmp/poc613-smb-r2-verify-awxs8jr2/`의 `changed.json`, `diffs/`, `related.log`, `test_original_reproduction.py`, `test_record_boundary.py`, `independent.log`, `sync-*.json`, `record-incomplete-final.json`, `record-disappears.json`, `checks.json`, `black.log`, `flake8.log`. 기존 재현은 증거 출력 경로만 이번 임시 폴더로 바꿨다. 실제 SMB/실제 PC 성공 근거가 아닌 격리 시험 근거다.
+
+검증자가 직접 수정한 곳(이 결과서 한 파일만):
+
+| 위치 | 수정 전 → 수정 후 |
+|---|---|
+| 상단 STATUS·VERIFIER_C | C-F1 정정 재확인 대기/REJECTED → C 보완 r2 VERIFIED(§17). 과거 A/B 통과·C r1 반려 이력 유지 |
+| §15 제목 | C-F1 정정 재확인 대기 → 변경분 r2 VERIFIED(§17) |
+| §17 | 없음 → 이번 재현·경계 대조·판정 추가. §16 및 기존 검증/설계자 원문·개발자 보고 본문 보존 |
+
+코드·시험·PLAN·STATE·PROGRAM_TRUTH·판정 원문·사용자 handoff 문서는 수정하지 않았다.
+
+### 7) 사용자에게 한마디
+
+다음은 보완 판정 §5의 구체적인 사용자 승인 묶음과 실제 PC 공유 설정/연결·첫 복사·Finder 해제/재연결·복원 확인이다. 이 절차가 끝나야 C 완료다. 같은 판정에 따라 추가 설계자 RESULT 재판정은 필요하지 않다. 오늘 2026-10-30 10:05 첫 자동 실행 확인은 C와 별개로 남아 있으며 이번 검증에서는 실행/확인하지 않았다.

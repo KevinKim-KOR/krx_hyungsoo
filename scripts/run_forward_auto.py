@@ -53,6 +53,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     bv.add_argument("--target", type=Path, required=True)
     bv.add_argument("--backup-id", required=True)
     bv.add_argument("--apply", action="store_true")
+    for x in (bp, br, bv):  # 별도 PC 공유 폴더(SMB) — 없으면 외장 장치 검사
+        x.add_argument("--pc-share", default=None, metavar="//서버/공유")
     args = p.parse_args(argv)
     paths = ST.Paths.default(REPO)
     try:
@@ -88,19 +90,23 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         from app.forward_auto import backup, backup_source
 
         if args.bcmd == "plan":
-            return _emit(backup_source.plan(REPO, args.target))
+            return _emit(backup_source.plan(REPO, args.target, pc_share=args.pc_share))
         if not args.apply:
             return _emit(
                 {
                     "status": "DRY_RUN",
                     "note": "--apply 없이 쓰지 않음",
-                    "plan": backup_source.plan(REPO, args.target),
+                    "plan": backup_source.plan(
+                        REPO, args.target, pc_share=args.pc_share
+                    ),
                 }
             )
         if args.bcmd == "run":
-            out = backup.run(REPO, args.target)
+            out = backup.run(REPO, args.target, pc_share=args.pc_share)
         else:
-            out = backup.verify(REPO, args.target, args.backup_id)
+            out = backup.verify(
+                REPO, args.target, args.backup_id, pc_share=args.pc_share
+            )
         return _emit(
             out, 0 if out["status"] in ("COPY_HASH_OK", "RESTORE_VERIFIED") else 2
         )

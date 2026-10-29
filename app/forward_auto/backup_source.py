@@ -1,18 +1,23 @@
 """POC6-13 C — 백업 대상 · 목적지 검사(원본 쪽 · 읽기만 · PLAN §4-1 ~ §4-4).
 
 대상 = 08 ~ 11 연구 폴더 · 봉인 KRX DB · 코드 bundle(main + 로컬 연구 브랜치) · 02 ~ 06 입력 연결 목록.
-목적지 = 사용자 소유 외장 장치만(내부 디스크 · 디스크 이미지 · 확인 불가 = WAITING_TARGET · 판정 §2).
+목적지 = 사용자 소유 외장 장치(내부 디스크 · 디스크 이미지 · 확인 불가 = WAITING_TARGET · 판정 §2) 또는
+`--pc-share` 로 지정한 별도 PC 의 윈도우 공유 폴더(SMB · 보완 판정 2026-10-29 · 두 검사는 따로).
 쓰기 · 복사 · 복원은 `backup.py`.
 """
 
 from __future__ import annotations
 
 import hashlib
+import ipaddress
 import json
 import os
 import plistlib
+import re
 import shutil
+import socket
 import subprocess
+import urllib.parse
 from pathlib import Path
 from typing import Any, Callable, Optional
 
@@ -137,6 +142,160 @@ def device_check(
     }
 
 
+# ── PC 공유 폴더(SMB · 보완 판정 2026-10-29 §2) ─────────────────────────────
+
+MOUNT_LINE = re.compile(r"^(?P<src>.+?) on (?P<mp>/.*) \((?P<fs>[^,)]+)(?:,.*)?\)$")
+
+
+def parse_share(spec: str) -> tuple[str, str]:
+    """`//서버/공유`(또는 `서버/공유`) → (서버, 공유) 소문자. 인증 정보(`사용자@`)는 받지 않는다."""
+    s = str(spec).strip()
+    s = s[2:] if s.startswith("//") else s
+    server, sep, share = s.partition("/")
+    share = share.strip("/")
+    if "@" in server or ":" in server:
+        raise BackupError(
+            "--pc-share 에 사용자 · 비밀번호 · 포트 · IPv6 주소를 넣지 않는다(//서버/공유)"
+        )
+    if not server or not sep or not share or "/" in share:
+        raise BackupError("--pc-share 형식 = //서버/공유")
+    return server.lower(), share.lower()
+
+
+def smb_source(source: str) -> Optional[tuple[str, str]]:
+    """마운트 원본 `//[사용자@]서버/공유` → (서버, 공유) 소문자 — 사용자 · 인증 부분은 버린다(기록 안 함)."""
+    if not source.startswith("//"):
+        return None
+    host, sep, share = source[2:].partition("/")
+    share = urllib.parse.unquote(share.strip("/"))
+    server = urllib.parse.unquote(host.rpartition("@")[2])
+    if not server or not sep or not share or "/" in share:
+        return None
+    return server.lower(), share.lower()
+
+
+def mount_table(runner: Callable = subprocess.run) -> Optional[list[dict]]:
+    """`/sbin/mount` 표 — [{source, mount, fs}] · 읽지 못하면 None(확인 불가)."""
+    try:
+        r = runner(["/sbin/mount"], capture_output=True, timeout=20, check=False)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if r.returncode != 0:
+        return None
+    rows = []
+    for line in r.stdout.decode("utf-8", "replace").splitlines():
+        m = MOUNT_LINE.match(line.strip())
+        if m:
+            rows.append({"source": m["src"], "mount": m["mp"], "fs": m["fs"]})
+    return rows
+
+
+def resolve_host(name: str) -> Optional[set[str]]:
+    try:
+        infos = socket.getaddrinfo(name, None)
+    except (OSError, UnicodeError):
+        return None
+    return {i[4][0].split("%")[0] for i in infos} or None
+
+
+def own_addresses(runner: Callable = subprocess.run) -> Optional[set[str]]:
+    """맥북 자신의 주소(`ifconfig` 의 inet · inet6) — 읽지 못하면 None."""
+    try:
+        r = runner(["/sbin/ifconfig"], capture_output=True, timeout=20, check=False)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if r.returncode != 0:
+        return None
+    out = set()
+    for line in r.stdout.decode("utf-8", "replace").splitlines():
+        parts = line.split()
+        if len(parts) >= 2 and parts[0] in ("inet", "inet6"):
+            out.add(parts[1].split("%")[0])
+    return out or None
+
+
+def share_check(
+    target: Path,
+    repo: Path,
+    approved: str,
+    *,
+    table_fn: Optional[Callable] = None,
+    resolve_fn: Optional[Callable] = None,
+    own_fn: Optional[Callable] = None,
+    dev_fn: Optional[Callable] = None,
+) -> dict:
+    """사용자가 승인한 PC 의 공유 폴더(SMB) 안인가 — 확인하는 것은 그 PC 의 SMB 연결이다(PC 디스크 자체의
+    원격 인증 아님). 외장 장치 검사와 섞지 않는다. 공유가 해제돼 같은 이름의 로컬 폴더만 남으면 거부한다."""
+    want_server, want_share = parse_share(approved)
+    table_fn, resolve_fn = table_fn or mount_table, resolve_fn or resolve_host
+    own_fn, dev_fn = own_fn or own_addresses, dev_fn or _dev
+    t = Path(target)
+    if not t.is_dir():
+        return {"ok": False, "reason": "목적지 폴더 없음 · 공유 연결 안 됨"}
+    rows = table_fn()
+    if rows is None:
+        return {"ok": False, "reason": "마운트 표 확인 불가"}
+    tr = t.resolve()
+    hits = [r for r in rows if Path(r["mount"]) == tr or Path(r["mount"]) in tr.parents]
+    if not hits:
+        return {"ok": False, "reason": "목적지가 속한 마운트 확인 불가"}
+    row = max(hits, key=lambda r: len(r["mount"]))
+    if row["fs"] != "smbfs":
+        return {
+            "ok": False,
+            "reason": f"SMB 공유 아님({row['fs']}) — 공유가 해제됐으면 로컬 폴더에 대신 쓰지 않음",
+        }
+    got = smb_source(row["source"])
+    if got is None:
+        return {"ok": False, "reason": "SMB 마운트 원본 해석 불가"}
+    server, share = got
+    if share != want_share:
+        return {"ok": False, "reason": "승인한 공유 이름과 다름"}
+    addrs = resolve_fn(server)
+    if not addrs:
+        return {"ok": False, "reason": "공유 서버 주소 확인 불가"}
+    if server != want_server:  # 별칭은 확인된 주소 대응으로만
+        want_addrs = resolve_fn(want_server)
+        if not want_addrs or not addrs & want_addrs:
+            return {"ok": False, "reason": "승인한 PC 와 다른 서버(주소 대응 없음)"}
+    own = own_fn()
+    if own is None:
+        return {"ok": False, "reason": "맥북 자기 주소 확인 불가"}
+    for a in addrs:
+        ip = ipaddress.ip_address(a)
+        if ip.is_loopback or ip.is_unspecified or a in own:
+            return {"ok": False, "reason": "localhost · 맥북 자신의 주소"}
+        if not ip.is_private:
+            return {"ok": False, "reason": "같은 로컬 네트워크 주소 아님"}
+    mount = Path(row["mount"])
+    if dev_fn(tr) != dev_fn(mount):
+        return {"ok": False, "reason": "목적지가 공유 마운트 위에 있지 않음"}
+    if dev_fn(mount) == dev_fn(Path(repo).resolve()):
+        return {"ok": False, "reason": "저장소와 같은 볼륨"}
+    return {
+        "ok": True,
+        "kind": "PC_SHARE",
+        "server": want_server,
+        "share": want_share,
+        "addresses": sorted(addrs),
+        "mount": str(mount),
+        "fs": "smbfs",
+        "mount_dev": dev_fn(mount),
+    }
+
+
+def target_check(
+    target: Path,
+    repo: Path,
+    pc_share: Optional[str],
+    disk_info: Callable = diskutil_info,
+) -> dict:
+    """`--pc-share` 가 있을 때만 PC 공유 검사 · 없으면 기존 외장 장치 검사(서로 대신하지 않음)."""
+    if pc_share:
+        return share_check(target, repo, pc_share)
+    return device_check(target, repo, disk_info)
+
+
 def real_path(repo: Path, rel: str) -> Path:
     """저장소 안 그 자리의 실제 경로 — 어느 단계라도 링크면(시작 폴더 · 상위 폴더 포함) 멈춘다."""
     p = Path(repo) / rel
@@ -242,7 +401,10 @@ def _inputs(ev_root: Path) -> list[dict]:
 
 
 def plan(
-    repo: Path, target: Optional[Path], disk_info: Callable = diskutil_info
+    repo: Path,
+    target: Optional[Path],
+    disk_info: Callable = diskutil_info,
+    pc_share: Optional[str] = None,
 ) -> dict[str, Any]:
     inv = inventory(repo)
     by = {n: {"files": 0, "bytes": 0} for n in TARGETS}
@@ -262,7 +424,7 @@ def plan(
         "inputs": _inputs(Path(repo) / store.EVIDENCE_ROOT),
     }
     if target is not None:
-        dev = device_check(target, repo, disk_info)
+        dev = target_check(target, repo, pc_share, disk_info)
         if dev["ok"]:
             dev["free_bytes"] = shutil.disk_usage(target).free
         out["target"] = dev
