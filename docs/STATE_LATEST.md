@@ -1,6 +1,6 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-10-29 (**`POC6-13` 전향 비교 정기 실행 · 연구 증거 별도 보관 — 설계자 PLAN 판정 PASS_WITH_REQUIRED_CORRECTIONS(Q1 = C 전체 외장 장치 · 봉인 DB OCI 미전송 유지 · Q2 = 업로드 작업당 OCI 목록 1회 · Q3 = 활성화 전 확인) → 격리 구현 · 시험 · 독립 검토 1회 반영 → 검증자 r1 · r2 REJECTED → 정정 → 검증자 r3 VERIFIED(격리 구현 범위) → 설계자 RESULT PASS(V1.1 · 2026-10-29) · 맥북 보조 A/B 설치됨(2026-10-29) · 첫 정기 실행 확인 대기 · C 별도 PC 사본 · 복원 확인 완료(2026-10-30 · 결과서 §15-7) · 맥북 LaunchAgent 설치됨(2026-10-29 20:54 · 사용자 승인) · 첫 정기 실행 확인 대기 · C 별도 PC 사본 완료** · `POC6-12` = HOLD_SOURCE_CONFIRMATION · 원천 확인 1회 완료 · SEIBro API 가입 = 사업자등록번호 필요(사용자 10-29) · 설계자 판단 대기 · 06 전향 D = 10-28 결측 · 아래 POC6 칸)
+최종 업데이트: 2026-10-30 (**`POC6-13` 전향 비교 정기 실행 · 연구 증거 별도 보관 = IMPLEMENTED_VERIFIED_CLOSED(2026-10-30) — 설계자 PLAN 판정 PASS_WITH_REQUIRED_CORRECTIONS(Q1 = C 전체를 사용자 소유 다른 물리 저장소 · 봉인 DB OCI 미전송 유지 · Q2 = 업로드 작업당 OCI 목록 1회 · Q3 = 활성화 전 확인) → 격리 구현 · 시험 · 독립 검토 1회 반영 → 검증자 r1 · r2 REJECTED → 정정 → 검증자 r3 VERIFIED(격리 구현 범위) → 설계자 RESULT PASS(V1.1 · 2026-10-29) · 맥북 LaunchAgent 설치(2026-10-29 20:54 · 사용자 승인) · 첫 정기 실행 OK(2026-10-30 10:05 · D = 10-29 · 결과서 §14-4) · C 별도 PC 사본 · 복원 확인 완료(2026-10-30 · 결과서 §15-7)** · `POC6-12` = HOLD_SOURCE_CONFIRMATION 유지 · 원천 확인 1회 완료 · SEIBro API 가입 = 사업자등록번호 필요(사용자 10-29 · 설계자 수용) · 06 전향 D = 10-28 결측 · 아래 POC6 칸)
 
 ## POC6 — 시장 흐름 통합 · ML 고도화 (PC · OCI·PUSH 영향 0)
 
@@ -114,11 +114,11 @@ POC6-12  ETF 분배 · 총수익 자료 검증 = PLAN 제출 → 설계자 HOLD_
                  · 모든 API 불가로 일반화 안 함 · HOLD_SOURCE_CONFIRMATION 유지 · 새 계정 · 계약 · 유료 · 다른 출처 조사 자동 개방 없음 · 12 수집 · 구현 보류 유지
          PLAN docs/ai_plan/POC6/POC6-12_ETF_DISTRIBUTION_AND_TOTAL_RETURN_DATA_VALIDATION_PLAN_V1.md(§7 판정 반영 · §7-4 원천 확인 · §7-5 설계자 회신 · 부록 A 점검)
          같은 날 부록 A(자료 사용 · 축적 · PUSH 연결 점검) 수용 · 06 전향 기록 10-28 재개(D = 10-27 · 공개 확인 10:53 KST · 개발자 실행 · 설계자 수용)
-         06 전향 10-29 미실행 → D = 10-28 결측(입력 OCI 09:40 수집됨 · 마감 15:30 경과 · 소급 없음 · PLAN §7-3 · 설계자 수용 = 13 RESULT 판정 §6-2) · 다음 = 10-30 10:00 ~ 15:20 에 D = 10-29
+         06 전향 10-29 미실행 → D = 10-28 결측(입력 OCI 09:40 수집됨 · 마감 15:30 경과 · 소급 없음 · PLAN §7-3 · 설계자 수용 = 13 RESULT 판정 §6-2) · D = 10-29 = 10-30 10:05 POC6-13 자동 실행으로 기록(주 기록 24/24 · 공개 확인 10:05:48)
 POC6-13  전향 비교 정기 실행 · 연구 증거 별도 보관 = PLAN → 설계자 PASS_WITH_REQUIRED_CORRECTIONS(2026-10-28 · Q1 = C 전체를 사용자 소유 다른 물리 저장소 ·
                봉인 DB OCI 미전송 계약 유지 · Q2 = 업로드 작업당 OCI 목록 1회 · Q3 = 활성화 전 가동 여건 확인) → 격리 구현 · 시험 · 독립 검토 1회 반영
                → 검증자 r1 REJECTED(F1 ~ F4) → 정정 → r2 REJECTED(F3 외장 사본 파일 링크 · F4 조회 오류 = 해제 OK 잔여) → 정정
-               · 독립 검토 같은 종류 6건(외장끼리 해시 비교 · 원본 상위 링크 · 기록 읽기 오류 · git 실패 · 알림 실패 · caffeinate) 정정 → 검증자 r3 VERIFIED(2026-10-29 · 격리 구현 범위 · 결과서 §12) → 설계자 RESULT PASS(V1.1 · 2026-10-29) · 맥북 보조 A/B 설치됨(2026-10-29) · 첫 정기 실행 확인 대기 · C 별도 PC 사본 · 복원 확인 완료(2026-10-30 · 결과서 §15-7)(결과서 §13)
+               · 독립 검토 같은 종류 6건(외장끼리 해시 비교 · 원본 상위 링크 · 기록 읽기 오류 · git 실패 · 알림 실패 · caffeinate) 정정 → 검증자 r3 VERIFIED(2026-10-29 · 격리 구현 범위 · 결과서 §12) → 설계자 RESULT PASS(V1.1 · 2026-10-29 · 결과서 §13) · 맥북 보조 A/B 설치됨(2026-10-29) · 첫 정기 실행 OK(2026-10-30 · 결과서 §14-4) · C 별도 PC 사본 · 복원 확인 완료(2026-10-30 · 결과서 §15-7) → IMPLEMENTED_VERIFIED_CLOSED(2026-10-30)
          설계 docs/ai_design/POC6/POC6-13_FORWARD_COMPARISON_DAILY_AUTOMATION_AND_RECOVERY_DESIGN_V1.md · 판정 …_PLAN_DECISION_2026-10-28.md · PLAN …_PLAN_V1.md(§7)
          결과서 docs/ai_result/POC6/POC6-13_FORWARD_COMPARISON_DAILY_AUTOMATION_AND_RECOVERY_RESULT.md
          맥북 LaunchAgent 설치됨(2026-10-29 20:54 · 사용자 승인) · 구현 커밋 e0a94175 push → 맥북이 10:00 ~ 15:20 에 깨어 있는 날은 자동 · 아닌 날은 수동 run --pull 1회
@@ -128,7 +128,8 @@ POC6-13  전향 비교 정기 실행 · 연구 증거 별도 보관 = PLAN → �
                → `--pc-share` 구현 · 변경분 시험(결과서 §15) → 검증자 변경분 REJECTED(C-F1 = 이름 바꾼 뒤 동기화 실패 사본이 verify 에서 완료로 · 결과서 §16)
                → 정정(되돌리기 · verify = 마지막 복사 기록 COPY_HASH_OK 일 때만 · 결과서 §15-6) · 백업 시험 81 · 관련 298 passed → C r2 VERIFIED(결과서 §17) → 사용자 승인(10-30) · 구현 커밋 941044d9 push → 실제 PC 사본 COPY_HASH_OK · 해제 · 재연결 · RESTORE_VERIFIED(결과서 §15-7) = C 완료
          OCI 일별 추론 = 읽기 전용 사실 확인 완료(결과서 부록 A · 판정 없음 · OCI 954MB · 스왑 없음 · scikit-learn · torch 미설치 · 맥북 참고 추론 RSS 310MiB)
-         다음 = 10-30 10:05 첫 정기 실행 확인(D = 10-29) → 결과서 §14-4 · 종료 기록 커밋 · push(승인됨)
+         첫 정기 실행(2026-10-30 10:05 · 결과서 §14-4) = 06 `run --pull` 시도 1/4 · D = 10-29 주 기록 24/24 · 마감 전 공개 확인 10:05:48 · 학습 KEEP(같은 달) · 보관 ARCHIVED_OK(새 묶음 8파일 OCI 수락 · 미등록 0 · 미확인 0)
+         → 종료 IMPLEMENTED_VERIFIED_CLOSED(2026-10-30 · 판정 V1.1 §4-6 · §7 = 추가 RESULT 판정 없이 설계자에게 사실 보고) · 자동 후속 제안 없음
 POC6 다음  방향 문서 docs/ai_design/POC6/POC6_INVESTMENT_DECISION_AND_ML_DIRECTION_ROADMAP_2026-10-26.md(설계자 V1 · 2026-10-26 · handoff 아님)
          목표 = 한국 상장 ETF 후보 추천 · 보유 중 유지 · 축소 · 매도 검토 근거와 권고 · 사용자 최종 결정 · 주문(자동 주문 제외) · ML 효용 검증 뒤 연결
          추천 행동 · 성과 검증 계약 = docs/ai_design/POC6/POC6_RECOMMENDATION_ACTION_AND_PERFORMANCE_CONTRACT_V1.md(설계자 V1.1 · §2-1 A · B · C 확정 기록 · 최초 V1 = 75aad869)
