@@ -10,7 +10,7 @@ STATUS   = PLAN 제출(2026-11-01 · 설계 §9 네 묶음) · 전체 화면 목
              → 판정을 이 PLAN 에 반영(§1 ~ §3 현행 · §8) · PLAN 재제출 없음
            → 목업 3(두 화면 · 결론 · 버튼 위치 · 쉬운 한국어 · 접힌 개발 정보) → 사용자 확인(2026-11-01 · 원문 "목업 좋습니다.") → 구현 · 시험(2026-11-01 · 결과서 docs/ai_result/POC6/POC6-15_PC_RESEARCH_MENU_ORGANIZATION_RESULT.md)
              → 검증자 r1 REJECTED(F1) → 정정(2026-11-02) → 검증자 r2 VERIFIED(2026-11-02) → 사용자 실화면 확인(2026-11-02)
-             → 설계자 RESULT 판정 PASS_WITH_CLOSING_CORRECTIONS(2026-11-02 · 표시 문구 2곳 보완 반영) → 사용자 커밋 · push 승인 대기
+             → 설계자 RESULT 판정 PASS_WITH_CLOSING_CORRECTIONS(2026-11-02 · 표시 문구 2곳 보완 반영) → 구현 커밋 228d2239 push → IMPLEMENTED_VERIFIED_CLOSED(2026-11-02)
 DESIGN   = docs/ai_design/POC6/POC6-15_PC_RESEARCH_MENU_ORGANIZATION_DESIGN_V1.md
 판정     = docs/ai_design/POC6/POC6-15_PC_RESEARCH_MENU_ORGANIZATION_PLAN_DECISION_2026-11-01.md(설계 §2 ~ §3 의 메뉴 · 카드 분류와 '카드 안 배치 · 문구 유지'를 변경 · 충돌 부분은 판정 우선)
 조사     = 2026-11-01 16:19 ~ 16:32 KST(약 13분 · 상한 30분) · 프런트 코드 읽기 + 실행 중인 개발 화면 캡처(메뉴 클릭만 · 실행 버튼 누르지 않음)

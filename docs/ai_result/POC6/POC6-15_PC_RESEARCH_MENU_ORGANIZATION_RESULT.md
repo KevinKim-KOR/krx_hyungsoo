@@ -3,14 +3,14 @@
 작성 2026-11-01 · 작성자: 개발자(VSCode Claude) · 수신: 사용자(실화면 확인) → 검증자(Codex) → 설계자
 
 ```text
-STATUS   = IMPLEMENTED(2026-11-01) — 설계 V1 → PLAN → 사용자 의견 3회 → 설계자 PLAN 판정 PASS_WITH_REQUIRED_CORRECTIONS
+STATUS   = IMPLEMENTED_VERIFIED_CLOSED(2026-11-02 · §13) — IMPLEMENTED(2026-11-01) — 설계 V1 → PLAN → 사용자 의견 3회 → 설계자 PLAN 판정 PASS_WITH_REQUIRED_CORRECTIONS
            (Q1 (a) 결론 · 버튼 먼저 · Q2 (a) 두 화면 · Q3 (b) 여섯 카드 쉬운 한국어) → PLAN 반영 → 목업 3
            → 사용자 확인(2026-11-01 '목업 좋습니다.') → 구현 · 카드별 독립 검토 1회 · 관련/전체 시험 · 실제 앱 캡처
            → 사용자 실화면 확인 대기(사용자 답변: 아직 확인 전) · 사용자 요청으로 코드 검증 선행 → 검증자 r1 REJECTED(F1 · §10)
            → 개발자 정정(2026-11-02 · F1 + 같은 판단을 쓰는 곳 · §4-3) · 변이 2종 · 관련/전체 시험 → 검증자 r2 VERIFIED(코드 검증 · §11)
            → 사용자 실화면 확인(2026-11-02 · 원문 "네 확인했습니다.")
            → 설계자 RESULT 판정 PASS_WITH_CLOSING_CORRECTIONS(2026-11-02 · §12) → 표시 문구 2곳 보완 · 해당 카드 시험(§12-1)
-           → 사용자 커밋 · push 승인 대기
+           → 사용자 승인(2026-11-02 · 커밋 · push 둘 다) · 구현 커밋 228d2239 push → IMPLEMENTED_VERIFIED_CLOSED(§13)
 VERIFIER = Codex r2 VERIFIED(코드 검증 범위 · 2026-11-02 · §11) — F1 기존 재현 · 정상 대조 통과
 USER     = 실화면 확인 완료(2026-11-02 · 원문 "네 확인했습니다." · 두 화면 · 폴더 접기 · 펼치기)
 DESIGNER = RESULT 판정 PASS_WITH_CLOSING_CORRECTIONS(2026-11-02 · 판정 원문 §12 · docs/ai_design/POC6/POC6-15_PC_RESEARCH_MENU_ORGANIZATION_RESULT_DECISION_2026-11-02.md)
@@ -482,3 +482,11 @@ F1에서 중요한 것은 **네 방법 공통 행이 0이어도 일부 방법의
 - **해당 카드 시험(한 번)**: `RelativeUpsideRunCard.test.tsx` 16 · `RejectedScoreCloseout.test.tsx` 13 · `MLBaselineV0Card.test.tsx` 25 · `MLEvidenceRefreshCard.test.tsx` 23 = 4개 파일 · 77건 통과(기대 문구만 맞춤). `tsc --noEmit` 0 · 바뀐 6개 파일 eslint 0.
 - **실행 중인 앱 반영 확인**(:3000 · 「이전 자료·실험」 메뉴 클릭만 · 카드 버튼 누르지 않음): 결론 줄 다섯 개 중 Baseline = '보고 있음 · 자료 기간 2014-05-12 ~ 2026-08-27(3,018거래일) · 평가 2,998거래일 · 1,163종목' · 다시 만들기 단계 요약 = '자료 끝 2026-08-27 · 평가 2,998거래일 · 보고 있음'. 상대 상승은 이 화면에서 계산하지 않아 '아직 계산 안 함'(unavailable 표시는 시험으로 확인).
 - 판정 §3 대로 전체 프런트 회귀 · 검증자 재검증 · 사용자 실화면 재확인은 하지 않았다.
+
+## 13. 종료 기록 — 2026-11-02
+
+- 사용자 승인(2026-11-02): 구현 커밋 + push · 종료 기록 커밋 + push 둘 다.
+- 구현 커밋 `228d2239`(32개 파일 · 판정 원문 2 · 설계 · PLAN · 결과서 · STATE · PROGRAM_TRUTH · 프런트 25) → `origin/main` push(원격 차이 0).
+- PC 반영: 실행 중인 개발 서버(:3000)가 같은 작업 트리를 쓰며 커밋 뒤 작업 트리 = 커밋(차이 0). 앱 응답 200 · 「이전 자료·실험」 결론 줄의 '보고 있음' 등 보완 문구 반영은 §12-1 에서 확인. 사용자 실화면 재확인은 판정 §5 대로 하지 않음.
+- 상태 = **IMPLEMENTED_VERIFIED_CLOSED**. 추가 RESULT 재판정 없음(판정 §5-5). OCI pull · cron · 키 · 새 수집 · 업로드 · 모델 실행 · handoff 없음.
+- 남는 것(판정 §4 · §6): 자료 → 학습 → 예측 → 결과 전체 현황 화면 미구현 · §5 한계 미해소 · 다음 설계 대상 = 기존 대시보드의 요약 구조와 이동 동선 재정비(자동 착수 없음).

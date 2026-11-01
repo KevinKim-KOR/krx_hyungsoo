@@ -1,6 +1,6 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-11-01 (**`POC6-13` 전향 비교 정기 실행 · 연구 증거 별도 보관 = IMPLEMENTED_VERIFIED_CLOSED(2026-10-30) — 설계자 PLAN 판정 PASS_WITH_REQUIRED_CORRECTIONS(Q1 = C 전체를 사용자 소유 다른 물리 저장소 · 봉인 DB OCI 미전송 유지 · Q2 = 업로드 작업당 OCI 목록 1회 · Q3 = 활성화 전 확인) → 격리 구현 · 시험 · 독립 검토 1회 반영 → 검증자 r1 · r2 REJECTED → 정정 → 검증자 r3 VERIFIED(격리 구현 범위) → 설계자 RESULT PASS(V1.1 · 2026-10-29) · 맥북 LaunchAgent 설치(2026-10-29 20:54 · 사용자 승인) · 첫 정기 실행 OK(2026-10-30 10:05 · D = 10-29 · 결과서 §14-4) · C 별도 PC 사본 · 복원 확인 완료(2026-10-30 · 결과서 §15-7)** · `POC6-12` = 보완 설계(10-30 · 지정 공공 API 한 경로) → SOURCE_BLOCKED(지정 서비스에 ETF 분배금 기능 없음 · 이번 출처 확인 작업 종료 · 계산 구현 없음) · `POC6-15` PC 메뉴 구분(「ML 연구」 폴더 · 두 화면 · 쉬운 한국어) = 설계 V1 → PLAN → 설계자 PLAN 판정 PASS_WITH_REQUIRED_CORRECTIONS(11-01 · Q1 (a) · Q2 (a) · Q3 (b)) → PLAN 반영 · 목업 3(로컬) · 사용자 확인(11-01) → 구현 · 시험(11-01) → 검증자 r1 REJECTED(F1) → 정정(11-02) → 검증자 r2 VERIFIED(11-02) → 사용자 실화면 확인(11-02) → 설계자 RESULT PASS_WITH_CLOSING_CORRECTIONS(11-02) · 보완 반영 → 커밋 · push 승인 대기 · `POC6-14` 전향 ML 비교 결과의 PC 조회 = 설계 V1 → PLAN → 설계자 PASS_WITH_REQUIRED_CORRECTIONS(10-30 · Q1 ~ Q3 수용) · 보완 반영 · 목업 정정 → 사용자 목업 확인(10-30) → 구현 · 시험(10-30) → 사용자 실화면 확인(10-30) → 검증자 r1 REJECTED(F1 · F2) → 정정 → r2 REJECTED(F3 공통 비교 행의 일부 null) → 정정(10-31) · 검증자 r3 VERIFIED(2026-10-31) · 설계자 RESULT PASS(2026-10-31 · 결과서 §13) → 구현 커밋 89afeba6 push → IMPLEMENTED_VERIFIED_CLOSED(2026-11-01) · 메뉴 구분 의견 → 설계자 전달 · 06 전향 D = 10-28 결측 · 아래 POC6 칸)
+최종 업데이트: 2026-11-02 (**`POC6-13` 전향 비교 정기 실행 · 연구 증거 별도 보관 = IMPLEMENTED_VERIFIED_CLOSED(2026-10-30) — 설계자 PLAN 판정 PASS_WITH_REQUIRED_CORRECTIONS(Q1 = C 전체를 사용자 소유 다른 물리 저장소 · 봉인 DB OCI 미전송 유지 · Q2 = 업로드 작업당 OCI 목록 1회 · Q3 = 활성화 전 확인) → 격리 구현 · 시험 · 독립 검토 1회 반영 → 검증자 r1 · r2 REJECTED → 정정 → 검증자 r3 VERIFIED(격리 구현 범위) → 설계자 RESULT PASS(V1.1 · 2026-10-29) · 맥북 LaunchAgent 설치(2026-10-29 20:54 · 사용자 승인) · 첫 정기 실행 OK(2026-10-30 10:05 · D = 10-29 · 결과서 §14-4) · C 별도 PC 사본 · 복원 확인 완료(2026-10-30 · 결과서 §15-7)** · `POC6-12` = 보완 설계(10-30 · 지정 공공 API 한 경로) → SOURCE_BLOCKED(지정 서비스에 ETF 분배금 기능 없음 · 이번 출처 확인 작업 종료 · 계산 구현 없음) · `POC6-15` PC 메뉴 구분(「ML 연구」 폴더 · 두 화면 · 쉬운 한국어) = 설계 V1 → PLAN → 설계자 PLAN 판정 PASS_WITH_REQUIRED_CORRECTIONS(11-01 · Q1 (a) · Q2 (a) · Q3 (b)) → PLAN 반영 · 목업 3(로컬) · 사용자 확인(11-01) → 구현 · 시험(11-01) → 검증자 r1 REJECTED(F1) → 정정(11-02) → 검증자 r2 VERIFIED(11-02) → 사용자 실화면 확인(11-02) → 설계자 RESULT PASS_WITH_CLOSING_CORRECTIONS(11-02) · 보완 반영 → 구현 커밋 228d2239 push → IMPLEMENTED_VERIFIED_CLOSED(2026-11-02) · `POC6-14` 전향 ML 비교 결과의 PC 조회 = 설계 V1 → PLAN → 설계자 PASS_WITH_REQUIRED_CORRECTIONS(10-30 · Q1 ~ Q3 수용) · 보완 반영 · 목업 정정 → 사용자 목업 확인(10-30) → 구현 · 시험(10-30) → 사용자 실화면 확인(10-30) → 검증자 r1 REJECTED(F1 · F2) → 정정 → r2 REJECTED(F3 공통 비교 행의 일부 null) → 정정(10-31) · 검증자 r3 VERIFIED(2026-10-31) · 설계자 RESULT PASS(2026-10-31 · 결과서 §13) → 구현 커밋 89afeba6 push → IMPLEMENTED_VERIFIED_CLOSED(2026-11-01) · 메뉴 구분 의견 → 설계자 전달 · 06 전향 D = 10-28 결측 · 아래 POC6 칸)
 
 ## POC6 — 시장 흐름 통합 · ML 고도화 (PC · OCI·PUSH 영향 0)
 
@@ -146,7 +146,7 @@ POC6-14  전향 ML 비교 결과의 PC 조회 = 설계 V1(2026-10-30 · docs/ai_
                → 정정(2026-10-31 · 공통 행이 있으면 모든 방법 값 · 행 · 날짜 · 종목 일치 · 화면 방어 · 백엔드 89 · 프런트 30 · 변이 3종) → 검증자 r3 VERIFIED(2026-10-31) · 설계자 RESULT PASS(2026-10-31 · 결과서 §13) → 구현 커밋 89afeba6 push → IMPLEMENTED_VERIFIED_CLOSED(2026-11-01)
                · 결과서 docs/ai_result/POC6/POC6-14_FORWARD_MODEL_COMPARISON_PC_VIEW_RESULT.md(§4-1)
                · 사용자 의견 '하나의 메뉴(ML 실험)에 기능이 계속 추가 — 폴더(메뉴) 구분' → 설계자 전달(PLAN §7 · 14 는 판정 위치대로)
-POC6-15  PC 메뉴 구분과 ML 연구 화면 정리 = 설계 V1(2026-11-01 · docs/ai_design/POC6/POC6-15_PC_RESEARCH_MENU_ORGANIZATION_DESIGN_V1.md · 아래 미처리 UI 요구를 다룸)
+POC6-15  PC 메뉴 구분과 ML 연구 화면 정리 = IMPLEMENTED_VERIFIED_CLOSED(2026-11-02 · 구현 커밋 228d2239 push) — 설계 V1(2026-11-01 · docs/ai_design/POC6/POC6-15_PC_RESEARCH_MENU_ORGANIZATION_DESIGN_V1.md · 아래 미처리 UI 요구를 다룸)
                → PLAN 제출(2026-11-01 · docs/ai_plan/POC6/POC6-15_PC_RESEARCH_MENU_ORGANIZATION_PLAN_V1.md · 조사 약 13분 · 질문 없음)
                · 「진단·상태 › ML 실험」 → 「ML 연구」 폴더 › 전향 ML 비교(`ml` 유지) · 학습 자료(`ml_data`) · 기존 실험(`ml_experiments`) · 카드 6개 재배치 · 백엔드 무변경
                · 전체 화면 목업(로컬 · 실제 카드 캡처 · 폭에 맞춰 확대 없음) → 사용자: 메뉴 구성 '괜찮다' + '결론은 항상 맨 위 · 버튼도 위'
@@ -159,11 +159,11 @@ POC6-15  PC 메뉴 구분과 ML 연구 화면 정리 = 설계 V1(2026-11-01 · d
                → PLAN 에 판정 반영(§1 ~ §3 현행 · §8 · §4 '토요일' → 일요일 정정) → 목업 3(로컬 · 실제 글자 · 두 화면 · 1890 · 1440 · 1000) → 사용자 확인(2026-11-01 '목업 좋습니다') → 구현 · 시험(11-01 · 카드별 독립 검토 1회 · 결함 13건 정정 · 전체 vitest 1052 통과 · 실제 앱 캡처) → 사용자 실화면 확인 대기(사용자 요청으로 코드 검증 선행)
                → 검증자 r1 REJECTED(F1 · 맨 위 결론 · 복사문이 '네 방법 함께' 비교만 보고 HGB · MLP 비교가 있어도 '결과 없음') → 정정(2026-11-02 · 세 비교 공용 판단 · 전체 vitest 1063 통과) → 검증자 r2 VERIFIED(2026-11-02 · 코드 검증 범위 · 결과서 §11)
                → 사용자 실화면 확인(2026-11-02 '네 확인했습니다.') → 설계자 RESULT 판정 PASS_WITH_CLOSING_CORRECTIONS(2026-11-02 · docs/ai_design/POC6/POC6-15_PC_RESEARCH_MENU_ORGANIZATION_RESULT_DECISION_2026-11-02.md)
-               → 표시 문구 2곳 보완('데이터 부족' → '결과를 사용할 수 없음' · Baseline '계산 정상' → '보고 있음') · 해당 카드 시험 77 통과 → 사용자 커밋 · push 승인 대기
+               → 표시 문구 2곳 보완('데이터 부족' → '결과를 사용할 수 없음' · Baseline '계산 정상' → '보고 있음') · 해당 카드 시험 77 통과 → 사용자 승인 · 구현 커밋 228d2239 push → IMPLEMENTED_VERIFIED_CLOSED(2026-11-02 · 결과서 §13)
                · 다음 설계 대상(설계자 판정 §6) = 기존 대시보드의 요약 구조와 이동 동선 재정비(자료 → 학습 → 예측 → 결과 현황 요구도 그 안에서 구분 · 자동 착수 없음)
                · 결과서 docs/ai_result/POC6/POC6-15_PC_RESEARCH_MENU_ORGANIZATION_RESULT.md
          미처리 UI 요구(사용자 2026-10-30): 메뉴(폴더) 구분 — 「ML 실험」 등 한 메뉴에 기능이 계속 늘어남 · 14 의 메뉴 무변경은 해소가 아님
-               · POC6-15 가 다룸(위 · 구현 · 확인 뒤 해소 기록)
+               · POC6-15 로 해소(2026-11-02 · 「ML 연구」 폴더 · 두 화면 · CLOSED)
          후속 설계 요구(사용자 2026-11-01 · 판정 §2): 자료 → 학습 → 예측 → 결과 전체의 실제 상태를 한 화면에서 확인 — 15 의 메뉴 구분으로 해소되지 않음
                · 새 05 / 06 현황 조회가 필요 · 15 구현에 붙이지 않음 · 다음 설계에서 판단(자동 착수 없음)
 POC6 다음  방향 문서 docs/ai_design/POC6/POC6_INVESTMENT_DECISION_AND_ML_DIRECTION_ROADMAP_2026-10-26.md(설계자 V1 · 2026-10-26 · handoff 아님)
