@@ -13,6 +13,8 @@ STATUS   = PLAN 제출(2026-10-27 · 설계 §10 네 묶음 확인) · 질문 4(
            → 사용자(10-29): SEIBro 오픈플랫폼 가입에 사업자등록번호가 필요 · 개인 가입이 열려 있지 않은 것으로 보임(§7-6)
              · 06 전향 = 10-29 미실행으로 D = 10-28 결측(§7-3 · 소급 없음)
            → 설계자(POC6-13 RESULT 판정 V1.1 §6 · 10-29): §7-6 수용 · HOLD_SOURCE_CONFIRMATION 유지 · D = 10-28 미기록 수용(§7-6 끝)
+           → 설계자 보완 설계(2026-10-30 · 공공데이터포털 지정 서비스 한 경로 · 60분 · §8) → 공식 명세 확인(GET 1회 · 약 4분)
+             = ETF 분배금 기능 없음 → SOURCE_BLOCKED · 계산 구현 없음 · 이번 출처 확인 작업 종료(결과서 §8)
 DESIGN   = docs/ai_design/POC6/POC6-12_ETF_DISTRIBUTION_AND_TOTAL_RETURN_DATA_VALIDATION_DESIGN_V1.md
 DECISION = docs/ai_design/POC6/POC6-12_ETF_DISTRIBUTION_AND_TOTAL_RETURN_DATA_VALIDATION_PLAN_DECISION_2026-10-28.md(PLAN 판정 · §7)
 REQUEST  = docs/ai_design/POC6/POC6_DATA_USE_RETENTION_AND_PUSH_CONNECTION_AUDIT_REQUEST_2026-10-27.md(부록 A 의 지시)
@@ -214,6 +216,18 @@ API       오픈플랫폼(회원가입 · 인증키 · 활용신청) 있음 · �
 - §7-5 질문 1(이용 범위) · 질문 3(분배락일 근거)은 그대로 열려 있다. 질문 2 (a)(화면 보고서 뷰어 저장 · 비회원)는 가입과 무관하지만 질문 1 이 먼저다.
 - 개발자의 추가 조회 · 다른 출처 탐색은 하지 않았다(0). 다른 경로를 찾을지, SOURCE_BLOCKED 로 정리할지는 설계자 · 사용자가 판단한다.
 - **설계자 회신(2026-10-29 · `docs/ai_design/POC6/POC6-13_FORWARD_COMPARISON_DAILY_AUTOMATION_AND_RECOVERY_RESULT_DECISION_2026-10-29.md` §6)**: 기록 = "사용자가 시도한 SEIBro 오픈플랫폼 가입 경로에서 사업자등록번호가 필요해 현재 개인 경로를 진행하지 못함". 화면 · 명세를 직접 검증한 것은 아니므로 모든 예탁결제원 API 가 개인에게 불가능하다거나 ETF 분배금 API 가 없다고 일반화하지 않는다. HOLD_SOURCE_CONFIRMATION 유지 · 새 계정 · 계약 · 유료 구매 · 다른 출처 연속 조사는 자동으로 열리지 않음 · 수동 조회 24행을 공식 확보로 바꾸지 않음 · 13 반영 우선. D = 10-28 은 미기록 유지(소급 · 가짜 성숙 · 학습 편입 없음 · 원자료 손실 아닌 설치 전 수동 실행 의존의 운영 공백).
+
+## 8. 보완 설계 반영(2026-10-30 · `docs/ai_design/POC6/POC6-12_BOUNDED_OFFICIAL_API_RESTART_DESIGN_V1_2026-10-30.md`)
+
+보완 설계 §6 대로 이 절에는 경로 · 상한 · 필드 표 · 승인 상태만 덧붙인다. §1 ~ §7 의 산식 · 고정 표본 · 원본 보존 · PC_ONLY 계약은 그대로다.
+
+| 항목 | 내용 |
+|---|---|
+| 경로 | 공공데이터포털 → 한국예탁결제원_증권예탁통계서비스_GW 한 가지. SEIBro 가입 재시도 · '문의부터'는 선행 작업이 아님. 다른 공공 API · 운용사 공지 · 비공식 배당표 · 증권사 API 로 넘어가지 않음 |
+| 상한 | 개발자 작업 60분 · 공개 문서 GET 12회 · 승인 뒤 데이터 GET 16회(종목별 4회) · 산출 경과 10분 · RSS 4GiB |
+| 필드 표 | 보완 설계 §4(종목 식별 · 확정 금액 · 권리 시점 · 실제 지급 · 기간 · 완전성 · 원본 · 시각 · 이용 범위) |
+| 승인 상태 | 데이터 확보 승인 묶음을 제시하지 않음(필수 기능 없음 · 보완 설계 §5 끝) · 가입 · 키 요청 0 |
+| 결과 | 2026-10-30 12:22 ~ 12:26 KST · GET 1회 · 공식 상세기능 33개 · 응답 칸 113개 = 월별 시장 집계 · 종목 식별 · 분배금 · 날짜 칸 0 → **SOURCE_BLOCKED(ETF 기능 없음 · 이 서비스 한정)** · 계산 구현 없음 · 이번 출처 확인 작업 종료 · 결과서 `docs/ai_result/POC6/POC6-12_ETF_DISTRIBUTION_AND_TOTAL_RETURN_DATA_VALIDATION_RESULT.md` §8 |
 
 ## 부록 A. 자료 사용 · 축적 · PUSH 연결 현황(설계자 점검 요청 2026-10-27 회신)
 

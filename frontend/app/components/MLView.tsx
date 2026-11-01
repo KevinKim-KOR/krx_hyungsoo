@@ -22,6 +22,7 @@ import MLFeatureSanityCard from "./MLFeatureSanityCard";
 import MLBaselineV0Card from "./MLBaselineV0Card";
 import MLTimeseriesReadinessCard from "./MLTimeseriesReadinessCard";
 import RelativeUpsideRunCard from "./RelativeUpsideRunCard";
+import ForwardComparisonCard from "./ml_forward/ForwardComparisonCard";
 import type { RelativeUpsideRunResult } from "@/lib/api/mlRelativeUpside";
 
 export default function MLView() {
@@ -34,11 +35,10 @@ export default function MLView() {
   return (
     <section aria-labelledby="ml-h">
       <h1 id="ml-h">ML 실험</h1>
-      <p className="subtitle">
-        학습 자료 상태와 baseline·참고점수를 모아 둔 화면입니다. 투자 판단 자체는
-        비교·판단 화면에서 하고, 여기서는 ML 자료가 쓸 만한 상태인지만 확인합니다.
-      </p>
+      <p className="subtitle">학습 자료 상태와 저장된 전향 예측·비교 결과를 확인하는 화면입니다.</p>
 
+      {/* POC6-14 — 06 전향 비교 기록 읽기 전용(연구용 · 운영 미채택 · PLAN 판정 Q1 = 맨 위) */}
+      <ForwardComparisonCard />
       <MLTimeseriesReadinessCard />
       <MLFeatureSanityCard />
       <MLEvidenceRefreshCard />

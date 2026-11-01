@@ -59,6 +59,7 @@ from app.api_market_topn import router as market_topn_router
 from app.api_ml_baseline import router as ml_baseline_router
 from app.intraday_config import startup as intraday_startup
 from app.api_ml_jobs import router as ml_jobs_router
+from app.api_ml_forward_comparison import router as ml_forward_comparison_router
 from app.api_ml_relative_upside import router as ml_relative_upside_router
 from app.api_ml_readiness import router as ml_readiness_router
 from app.api_ml_sanity import router as ml_sanity_router
@@ -151,6 +152,8 @@ app.include_router(ml_jobs_router)
 # POST /market/relative-upside/run — 사용자가 CLI 없이 화면에서 점수 계산.
 # 기존 GET /market/topn/latest 후보 응답 구조 유지. 새 모델 / 새 feature 0건.
 app.include_router(ml_relative_upside_router)
+# POC6-14 전향 ML 비교 결과의 PC 조회(2026-10-30): GET /ml/forward-comparison — 06 연구 기록 읽기만
+app.include_router(ml_forward_comparison_router)
 # POC2 PUSH 사용자 표현 정리 + PARAM 적용 UI 연결 (2026-06-20, Phase B):
 # GET /three-push/param/state + POST /three-push/param/apply — CLI 없이 UI 한
 # 번으로 현재 운영 기준을 OCI 에 적용. 신규 DB / scheduler 0건.

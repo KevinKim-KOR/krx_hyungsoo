@@ -1,6 +1,6 @@
 # STATE_LATEST
 
-최종 업데이트: 2026-10-30 (**`POC6-13` 전향 비교 정기 실행 · 연구 증거 별도 보관 = IMPLEMENTED_VERIFIED_CLOSED(2026-10-30) — 설계자 PLAN 판정 PASS_WITH_REQUIRED_CORRECTIONS(Q1 = C 전체를 사용자 소유 다른 물리 저장소 · 봉인 DB OCI 미전송 유지 · Q2 = 업로드 작업당 OCI 목록 1회 · Q3 = 활성화 전 확인) → 격리 구현 · 시험 · 독립 검토 1회 반영 → 검증자 r1 · r2 REJECTED → 정정 → 검증자 r3 VERIFIED(격리 구현 범위) → 설계자 RESULT PASS(V1.1 · 2026-10-29) · 맥북 LaunchAgent 설치(2026-10-29 20:54 · 사용자 승인) · 첫 정기 실행 OK(2026-10-30 10:05 · D = 10-29 · 결과서 §14-4) · C 별도 PC 사본 · 복원 확인 완료(2026-10-30 · 결과서 §15-7)** · `POC6-12` = HOLD_SOURCE_CONFIRMATION 유지 · 원천 확인 1회 완료 · SEIBro API 가입 = 사업자등록번호 필요(사용자 10-29 · 설계자 수용) · 06 전향 D = 10-28 결측 · 아래 POC6 칸)
+최종 업데이트: 2026-10-31 (**`POC6-13` 전향 비교 정기 실행 · 연구 증거 별도 보관 = IMPLEMENTED_VERIFIED_CLOSED(2026-10-30) — 설계자 PLAN 판정 PASS_WITH_REQUIRED_CORRECTIONS(Q1 = C 전체를 사용자 소유 다른 물리 저장소 · 봉인 DB OCI 미전송 유지 · Q2 = 업로드 작업당 OCI 목록 1회 · Q3 = 활성화 전 확인) → 격리 구현 · 시험 · 독립 검토 1회 반영 → 검증자 r1 · r2 REJECTED → 정정 → 검증자 r3 VERIFIED(격리 구현 범위) → 설계자 RESULT PASS(V1.1 · 2026-10-29) · 맥북 LaunchAgent 설치(2026-10-29 20:54 · 사용자 승인) · 첫 정기 실행 OK(2026-10-30 10:05 · D = 10-29 · 결과서 §14-4) · C 별도 PC 사본 · 복원 확인 완료(2026-10-30 · 결과서 §15-7)** · `POC6-12` = 보완 설계(10-30 · 지정 공공 API 한 경로) → SOURCE_BLOCKED(지정 서비스에 ETF 분배금 기능 없음 · 이번 출처 확인 작업 종료 · 계산 구현 없음) · `POC6-14` 전향 ML 비교 결과의 PC 조회 = 설계 V1 → PLAN → 설계자 PASS_WITH_REQUIRED_CORRECTIONS(10-30 · Q1 ~ Q3 수용) · 보완 반영 · 목업 정정 → 사용자 목업 확인(10-30) → 구현 · 시험(10-30) → 사용자 실화면 확인(10-30) → 검증자 r1 REJECTED(F1 · F2) → 정정 → r2 REJECTED(F3 공통 비교 행의 일부 null) → 정정(10-31) · 검증자 r3 VERIFIED(2026-10-31) · 설계자 RESULT PASS(2026-10-31 · 결과서 §13) · 커밋 · push 대기 · 메뉴 구분 의견 → 설계자 전달 · 06 전향 D = 10-28 결측 · 아래 POC6 칸)
 
 ## POC6 — 시장 흐름 통합 · ML 고도화 (PC · OCI·PUSH 영향 0)
 
@@ -115,6 +115,10 @@ POC6-12  ETF 분배 · 총수익 자료 검증 = PLAN 제출 → 설계자 HOLD_
          PLAN docs/ai_plan/POC6/POC6-12_ETF_DISTRIBUTION_AND_TOTAL_RETURN_DATA_VALIDATION_PLAN_V1.md(§7 판정 반영 · §7-4 원천 확인 · §7-5 설계자 회신 · 부록 A 점검)
          같은 날 부록 A(자료 사용 · 축적 · PUSH 연결 점검) 수용 · 06 전향 기록 10-28 재개(D = 10-27 · 공개 확인 10:53 KST · 개발자 실행 · 설계자 수용)
          06 전향 10-29 미실행 → D = 10-28 결측(입력 OCI 09:40 수집됨 · 마감 15:30 경과 · 소급 없음 · PLAN §7-3 · 설계자 수용 = 13 RESULT 판정 §6-2) · D = 10-29 = 10-30 10:05 POC6-13 자동 실행으로 기록(주 기록 24/24 · 공개 확인 10:05:48)
+         보완 설계(2026-10-30 · docs/ai_design/POC6/POC6-12_BOUNDED_OFFICIAL_API_RESTART_DESIGN_V1_2026-10-30.md) = 공공데이터포털 '한국예탁결제원_증권예탁통계서비스_GW' 한 경로 · 60분 · 공개 문서 GET 12
+               → 공식 상세기능 33개 · 응답 칸 113개 = 월별 시장 집계 · 종목 식별 · 분배금 · 날짜 칸 0 → SOURCE_BLOCKED(ETF 기능 없음 · 이 서비스 한정 · 일반화 안 함)
+               · 12:22 ~ 12:26 KST · GET 1회 · 데이터 호출 · 가입 · 키 요청 0 · 계산 구현 없음(IMPLEMENTED 아님) · 이번 출처 확인 작업 종료 · 재개 = 새 원본 · 허용 근거가 생길 때 별도 판단
+         결과서 docs/ai_result/POC6/POC6-12_ETF_DISTRIBUTION_AND_TOTAL_RETURN_DATA_VALIDATION_RESULT.md(§8-3 = 확인된 범위와 부족 목록 · 다음 추천 효용 설계 입력)
 POC6-13  전향 비교 정기 실행 · 연구 증거 별도 보관 = PLAN → 설계자 PASS_WITH_REQUIRED_CORRECTIONS(2026-10-28 · Q1 = C 전체를 사용자 소유 다른 물리 저장소 ·
                봉인 DB OCI 미전송 계약 유지 · Q2 = 업로드 작업당 OCI 목록 1회 · Q3 = 활성화 전 가동 여건 확인) → 격리 구현 · 시험 · 독립 검토 1회 반영
                → 검증자 r1 REJECTED(F1 ~ F4) → 정정 → r2 REJECTED(F3 외장 사본 파일 링크 · F4 조회 오류 = 해제 OK 잔여) → 정정
@@ -129,7 +133,21 @@ POC6-13  전향 비교 정기 실행 · 연구 증거 별도 보관 = PLAN → �
                → 정정(되돌리기 · verify = 마지막 복사 기록 COPY_HASH_OK 일 때만 · 결과서 §15-6) · 백업 시험 81 · 관련 298 passed → C r2 VERIFIED(결과서 §17) → 사용자 승인(10-30) · 구현 커밋 941044d9 push → 실제 PC 사본 COPY_HASH_OK · 해제 · 재연결 · RESTORE_VERIFIED(결과서 §15-7) = C 완료
          OCI 일별 추론 = 읽기 전용 사실 확인 완료(결과서 부록 A · 판정 없음 · OCI 954MB · 스왑 없음 · scikit-learn · torch 미설치 · 맥북 참고 추론 RSS 310MiB)
          첫 정기 실행(2026-10-30 10:05 · 결과서 §14-4) = 06 `run --pull` 시도 1/4 · D = 10-29 주 기록 24/24 · 마감 전 공개 확인 10:05:48 · 학습 KEEP(같은 달) · 보관 ARCHIVED_OK(새 묶음 8파일 OCI 수락 · 미등록 0 · 미확인 0)
-         → 종료 IMPLEMENTED_VERIFIED_CLOSED(2026-10-30 · 판정 V1.1 §4-6 · §7 = 추가 RESULT 판정 없이 설계자에게 사실 보고) · 자동 후속 제안 없음
+         → 종료 IMPLEMENTED_VERIFIED_CLOSED(2026-10-30 · 판정 V1.1 §4-6 · §7) → 설계자 종료 수용(2026-10-30 · 재검증 없음 · 이후 = 평소 자동 · 유효 시간 안에 기록 없을 때만 수동 확인 · 소급 없음) · 자동 후속 제안 없음
+POC6-14  전향 ML 비교 결과의 PC 조회 = 설계 V1(2026-10-30 · docs/ai_design/POC6/POC6-14_FORWARD_MODEL_COMPARISON_PC_VIEW_DESIGN_V1.md)
+               → PLAN 제출(2026-10-30 · docs/ai_plan/POC6/POC6-14_FORWARD_MODEL_COMPARISON_PC_VIEW_PLAN_V1.md · 조사 약 13분 · 06 연구 폴더 읽기 전용 · 질문 3 = 위치 · 부호 · 성숙 평가 전 행)
+               · 전체 화면 목업 5종(실제 2 · 가짜 3 · 1440 / 1000px · 로컬 전용 · 저장소 · 공개 게시 없음)
+               → 설계자 PASS_WITH_REQUIRED_CORRECTIONS(2026-10-30 · …_PLAN_DECISION_2026-10-30.md · Q1 맨 위 카드 · Q2 0 → 0.00% · MAE 부호 없음 · Q3 '성숙 확인 전' 수용
+                 · 보고 상태 = 그 기준일을 기록한 회차의 보고로 판단(per_date 만으로 판단 안 함) · 머리말 범위 · 가짜 날짜 관계 · 재제출 없음)
+               → 보완 = PLAN §6 · 목업 정정(6종 · 실제 3 · 가짜 3) · 기존 「ML 실험」 카드 모양 맞춤 → 사용자 목업 확인(2026-10-30)
+               → 구현(2026-10-30 · GET /ml/forward-comparison 읽기 전용 · 「ML 실험」 맨 위 카드 · 백엔드 시험 30 · 프런트 20 · 변이 5종 · 실서버 조회 전후 연구 폴더 해시 같음)
+               → 사용자 실화면 확인(2026-10-30) → 검증자 r1 REJECTED(F1 손상 구조를 정상 미평가 · 빈 비교로 받음 · F2 화면 보고 경고가 복사문에서 빠짐)
+               → 정정(2026-10-31 · 06 저장 구조 검사 모듈 · 화면 = 복사 경고 공용 함수 · 같은 종류 포함 · 백엔드 시험 80 · 프런트 29 · 변이 5종) → 검증자 r2 REJECTED(F3)
+               → 정정(2026-10-31 · 공통 행이 있으면 모든 방법 값 · 행 · 날짜 · 종목 일치 · 화면 방어 · 백엔드 89 · 프런트 30 · 변이 3종) → 검증자 r3 VERIFIED(2026-10-31) · 설계자 RESULT PASS(2026-10-31 · 결과서 §13) · 커밋 · push 대기
+               · 결과서 docs/ai_result/POC6/POC6-14_FORWARD_MODEL_COMPARISON_PC_VIEW_RESULT.md(§4-1)
+               · 사용자 의견 '하나의 메뉴(ML 실험)에 기능이 계속 추가 — 폴더(메뉴) 구분' → 설계자 전달(PLAN §7 · 14 는 판정 위치대로)
+         미처리 UI 요구(사용자 2026-10-30): 메뉴(폴더) 구분 — 「ML 실험」 등 한 메뉴에 기능이 계속 늘어남 · 14 의 메뉴 무변경은 해소가 아님
+               · 다음 UI 범위를 정할 때 판단(설계자 POC6-14 RESULT 판정 §3 · PLAN §7) · 자동 개편 없음
 POC6 다음  방향 문서 docs/ai_design/POC6/POC6_INVESTMENT_DECISION_AND_ML_DIRECTION_ROADMAP_2026-10-26.md(설계자 V1 · 2026-10-26 · handoff 아님)
          목표 = 한국 상장 ETF 후보 추천 · 보유 중 유지 · 축소 · 매도 검토 근거와 권고 · 사용자 최종 결정 · 주문(자동 주문 제외) · ML 효용 검증 뒤 연결
          추천 행동 · 성과 검증 계약 = docs/ai_design/POC6/POC6_RECOMMENDATION_ACTION_AND_PERFORMANCE_CONTRACT_V1.md(설계자 V1.1 · §2-1 A · B · C 확정 기록 · 최초 V1 = 75aad869)
