@@ -7,7 +7,7 @@ STATUS   = PLAN 제출(2026-10-30 · 설계 §10 네 묶음 · 질문 3) · 전�
            → 설계자 PASS_WITH_REQUIRED_CORRECTIONS(2026-10-30 · Q1 · Q2 · Q3 권장안 수용 · 보고 상태 · 머리말 범위 · 가짜 시각 보완 · 재제출 없음)
            → 보완 반영 = 이 문서 §6 · 목업 정정 · 기존 「ML 실험」 카드 모양 맞춤 → **사용자 목업 확인(2026-10-30 '괜찮은 것 같습니다')** → 구현
            · 사용자 의견 '하나의 메뉴에 기능이 계속 추가 — 폴더(메뉴) 구분 필요' → 설계자 전달(§7 · 14 구현은 판정 위치대로 진행)
-           → 구현 → 사용자 실화면 확인(2026-10-30) → 검증자 r1 · r2 REJECTED → 정정 → r3 VERIFIED → 설계자 RESULT PASS(2026-10-31 · 결과서 §13) → 커밋 · push(사용자 승인 대기)
+           → 구현 → 사용자 실화면 확인(2026-10-30) → 검증자 r1 · r2 REJECTED → 정정 → r3 VERIFIED → 설계자 RESULT PASS(2026-10-31 · 결과서 §13) → 구현 커밋 89afeba6 push → IMPLEMENTED_VERIFIED_CLOSED(2026-11-01 · 결과서 §14)
 DESIGN   = docs/ai_design/POC6/POC6-14_FORWARD_MODEL_COMPARISON_PC_VIEW_DESIGN_V1.md
 DECISION = docs/ai_design/POC6/POC6-14_FORWARD_MODEL_COMPARISON_PC_VIEW_PLAN_DECISION_2026-10-30.md(판정이 본 PLAN SHA-256 = 제출 파일과 같음)
 조사     = 2026-10-30 12:57 ~ 13:10 KST(약 13분 · 상한 60분) · 06 · 13 · 「진단·상태」 접점만 · 코드 읽기 + 06 연구 폴더 읽기 전용
