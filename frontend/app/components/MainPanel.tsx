@@ -84,7 +84,12 @@ export default function MainPanel() {
       break;
     case "ml":
       // 2026-08-16 사용자 지시 — 흩어져 있던 ML 카드 5개를 한 메뉴로 모음.
-      view = <MLView />;
+      // 2026-11-01 POC6-15 — 「ML 연구 › 예측과 결과 비교」(06 전향 비교 카드 1개 · key 그대로).
+      view = <MLView key="ml-forward" page="forward" />;
+      break;
+    case "ml_legacy":
+      // 2026-11-01 POC6-15 — 「ML 연구 › 이전 자료·실험」(현재 예측 비교와 별개인 카드 5개).
+      view = <MLView key="ml-legacy" page="legacy" />;
       break;
     case "alert_records":
       // 2026-10-07 POC5-03 설계 개정 2 — 받은 알림 · 당시 근거 · 이후 결과(사후 ML 검토용).

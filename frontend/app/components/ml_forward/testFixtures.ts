@@ -50,7 +50,24 @@ export const DATA: ForwardComparisonResponse = {
     counts: { primary_records: 72, matured: 0, pending_or_missing: 72, predicted_by_method: { MEDIAN: 72 } },
     predicted_dates: { count: 3, first: "2026-10-22", last: "2026-10-29" },
     matured_dates: { count: 0, first: null, last: null },
+    // 06 보고는 비교 세 가지를 늘 함께 쓴다(`report.COMPARISONS` · 조회 모듈 `report_ok` 가 셋 다 요구 · POC6-15 r1)
     comparisons: {
+      HGB_vs_MEDIAN_RIDGE: {
+        rows: 0,
+        dates: 0,
+        tickers: 0,
+        excluded_rows: 0,
+        mae_pp: { MEDIAN: null, RIDGE: null, HGB: null },
+        deep: { rows: 0, under_estimate_pp: {} },
+      },
+      MLP_CPU_vs_MEDIAN_RIDGE: {
+        rows: 0,
+        dates: 0,
+        tickers: 0,
+        excluded_rows: 0,
+        mae_pp: { MEDIAN: null, RIDGE: null, MLP_CPU: null },
+        deep: { rows: 0, under_estimate_pp: {} },
+      },
       ALL_FOUR: {
         rows: 0,
         dates: 0,

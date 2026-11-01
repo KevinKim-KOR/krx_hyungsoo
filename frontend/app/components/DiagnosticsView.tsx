@@ -34,7 +34,7 @@ export default function DiagnosticsView({ run, setRun, onNavigate }: Props) {
       <h1 id="diagnostics-h">개발·실험용</h1>
       <p className="helper" style={{ marginBottom: 16 }}>
         정상 업무 화면이 아닙니다. 미리보기·샘플(PREVIEW/TEST), 개발 호환 점검,
-        참고용 이전 화면(LEGACY)을 이곳에서 관리합니다. 데이터 상태·ML 실험은 각각
+        참고용 이전 화면(LEGACY)을 이곳에서 관리합니다. 데이터 상태·ML 연구는 각각
         별도 메뉴로, OCI 운영 상태는 「OCI 운영·적용」으로 옮겼습니다.
       </p>
 

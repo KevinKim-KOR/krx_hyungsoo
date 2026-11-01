@@ -5,6 +5,8 @@
 // 06 전향 기록을 GET /ml/forward-comparison 으로 읽기만 한다(실행 · 학습 · 보고 생성 · 매수/매도 판단 0).
 // 기존 「ML 실험」 카드 부품(helper · ml-readiness-badge · market-topn-table · message)과 기존 ? 도움말(HelpPopover).
 // 기준일 바꾸기 · 다시 불러오기 중 늦게 온 이전 응답은 버린다(요청 순번). [복사] = 지금 화면에 그린 응답에서만.
+// 2026-11-01 POC6-15 — 「ML 연구 › 예측과 결과 비교」 화면의 카드. 순서 = 제목 → 현재 결론 한 줄(+ 경고) → 기준일 ·
+//   다시 불러오기 → 설명 → 근거 · 표 → 누적 비교 → 접힌 개발 정보(보고 · 실행 · 모델 버전 id). 조회 · 복사 동작은 그대로.
 
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -15,6 +17,7 @@ import {
   type ForwardRow,
 } from "@/lib/api";
 import HelpPopover from "../holdings_risk_evidence/HelpPopover";
+import { CardConclusion, DevDetails } from "../MLCardParts";
 import ForwardCompareReport from "./ForwardCompareReport";
 import {
   HELP_PARAGRAPHS,
@@ -23,9 +26,12 @@ import {
   actualShort,
   cardNotices,
   copyText,
+  forwardConclusion,
   kstTime,
+  labelText,
   methodLong,
   methodShort,
+  reportNotices,
   runTime,
   spanText,
 } from "./forwardText";
@@ -104,19 +110,26 @@ export default function ForwardComparisonCard() {
 
   return (
     <div className="card">
-      <h2 style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        전향 ML 비교 · 연구
-        <HelpPopover label="전향 ML 비교 · 연구 도움말" paragraphs={HELP_PARAGRAPHS} />
+      <h2 style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+        예측과 결과 비교
+        <span style={{ fontSize: 12, color: "var(--muted)", fontWeight: 400 }}>(연구 이름: 전향 ML 비교)</span>
+        <HelpPopover label="예측과 결과 비교 도움말" paragraphs={HELP_PARAGRAPHS} />
       </h2>
-      <p className="helper" style={{ marginBottom: 8 }}>
-        POC6-06 고정 연구 표본의 전향 D20 예측(네 방법)과 저장된 성숙 결과 · 비교 보고를 읽기만 합니다. 학습 · 예측
-        · 보고 생성 · 매수/매도 판단 0건. 기록은 맥북 정기 실행(06 run)으로만 쌓입니다.
-      </p>
-      {state.phase === "loading" && <div className="message info">불러오는 중...</div>}
+      {state.phase === "loading" && (
+        <>
+          <CardConclusion tone="muted" label="불러오는 중" />
+          <Intro />
+        </>
+      )}
       {state.phase === "error" && (
         <>
-          <div className="message error">{state.message}</div>
-          <button onClick={() => reload(null)}>다시 불러오기</button>
+          <CardConclusion tone="bad" label="불러오지 못함">
+            {state.message}
+          </CardConclusion>
+          <div className="ml-card-controls">
+            <button onClick={() => reload(null)}>다시 불러오기</button>
+          </div>
+          <Intro />
         </>
       )}
       {state.phase === "ready" && (
@@ -137,6 +150,16 @@ export default function ForwardComparisonCard() {
   );
 }
 
+function Intro() {
+  return (
+    <p className="helper" style={{ marginBottom: 8 }}>
+      고정 연구 대상 ETF 에 대해 네 가지 방법이 기준일마다 &lsquo;앞으로 20거래일 안에 종가가 얼마나 떨어질지&rsquo;를 미리
+      기록하고, 20거래일이 지나면 실제 결과와 비교합니다. 이 화면은 저장된 기록을 읽기만 합니다(학습 · 예측 · 보고
+      만들기 · 매수 · 매도 판단 없음). 기록은 맥북 정기 실행으로만 쌓입니다.
+    </p>
+  );
+}
+
 function Body({
   data,
   open,
@@ -154,28 +177,36 @@ function Body({
   onReload: () => void;
   onCopy: (data: ForwardComparisonResponse, row: ForwardRow) => void;
 }) {
-  const label = <span className="ml-readiness-badge ml-readiness-missing">{data.label}</span>;
+  const c = forwardConclusion(data);
+  const label = <span className="ml-readiness-badge ml-readiness-missing">{labelText(data.label)}</span>;
   if (data.status !== "OK") {
     const o = data.other;
     const box =
       data.status === "NO_RECORDS" ? (
         <div className="message info">
-          공개 확인된 연구 기록 없음 — {data.message ?? "기록 없음"}
+          공개 확인된 예측 기록이 아직 없습니다 — {data.message ?? "기록 없음"}
           {o && o.unconfirmed_forward_records + o.diagnostic_entries + o.supplementary_entries > 0
-            ? ` · 마감 뒤 확인 ${o.unconfirmed_forward_records}개 · 진단 ${o.diagnostic_entries}행 · 부가 ${o.supplementary_entries}행은 성과 · 표본에 넣지 않습니다.`
+            ? ` · 마감 뒤 확인 ${o.unconfirmed_forward_records}개 · 진단 ${o.diagnostic_entries}줄 · 부가 ${o.supplementary_entries}줄은 성과 · 대상에 넣지 않습니다.`
             : ""}{" "}
           이 화면은 실행 · 소급을 하지 않습니다.
         </div>
       ) : (
         <div className="message error">
-          불러오기 실패 · 확인 필요 — {data.message ?? "사유 미기록"}. 숫자를 보여 주지 않습니다.
+          기록을 읽지 못했습니다({data.status}) — 원인 확인 필요 · 원문: {data.message ?? "사유 미기록"}. 숫자를 보여 주지
+          않습니다.
         </div>
       );
     return (
       <>
-        <div style={LINE}>{label}</div>
+        <CardConclusion tone={c.tone} label={c.label}>
+          {c.text}
+        </CardConclusion>
+        <div className="ml-card-controls">
+          {label}
+          <button onClick={onReload}>다시 불러오기</button>
+        </div>
         {box}
-        <button onClick={onReload}>다시 불러오기</button>
+        <Intro />
       </>
     );
   }
@@ -185,19 +216,24 @@ function Body({
   const rr = b.record_runs;
   const mt = b.maturity;
   const matText = !mt
-    ? "이 기준일의 성숙 평가 상태 기록이 아직 없습니다"
+    ? "이 기준일의 결과 확인 기록이 아직 없습니다"
     : mt.runs.length === 1
-      ? `${runTime(mt.runs[0])} 회차`
-      : `여러 회차(${mt.runs.length}) · ${spanText(mt.at)}`;
+      ? `${runTime(mt.runs[0])} 실행`
+      : `여러 실행(${mt.runs.length}) · ${spanText(mt.at)}`;
+  // 결론 근처 경고 — 화면과 복사문이 같은 함수(cardNotices · reportNotices)에서(판정 §3 · 접힌 곳에만 두지 않음)
+  const warnings = [...cardNotices(data), ...reportNotices(data).filter((n) => n.level !== "ok")];
   return (
     <>
-      <div style={LINE}>
+      <CardConclusion tone={c.tone} label={c.label}>
+        {c.text}
+      </CardConclusion>
+      {warnings.map((n) => (
+        <div key={n.text} className={`message ${n.level}`}>
+          {n.text}
+        </div>
+      ))}
+      <div className="ml-card-controls">
         {label}
-        <span>
-          고정 연구 표본 <b>{data.cohort?.size ?? "미확인"}</b>종 · 공개 확인된 기준일 <b>{data.dates?.length ?? 0}</b>개
-        </span>
-      </div>
-      <div style={{ ...LINE, margin: "10px 0 4px", gap: 10 }}>
         <label style={{ display: "flex", alignItems: "center", gap: 6, margin: 0 }}>
           기준일
           <select
@@ -213,35 +249,33 @@ function Body({
           </select>
         </label>
         <button onClick={onReload}>다시 불러오기</button>
+        <span style={{ fontSize: 13, color: "var(--muted)" }}>
+          고정 연구 대상 {data.cohort?.size ?? "미확인"}종 · 예측이 공개 확인된 기준일 {data.dates?.length ?? 0}개
+        </span>
       </div>
+      <Intro />
       <div style={LINE}>
         <span>
           <span style={MUTED}>기준일</span> <b>{data.selected_D}</b>
         </span>
         <span>
-          · <span style={MUTED}>공개 확인</span> <b>{spanText(b.visible_by)}</b>
+          · <span style={MUTED}>예측 공개 확인</span> <b>{spanText(b.visible_by)}</b>
         </span>
         <span>
           · <span style={MUTED}>입력 확정</span> <b>{spanText(b.input_cutoff)}</b>
         </span>
         <span>
-          · <span style={MUTED}>기록 회차</span>{" "}
-          <b>{rr.length === 1 ? `${runTime(rr[0])} 회차` : `여러 회차(${rr.length}) — 행 상세에서 확인`}</b>
+          · <span style={MUTED}>기록 실행</span>{" "}
+          <b>{rr.length === 1 ? runTime(rr[0]) : `여러 실행(${rr.length}) — 줄 상세에서 확인`}</b>
         </span>
         <span>
-          · <span style={MUTED}>모델 판</span>{" "}
-          <b>{mv.length === 1 ? mv[0] : `여러 판(${mv.length}) — 행 상세에서 확인`}</b>
+          · <span style={MUTED}>모델 버전</span>{" "}
+          <b>{mv.length === 1 ? "1개" : `여러 버전(${mv.length}) — 줄 상세에서 확인`}</b>
         </span>
         <span>
-          · <span style={MUTED}>결과 상태 출처</span> <b>{matText}</b>
+          · <span style={MUTED}>결과 상태 확인</span> <b>{matText}</b>
         </span>
       </div>
-      {/* 카드 경고도 복사문과 같은 함수(cardNotices)에서 */}
-      {cardNotices(data).map((n) => (
-        <div key={n.text} className={`message ${n.level}`}>
-          {n.text}
-        </div>
-      ))}
       <div style={{ overflowX: "auto" }}>
         <table className="market-topn-table">
           <thead>
@@ -249,10 +283,10 @@ function Body({
               <th rowSpan={2} aria-label="펼치기" />
               <th rowSpan={2}>종목</th>
               <th colSpan={4} style={{ textAlign: "center" }}>
-                D20 예측(%) · 범위 제한 뒤
+                예측 — 20거래일 내 종가 하락폭(%) · −100 ~ 0% 범위로 맞춘 값
               </th>
               <th rowSpan={2} style={NUM}>
-                실제 D20(%)
+                실제 하락폭(%)
                 <br />· 결과 상태
               </th>
             </tr>
@@ -280,10 +314,19 @@ function Body({
         </table>
       </div>
       <p className="helper">
-        D20 = 다음 20거래일 종가 중 가장 깊은 하락(0 이하) · 연구 추정 · 매매 수익률 아님 · 정렬 = 티커 순. 행을 누르면 그
-        아래에 근거와 [복사]가 열립니다.
+        20거래일 내 종가 하락폭 = 기준일 종가 대비 이후 20거래일 종가 중 가장 낮은 변화(0 이하) · 연구 추정이며 매매
+        수익률이 아님 · 정렬 = 종목 코드 순. 줄을 누르면 그 아래에 근거와 [복사]가 열립니다.
       </p>
       <ForwardCompareReport data={data} />
+      <DevDetails>
+        {[
+          `보고 ${data.report?.id ?? "없음"}`,
+          `기록 실행 ${rr.join(", ") || "미확인"}`,
+          `모델 버전 ${mv.join(", ") || "미확인"}`,
+          `결과 상태 확인 실행 ${mt?.runs.join(", ") ?? "없음"}`,
+          `고정 연구 대상 ${data.cohort?.id ?? "미확인"} · 연구 문서: 전향 ML 비교(POC6-06)`,
+        ].join("\n")}
+      </DevDetails>
     </>
   );
 }
@@ -315,7 +358,7 @@ function RowView({
         <td style={{ width: 28, textAlign: "center", color: "var(--muted)" }}>·</td>
         {name}
         <td colSpan={5} style={{ color: "var(--muted)", fontSize: 12 }}>
-          이 기준일 주 기록 없음{row.why ? ` — 입력 상태 ${row.why}` : ""}
+          이 기준일 예측 기록 없음{row.why ? ` — 입력 상태 ${row.why}` : ""}
         </td>
       </tr>
     );
@@ -354,7 +397,7 @@ function RowView({
                 <>
                   {methodShort(m)}
                   {m?.retried_at && (
-                    <span style={{ display: "block", color: "var(--muted)", fontSize: 11 }}>재시도로 채움</span>
+                    <span style={{ display: "block", color: "var(--muted)", fontSize: 11 }}>다시 시도해 채움</span>
                   )}
                 </>
               )}
@@ -394,30 +437,36 @@ function RowView({
             <dl
               style={{ display: "grid", gridTemplateColumns: "max-content minmax(0, 1fr)", gap: "4px 14px", fontSize: 13, margin: 0 }}
             >
-              <dt style={MUTED}>기록 회차</dt>
-              <dd style={{ margin: 0 }}>
-                {det.run_id} · 쓰기 시작 {kstTime(det.write_started_at)}
-              </dd>
-              <dt style={MUTED}>공개 확인</dt>
+              <dt style={MUTED}>예측 공개 확인</dt>
               <dd style={{ margin: 0 }}>
                 {kstTime(det.visible_by)} (마감 {kstTime(det.close_cutoff_at).slice(0, 16)} 전)
               </dd>
               <dt style={MUTED}>입력 확정</dt>
               <dd style={{ margin: 0, overflowWrap: "anywhere" }}>
                 {kstTime(det.input_cutoff)} · OCI 수집 {kstTime(det.input.observed_at)} · 보관{" "}
-                {kstTime(det.input.available_at)} · 묶음 {(det.input.object ?? "미확인").slice(0, 12)}…
+                {kstTime(det.input.available_at)}
               </dd>
-              <dt style={MUTED}>모델 판</dt>
-              <dd style={{ margin: 0 }}>{det.model_version}</dd>
+              <dt style={MUTED}>기록 실행</dt>
+              <dd style={{ margin: 0 }}>
+                {runTime(det.run_id)} · 쓰기 시작 {kstTime(det.write_started_at)}
+              </dd>
               {METHODS.map(([k, label]) => (
                 <Fragment key={k}>
                   <dt style={MUTED}>{label}</dt>
                   <dd style={{ margin: 0, overflowWrap: "anywhere" }}>{methodLong(row.methods?.[k])}</dd>
                 </Fragment>
               ))}
-              <dt style={MUTED}>실제 D20</dt>
+              <dt style={MUTED}>실제</dt>
               <dd style={{ margin: 0 }}>{actualLong(a)}</dd>
             </dl>
+            <DevDetails>
+              {[
+                `기록 실행 ${det.run_id}`,
+                `모델 버전 ${det.model_version}`,
+                `입력 묶음 ${det.input.object ?? "미확인"}`,
+                `결과 상태 확인 실행 ${a?.basis_run ?? "없음"}`,
+              ].join("\n")}
+            </DevDetails>
           </td>
         </tr>
       )}

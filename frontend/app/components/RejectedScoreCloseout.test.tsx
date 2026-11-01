@@ -415,8 +415,10 @@ describe("C-1 보유와 비교 선택 상세", () => {
 // --- C-5 : ML 연구 화면 -----------------------------------------------------
 
 describe("C-5 ML 연구 화면", () => {
-  it("실행 카드가 유지되고 REJECT·연구용 표기가 보인다", () => {
-    render(
+  // POC6-15(2026-11-01) — 판정은 기본 화면에 쉬운 말 '미채택'(결론 줄)으로, 모델 이름 ·
+  // 판정 원문 REJECT 는 접힌 '자세한 정보(개발 정보)' 안에 남는다. 계약 뜻(판정 · 연구용 표기 유지)은 같다.
+  it("실행 카드가 유지되고 미채택(REJECT)·연구용 표기가 보인다", () => {
+    const { container } = render(
       <RelativeUpsideRunCard
         result={null}
         errorMessage={null}
@@ -424,18 +426,29 @@ describe("C-5 ML 연구 화면", () => {
         onError={() => {}}
       />,
     );
-    expect(screen.getByText("relative_upside_v0")).toBeInTheDocument();
-    expect(screen.getByText("REJECT")).toBeInTheDocument();
+    const conclusion = container.querySelector('[data-role="conclusion"]') as HTMLElement;
+    expect(conclusion).not.toBeNull();
+    expect(conclusion.closest("details")).toBeNull(); // 기본 화면(접힘 밖)
+    expect(within(conclusion).getByText("미채택")).toBeInTheDocument();
     expect(
-      screen.getByText("연구용 baseline이며 투자 판단에 사용하지 않음"),
+      within(conclusion).getByText("2026-08-29 판정 · 연구용 기준선 · 투자 판단에 쓰지 않음"),
     ).toBeInTheDocument();
+    const dev = container.querySelector("details.ml-dev-details") as HTMLElement;
+    expect(dev).not.toBeNull();
+    expect(dev).toHaveTextContent("relative_upside_v0");
+    expect(dev).toHaveTextContent("REJECT");
     expect(
-      screen.getByRole("button", { name: /상대상승 점수 계산/ }),
+      screen.getByRole("button", { name: "참고점수 계산" }),
     ).toBeInTheDocument();
   });
 
   it("후보 화면으로 이동하는 링크가 없다", () => {
-    const { container } = render(<MLView />);
+    const { container } = render(<MLView page="legacy" />);
+    // 「이전 자료·실험」 화면에 카드가 있고 미채택 표기가 보인다.
+    expect(
+      screen.getByRole("heading", { name: "상대 상승 참고점수(이전 실험)" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("미채택")).toBeInTheDocument();
     expect(container.textContent ?? "").not.toContain("요즘 잘 오르는 ETF →");
   });
 });

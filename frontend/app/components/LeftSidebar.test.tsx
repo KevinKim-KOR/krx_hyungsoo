@@ -11,11 +11,15 @@
 //   합쳐 oci_status 제거 → 13→12 (사용자 직접 지시).
 // - 2026-10-07 POC5-03 설계 개정 2: 진단·상태에 「받은 알림 기록」(alert_records) 추가 → 12→13
 //   (사용자 목업 결정 · ML 실험 바로 아래).
+// - 2026-11-01 POC6-15: 「ML 실험」 → 「ML 연구」 폴더(한 단계 · key 없음) · 예측과 결과 비교(`ml`)
+//   · 이전 자료·실험(`ml_legacy`) → 13→14. 폴더 버튼도 aria-expanded 를 가져 그룹 제목 수 셈에서 뺀다.
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import LeftSidebar, {
   MENU_GROUPS,
   MENU_ITEMS,
+  groupMenuItems,
+  isMenuFolder,
   type MenuKey,
 } from "./LeftSidebar";
 
@@ -31,6 +35,7 @@ const ALL_KEYS: MenuKey[] = [
   "approval",
   "diagnostics",
   "ml",
+  "ml_legacy",
   "alert_records",
   "data_status",
 ];
@@ -58,6 +63,7 @@ describe("LeftSidebar 그룹 구조 (POC3-03 · POC3-07 · 5그룹)", () => {
     render(<LeftSidebar active="today_check" onSelect={() => {}} />);
     const titles = screen
       .getAllByRole("button", { expanded: true })
+      .filter((b) => b.classList.contains("sidebar-group-title"))
       .map((b) => b.textContent?.replace(/[▸▾]/g, "").trim());
     for (const t of GROUP_TITLES) {
       expect(screen.getByText(t)).toBeTruthy();
@@ -66,17 +72,17 @@ describe("LeftSidebar 그룹 구조 (POC3-03 · POC3-07 · 5그룹)", () => {
     expect(titles.length).toBe(GROUP_TITLES.length);
   });
 
-  it("AC-2: 13개 key 가 그룹에 정확히 1회씩 귀속(중복·누락·신규 0)", () => {
-    const keys = MENU_GROUPS.flatMap((g) => g.items.map((i) => i.key));
+  it("AC-2: 14개 key 가 그룹에 정확히 1회씩 귀속(폴더 하위 포함 · 중복·누락·신규 0)", () => {
+    const keys = MENU_GROUPS.flatMap((g) => groupMenuItems(g).map((i) => i.key));
     expect(keys.sort()).toEqual([...ALL_KEYS].sort());
-    expect(new Set(keys).size).toBe(13);
-    expect(keys.length).toBe(13);
+    expect(new Set(keys).size).toBe(14);
+    expect(keys.length).toBe(14);
     expect(MENU_ITEMS.map((i) => i.key).sort()).toEqual([...ALL_KEYS].sort());
   });
 
   it("B-1: 모든 MenuKey 가 정확히 1개 그룹에 귀속된다 (모듈 invariant — 누락 시 로드 throw)", () => {
     for (const key of ALL_KEYS) {
-      const owners = MENU_GROUPS.filter((g) => g.items.some((i) => i.key === key));
+      const owners = MENU_GROUPS.filter((g) => groupMenuItems(g).some((i) => i.key === key));
       expect(owners.length).toBe(1);
     }
     expect(() =>
@@ -86,7 +92,9 @@ describe("LeftSidebar 그룹 구조 (POC3-03 · POC3-07 · 5그룹)", () => {
 
   it("보완1: 최초 진입 시 모든 그룹이 펼쳐진다", () => {
     render(<LeftSidebar active="today_check" onSelect={() => {}} />);
-    const groupTitles = screen.getAllByRole("button", { expanded: true });
+    const groupTitles = screen
+      .getAllByRole("button", { expanded: true })
+      .filter((b) => b.classList.contains("sidebar-group-title"));
     expect(groupTitles.length).toBe(GROUP_TITLES.length);
     for (const item of MENU_ITEMS) {
       expect(screen.getByText(item.label)).toBeTruthy();
@@ -154,35 +162,41 @@ describe("LeftSidebar 그룹 구조 (POC3-03 · POC3-07 · 5그룹)", () => {
 
   it("승인·운영 그룹은 OCI 운영·적용 메뉴 1개만 (정보 PUSH 카드·자리표시자 없음)", () => {
     const ops = MENU_GROUPS.find((g) => g.title === "승인·운영")!;
-    expect(ops.items.map((i) => i.label)).toEqual(["OCI 운영·적용"]);
+    const opsItems = groupMenuItems(ops);
+    expect(ops.items.length).toBe(1);
+    expect(opsItems.map((i) => i.label)).toEqual(["OCI 운영·적용"]);
     // route key 는 approval 그대로 (2026-09-27 합침 — key 변경 없음).
-    expect(ops.items.map((i) => i.key)).toEqual(["approval"]);
-    expect(ops.items[0].hint).toBe("OCI 상태 · 운영 기준 적용");
+    expect(opsItems.map((i) => i.key)).toEqual(["approval"]);
+    expect(opsItems[0].hint).toBe("OCI 상태 · 운영 기준 적용");
   });
 
   it("2026-09-27 합침: oci_status 메뉴는 어디에도 없다 · 「OCI 운영 상태」 라벨도 없다", () => {
-    const allKeys = MENU_GROUPS.flatMap((g) => g.items.map((i) => i.key)) as string[];
+    const allKeys = MENU_ITEMS.map((i) => i.key) as string[];
     expect(allKeys).not.toContain("oci_status");
     expect(MENU_ITEMS.map((i) => i.label)).not.toContain("OCI 운영 상태");
   });
 
   it("진단·상태 그룹은 정상 업무→ML→개발용 순서이며 승인·운영 뒤에 온다 (POC3-07 §5.3 · 2026-08-16 재편)", () => {
     const diag = MENU_GROUPS.find((g) => g.title === "진단·상태")!;
-    // 사용자 지시 순서: 데이터 상태 → ML 실험 → 받은 알림 기록(2026-10-07) → 개발·실험용.
+    // 사용자 지시 순서: 데이터 상태 → ML 연구 폴더(2026-11-01 · 예측과 결과 비교 → 이전 자료·실험)
+    //   → 받은 알림 기록(2026-10-07) → 개발·실험용.
     //   (OCI 운영 상태는 2026-09-27 승인·운영 그룹 「OCI 운영·적용」으로 합쳐졌다.)
-    expect(diag.items.map((i) => i.key)).toEqual([
+    expect(groupMenuItems(diag).map((i) => i.key)).toEqual([
       "data_status",
       "ml",
+      "ml_legacy",
       "alert_records",
       "diagnostics",
     ]);
-    const alerts = diag.items.find((i) => i.key === "alert_records")!;
+    const folder = diag.items[1];
+    expect(isMenuFolder(folder) && folder.title).toBe("ML 연구");
+    const alerts = groupMenuItems(diag).find((i) => i.key === "alert_records")!;
     expect(alerts.label).toBe("받은 알림 기록");
     expect(alerts.hint).toBe("받은 알림 · 당시 근거 · 이후 결과");
     const order = MENU_GROUPS.map((g) => g.title);
     expect(order.indexOf("진단·상태")).toBe(order.indexOf("승인·운영") + 1);
     // 제거된 key 는 어디에도 없다.
-    const allKeys = MENU_GROUPS.flatMap((g) => g.items.map((i) => i.key));
+    const allKeys = MENU_ITEMS.map((i) => i.key);
     expect(allKeys).not.toContain("dashboard" as MenuKey);
     // data_status 는 2026-08-16 사용자 지시로 복원됨 (POC3-07 흡수 근거가 낡았던 건).
     expect(allKeys).toContain("data_status" as MenuKey);
@@ -199,5 +213,79 @@ describe("LeftSidebar 그룹 구조 (POC3-03 · POC3-07 · 5그룹)", () => {
     expect(screen.getByText("OCI 운영·적용")).toBeTruthy();
     expect(screen.queryByText("OCI 운영 / 적용")).toBeNull();
     expect(screen.queryByText("승인·적용")).toBeNull();
+  });
+});
+
+// --- POC6-15 「ML 연구」 폴더(한 단계) ------------------------------------------
+
+describe("POC6-15 「ML 연구」 폴더", () => {
+  const folderBtn = () => screen.getByText("ML 연구").closest("button")!;
+
+  it("폴더 아래 두 화면 · 라벨 · 힌트 · 기존 ml key = 예측과 결과 비교", () => {
+    render(<LeftSidebar active="today_check" onSelect={() => {}} />);
+    const ml = MENU_ITEMS.find((i) => i.key === "ml")!;
+    const legacy = MENU_ITEMS.find((i) => i.key === "ml_legacy")!;
+    expect([ml.label, ml.hint]).toEqual(["예측과 결과 비교", "미리 기록한 예측 · 이후 실제 결과"]);
+    expect([legacy.label, legacy.hint]).toEqual([
+      "이전 자료·실험",
+      "예측 비교와 별개인 이전 자료 · 실험",
+    ]);
+    expect(screen.queryByText("ML 실험")).toBeNull();
+    const sub = document.getElementById(folderBtn().getAttribute("aria-controls")!)!;
+    expect(sub.textContent).toContain("예측과 결과 비교");
+    expect(sub.textContent).toContain("이전 자료·실험");
+  });
+
+  it("폴더 버튼은 펼침·접힘만 — onSelect 0 · aria-expanded 바뀜", () => {
+    const onSelect = vi.fn();
+    render(<LeftSidebar active="today_check" onSelect={onSelect} />);
+    expect(folderBtn().getAttribute("aria-expanded")).toBe("true");
+    fireEvent.click(folderBtn());
+    expect(folderBtn().getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByText("예측과 결과 비교")).toBeNull();
+    fireEvent.click(folderBtn());
+    expect(folderBtn().getAttribute("aria-expanded")).toBe("true");
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it("하위 메뉴 클릭 = onSelect(key) · 선택된 하위 메뉴 aria-current · 폴더 · 그룹 활성 표시", () => {
+    const onSelect = vi.fn();
+    const { rerender } = render(<LeftSidebar active="today_check" onSelect={onSelect} />);
+    fireEvent.click(screen.getByText("이전 자료·실험"));
+    expect(onSelect).toHaveBeenCalledWith("ml_legacy");
+    fireEvent.click(screen.getByText("예측과 결과 비교"));
+    expect(onSelect).toHaveBeenCalledWith("ml");
+    rerender(<LeftSidebar active="ml_legacy" onSelect={onSelect} />);
+    expect(screen.getByText("이전 자료·실험").closest("button")?.getAttribute("aria-current")).toBe("page");
+    expect(screen.getByText("예측과 결과 비교").closest("button")?.getAttribute("aria-current")).toBeNull();
+    expect(folderBtn().closest("li")?.className).toContain("active-folder");
+    expect(screen.getByText("진단·상태").closest(".sidebar-group")?.className).toContain("active-group");
+  });
+
+  it("접힌 폴더 줄에 현재 위치 표시 · 폴더 밖 화면이면 표시 없음", () => {
+    const { rerender } = render(<LeftSidebar active="ml" onSelect={() => {}} />);
+    fireEvent.click(folderBtn());
+    expect(folderBtn().textContent).toContain("· 예측과 결과 비교");
+    rerender(<LeftSidebar active="data_status" onSelect={() => {}} />);
+    expect(folderBtn().getAttribute("aria-expanded")).toBe("false");
+    expect(folderBtn().textContent).not.toContain("·");
+  });
+
+  it("접힌 폴더 안으로 active 가 바뀌면 그 폴더만 자동으로 편다 · 접힌 그룹도 편다", () => {
+    const { rerender } = render(<LeftSidebar active="today_check" onSelect={() => {}} />);
+    fireEvent.click(folderBtn());
+    fireEvent.click(screen.getByText("비교·판단").closest("button")!);
+    expect(screen.queryByText("이전 자료·실험")).toBeNull();
+    rerender(<LeftSidebar active="ml_legacy" onSelect={() => {}} />);
+    expect(folderBtn().getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getByText("이전 자료·실험")).toBeTruthy();
+    expect(screen.queryByText("ETF 비교하기")).toBeNull();
+
+    // 다른 그룹에서 접힌 「진단·상태」의 폴더 안으로 오면 그룹과 폴더가 같이 펴진다.
+    rerender(<LeftSidebar active="today_check" onSelect={() => {}} />);
+    fireEvent.click(screen.getByText("진단·상태").closest("button")!);
+    expect(screen.queryByText("ML 연구")).toBeNull();
+    rerender(<LeftSidebar active="ml" onSelect={() => {}} />);
+    expect(screen.getByText("예측과 결과 비교")).toBeTruthy();
   });
 });

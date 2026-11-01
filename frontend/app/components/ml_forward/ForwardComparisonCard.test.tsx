@@ -3,6 +3,8 @@
 // - 기본 노출: 네 예측 · 결과 상태가 펼치지 않아도 보임 · 연구용 꼬리표.
 // - 행을 누르면 그 행 바로 아래에 상세 · [복사] = 화면에 그린 응답에서 만든 문장(클릭 때 조회 없음).
 // - 기준일 바꾸기 중 늦게 온 이전 응답은 버림. 상태별(없음 · 실패 · 보고 대기 · 보고 손상) 문구.
+// 2026-11-01 POC6-15 — 「예측과 결과 비교」 · 쉬운 한국어 기대값 · 순서(제목 → 결론 → 버튼 → 설명 → 표 → 개발 정보)
+//   · 결론 근처 경고 · 접힌 개발 정보 안의 id 시험을 더함(뜻 · 숫자 기대값은 그대로).
 import { StrictMode } from "react";
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, fireEvent, waitFor, within, act } from "@testing-library/react";
@@ -37,12 +39,12 @@ describe("ForwardComparisonCard", () => {
     expect(fetchForwardComparison).toHaveBeenCalledWith(undefined);
     expect(screen.getByText("0.00%")).toBeInTheDocument(); // -0.0001 → 0.00%(부호 없음)
     expect(screen.getByText("환경 불일치")).toBeInTheDocument();
-    expect(screen.getByText("재시도로 채움")).toBeInTheDocument();
-    expect(screen.getByText("성숙 확인 전")).toBeInTheDocument();
-    expect(screen.getAllByText("연구용 · 운영 미채택").length).toBeGreaterThan(0);
-    expect(screen.getByText(/이 기준일 주 기록 없음 — 입력 상태 NO_EVIDENCE/)).toBeInTheDocument();
+    expect(screen.getByText("다시 시도해 채움")).toBeInTheDocument();
+    expect(screen.getByText("결과 확인 전")).toBeInTheDocument();
+    expect(screen.getAllByText("연구용 · 운영에 쓰지 않음").length).toBeGreaterThan(0);
+    expect(screen.getByText(/이 기준일 예측 기록 없음 — 입력 상태 NO_EVIDENCE/)).toBeInTheDocument();
     expect(screen.getByText("보고 있음")).toBeInTheDocument();
-    expect(screen.getAllByText("아직 비교할 결과 없음").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("아직 비교할 결과가 없습니다").length).toBeGreaterThan(1); // 결론 줄 + 비교 표
     expect(screen.queryByText("복사")).toBeNull(); // 상세는 닫혀 있음
   });
 
@@ -107,33 +109,38 @@ describe("ForwardComparisonCard", () => {
       other: { unconfirmed_forward_records: 2, diagnostic_entries: 0, supplementary_entries: 0 },
     });
     const { unmount } = render(<ForwardComparisonCard />);
-    expect(await screen.findByText(/공개 확인된 연구 기록 없음/)).toHaveTextContent("마감 뒤 확인 2개");
+    expect(await screen.findByText(/공개 확인된 예측 기록이 아직 없습니다 —/)).toHaveTextContent("마감 뒤 확인 2개");
+    expect(screen.getByText("예측 기록 없음")).toBeInTheDocument();
     unmount();
     fetchForwardComparison.mockResolvedValueOnce({ status: "CHECK_REQUIRED", label: "연구용 · 운영 미채택", message: "cohort 다름" });
     const r2 = render(<ForwardComparisonCard />);
-    expect(await screen.findByText(/불러오기 실패 · 확인 필요 — cohort 다름/)).toBeInTheDocument();
+    expect(await screen.findByText(/기록을 읽지 못했습니다\(CHECK_REQUIRED\) — 원인 확인 필요 · 원문: cohort 다름/)).toBeInTheDocument();
+    expect(screen.getByText("확인 필요")).toBeInTheDocument();
     expect(screen.queryByText("-3.06%")).toBeNull();
     r2.unmount();
     fetchForwardComparison.mockRejectedValueOnce(new ApiRequestError("x", 404, null));
     render(<ForwardComparisonCard />);
     expect(await screen.findByText(/선택한 기준일 기록 없음/)).toBeInTheDocument();
+    expect(screen.getByText("불러오지 못함")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "다시 불러오기" })).toBeInTheDocument();
   });
 
   it("보고 대기 · 회차 보고 손상 · 더 늦은 보고 손상", async () => {
     const wait = { ...DATA, report: { ...DATA.report!, selected_D: "RUN_REPORT_MISSING" as const } };
     fetchForwardComparison.mockResolvedValueOnce(wait);
     const a = render(<ForwardComparisonCard />);
-    expect(await screen.findByText(/보고서 확인 대기 — 이 기준일을 기록한 회차/)).toBeInTheDocument();
+    expect(await screen.findByText(/이 기준일 보고 대기 — 이 기준일을 기록한 실행\(2026-10-30 10:05\)/)).toBeInTheDocument();
     a.unmount();
     const bad = { ...DATA, report: { ...DATA.report!, selected_D: "RUN_REPORT_UNREADABLE" as const } };
     fetchForwardComparison.mockResolvedValueOnce(bad);
     const b = render(<ForwardComparisonCard />);
-    expect(await screen.findByText(/최신 보고 확인 필요 — 이 기준일을 기록한 회차/)).toBeInTheDocument();
+    expect(await screen.findByText(/최신 보고를 확인해야 합니다 — 이 기준일을 기록한 실행/)).toBeInTheDocument();
+    expect(screen.getByText("최신 보고를 확인해야 합니다")).toBeInTheDocument(); // 결론 줄
     b.unmount();
     const newer = { ...DATA, report: { ...DATA.report!, newer_unreadable: ["20261031T000000Z_x"] } };
     fetchForwardComparison.mockResolvedValueOnce(newer);
     render(<ForwardComparisonCard />);
-    expect(await screen.findByText(/더 늦은 이름의 보고 파일 1개를 읽지 못했습니다/)).toBeInTheDocument();
+    expect(await screen.findByText(/이름 순서상 더 나중인 보고 파일 1개를 읽지 못했습니다/)).toBeInTheDocument();
   });
 
   it("MAE 는 부호 없는 %p · 큰 하락 표는 해당 행이 있을 때만", async () => {
@@ -142,6 +149,7 @@ describe("ForwardComparisonCard", () => {
       report: {
         ...DATA.report!,
         comparisons: {
+          ...DATA.report!.comparisons,
           ALL_FOUR: {
             rows: 133,
             dates: 6,
@@ -157,8 +165,10 @@ describe("ForwardComparisonCard", () => {
     render(<ForwardComparisonCard />);
     expect(await screen.findByText("3.39%p")).toBeInTheDocument();
     expect(screen.queryByText("+3.39%p")).toBeNull();
-    expect(screen.getByText("큰 하락 행에서 작게 추정한 정도(%p · 보조)")).toBeInTheDocument();
-    expect(screen.getByText("D20 ≤ −8% 행 10")).toBeInTheDocument();
+    expect(screen.getByText("큰 하락에서 덜 떨어진다고 본 정도(%p · 보조)")).toBeInTheDocument();
+    expect(screen.getByText("하락폭 −8% 이하 10건")).toBeInTheDocument();
+    expect(screen.getByText("평균 오차(%p) · 날짜마다 같은 비중")).toBeInTheDocument();
+    expect(screen.getByText("비교 결과 있음")).toBeInTheDocument();
   });
 
   // 검증자 r1 F2 — 화면에 보인 보고 · 카드 경고는 같은 응답의 복사문에도 그대로 남는다.
@@ -192,12 +202,52 @@ describe("ForwardComparisonCard", () => {
     for (const n of notices) expect(copied).toContain(n.text);
   });
 
-  it("비교 항목이 없거나 행 수가 없으면 '아직 비교할 결과 없음'으로 바꾸지 않음", async () => {
+  // 검증자 r1 F1 — 맨 위 결론 · 복사문 결론이 아래 평균 오차 표와 엇갈리지 않는다(세 비교 각각의 공통 줄).
+  const one = (rows: number) => ({
+    rows,
+    dates: rows ? 1 : 0,
+    tickers: rows ? 1 : 0,
+    excluded_rows: 0,
+    mae_pp: rows ? { MEDIAN: 7, RIDGE: 7, HGB: 7, MLP_CPU: 7 } : {},
+    deep: { rows: 0, under_estimate_pp: {} },
+  });
+  const SPLITS: [string, number, number, number][] = [
+    ["MLP 실패 · HGB 비교만", 1, 0, 0],
+    ["HGB 실패 · MLP 비교만", 0, 1, 0],
+    ["HGB · MLP 가 서로 다른 줄", 1, 1, 0],
+    ["셋 다 0", 0, 0, 0],
+  ];
+  it.each(SPLITS)("결론 = 표 — %s", async (_n, hgb, mlp, all4) => {
+    const data = {
+      ...DATA,
+      report: {
+        ...R,
+        comparisons: { HGB_vs_MEDIAN_RIDGE: one(hgb), MLP_CPU_vs_MEDIAN_RIDGE: one(mlp), ALL_FOUR: one(all4) },
+      },
+    };
+    fetchForwardComparison.mockResolvedValueOnce(data);
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+    const { container } = render(<ForwardComparisonCard />);
+    await screen.findByText("-3.06%");
+    const concl = container.querySelector('[data-role="conclusion"]')!;
+    const tableHasValues = screen.queryAllByText("7.00%p").length > 0;
+    expect(tableHasValues).toBe(hgb + mlp + all4 > 0);
+    expect(concl).toHaveTextContent(tableHasValues ? "비교 결과 있음" : "아직 비교할 결과가 없습니다");
+    fireEvent.click(screen.getByRole("button", { name: "0015K0 상세" }));
+    fireEvent.click(screen.getByRole("button", { name: "복사" }));
+    await waitFor(() => expect(writeText).toHaveBeenCalled());
+    const second = (writeText.mock.calls[0][0] as string).split("\n")[1];
+    expect(second.startsWith(tableHasValues ? "현재 결론: 비교 결과 있음" : "현재 결론: 아직 비교할 결과가 없습니다")).toBe(true);
+  });
+
+  it("비교 항목이 없거나 행 수가 없으면 '아직 비교할 결과가 없습니다'로 바꾸지 않음", async () => {
     const broken = { ...DATA, report: { ...R, comparisons: {} } };
     fetchForwardComparison.mockResolvedValueOnce(broken);
     render(<ForwardComparisonCard />);
     expect((await screen.findAllByText("비교 항목 확인 필요")).length).toBe(3);
-    expect(screen.queryByText("아직 비교할 결과 없음")).toBeNull();
+    expect(screen.queryByText("아직 비교할 결과가 없습니다")).toBeNull();
+    expect(screen.getByText("최신 보고를 확인해야 합니다")).toBeInTheDocument();
   });
 
   it("행이 있는 비교에서 값이 null 이면 '-' 가 아니라 '값 확인 필요'(r2 F3 · 화면 방어)", async () => {
@@ -221,5 +271,56 @@ describe("ForwardComparisonCard", () => {
     render(<ForwardComparisonCard />);
     expect((await screen.findAllByText("값 확인 필요")).length).toBe(2);
     expect(screen.getAllByText("7.00%p").length).toBe(6);
+  });
+
+  // POC6-15 판정 §3 — 제목 → 현재 결론 → 버튼 · 선택 → 설명 → 근거 표 → 누적 비교 → 접힌 개발 정보.
+  it("순서: 결론이 버튼 앞 · 버튼이 설명 · 표 앞 · 누적 비교는 표 아래 · 경고는 결론 바로 아래", async () => {
+    const bad = { ...DATA, report: { ...R, selected_D: "RUN_REPORT_UNREADABLE" as const } };
+    fetchForwardComparison.mockResolvedValueOnce(bad);
+    const { container } = render(<ForwardComparisonCard />);
+    await screen.findByText("-3.06%");
+    const before = (a: Element, b: Element) =>
+      expect(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const h2 = container.querySelector("h2")!;
+    const concl = container.querySelector('[data-role="conclusion"]')!;
+    const warn = screen.getByText(/최신 보고를 확인해야 합니다 — 이 기준일을 기록한 실행/);
+    const select = screen.getByRole("combobox");
+    const reload = screen.getByRole("button", { name: "다시 불러오기" });
+    const intro = screen.getByText(/네 가지 방법이 기준일마다/);
+    const table = container.querySelector("table")!;
+    const report = screen.getByRole("region", { name: "누적 비교" });
+    const dev = container.querySelector("details.ml-dev-details")!;
+    for (const [a, b] of [
+      [h2, concl],
+      [concl, warn],
+      [warn, select],
+      [select, reload],
+      [reload, intro],
+      [intro, table],
+      [table, report],
+      [report, dev],
+    ] as [Element, Element][])
+      before(a, b);
+    expect(concl).toHaveTextContent("최신 보고를 확인해야 합니다");
+  });
+
+  it("보고 · 실행 · 모델 버전 id 는 접힌 개발 정보 안 · 기본 화면은 시각 · 개수", async () => {
+    fetchForwardComparison.mockResolvedValueOnce(DATA);
+    const { container } = render(<ForwardComparisonCard />);
+    await screen.findByText("-3.06%");
+    const dev = container.querySelector(":scope .card > details.ml-dev-details")!;
+    expect(dev).not.toHaveAttribute("open");
+    expect(dev).toHaveTextContent("보고 20261030T010545Z_632f4d6c");
+    expect(dev).toHaveTextContent("모델 버전 mv_e926e0661c261324");
+    const outside = (container.textContent ?? "").replace(
+      Array.from(container.querySelectorAll("details.ml-dev-details"))
+        .map((d) => d.textContent ?? "")
+        .join(""),
+      "",
+    );
+    expect(outside).not.toContain("mv_e926e0661c261324");
+    expect(outside).not.toContain("20261030T010545Z_632f4d6c");
+    expect(screen.getByText("2026-10-30 10:05")).toBeInTheDocument(); // 기록 실행 = 시각
+    expect(screen.getByText("1개")).toBeInTheDocument(); // 모델 버전 수
   });
 });

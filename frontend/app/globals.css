@@ -1364,6 +1364,52 @@ ul.reason-list li {
   text-overflow: ellipsis;
 }
 
+/* POC6-15 — 그룹 안 폴더(한 단계 · 펼침·접힘만). 폴더 줄은 메뉴와 같은 들여쓰기, 하위 메뉴는 한 칸 더. */
+.sidebar-folder-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: var(--fg);
+  padding: 9px 20px 9px 32px;
+  cursor: pointer;
+  font-weight: 600;
+  border-left: 3px solid transparent;
+}
+
+.sidebar-folder-btn:hover {
+  background: rgba(58, 122, 254, 0.08);
+}
+
+.sidebar-folder.active-folder > .sidebar-folder-btn,
+.sidebar-folder.active-folder > .sidebar-folder-btn .sidebar-group-caret {
+  color: var(--accent);
+}
+
+.sidebar-folder-name {
+  white-space: nowrap;
+}
+
+.sidebar-folder-current {
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 400;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-submenu {
+  margin: 0;
+}
+
+.sidebar-submenu .sidebar-menu-btn {
+  padding-left: 50px;
+}
+
 .app-content {
   flex: 1;
   min-width: 0;
@@ -2057,6 +2103,61 @@ textarea.decision-textarea {
   background: transparent;
   border-color: var(--border);
   color: var(--muted);
+}
+
+/* POC6-15 「ML 연구」 카드 공용(MLCardParts) — 결론 한 줄 · 접힌 개발 정보 · 미채택/실패 배지 */
+.ml-readiness-bad {
+  background: rgba(220, 38, 38, 0.08);
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.ml-conclusion {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 15px;
+}
+
+.ml-conclusion-text {
+  min-width: 0;
+}
+
+.ml-card-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 12px;
+}
+
+details.ml-dev-details {
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border);
+  font-size: 13px;
+}
+
+details.ml-dev-details > summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.ml-dev-body {
+  margin-top: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-family: "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 12px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .bridge-status-badge {
@@ -3417,6 +3518,7 @@ button.toggle-btn {
 }
 .sidebar-menu-btn,
 .sidebar-group-title,
+.sidebar-folder-btn,
 .decision-tab-btn,
 .wb-tab,
 .holdings-sort-seg button,
@@ -3431,6 +3533,7 @@ button[role="tab"],
 }
 .sidebar-menu-btn,
 .sidebar-group-title,
+.sidebar-folder-btn,
 .decision-tab-btn,
 .wb-tab,
 .ar-seg button,
@@ -3441,6 +3544,7 @@ button[role="tab"] {
   line-height: revert; /* .holdings-sort-seg button 은 자체 'font: inherit' 로 줄 높이를 이미 정한다 */ /* 기본 버튼의 줄 높이를 걷어 내고 예전처럼 부모 · 브라우저 값 */
 }
 .sidebar-menu-btn,
+.sidebar-folder-btn,
 .decision-tab-btn,
 button[role="tab"] {
   font-size: 14px; /* 기본 글자 크기가 16px 로 바뀌어도 메뉴 · 탭은 그대로(예전 기본값) */
