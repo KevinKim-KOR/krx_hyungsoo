@@ -34,6 +34,9 @@ class MarketFlowContextResponse(BaseModel):
     status: list[dict[str, Any]]
     today_lines: list[str]
     ai_text: dict[str, str]
+    # POC6-17 — 기간 비교 기준일 이유 · 수급 연결 상태(`app/supply_fx_oil_basis.py` · 네 출력 공통 문장)
+    end_basis: dict[str, Any]
+    flow_link: dict[str, Any]
 
 
 @router.get("/flow-context", response_model=MarketFlowContextResponse)

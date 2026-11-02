@@ -684,6 +684,30 @@ def _neutral_market_flow_step(monkeypatch):
         if hasattr(_mfr, name):
             monkeypatch.setattr(_mfr, name, _guarded)
 
+    # POC6-17 — PC 수급 단계(OCI 보관본 가져오기 · 반영)도 같은 경계: 실제 pull(SSH) 금지 · 라이브 시장 DB ·
+    # 라이브 보관소 대상 반영 금지. 경계 시험은 `pull`(가짜 결과) · tmp DB · tmp 보관소를 직접 준다.
+    from app import oci_flow_import as _ofi
+    from app.ml_evidence.store import EVIDENCE_ROOT as _LIVE_EV
+
+    def _no_pull(*_a, **_k):
+        raise AssertionError("시험에서 실제 pull(SSH) 금지 — pull 을 준다")
+
+    monkeypatch.setattr(_ofi, "run_pull", _no_pull)
+    live_ev = Path(_LIVE_EV).resolve()
+    real_apply = _ofi.apply_evidence_flows
+
+    def _guarded_apply(*a, **kw):
+        if (
+            Path(kw["db_path"]).resolve() == live
+            or Path(kw["root"]).resolve() == live_ev
+        ):
+            raise AssertionError(
+                "테스트가 라이브 시장 DB · 보관소로 수급 반영하려 했다"
+            )
+        return real_apply(*a, **kw)
+
+    monkeypatch.setattr(_ofi, "apply_evidence_flows", _guarded_apply)
+
 
 @pytest.fixture(autouse=True)
 def _neutral_pc_vix_step(monkeypatch):

@@ -65,6 +65,37 @@ export interface MarketFlowContext {
   status: { key: string; label: string; E: string | null; collected_at: string | null }[];
   today_lines: string[];
   ai_text: Partial<Record<FlowPeriodCode, string>>;
+  // POC6-17 — 기간 비교 기준일 이유 · 수급 연결 상태(서버 한 곳에서 만든 문장 · 네 출력 공통)
+  end_basis?: FlowEndBasis;
+  flow_link?: FlowLink;
+}
+
+export interface FlowEndBasis {
+  D: string | null;
+  kospi_E: string | null;
+  flows_E: string | null;
+  // 공통 끝일 D 를 실제로 막은 자료(수급 · 코스피 · 중간 결측 · 공통 날짜 없음) · null = 제한 없음
+  limited_by: "flows" | "kospi" | "gap" | "unknown" | null;
+  text: string;
+}
+
+export type FlowLinkState =
+  | "applied"
+  | "applied_local"
+  | "kept_local"
+  | "apply_failed"
+  | "oci_collect_failed"
+  | "no_record"
+  | "legacy_direct_failed"
+  | "unknown";
+
+export interface FlowLink {
+  state: FlowLinkState;
+  at: string | null;
+  text: string;
+  // [최신 시장 데이터 갱신]을 다시 눌러 나아질 수 있는가(서버 판단 · 할 일 근거)
+  retry_helps: boolean;
+  oci_flow_status: string | null;
 }
 
 const isArr = (v: unknown): v is unknown[] => Array.isArray(v);
@@ -91,8 +122,37 @@ export function isMarketFlowContext(v: unknown): v is MarketFlowContext {
     isArr(v.status) &&
     isArr(v.today_lines) &&
     v.today_lines.every((l) => typeof l === "string") &&
-    isObj(v.ai_text)
+    isObj(v.ai_text) &&
+    (v.end_basis === undefined || (isObj(v.end_basis) && typeof v.end_basis.text === "string")) &&
+    (v.flow_link === undefined ||
+      (isObj(v.flow_link) && typeof v.flow_link.text === "string" && typeof v.flow_link.retry_helps === "boolean"))
   );
+}
+
+// 「시장 흐름 자세히」 · 대시보드가 경고색으로 보일 수급 연결 상태(정상 반영 · 새 자료 없음은 제외)
+export const FLOW_LINK_WARN: FlowLinkState[] = [
+  "applied_local",
+  "kept_local",
+  "apply_failed",
+  "oci_collect_failed",
+  "no_record",
+  "legacy_direct_failed",
+  "unknown",
+];
+
+// 다시 눌러 나아질 수 있는가 — 서버 retry_helps 와 함께, 확인된 OCI 최근 수집 실패면 언제나 아님(판정 §4-4 ·
+// 검증자 r1 F1 · 서버 판단을 화면 두 곳(「지금 할 일」 · 버튼 위치 안내)에서도 같은 규칙으로 막는다)
+export function flowRetryHelps(l: FlowLink | undefined): boolean {
+  if (!l || !l.retry_helps || l.state === "oci_collect_failed") return false;
+  return l.oci_flow_status == null || l.oci_flow_status === "OK" || l.oci_flow_status === "PARTIAL";
+}
+
+// 화면에 따로 알릴 만한 기준일 · 연결 문장(제한 있음 또는 경고 상태일 때만 · 정상이면 null)
+export function flowBasisNote(d: MarketFlowContext): string | null {
+  const parts: string[] = [];
+  if (d.end_basis && d.end_basis.limited_by) parts.push(d.end_basis.text);
+  if (d.flow_link && FLOW_LINK_WARN.includes(d.flow_link.state)) parts.push(`수급 연결: ${d.flow_link.text}`);
+  return parts.length ? parts.join(" · ") : null;
 }
 
 export async function fetchMarketFlowContext(): Promise<MarketFlowContext> {

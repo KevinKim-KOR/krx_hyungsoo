@@ -24,6 +24,7 @@ from app.kiwoom_investor_flow import (
 from app.market_benchmark_store import upsert_benchmark_prices
 from app.market_data_store import log_refresh
 from app.market_topn_helpers import _latest_refresh_payload
+from app.oci_flow_import import PullOutcome
 from app.yahoo_daily_series import YahooSeriesError, fetch_completed_daily
 from tests.test_market_vix_retry import _full, svc  # noqa: F401
 
@@ -739,9 +740,14 @@ def test_step_logs_new_sources_and_latest_refresh_stays_kospi(tmp_path, monkeypa
         db_path=db,
     )
     monkeypatch.setattr(rf, "refresh_fx_wti", lambda **k: ["WTI"])
-    monkeypatch.setattr(rf, "refresh_investor_flows", lambda **k: None)
+    # POC6-17 — 수급 = OCI 보관본 가져오기 · 반영(키움 직접 조회 없음 · 빈 tmp 보관소 · 가짜 가져오기)
     msg = rf.refresh_market_flow(
-        db_path=db, now_utc=NOW, refresh_id="r1", asof="2026-10-16"
+        db_path=db,
+        now_utc=NOW,
+        refresh_id="r1",
+        asof="2026-10-16",
+        evidence_root=tmp_path / "ev",
+        flow_pull=lambda: PullOutcome("ok"),
     )
     assert msg == "시장 흐름 자료 일부를 갱신하지 못했습니다(WTI)"
     rows = (
@@ -754,7 +760,8 @@ def test_step_logs_new_sources_and_latest_refresh_stays_kospi(tmp_path, monkeypa
     )
     assert rows[1:] == [
         (st.FX_WTI_LOG_SOURCE, 0, 1, "WTI"),
-        (st.FLOW_LOG_SOURCE, 1, 0, None),
+        (st.FLOW_PULL_LOG_SOURCE, 1, 0, None),
+        (st.FLOW_IMPORT_LOG_SOURCE, 0, 0, None),  # 반영할 새 묶음 없음 = 실패 아님
     ]
     assert (
         _latest_refresh_payload(db)["refresh_id"] == "kospi-benchmark-r1"
@@ -768,12 +775,21 @@ def test_step_exception_is_isolated_per_substep(tmp_path, monkeypatch):
         raise RuntimeError("x")
 
     monkeypatch.setattr(rf, "refresh_fx_wti", boom)
-    monkeypatch.setattr(rf, "refresh_investor_flows", lambda **k: None)
+    monkeypatch.setattr(rf, "refresh_flows_from_oci", lambda **k: [])
     assert (
         rf.refresh_market_flow(
             db_path=db, now_utc=NOW, refresh_id="r2", asof="2026-10-16"
         )
         == "시장 흐름 자료 일부를 갱신하지 못했습니다(원/달러 · WTI(오류))"
+    )
+    # POC6-17 — 수급 단계 예외도 따로 격리(원/달러 · WTI 결과는 그대로)
+    monkeypatch.setattr(rf, "refresh_fx_wti", lambda **k: [])
+    monkeypatch.setattr(rf, "refresh_flows_from_oci", boom)
+    assert (
+        rf.refresh_market_flow(
+            db_path=db, now_utc=NOW, refresh_id="r3", asof="2026-10-16"
+        )
+        == "시장 흐름 자료 일부를 갱신하지 못했습니다(투자자 수급(오류))"
     )
 
 

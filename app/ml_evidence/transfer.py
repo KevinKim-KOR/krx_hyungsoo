@@ -33,6 +33,8 @@ LIST_TIMEOUT_SEC = 60
 SCP_TIMEOUT_SEC = 300
 ACCEPT_TIMEOUT_SEC = 180
 CHUNK = 40
+# POC6-17 판정 §2 — 같은 PC 보관소의 pull 은 한 번에 하나(06 함수 호출 · CLI 자식 모두 · 기다리지 않음).
+PULL_LOCK = ".pull.lock"
 UPLOAD_ID = re.compile(r"^up_\d{8}T\d{6}Z_[0-9a-f]{8}$")
 UPLOAD_KINDS = ("RESEARCH_REGISTRATION", forward_artifacts.KIND)
 
@@ -164,7 +166,34 @@ def pull(
 
     - 없는 · 손상된 PC object 는 OCI 정상본을 다시 받아 되살린다(손상본은 격리 보존 · `REPAIRED`).
     - OCI 쪽이 손상 · 없음이면 받지 않고 확인 필요로 남긴다. 같은 run_id 다른 manifest = 충돌.
+    - 다른 pull 이 이 보관소를 쓰는 중이면 기다리지 않고 `BUSY` 로 끝난다(임시 칸 정리 · 전송 · 공개 전부를
+      잠금 안에서 · 잠금은 프로세스가 끝나면 풀림 · POC6-17 판정 §2).
     """
+    with store.file_lock(root / PULL_LOCK) as ok:
+        if not ok:
+            return {
+                "status": "BUSY",
+                "reason": "PULL_BUSY",
+                "remote_runs": 0,
+                "already_local": 0,
+                "pulled": [],
+                "conflicts": [],
+                "objects_downloaded": 0,
+                "local_damaged_found": [],
+                "local_repaired": [],
+                "problems": ["다른 가져오기 진행 중"],
+                "pull_id": None,
+            }
+        return _pull_locked(root=root, remote=remote, now=now, clock=clock)
+
+
+def _pull_locked(
+    *,
+    root: Path,
+    remote: Remote,
+    now: datetime,
+    clock: Callable[[], datetime],
+) -> dict:
     remote_rows, problems = _remote_list(remote)
     local, local_problems = store.list_runs(root)
     problems += [f"PC: {p}" for p in local_problems]

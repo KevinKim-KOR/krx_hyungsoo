@@ -318,3 +318,75 @@ describe("자료 확인 줄 뜻 — 8조합", () => {
     for (const u of unknownSources) expect(r.text).toContain(u);
   });
 });
+
+// POC6-17 — 기간 비교 기준일 · 수급 연결(서버 문장 그대로 · 판정 §4-4 할 일 우선순위)
+describe("수급 기간 제한 · 연결 상태(POC6-17)", () => {
+  const H_OK: QueryState<EnrichedHoldingsResult> = { phase: "success", stale: false, data: { items: [] } as unknown as EnrichedHoldingsResult };
+  const LIMIT = "코스피는 10/30, 수급은 10/22까지 있어 기간 비교는 10/22까지입니다";
+  const flowWith = (
+    limited: "flows" | "kospi" | "gap" | null,
+    state: string,
+    retry: boolean,
+    text = "링크 문장",
+  ): QueryState<MarketFlowContext> => ({
+    phase: "success",
+    stale: false,
+    data: {
+      today_lines: ["시장 흐름 6개월(10/22까지): 코스피 -13.78%"],
+      end_basis: { D: "2026-10-22", kospi_E: "2026-10-30", flows_E: "2026-10-22", limited_by: limited, text: limited ? LIMIT : "기간 비교 기준일 10/30" },
+      flow_link: { state, at: null, text, retry_helps: retry, oci_flow_status: null },
+    } as unknown as MarketFlowContext,
+  });
+  it("수급이 기간 비교를 막고 다시 눌러 나아지면 — 같은 갱신 할 일 하나 · 이유 · 자동 실행 안내", () => {
+    const t = summaryTasks([], false, market(), H_OK, flowWith("flows", "legacy_direct_failed", true));
+    expect(t.map((x) => x.id)).toEqual(["market_refresh"]);
+    expect(t[0].reasons).toContain(LIMIT);
+    expect(t[0].doText).toContain("자동 실행은 보관본만 받습니다");
+    expect(t[0].action?.target).toEqual({ kind: "menu", key: "market_discovery" });
+  });
+  it("기존 시장 갱신 할 일이 있으면 그 할 일에 이유만 더한다(버튼 하나)", () => {
+    const t = summaryTasks([item("market_refresh", "KOSPI 지연")], false, market(), H_OK, flowWith("flows", "kept_local", true));
+    expect(t.filter((x) => x.id === "market_refresh")).toHaveLength(1);
+    expect(t[0].reasons).toEqual(expect.arrayContaining(["KOSPI 지연", LIMIT]));
+  });
+  it("옛 직접 조회 실패가 확인되면 기간 제한이 없어도 할 일(PLAN §4 · 검토 지적 5)", () => {
+    const t = summaryTasks([], false, market(), H_OK, flowWith(null, "legacy_direct_failed", true, "마지막 PC 직접 조회 실패"));
+    expect(t.map((x) => x.id)).toEqual(["market_refresh"]);
+    expect(t[0].reasons).toContain("수급 연결: 마지막 PC 직접 조회 실패");
+  });
+  it("반영 실패도 다시 눌러 나아지면 할 일(연결 문장)", () => {
+    const t = summaryTasks([], false, market(), H_OK, flowWith(null, "apply_failed", true, "수급 자료 반영 실패(…)"));
+    expect(t[0].reasons).toContain("수급 연결: 수급 자료 반영 실패(…)");
+  });
+  it("확인된 OCI 수집 실패 · 정상 가져오기 뒤 새 자료 없음 · 충돌 = 반복 클릭 할 일 없음(판정 §4-4)", () => {
+    expect(summaryTasks([], false, market(), H_OK, flowWith("flows", "oci_collect_failed", false))).toEqual([]);
+    expect(summaryTasks([], false, market(), H_OK, flowWith("flows", "applied", false))).toEqual([]);
+    expect(summaryTasks([], false, market(), H_OK, flowWith(null, "apply_failed", false))).toEqual([]);
+    // 기존 다른 자료의 할 일은 유지
+    const t = summaryTasks([item("market_refresh", "KOSPI 지연")], false, market(), H_OK, flowWith("flows", "oci_collect_failed", false));
+    expect(t[0].reasons).not.toContain(LIMIT);
+  });
+  it("확인된 OCI 수집 실패면 서버가 retry 를 줘도 할 일 없음(검증자 r1 F1 · 화면 쪽 같은 규칙)", () => {
+    const f = flowWith("flows", "apply_failed", true, "수급 자료 반영 실패(… · PC 표 반영 실패)");
+    (f as { data: MarketFlowContext }).data.flow_link!.oci_flow_status = "FAILED";
+    expect(summaryTasks([], false, market(), H_OK, f)).toEqual([]);
+    const g = flowWith("flows", "apply_failed", true, "x");
+    (g as { data: MarketFlowContext }).data.flow_link!.oci_flow_status = "PARTIAL"; // 일부 실패는 막지 않음
+    expect(summaryTasks([], false, market(), H_OK, g).map((x) => x.id)).toEqual(["market_refresh"]);
+  });
+  it("수급이 아닌 제한(코스피 · 중간 결측) · 조회 실패만으로는 할 일을 만들지 않는다", () => {
+    expect(summaryTasks([], false, market(), H_OK, flowWith("kospi", "applied_local", true))).toEqual([]);
+    expect(summaryTasks([], false, market(), H_OK, flowWith("gap", "applied_local", true))).toEqual([]);
+    expect(summaryTasks([], false, market(), H_OK, ERR).map((x) => x.id)).toEqual(["read_failed"]);
+  });
+  it("시장 흐름 줄 — 제한 · 경고 상태일 때만 설명(서버 문장) · 정상이면 없음", () => {
+    expect(marketRow(market(), flowWith("flows", "legacy_direct_failed", true, "아직 OCI 수급을 반영한 기록 없음")).note).toBe(
+      `${LIMIT} · 수급 연결: 아직 OCI 수급을 반영한 기록 없음`,
+    );
+    expect(marketRow(market(), flowWith(null, "applied", false)).note).toBeNull();
+    expect(marketRow(market(), flowWith(null, "oci_collect_failed", false, "OCI의 최근 수급 수집이 실패했습니다")).note).toBe(
+      "수급 연결: OCI의 최근 수급 수집이 실패했습니다",
+    );
+    expect(marketRow(market(), FLOW_OK).note).toBeNull(); // 옛 응답(칸 없음)도 그대로
+  });
+});

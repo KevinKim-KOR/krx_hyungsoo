@@ -13,6 +13,8 @@ PC 갱신(`app/market_refresh_service.py`)이 NAV 단계 뒤에서 부른다. �
   인증 실패면 바로 멈추고, 날짜 조회가 연달아 3번 실패해도 멈춘다(차단 회피 · 재로그인 반복 없음).
 - 기록: `market_refresh_log` 에 단계별 행 하나(출처 `FX_WTI_LOG_SOURCE` · `FLOW_LOG_SOURCE` · '마지막 전체
   갱신' 조회에서는 뺀다). 화면용 한국어 문구는 완료 사유 끝에 붙인다. 키 · 토큰은 어디에도 남기지 않는다.
+- POC6-17 — PC 갱신(`refresh_market_flow`)의 수급은 OCI 보관본 반영으로 바뀌었다. 위 키움 수급 함수
+  (`refresh_investor_flows`)는 OCI 일일 수집(`app/ml_evidence/daily_flow.py`)이 그대로 쓴다.
 """
 
 from __future__ import annotations
@@ -26,8 +28,9 @@ from typing import Any, Callable, Optional
 from app.config import optional_env
 from app.kiwoom_investor_flow import KiwoomAuthError, KiwoomClient, KiwoomFlowError
 from app.market_data_store import log_refresh
+from app.ml_evidence.store import EVIDENCE_ROOT
+from app.oci_flow_import import PullOutcome, refresh_flows_from_oci
 from app.supply_fx_oil_store import (
-    FLOW_LOG_SOURCE,
     FX_WTI_LOG_SOURCE,
     MACRO_SERIES,
     USDKRW,
@@ -235,59 +238,53 @@ def refresh_market_flow(
     refresh_id: str,
     asof: str,
     http_get: Optional[Callable] = None,
-    client: Optional[KiwoomClient] = None,
-    sleep: Callable[[float], None] = time.sleep,
+    evidence_root: Path = EVIDENCE_ROOT,
+    flow_pull: Optional[Callable[[], PullOutcome]] = None,
 ) -> Optional[str]:
-    """두 하위 단계를 돌리고 기록 행을 남긴다. 성공이면 None, 아니면 화면용 한국어 문구."""
+    """두 하위 단계를 돌리고 기록 행을 남긴다. 성공이면 None, 아니면 화면용 한국어 문구.
+
+    POC6-17 — PC 의 수급 단계는 키움 직접 조회(`refresh_investor_flows` · OCI 일일 수집이 계속 씀) 대신 OCI 보관본
+    가져오기 · 반영(`app/oci_flow_import.py` · 그 함수가 가져오기 · 반영 기록을 따로 남김)이다. 직접 조회로 대체하지 않는다.
+    """
     today = now_utc.astimezone(KST).date()
     start = collection_start(
         [d for d, _ in read_benchmark_series("KOSPI", db_path=db_path)], today
     )
     problems: list[str] = []
-    for source, label, name, run in (
-        (
-            FX_WTI_LOG_SOURCE,
-            "fxwti",
-            "원/달러 · WTI",
-            lambda: refresh_fx_wti(
-                db_path=db_path, now_utc=now_utc, start=start, http_get=http_get
-            ),
-        ),
-        (
-            FLOW_LOG_SOURCE,
-            "flow",
-            "투자자 수급",
-            lambda: refresh_investor_flows(
-                db_path=db_path,
-                now_utc=now_utc,
-                start=start,
-                client=client,
-                sleep=sleep,
-            ),
-        ),
-    ):
-        t0 = time.perf_counter()
-        try:
-            out = run()
-            bad = out if isinstance(out, list) else ([out] if out else [])
-        except Exception:  # noqa: BLE001 — 하위 단계마다 격리
-            logger.exception("market flow %s step failed", label)
-            bad = [f"{name}(오류)"]
-        problems += bad
-        try:
-            log_refresh(
-                run_id=f"market-flow-{label}-{refresh_id}",
-                source=source,
-                asof=asof,
-                attempted=1,
-                success=0 if bad else 1,
-                fail=1 if bad else 0,
-                runtime_seconds=round(time.perf_counter() - t0, 3),
-                error_summary=", ".join(bad)[:200] or None,
-                db_path=db_path,
-            )
-        except Exception:  # noqa: BLE001 — 기록 실패도 갱신을 멈추지 않는다
-            logger.exception("market flow log failed")
+    t0 = time.perf_counter()
+    try:
+        bad = refresh_fx_wti(
+            db_path=db_path, now_utc=now_utc, start=start, http_get=http_get
+        )
+    except Exception:  # noqa: BLE001 — 하위 단계마다 격리
+        logger.exception("market flow fxwti step failed")
+        bad = ["원/달러 · WTI(오류)"]
+    problems += bad
+    try:
+        log_refresh(
+            run_id=f"market-flow-fxwti-{refresh_id}",
+            source=FX_WTI_LOG_SOURCE,
+            asof=asof,
+            attempted=1,
+            success=0 if bad else 1,
+            fail=1 if bad else 0,
+            runtime_seconds=round(time.perf_counter() - t0, 3),
+            error_summary=", ".join(bad)[:200] or None,
+            db_path=db_path,
+        )
+    except Exception:  # noqa: BLE001 — 기록 실패도 갱신을 멈추지 않는다
+        logger.exception("market flow log failed")
+    try:
+        problems += refresh_flows_from_oci(
+            db_path=db_path,
+            refresh_id=refresh_id,
+            asof=asof,
+            root=evidence_root,
+            pull=flow_pull,
+        )
+    except Exception:  # noqa: BLE001 — 하위 단계마다 격리
+        logger.exception("market flow investor import step failed")
+        problems.append("투자자 수급(오류)")
     if not problems:
         return None
     return f"시장 흐름 자료 일부를 갱신하지 못했습니다({' · '.join(problems)})"

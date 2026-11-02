@@ -49,6 +49,7 @@ function Row({ r, onAction }: { r: SummaryRow; onAction: (a: SummaryAction) => v
           <span>{r.text}</span>
         </div>
         {r.sub ? <div className="tc-sum-sub">{r.sub}</div> : null}
+        {r.note ? <div className="tc-sum-note">{r.note}</div> : null}
         {r.basis ? <div className="tc-sum-basis">{r.basis}</div> : null}
         {r.staleNote ? <div className="tc-sum-stale">{r.staleNote}</div> : null}
       </div>

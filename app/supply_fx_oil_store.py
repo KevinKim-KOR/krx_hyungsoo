@@ -7,7 +7,9 @@
   그대로(`INVESTORS`) · 매수 · 매도 총액은 원천에 없어 NULL(판정 §7-3) · 빠진 날은 행이 없다(0 채우기 없음).
 
 쓰기는 PC 시장 갱신과 POC6-05 OCI 일일 수집(`app/ml_evidence/daily_flow.py` · 받은 값을 먼저 증거로 보관)만
-(표 생성 포함). 읽기(GET)는 `mode=ro` 로 열고, 파일 · 표가 없으면 빈 결과다
+(표 생성 포함). POC6-17 부터 PC 시장 갱신의 수급은 키움 직접 조회가 아니라 OCI 보관본
+반영이다(`app/oci_flow_import.py` · 관측 시각 순 · 출처 `FLOW_OCI_SOURCE`).
+읽기(GET)는 `mode=ro` 로 열고, 파일 · 표가 없으면 빈 결과다
 (조회가 표를 만들거나 외부를 부르지 않는다). 같은 날짜를 다시 받으면 최신 확보 값으로 덮는다(겹쳐 받기 ·
 원천 정정 반영 · PIT 데이터셋 아님 · 판정 §4-1).
 """
@@ -64,11 +66,17 @@ MACRO_SERIES: dict[str, tuple[str, str, str]] = {
 
 # 시장 갱신 기록(`market_refresh_log`)의 새 출처 — '마지막 전체 갱신' 조회에서 뺀다(KOSPI 행 그대로).
 FX_WTI_LOG_SOURCE = "YAHOO_FX_WTI_DAILY"
-FLOW_LOG_SOURCE = "KIWOOM_KA10051_KOSPI_FLOW"
-MARKET_FLOW_LOG_SOURCES = (FX_WTI_LOG_SOURCE, FLOW_LOG_SOURCE)
+FLOW_LOG_SOURCE = "KIWOOM_KA10051_KOSPI_FLOW"  # POC6-01 PC 직접 조회(POC6-17 부터 PC 는 안 씀 · 옛 기록)
+# POC6-17 — PC 수급 단계 = OCI 보관본 가져오기(pull) · PC 표 반영. 두 결과를 따로 남긴다(판정 §3).
+FLOW_PULL_LOG_SOURCE = "OCI_EVIDENCE_PULL_FOR_FLOW"
+FLOW_IMPORT_LOG_SOURCE = "OCI_EVIDENCE_KOSPI_FLOW_IMPORT"
+FLOW_LINK_LOG_SOURCES = (FLOW_LOG_SOURCE, FLOW_PULL_LOG_SOURCE, FLOW_IMPORT_LOG_SOURCE)
+MARKET_FLOW_LOG_SOURCES = (FX_WTI_LOG_SOURCE, *FLOW_LINK_LOG_SOURCES)
 
 FLOW_MARKET = "KOSPI"
 FLOW_SOURCE = "KIWOOM_KA10051_KRX"
+# POC6-17 — 같은 원천(키움 ka10051)을 OCI 가 받아 보관한 값을 PC 에 반영한 행(생산 장소 구별 · 05 §6-8).
+FLOW_OCI_SOURCE = "KIWOOM_KA10051_KRX_VIA_OCI"
 # 원천(키움 ka10051) 분류 그대로. 기관계 = 기관 세부 합(함께 더하지 않는다).
 INVESTORS: tuple[str, ...] = (
     "individual",

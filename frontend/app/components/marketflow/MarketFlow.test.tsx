@@ -9,7 +9,13 @@ import { render, screen, fireEvent, waitFor, within } from "@testing-library/rea
 import FlowTimeChart from "@/app/components/charts/FlowTimeChart";
 import type { MarketCandidate, MarketContext } from "@/lib/api";
 import { MARKET_FLOW_KEY, MARKET_INVALIDATION_KEYS } from "@/lib/api/dashboardKeys";
-import { isMarketFlowContext, type FlowPoint, type MarketFlowContext } from "@/lib/api/marketFlow";
+import {
+  flowRetryHelps,
+  isMarketFlowContext,
+  type FlowLink,
+  type FlowPoint,
+  type MarketFlowContext,
+} from "@/lib/api/marketFlow";
 import { __resetQueryCache } from "@/lib/api/queryCache";
 import { loadAISessionsDraft } from "@/lib/aiSessionsDraft";
 import { buildMarketDiscoveryCopyText } from "@/lib/marketDiscoveryCopyText";
@@ -413,5 +419,93 @@ describe("복사문 · 무효화", () => {
     await waitFor(() => expect(loadAISessionsDraft()?.question_text).toContain("[시장 흐름 글 3M]"));
     expect(loadAISessionsDraft()?.question_text).not.toContain("[시장 흐름 글 6M]");
     setMarketFlowPeriod("6M");
+  });
+});
+
+// POC6-17 — 기간 비교 기준일 이유 · 수급 연결 상태(서버 문장 그대로 · 다시 눌러 나아질 때만 버튼 위치 안내)
+describe("기간 비교 기준일 · 수급 연결(POC6-17)", () => {
+  const LIMIT = "코스피는 10/30, 수급은 10/22까지 있어 기간 비교는 10/22까지입니다";
+  const withLink = (limited: "flows" | null, state: string, retry: boolean, text: string) =>
+    ctx({
+      end_basis: { D, kospi_E: "2026-10-30", flows_E: D, limited_by: limited, text: limited ? LIMIT : `기간 비교 기준일 10/16` },
+      flow_link: { state, at: null, text, retry_helps: retry, oci_flow_status: null },
+    } as Partial<MarketFlowContext>);
+
+  it("응답 모양 — 새 칸은 있으면 모양 검사 · 없어도(옛 응답) 통과", () => {
+    expect(isMarketFlowContext(withLink("flows", "applied", false, "x"))).toBe(true);
+    expect(isMarketFlowContext({ ...ctx(), flow_link: { state: "applied", text: "x" } })).toBe(false);
+    expect(isMarketFlowContext({ ...ctx(), end_basis: { limited_by: null } })).toBe(false);
+  });
+
+  it("수급이 기간을 막음 · 옛 직접 조회 실패 → 이유 · 연결 문장(경고) · 버튼 위치 안내", async () => {
+    serve(withLink("flows", "legacy_direct_failed", true, "아직 OCI 수급을 반영한 기록 없음 · 수급 10/22까지 사용 중"));
+    render(<MarketFlowCard />);
+    expect(await screen.findByTestId("mf-end-basis")).toHaveTextContent(LIMIT);
+    expect(screen.getByTestId("mf-end-basis")).toHaveClass("tc-warn");
+    expect(screen.getByTestId("mf-flow-link")).toHaveTextContent("수급 연결: 아직 OCI 수급을 반영한 기록 없음");
+    expect(screen.getByTestId("mf-flow-link")).toHaveClass("tc-warn");
+    expect(screen.getByTestId("mf-flow-press")).toHaveTextContent("[최신 시장 데이터 갱신]");
+  });
+
+  it("옛 직접 조회 실패면 기간 제한이 없어도 버튼 위치 안내(검토 지적 5)", async () => {
+    serve(withLink(null, "legacy_direct_failed", true, "아직 OCI 수급을 반영한 기록 없음"));
+    render(<MarketFlowCard />);
+    expect(await screen.findByTestId("mf-flow-press")).toBeInTheDocument();
+  });
+
+  it("정상 반영 → 경고 · 버튼 안내 없음", async () => {
+    serve(withLink(null, "applied", false, "수급은 OCI 수집본을 PC에 반영(11/2 18:30 KST · 10/16까지)"));
+    render(<MarketFlowCard />);
+    expect(await screen.findByTestId("mf-flow-link")).not.toHaveClass("tc-warn");
+    expect(screen.getByTestId("mf-end-basis")).not.toHaveClass("tc-warn");
+    expect(screen.queryByTestId("mf-flow-press")).toBeNull();
+  });
+
+  it("확인된 OCI 수집 실패면 기간이 막혀도 버튼 안내 없음(다시 눌러도 해결 안 됨)", async () => {
+    serve(withLink("flows", "oci_collect_failed", false, "OCI의 최근 수급 수집이 실패했습니다"));
+    render(<MarketFlowCard />);
+    expect(await screen.findByTestId("mf-flow-link")).toHaveClass("tc-warn");
+    expect(screen.queryByTestId("mf-flow-press")).toBeNull();
+  });
+
+  it("응답이 retry 를 줘도 OCI 수집 실패면 버튼 위치 안내 없음(검증자 r1 F1)", async () => {
+    const c = withLink("flows", "apply_failed", true, "수급 자료 반영 실패");
+    c.flow_link!.oci_flow_status = "FAILED";
+    serve(c);
+    render(<MarketFlowCard />);
+    expect(await screen.findByTestId("mf-flow-link")).toBeInTheDocument();
+    expect(screen.queryByTestId("mf-flow-press")).toBeNull();
+  });
+
+  it("flowRetryHelps — 서버 retry · 상태 · OCI 수급 상태를 함께 본다", () => {
+    const l = (state: FlowLink["state"], retry: boolean, oci: string | null): FlowLink => ({
+      state,
+      at: null,
+      text: "x",
+      retry_helps: retry,
+      oci_flow_status: oci,
+    });
+    expect(flowRetryHelps(undefined)).toBe(false);
+    expect(flowRetryHelps(l("apply_failed", true, null))).toBe(true);
+    expect(flowRetryHelps(l("apply_failed", true, "OK"))).toBe(true);
+    expect(flowRetryHelps(l("apply_failed", true, "PARTIAL"))).toBe(true);
+    expect(flowRetryHelps(l("apply_failed", true, "FAILED"))).toBe(false);
+    expect(flowRetryHelps(l("oci_collect_failed", true, null))).toBe(false);
+    expect(flowRetryHelps(l("kept_local", false, null))).toBe(false);
+  });
+
+  it("코스피 카드 두 줄 — 제한 · 경고일 때만 설명 한 줄", async () => {
+    serve(withLink("flows", "kept_local", true, "다른 가져오기 진행 중 · 기존 PC 수급(10/22까지) 유지"));
+    render(<TodayFlowLines />);
+    expect(await screen.findByTestId("tc-market-flow-basis")).toHaveTextContent(
+      `${LIMIT} · 수급 연결: 다른 가져오기 진행 중 · 기존 PC 수급(10/22까지) 유지`,
+    );
+  });
+
+  it("코스피 카드 두 줄 — 정상이면 설명 줄 없음", async () => {
+    serve(withLink(null, "applied", false, "수급은 OCI 수집본을 PC에 반영"));
+    render(<TodayFlowLines />);
+    await screen.findByText("시장 흐름 6개월: 오늘 첫 줄");
+    expect(screen.queryByTestId("tc-market-flow-basis")).toBeNull();
   });
 });

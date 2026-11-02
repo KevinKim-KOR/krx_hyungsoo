@@ -20,7 +20,7 @@ import type {
   NavDiscountLatestResponse,
   PriceSeriesResponse,
 } from "@/lib/api";
-import type { MarketFlowContext } from "@/lib/api/marketFlow";
+import { flowBasisNote, flowRetryHelps, type MarketFlowContext } from "@/lib/api/marketFlow";
 import { kospiStatusView } from "@/lib/kospiStatus";
 import type { MenuKey } from "../LeftSidebar";
 import { kstText } from "../MLCardParts";
@@ -47,6 +47,8 @@ export type SummaryRow = {
   text: string;
   // 결론 아래 보조 한 줄(서버가 준 둘째 문장 등 · 없으면 null)
   sub?: string | null;
+  // POC6-17 — 알릴 설명(기간 비교 기준일 제한 · 수급 연결 문제 · 서버 문장 · 없으면 null)
+  note?: string | null;
   basis: string | null;
   staleNote: string | null;
   actions: SummaryAction[];
@@ -111,13 +113,14 @@ export function marketRow(
         : "수급 · 환율 · 유가 불러오는 중";
   // 서버 둘째 문장(최근 큰 변화 또는 확인 못 한 자료 · 판정 §5 — 일부 결측 구분)을 버리지 않는다(검토 지적 7).
   const flowSub = flow.phase === "success" ? (flow.data.today_lines[1] ?? null) : null;
+  const note = flow.phase === "success" ? flowBasisNote(flow.data) : null;
   const stale = joinStale(
     staleOf("수급 · 환율 · 유가", flow),
     series ? staleOf("KOSPI 가격 흐름", series) : null,
     series ? failOf("KOSPI 가격 흐름", series) : null,
   );
   if (market.phase === "loading" || market.phase === "idle") {
-    return { id: "market", area: "시장 흐름", tone: "muted", badge: "불러오는 중", text: flowText, sub: flowSub, basis: null, staleNote: stale, actions };
+    return { id: "market", area: "시장 흐름", tone: "muted", badge: "불러오는 중", text: flowText, sub: flowSub, note, basis: null, staleNote: stale, actions };
   }
   if (market.phase === "error") {
     return {
@@ -127,6 +130,7 @@ export function marketRow(
       badge: "불러오지 못함",
       text: `시장 판정 · KOSPI를 불러오지 못했습니다 · ${flowText}`,
       sub: flowSub,
+      note,
       basis: "시장 판정 · 요즘 잘 오르는 ETF 목록은 [요약 다시 읽기]로 다시 계산하지 않습니다 — 브라우저를 새로 고치면 다시 읽습니다",
       staleNote: stale,
       actions,
@@ -154,6 +158,7 @@ export function marketRow(
     badge,
     text: `KODEX200 기준 시장 판정 · ${flowText}`,
     sub: flowSub,
+    note,
     basis: [kospiBasis, kodexDate, "시장 판정은 이 화면을 처음 열 때 읽은 값(다시 읽기 제외)"].filter(Boolean).join(" · "),
     staleNote: stale,
     actions,
@@ -393,7 +398,18 @@ export function summaryTasks(
   if (loading) return [];
   const tasks: SummaryTask[] = [];
   const marketItems = items.filter((it) => it.task === "market_refresh");
-  if (marketItems.length > 0) {
+  // POC6-17 — 수급이 기간 비교를 막았거나 수급 반영 · 직접 조회 실패가 확인됐고, 다시 눌러 나아질 수 있을 때만(서버 retry_helps · PLAN §4).
+  // 확인된 OCI 수집 실패 · 정상 가져오기 뒤 새 자료 없음 · 조회 실패는 할 일을 만들지 않는다(판정 §4-4). 같은 버튼 하나.
+  const fd = flow.phase === "success" ? flow.data : null;
+  const flowLimited = fd?.end_basis?.limited_by === "flows";
+  const flowFailed = fd?.flow_link?.state === "apply_failed" || fd?.flow_link?.state === "legacy_direct_failed";
+  const flowReason =
+    fd && flowRetryHelps(fd.flow_link) && fd.flow_link && (flowLimited || flowFailed)
+      ? flowLimited && fd.end_basis
+        ? fd.end_basis.text
+        : `수급 연결: ${fd.flow_link.text}`
+      : null;
+  if (marketItems.length > 0 || flowReason) {
     const ctx = market.phase === "success" ? market.data.market_context : null;
     const kospiDate = ctx?.kospi?.as_of_date ?? null;
     const etfDate = market.phase === "success" ? (market.data.asof ?? null) : null;
@@ -403,10 +419,14 @@ export function summaryTasks(
     tasks.push({
       id: "market_refresh",
       title: "시장 자료 갱신이 필요합니다.",
-      reasons: [dates ? `지금 PC에 저장된 시장 자료: ${dates}` : null, ...marketItems.map((it) => it.text)].filter(
-        (x): x is string => !!x,
-      ),
-      doText: "이동 후 [최신 시장 데이터 갱신]을 눌러 주세요. 갱신해도 다른 자료 항목이 모두 해결되는 것은 아닙니다.",
+      reasons: [
+        dates ? `지금 PC에 저장된 시장 자료: ${dates}` : null,
+        ...marketItems.map((it) => it.text),
+        flowReason,
+      ].filter((x): x is string => !!x),
+      doText:
+        "이동 후 [최신 시장 데이터 갱신]을 눌러 주세요. 갱신해도 다른 자료 항목이 모두 해결되는 것은 아닙니다." +
+        (flowReason ? " 수급은 OCI가 모은 자료를 이 버튼으로 PC에 반영합니다(자동 실행은 보관본만 받습니다)." : ""),
       action: menu("시장 자료 갱신 화면", "market_discovery", true),
     });
   }

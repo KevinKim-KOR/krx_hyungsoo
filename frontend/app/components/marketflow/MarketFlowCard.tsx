@@ -9,7 +9,14 @@ import { useMemo, useState } from "react";
 
 import FlowTimeChart, { valueAt, type FlowLine } from "@/app/components/charts/FlowTimeChart";
 import HelpPopover from "@/app/components/holdings_risk_evidence/HelpPopover";
-import { FLOW_PERIODS, type FlowInvestor, type FlowPoint, type MarketFlowContext } from "@/lib/api/marketFlow";
+import {
+  FLOW_LINK_WARN,
+  FLOW_PERIODS,
+  flowRetryHelps,
+  type FlowInvestor,
+  type FlowPoint,
+  type MarketFlowContext,
+} from "@/lib/api/marketFlow";
 import { setMarketFlowPeriod, useMarketFlowPeriod } from "@/lib/marketFlowPeriod";
 
 import { useMarketFlowContext } from "./useMarketFlowContext";
@@ -55,6 +62,34 @@ function fromBoundary(points: FlowPoint[] | undefined, boundary: string): FlowPo
   if (!points) return [];
   const before = points.filter((q) => q[0] <= boundary).slice(-1);
   return [...before, ...points.filter((q) => q[0] > boundary)];
+}
+
+// POC6-17 — 기간 비교 기준일 이유 · 수급 연결 상태(서버 문장 그대로). 다시 눌러 나아질 때만 버튼 위치 안내.
+function FlowBasisLines({ data }: { data: MarketFlowContext }) {
+  const b = data.end_basis;
+  const l = data.flow_link;
+  const press =
+    !!l && flowRetryHelps(l) && (b?.limited_by === "flows" || l.state === "apply_failed" || l.state === "legacy_direct_failed");
+  return (
+    <>
+      {b ? (
+        <div className={b.limited_by ? "mf-basis tc-warn" : "mf-basis"} data-testid="mf-end-basis">
+          {b.text}
+        </div>
+      ) : null}
+      {l ? (
+        <div className={FLOW_LINK_WARN.includes(l.state) ? "mf-basis tc-warn" : "mf-basis"} data-testid="mf-flow-link">
+          수급 연결: {l.text}
+        </div>
+      ) : null}
+      {press ? (
+        <div className="mf-basis" data-testid="mf-flow-press">
+          이 화면의 [최신 시장 데이터 갱신]을 누르면 OCI가 모은 수급을 PC에 반영합니다(자동 실행은 보관본만 받고 화면 자료는
+          바꾸지 않습니다).
+        </div>
+      ) : null}
+    </>
+  );
 }
 
 function Section({ data }: { data: MarketFlowContext }) {
@@ -115,6 +150,7 @@ function Section({ data }: { data: MarketFlowContext }) {
       <div className="mf-period">
         기간 {p.start ?? p.boundary} ~ {p.end} · 끝일 D {md(D)}(코스피 · 수급이 함께 확인된 마지막 거래일)
       </div>
+      <FlowBasisLines data={data} />
       <div className="mf-top">
         <div className="mf-box">
           <div className="mf-box-title">기간 요약 · {p.label}</div>

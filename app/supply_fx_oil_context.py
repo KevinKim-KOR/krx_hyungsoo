@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Optional
 
 from app.market_data_store import DEFAULT_DB_PATH
+from app.supply_fx_oil_basis import end_basis, kst_stamp, read_flow_link
 from app.supply_fx_oil_calc import (
     DEFAULT_PERIOD,
     PERIODS,
@@ -58,7 +59,9 @@ MAIN_INVESTORS = (
 )
 SHORT_INVESTORS = (("foreign", "외국인"), ("institution", "기관계"))
 PRICE = (("kospi", "코스피", "pt"), ("usdkrw", "원/달러", "원"), ("wti", "WTI", "달러"))
-NO_FLOW = "투자자별 수급 자료 없음 — 시장 갱신 뒤 다시 확인(키움 인증 · 등록 IP)"
+NO_FLOW = (
+    "투자자별 수급 자료 없음 — 시장 갱신 뒤 다시 확인(OCI 수급 보관본 반영 · POC6-17)"
+)
 LIMITS = [
     "외국인 순매도는 주식 매매 통계다 — 같은 금액이 환전 · 해외 송금됐다는 뜻이 아니다(채권 · 예금으로 남을 수 있음).",
     "외국인 순매도와 개인 순매수의 차이를 '부족액'으로 보지 않는다 — 기관 · 기타법인 등 다른 주체가 있다.",
@@ -71,16 +74,10 @@ LIMITS = [
 ]
 
 
-def kst_stamp(iso: Optional[str]) -> str:
-    """저장 시각(UTC ISO · 'Z' 가능) → 'M/D HH:MM KST'. 없거나 읽을 수 없으면 '—'."""
-    if not iso:
-        return "—"
-    try:
-        t = datetime.fromisoformat(iso.replace("Z", "+00:00"))
-    except ValueError:
-        return "—"
-    k = (t if t.tzinfo else t.replace(tzinfo=timezone.utc)).astimezone(KST)
-    return f"{k.month}/{k.day} {k:%H:%M} KST"
+__all__ = [
+    "build_market_flow_context",
+    "kst_stamp",
+]  # kst_stamp = POC6-17 에 기준일 모듈로 옮김(이름 유지)
 
 
 def _eok_points(points: list[tuple[str, int]]) -> list[tuple[str, float]]:
@@ -119,6 +116,12 @@ def build_market_flow_context(
         "today_lines": [],
         "ai_text": {},
     }
+    # POC6-17 — 기간 비교 기준일 설명 · 수급 연결 상태(네 출력 공통 · 읽기 전용)
+    flows_E = flows["foreign"][-1][0] if flows["foreign"] else None
+    out["flow_link"] = read_flow_link(db_path, flows_E)
+    out["end_basis"] = end_basis(
+        D=None, kospi_E=None, flows_E=flows_E, common_ok=False, others=[]
+    )
     if not kospi:
         msg = "코스피 저장 자료가 없어 계산하지 않음(시장 갱신 뒤 다시 확인)"
         out["today_lines"] = [f"시장 흐름: {msg}"]
@@ -132,6 +135,16 @@ def build_market_flow_context(
     common = [d for d in kdates if d in fdates]
     D = common[-1] if common else kdates[-1]
     out["D"] = D
+    out["end_basis"] = end_basis(
+        D=D,
+        kospi_E=kdates[-1],
+        flows_E=flows_E,
+        common_ok=bool(common),
+        others=[
+            ("원/달러", fx[-1][0] if fx else None),
+            ("WTI", oil[-1][0] if oil else None),
+        ],
+    )
     collected = {
         "kospi": read_benchmark_collected_at("KOSPI", db_path=db_path),
         "usdkrw": fx_at,
@@ -526,6 +539,9 @@ def ai_text(out: dict, code: str) -> str:
         f"[시장 흐름 — 수급 · 환율 · 유가 · 기간 {p['label']} · {p['start'] or p['boundary']} ~ "
         f"{p['end']}(D = 코스피 · 수급이 함께 확인된 마지막 거래일)]"
     ]
+    L.append(  # POC6-17 — 기준일 이유 · 수급 연결 상태(화면과 같은 문장)
+        f"- [기간 비교 기준일] {out['end_basis']['text']} · 수급 연결: {out['flow_link']['text']}"
+    )
     L += [f"- {x}" for x in p["lines"]]
     L += [f"- {x}" for x in out["windows"]["lines"]]
     L.append("[최근 큰 변화 — 완료된 일별 값 · 자료마다 최신일]")
