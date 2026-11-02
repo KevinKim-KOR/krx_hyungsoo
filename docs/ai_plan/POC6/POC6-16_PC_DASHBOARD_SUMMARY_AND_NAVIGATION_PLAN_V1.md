@@ -8,7 +8,7 @@ STATUS   = PLAN 제출(2026-11-02 · 설계 §9 네 묶음) · 전체 화면 목
              보완 "내가 한동안 안눌러서 이걸 눌러야 한다는 그런 인폼도 있으면 좋겠다")
            → 설계자 PLAN 판정 PASS_WITH_REQUIRED_CORRECTIONS(V1.1 · Q1 · Q2 · Q3 권장안 · 조회표 · 버튼 · §3-1 할 일 안내 · 캐시 시각 · 문구 · PLAN 재제출 · 목업 재승인 없음)
            → 판정 반영(§8) · 구현 · 시험(2026-11-02 · 결과서 docs/ai_result/POC6/POC6-16_PC_DASHBOARD_SUMMARY_AND_NAVIGATION_RESULT.md)
-           → 사용자 실화면 확인 → 검증자 r1 · r2 REJECTED → 정정 → r3 VERIFIED → 설계자 RESULT PASS(2026-11-02) → 종료 기록 · 사용자 승인 단계
+           → 사용자 실화면 확인 → 검증자 r1 · r2 REJECTED → 정정 → r3 VERIFIED → 설계자 RESULT PASS(2026-11-02) → 구현 커밋 826d8833 push → IMPLEMENTED_VERIFIED_CLOSED(2026-11-02)
 DESIGN   = docs/ai_design/POC6/POC6-16_PC_DASHBOARD_SUMMARY_AND_NAVIGATION_DESIGN_V1.md
 판정     = docs/ai_design/POC6/POC6-16_PC_DASHBOARD_SUMMARY_AND_NAVIGATION_PLAN_DECISION_2026-11-02.md(V1.1)
 조사     = 2026-11-02 01:39 ~ 02:20 KST(약 41분 · 상한 45분) · 프런트 코드 읽기 + 실행 중인 앱 캡처 · 요청 기록(메뉴 클릭만 · 버튼 누르지 않음)
