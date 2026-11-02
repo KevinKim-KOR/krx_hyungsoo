@@ -7,7 +7,7 @@ STATUS   = PLAN 제출(2026-11-02 · 설계 V1 §7 다섯 묶음 · 질문 2)
            → 설계자 PLAN 판정 PASS_WITH_REQUIRED_CORRECTIONS(2026-11-02 · Q1 (a) · Q2 (a) · §4 보완 · PLAN 재제출 없음 · §8 반영)
            → 구현 · 시험(2026-11-02 · 결과서 docs/ai_result/POC6/POC6-17_OCI_INVESTOR_FLOW_PC_IMPORT_AND_DATE_EXPLANATION_RESULT.md)
            → 검증자 r1 REJECTED(F1 OCI 수집 실패 우선 · 반영 실패 조합) → 정정(결과서 §4-3) → 검증자 r2 VERIFIED(격리 구현 범위 · 결과서 §12) → 설계자 RESULT PASS(2026-11-02 · 결과서 §13)
-           → 사용자 승인 · 실제 PC 반영(2026-11-02 21:48 KST · (나) 단독 실행 · 수급 · D 10-30 · 결과서 §14) → 커밋 · push
+           → 사용자 승인 · 실제 PC 반영(2026-11-02 21:48 KST · (나) 단독 실행 · 수급 · D 10-30 · 결과서 §14) → 구현 커밋 d2da9490 push → IMPLEMENTED_VERIFIED_CLOSED(2026-11-02 · 결과서 §15)
 DESIGN   = docs/ai_design/POC6/POC6-17_OCI_INVESTOR_FLOW_PC_IMPORT_AND_DATE_EXPLANATION_DESIGN_V1.md
 판정     = docs/ai_design/POC6/POC6-17_OCI_INVESTOR_FLOW_PC_IMPORT_AND_DATE_EXPLANATION_PLAN_DECISION_2026-11-02.md
 조사 요청 = docs/ai_design/POC6/POC6-17_MARKET_FLOW_FRESHNESS_DIAGNOSIS_REQUEST_V1.md(회신은 §0)

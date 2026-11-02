@@ -3,7 +3,7 @@
 작성 2026-11-02 · 작성자: 개발자(VSCode Claude) · 수신: 사용자(실제 반영 승인) → 검증자(Codex) → 설계자
 
 ```text
-STATUS   = IMPLEMENTED(2026-11-02 · 격리 구현 · 시험) — 조사 요청 V1 → 회신(원인 확인) → 설계 V1(C + B)
+STATUS   = IMPLEMENTED_VERIFIED_CLOSED(2026-11-02 · §15) — IMPLEMENTED(2026-11-02 · 격리 구현 · 시험) — 조사 요청 V1 → 회신(원인 확인) → 설계 V1(C + B)
            → PLAN(질문 2) → 설계자 PLAN 판정 PASS_WITH_REQUIRED_CORRECTIONS(Q1 (a) · Q2 (a) · §4 보완 · 재제출 없음)
            → 구현 · 관련 시험 · 변이 5종 · 임시 DB 사본 시운전 · 실제 앱 부분 화면(읽기만) · 독립 검토 1회(7건 전부 반영 · §4-2)
            → 전체 회귀(백엔드 5,115 통과 · 프런트 1,149 통과)
@@ -12,7 +12,7 @@ STATUS   = IMPLEMENTED(2026-11-02 · 격리 구현 · 시험) — 조사 요청 
            → 검증자 r2 VERIFIED(2026-11-02 · 격리 구현 범위 · F1 정정 확인 · §12)
            → 설계자 RESULT PASS(2026-11-02 · §13 · CHECK_REQUIRED 해석 수용 = 판정 §2 · 추가 수정 · 회귀 · 검증 라운드 없음)
            → 사용자 승인(2026-11-02 · 판정 §4 묶음 '모두 승인') → 실제 PC 반영 1회(2026-11-02 21:48:44 ~ 21:48:49 KST · (나) 단독 실행 · §14)
-           → 읽기 확인(응답 · 화면 · 복사문) → 구현 커밋 · push
+           → 읽기 확인(응답 · 화면 · 복사문) → 구현 커밋 d2da9490 push → IMPLEMENTED_VERIFIED_CLOSED(§15)
 VERIFIER = r2 VERIFIED(2026-11-02 · §12) — 격리 구현 범위 · 실제 PC DB 반영/설계자 RESULT/사용자 승인 별도
 DESIGN   = docs/ai_design/POC6/POC6-17_OCI_INVESTOR_FLOW_PC_IMPORT_AND_DATE_EXPLANATION_DESIGN_V1.md
 PLAN     = docs/ai_plan/POC6/POC6-17_OCI_INVESTOR_FLOW_PC_IMPORT_AND_DATE_EXPLANATION_PLAN_V1.md(§8 = 판정 반영)
@@ -542,3 +542,17 @@ POC6-17 RESULT는 PASS입니다(격리 구현 수용·실제 PC 반영 전). CHE
   - PC 수급 표는 버튼 · 단독 실행 때만 바뀐다(06 자동 실행은 보관본만 받는다).
   - 오늘(11-02) 거래일 수급은 OCI 11-03 09:40 수집 뒤 다음 반영에서 들어온다.
   - 판정 §2 의 `CHECK_REQUIRED` 경로는 이번에 쓰이지 않았다.
+
+## 15. 종료 기록 — 2026-11-02
+
+- 사용자 승인(2026-11-02 · 판정 §4 '모두 승인'): 실제 PC 반영 1회 · 읽기 확인 · 구현 커밋 + push · 종료 기록 커밋 + push.
+- 구현 커밋 `d2da9490`(26개 파일 · 신규 9 · 수정 17 — 코드 7 · 시험 3 · 프런트 8 · 문서 8) → `origin/main` push(`437e89db..d2da9490`).
+- PC 반영:
+  - 실제 PC 수급 반영은 §14 와 같다(2026-11-02 21:48 KST · 수급 · D 10-30 · 「지금 할 일」 수급 이유 해소).
+  - 실행 중인 개발 서버(:3000 · :8000 `--reload`)가 같은 작업 트리를 쓴다. 커밋 뒤 작업 트리와 커밋의 차이는 0이고 앱 응답은 200이다.
+- 상태 = **IMPLEMENTED_VERIFIED_CLOSED**. 추가 RESULT 재판정 · 검증자 라운드 · 전체 회귀는 없다(판정 §5).
+- 하지 않은 것: OCI DB 쓰기 · 코드 pull 배포 · cron · 키 · IP 등록 변경 · 외부 공급자 수집 · handoff.
+- 남는 것:
+  - PC 수급 표는 [최신 시장 데이터 갱신] 또는 `python -m app.oci_flow_import` 때만 반영된다(06 자동 실행은 보관본만 받는다).
+  - `CHECK_REQUIRED` 뒤 PC 사본 반영 경로는 이번 실행에서 쓰이지 않았다(판정 §2 · 실제 사용 때 전송 확인 필요를 따로 표시).
+  - 손상 묶음 · 읽을 수 없는 목록은 뒤 반영을 멈춘다(사람 점검).
