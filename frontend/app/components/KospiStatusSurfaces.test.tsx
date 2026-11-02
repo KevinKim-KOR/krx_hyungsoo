@@ -311,7 +311,8 @@ describe("설계자 RESULT STEP 4 · PLAN STEP 7-4 — 정비 큐 KOSPI 항목(V
     return {
       phase: "success",
       stale: false,
-      data: { asof: "2026-09-29", market_context: ctx, ...extra },
+      // POC6-16 — 실제 응답처럼 status 를 둔다(정상이 아니면 KOSPI 항목은 '상태 모름'으로 분류).
+      data: { status: "ok", asof: "2026-09-29", market_context: ctx, ...extra },
     } as unknown as QueryState<MarketTopNResponse>;
   }
 
@@ -322,6 +323,7 @@ describe("설계자 RESULT STEP 4 · PLAN STEP 7-4 — 정비 큐 KOSPI 항목(V
   it("기준일 지연: 사유 문장 + 기준 줄 · ⓘ 는 카드와 같은 상태 한 줄", () => {
     expect(items(topn(ctxWith(STALE_T2)))).toEqual([
       {
+        task: "market_refresh",
         text: "KOSPI 원자료가 최근 거래일까지 갱신되지 않았습니다 (KOSPI 기준일 2026-09-28 · 1거래일 지연)",
         kind: "heavy",
         target: "market_discovery",

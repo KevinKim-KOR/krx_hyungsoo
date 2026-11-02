@@ -31,7 +31,13 @@ export default function MaintenanceQueueSection({
   refreshing,
   onLightRefresh,
   onNavigate,
+  areaId,
+  blocked = false,
 }: {
+  // POC6-16 — [요약 다시 읽기]가 도는 동안 [업데이트]를 막는다(두 버튼이 같은 조회를 겹쳐 POST 뒤 다시 읽기가 빠지지 않게 · 검토 지적 4).
+  blocked?: boolean;
+  // POC6-16 — 맨 위 요약의 [자료 최신화 목록 ↓] · [업데이트 위치로 ↓] 스크롤 목적지(카드 자체 · 포커스 가능).
+  areaId?: string;
   items: MaintenanceItem[];
   loading: boolean;
   refreshing: "idle" | "running" | "done" | "failed";
@@ -41,7 +47,12 @@ export default function MaintenanceQueueSection({
   const lightItems = items.filter((it) => it.kind === "light");
   const heavyItems = items.filter((it) => it.kind === "heavy");
   return (
-    <section className="tc-card" aria-label="자료 최신화 필요">
+    <section
+      id={areaId}
+      tabIndex={areaId ? -1 : undefined}
+      className="tc-card tc-scroll-target"
+      aria-label="자료 최신화 필요"
+    >
       {/* 제목 + 건수. "최신" 배지는 아래 보유 현재가 행 문구 옆으로 이동(사용자 지시). */}
       <div className="tc-maint-title-row">
         <h2 className="tc-h2" style={{ marginBottom: 0 }}>
@@ -77,7 +88,7 @@ export default function MaintenanceQueueSection({
                   type="button"
                   className="tc-btn tc-btn-link"
                   onClick={onLightRefresh}
-                  disabled={refreshing === "running"}
+                  disabled={refreshing === "running" || blocked}
                 >
                   {refreshing === "running" ? "불러오는 중..." : "업데이트"}
                 </button>
@@ -99,7 +110,7 @@ export default function MaintenanceQueueSection({
                 type="button"
                 className="tc-btn tc-btn-link"
                 onClick={onLightRefresh}
-                disabled={refreshing === "running"}
+                disabled={refreshing === "running" || blocked}
               >
                 {refreshing === "running" ? "불러오는 중..." : "업데이트"}
               </button>

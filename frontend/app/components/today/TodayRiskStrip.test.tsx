@@ -13,6 +13,7 @@ import type {
   MarketTopNResponse,
 } from "@/lib/api";
 import JudgmentQueueSection from "./JudgmentQueueSection";
+import { holdingsRow } from "./summaryLines";
 import { fmtShare } from "../holdings_risk_evidence/declineSummary";
 import {
   HELP_BAND_BASIS,
@@ -107,7 +108,7 @@ function renderQueue(
 const strip = () => screen.getByTestId("tc-risk-strip");
 const head = () => strip().querySelector(".tc-risk-head") as HTMLElement;
 const auxItems = () => Array.from(strip().querySelectorAll(".tc-risk-aux > span")).map((s) => s.textContent);
-const card = () => screen.getByLabelText("오늘 내가 확인할 것");
+const card = () => screen.getByLabelText("보유 · 잘 오르는 ETF 자세히");
 
 describe("오늘 — 보유 칸 현재 상태 띠 (POC5-15 · 세 묶음)", () => {
   it("보유 칸 제목 바로 아래 · 안내 문장 위 · 상태 + ? / 종목 수 · 비중 / 시장 · 판정 범위", () => {
@@ -245,5 +246,35 @@ describe("오늘 — 보유 칸 현재 상태 띠 (POC5-15 · 세 묶음)", () =
     expect(names[0]).toContain("다");
     expect(names[1]).toContain("가");
     expect(names[2]).toContain("나");
+  });
+});
+
+// POC6-16 판정 §6 — 맨 위 요약 '보유 점검' 줄 = 같은 입력의 이 띠 값(상태 · 종목 수 · 비중 · 시장 국면 원천).
+describe("POC6-16 요약 보유 줄 = 보유 칸 띠", () => {
+  it.each([
+    ["판정 일부 불가", ITEMS],
+    ["모두 판정", ALL_JUDGED],
+    ["하락 없음", NONE],
+  ])("%s", (_n, items) => {
+    const ev = evidenceOf(items as HoldingsMarketEvidenceItem[]);
+    renderQueue(HOLDINGS, ev);
+    const r = holdingsRow(HOLDINGS, ev);
+    expect(r.badge).toBe(head().textContent?.replace(/\?$/, ""));
+    expect(r.text.startsWith(strip().querySelector(".tc-risk-part")?.textContent ?? "∅")).toBe(true);
+    expect(r.basis).toContain(`시장 국면(보유 근거 기준) ${auxItems()[0]?.replace(/^시장 /, "")}`);
+    expect(r.basis).toContain("PC 저장 가격 기준일 2026-10-14");
+    // 띠의 판정 범위('구간 판정 가능 a/b' · '일부 종목 판정 불가')도 같다(검토 지적 6)
+    expect(r.basis).toContain(auxItems()[1] ?? "∅");
+    expect(r.actions.map((a) => [a.label, a.primary])).toEqual([
+      ["확인 근거 보기", true],
+      ["보유 현황 보기", false],
+    ]);
+  });
+  it("보유 근거 조회 실패 — 띠와 같은 실패 문장 · 이동은 그대로", () => {
+    renderQueue(HOLDINGS, ERR);
+    const r = holdingsRow(HOLDINGS, ERR);
+    expect(r.badge).toBe("불러오지 못함");
+    expect(screen.getByTestId("tc-risk-failed").textContent).toBe(r.text);
+    expect(r.actions).toHaveLength(2);
   });
 });

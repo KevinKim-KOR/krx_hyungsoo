@@ -34,7 +34,14 @@ import {
 // 코스피 1개월 · 3개월 · 1년 · 고점 대비 · 기존 시장 판정 · KODEX200 거래량은 카드 아래
 // '시장 수치와 거래량'에서 펼쳐 본다(기본 접힘 · 화면 안 상태만). 접힌 칸의 자료 없음 · 부족 ·
 // 계산 불가는 펼치기 전후 모두 버튼 옆 '확인 필요: …'로 보인다(설계 §3 · 판정 Q3).
-export default function KospiHeadline({ market }: { market: QueryState<MarketTopNResponse> }) {
+// POC6-16 — areaId: 맨 위 요약의 [KOSPI 차트 ↓] 스크롤 목적지(카드 자체 · 포커스 가능 · 구조 그대로).
+export default function KospiHeadline({
+  market,
+  areaId,
+}: {
+  market: QueryState<MarketTopNResponse>;
+  areaId?: string;
+}) {
   const ctx =
     market.phase === "success" ? market.data.market_context ?? null : null;
   const kodex = ctx?.kodex200;
@@ -51,7 +58,12 @@ export default function KospiHeadline({ market }: { market: QueryState<MarketTop
   const foldNotes = foldedMarketNotes(market, ctx, kospi, vol);
 
   return (
-    <section className="tc-card tc-headline" aria-label="KOSPI 현재 위치">
+    <section
+      id={areaId}
+      tabIndex={areaId ? -1 : undefined}
+      className="tc-card tc-headline tc-scroll-target"
+      aria-label="KOSPI 현재 위치"
+    >
       {/* 사용자 요청: 대표 제목은 "KOSPI". 코스피 가격 = 대표, KODEX200 판정은 별도. */}
       <h2 className="tc-h2">KOSPI</h2>
 

@@ -166,3 +166,57 @@ describe("useSharedQuery 캐시 공유", () => {
     });
   });
 });
+
+// POC6-16 판정 §4 — 성공한 값과 그 값을 받은 시각을 같이 둔다. 실패 · 캐시 재사용 · 다시 그리기에는 시각을 바꾸지 않는다.
+describe("성공 시각(successAt)", () => {
+  it("성공 때 기록 · 재마운트(캐시 재사용) 때 그대로 · 다시 읽기 성공 때 새 시각", async () => {
+    const now = vi.spyOn(Date, "now").mockReturnValue(1_000);
+    const fetcher = vi.fn(async () => ({ v: 1 }));
+    const a = renderHook(() => useSharedQuery("t1", fetcher));
+    await waitFor(() => expect(a.result.current.phase).toBe("success"));
+    expect(a.result.current.phase === "success" && a.result.current.successAt).toBe(1_000);
+    a.unmount();
+    now.mockReturnValue(5_000);
+    const b = renderHook(() => useSharedQuery("t1", fetcher));
+    expect(b.result.current.phase === "success" && b.result.current.successAt).toBe(1_000);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      await b.result.current.reloadAsync();
+    });
+    expect(b.result.current.phase === "success" && b.result.current.successAt).toBe(5_000);
+    now.mockRestore();
+  });
+
+  it("다시 읽기 실패 — 이전 값 · 이전 시각 그대로 · stale 표시(현재 시각으로 바꾸지 않음)", async () => {
+    const now = vi.spyOn(Date, "now").mockReturnValue(2_000);
+    let fail = false;
+    const fetcher = vi.fn(async () => {
+      if (fail) throw new Error("x");
+      return { v: 7 };
+    });
+    const h = renderHook(() => useSharedQuery("t2", fetcher));
+    await waitFor(() => expect(h.result.current.phase).toBe("success"));
+    fail = true;
+    now.mockReturnValue(9_000);
+    await act(async () => {
+      await h.result.current.reloadAsync().catch(() => undefined);
+    });
+    const st = h.result.current;
+    expect(st.phase).toBe("success");
+    if (st.phase === "success") {
+      expect(st.stale).toBe(true);
+      expect(st.successAt).toBe(2_000);
+      expect(st.data).toEqual({ v: 7 });
+    }
+    now.mockRestore();
+  });
+
+  it("첫 조회 실패 — error · 성공 시각 없음", async () => {
+    const fetcher = vi.fn(async () => {
+      throw new Error("x");
+    });
+    const h = renderHook(() => useSharedQuery("t3", fetcher));
+    await waitFor(() => expect(h.result.current.phase).toBe("error"));
+    expect("successAt" in h.result.current).toBe(false);
+  });
+});

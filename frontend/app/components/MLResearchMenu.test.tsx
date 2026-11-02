@@ -64,7 +64,9 @@ beforeEach(() => {
   for (const f of LEGACY_FETCHES) f.mockImplementation(() => noData());
 });
 
-const menu = (label: string) => screen.getByText(label).closest("button")!;
+// POC6-16 — 「오늘의 투자 점검」 요약 줄에도 같은 이름의 버튼이 있어 좌측 메뉴 안에서 찾는다.
+const menu = (label: string) =>
+  within(screen.getByRole("complementary", { name: "좌측 메뉴" })).getByText(label).closest("button")!;
 
 // 첫 화면(오늘의 투자 점검)의 조회 실패 처리까지 act 안에서 끝낸다(act 경고 없이 이동만 본다).
 async function renderPanel() {

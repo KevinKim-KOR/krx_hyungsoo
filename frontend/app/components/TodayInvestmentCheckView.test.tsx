@@ -37,6 +37,9 @@ function marketOk(overrides: Record<string, unknown> = {}) {
   return {
     status: "ok",
     asof: "2026-07-24",
+    basis: "one_month",
+    n: 10,
+    filters: { exclude_inverse: true, exclude_leveraged: true, exclude_synthetic: true, exclude_futures: true },
     candidates: [{ ticker: "069500" }, { ticker: "139260" }, { ticker: "305720" }],
     daily_topn: [],
     one_month_topn: [],
@@ -187,7 +190,8 @@ async function renderView() {
   // (POC3-02D-OPS-03 설계자 RESULT STEP 4-3 — '마지막 자료 기준일' 은 이제 KOSPI
   // 기준일이라 KOSPI 기준일이 없는 fixture 에서는 나오지 않아 앵커로 쓰지 않는다.)
   expandAll();
-  await screen.findByText(/· KODEX200 기준일 \d{4}-\d{2}-\d{2}/);
+  // POC6-16 — 맨 위 요약 줄에도 같은 날짜 문구가 있어 KOSPI 카드 안에서 기다린다.
+  await within(screen.getByLabelText("KOSPI 현재 위치")).findByText(/· KODEX200 기준일 \d{4}-\d{2}-\d{2}/);
   expandAll(); // 앵커 뒤에 그려진 최대 3개 행의 '수치 더보기'까지.
   return { onNavigate };
 }
@@ -197,7 +201,7 @@ describe("TodayInvestmentCheckView", () => {
     await renderView();
     // 코스피 대표(라벨) · 판단 큐 · 정비 큐 세 영역이 각각 존재.
     expect(screen.getByLabelText("KOSPI 현재 위치")).toBeInTheDocument();
-    expect(screen.getByLabelText("오늘 내가 확인할 것")).toBeInTheDocument();
+    expect(screen.getByLabelText("보유 · 잘 오르는 ETF 자세히")).toBeInTheDocument();
     expect(screen.getByLabelText("자료 최신화 필요")).toBeInTheDocument();
     // 대표 제목은 "KOSPI".
     expect(screen.getByRole("heading", { name: "KOSPI" })).toBeInTheDocument();
@@ -206,7 +210,7 @@ describe("TodayInvestmentCheckView", () => {
   it("§4.1: 코스피 대표 영역이 전체 폭(최상단)이다 — 판단/정비 큐와 같은 열에 있지 않다", async () => {
     await renderView();
     const headline = screen.getByLabelText("KOSPI 현재 위치");
-    const judgment = screen.getByLabelText("오늘 내가 확인할 것");
+    const judgment = screen.getByLabelText("보유 · 잘 오르는 ETF 자세히");
     // 코스피 헤드라인은 큐 grid(.tc-queue-grid) 안에 들어있지 않아야 한다
     // (2열 큐와 나란히 배치되면 반쪽 폭 → §4.1 위반).
     expect(headline.closest(".tc-queue-grid")).toBeNull();
@@ -315,7 +319,7 @@ describe("TodayInvestmentCheckView", () => {
 
   it("AC-4/AC-5 큐 분리: 정비 항목이 '오늘 내가 확인할 것' 안에 없다", async () => {
     await renderView();
-    const judgment = screen.getByLabelText("오늘 내가 확인할 것");
+    const judgment = screen.getByLabelText("보유 · 잘 오르는 ETF 자세히");
     // 판단 큐 안에는 자료 상태 문구가 없어야 한다.
     expect(within(judgment).queryByText(/자료가 없습니다/)).toBeNull();
     expect(within(judgment).queryByText(/오래되었습니다/)).toBeNull();
@@ -394,7 +398,7 @@ describe("TodayInvestmentCheckView", () => {
     expect(row.textContent).toContain("(KOSPI 기준일 2026-07-23 · 1거래일 지연)");
     expect(within(maint).getAllByRole("button", { name: "시장 자료 업데이트로" }).length).toBeGreaterThan(0);
     // 판단 큐에는 들어가지 않는다(AC-4/AC-5).
-    const judgment = screen.getByLabelText("오늘 내가 확인할 것");
+    const judgment = screen.getByLabelText("보유 · 잘 오르는 ETF 자세히");
     expect(within(judgment).queryByText(/KOSPI 원자료/)).toBeNull();
     // 카드 하단 기준일은 KOSPI 기준일(시장 판정 기준일 2026-07-24 아님).
     const headline = screen.getByLabelText("KOSPI 현재 위치");
@@ -429,9 +433,13 @@ describe("TodayInvestmentCheckView", () => {
     const onNavigate = vi.fn();
     render(<TodayInvestmentCheckView onNavigate={onNavigate} />);
     await screen.findByText("코스피 가격 흐름");
-    expect(await screen.findByText("3개")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "ETF 비교하기" }));
+    // POC6-16 판정 §5 — 요청 상한(10)이 아니라 실제 목록 길이 N · 대시보드 고정 기준(1개월).
+    const card = screen.getByLabelText("보유 · 잘 오르는 ETF 자세히");
+    expect(await within(card).findByText("1개월 수익률 상위 3개")).toBeInTheDocument();
+    fireEvent.click(within(card).getByRole("button", { name: "ETF 비교하기" }));
     expect(onNavigate).toHaveBeenCalledWith("workbench");
+    fireEvent.click(within(card).getByRole("button", { name: "요즘 잘 오르는 ETF" }));
+    expect(onNavigate).toHaveBeenCalledWith("market_discovery");
   });
 
   // 2026-09-27 사용자 직접 지시: 「OCI 운영 상태」(oci_status)가 「승인·적용」과 합쳐져
@@ -482,14 +490,16 @@ describe("TodayInvestmentCheckView", () => {
     // 최초: 현재가 결측 1건 → light 항목 노출. 갱신 후 결측 0건으로 응답 → 사라짐.
     await renderView();
     expect(
-      screen.getByText(/보유 종목 현재가를 불러오지 못했습니다/),
+      within(screen.getByLabelText("자료 최신화 필요")).getByText(/보유 종목 현재가를 불러오지 못했습니다/),
     ).toBeInTheDocument();
+    // POC6-16 — 맨 위 「지금 할 일」에도 같은 사유가 보인다(해소되면 둘 다 사라짐 · 판정 §3-1).
+    expect(within(screen.getByRole("region", { name: "지금 할 일" })).getByText(/보유 종목 현재가를 불러오지 못했습니다/)).toBeInTheDocument();
     // 갱신 후 재조회 시에는 결측 없는 holdings 를 반환하도록 설정.
     fetchEnrichedHoldings.mockResolvedValue({
       items: [{ ticker: "069500", name: "KODEX200", price_missing: false }],
     });
     fireEvent.click(screen.getByRole("button", { name: "업데이트" }));
-    await screen.findByText(/완료/);
+    await within(screen.getByLabelText("자료 최신화 필요")).findByText(/완료/);
     // light 항목(현재가 결측)이 사라져야 한다 (계약과 동작 일치 · 사용자 지적 6번).
     await waitFor(() => {
       expect(
@@ -710,7 +720,7 @@ describe("TodayInvestmentCheckView", () => {
 
   it("POC3-05 §7·AC-13: 판단 큐에서 보유 현황·확인 근거로 직접 이동한다", async () => {
     const { onNavigate } = await renderView();
-    const judgment = screen.getByLabelText("오늘 내가 확인할 것");
+    const judgment = screen.getByLabelText("보유 · 잘 오르는 ETF 자세히");
     // 개발 중 자리표시자 대신 실제 동선. "개발 중" 뱃지는 이 영역에 없다.
     expect(within(judgment).getByText("내가 가진 ETF")).toBeInTheDocument();
 
@@ -752,7 +762,7 @@ describe("TodayInvestmentCheckView", () => {
       warnings: [],
     });
     await renderView();
-    const judgment = screen.getByLabelText("오늘 내가 확인할 것");
+    const judgment = screen.getByLabelText("보유 · 잘 오르는 ETF 자세히");
     // backend coverage.need_check=1 을 그대로 표시.
     expect(within(judgment).getByText(/자료 확인 필요 1건/)).toBeInTheDocument();
     // 목록이 없으면 '최대 3개' 설명도 없다(POC5-UI-02 §2).
@@ -769,7 +779,7 @@ describe("TodayInvestmentCheckView", () => {
     // Evidence 만 실패 — holdings 는 성공.
     fetchHoldingsMarketEvidence.mockRejectedValue(new Error("evidence down"));
     await renderView();
-    const judgment = screen.getByLabelText("오늘 내가 확인할 것");
+    const judgment = screen.getByLabelText("보유 · 잘 오르는 ETF 자세히");
     // "내가 가진 ETF" head 에 보유 수(2)가 확정 표시되고 "확인 불가" 는 없다.
     const holdHead = within(judgment)
       .getByText("내가 가진 ETF")
@@ -831,7 +841,7 @@ describe("TodayInvestmentCheckView", () => {
       warnings: [],
     });
     await renderView();
-    const judgment = screen.getByLabelText("오늘 내가 확인할 것");
+    const judgment = screen.getByLabelText("보유 · 잘 오르는 ETF 자세히");
     expect(within(judgment).getByText("타이거나스닥")).toBeInTheDocument();
     expect(within(judgment).getByText("코덱스200")).toBeInTheDocument();
     // backend 가 준 순서 그대로: 타이거나스닥(-8) 이 코덱스200(-1) 보다 먼저.

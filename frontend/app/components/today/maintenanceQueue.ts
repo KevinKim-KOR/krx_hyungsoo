@@ -18,7 +18,21 @@ import type { MenuKey } from "../LeftSidebar";
 // 판단 큐와 절대 섞이지 않도록 별도 타입/수집 함수로 분리.
 // kind (§4.3): "light" = 대시보드에서 바로 "지금 다시 불러오기" 로 해소 가능(저장값
 // 재조회). "heavy" = 전체 수집·재계산이 필요해 상세 화면에서 실행해야 함(Q8).
+// POC6-16 판정 §3-1 — 「지금 할 일」 안내용 분류(기존 항목 · 문구 · 버튼 · 이동은 그대로).
+//   market_refresh = 이 항목의 기존 이동이 시장 자료 갱신 화면(「요즘 잘 오르는 ETF」 [최신 시장 데이터 갱신])
+//   holdings_price = 이 화면 [업데이트](POST /holdings/market/refresh)로 다시 받는 보유 현재가
+//   read_failed    = 조회 실패 · 응답 손상으로 자료 상태 자체를 모름(미갱신으로 단정하지 않음)
+//   market_unknown = 시장 목록 응답이 정상이 아니거나 시장 배경이 없어 KOSPI 상태를 모름(다시 읽기 대상 아님 · 새로 고침)
+//   other          = 해결 동선이 이 화면에서 확인되지 않은 정비 항목(목록에서 기존 버튼으로)
+export type MaintenanceTask =
+  | "market_refresh"
+  | "holdings_price"
+  | "read_failed"
+  | "market_unknown"
+  | "other";
+
 export type MaintenanceItem = {
+  task: MaintenanceTask;
   text: string; // 사용자 언어 (내부 용어 비노출)
   kind: "light" | "heavy";
   target: MenuKey; // heavy 일 때 이동할 상세 화면 (Q8: 항목별 직접)
@@ -43,6 +57,7 @@ export function collectMaintenance(
     const missing = holdings.data.items.filter((h) => h.price_missing).length;
     if (missing > 0) {
       list.push({
+        task: "holdings_price",
         text: `보유 종목 현재가를 불러오지 못했습니다 (${missing}건)`,
         kind: "light",
         target: "holdings",
@@ -61,6 +76,7 @@ export function collectMaintenance(
     if (vixNotice) {
       // 시장 불안 지표(VIX) 갱신은 전체 시장 자료 수집 필요 → heavy.
       list.push({
+        task: "market_refresh",
         text: vixNotice.text,
         kind: "heavy",
         target: "market_discovery",
@@ -70,6 +86,7 @@ export function collectMaintenance(
     }
     if (vix?.availability === "unavailable") {
       list.push({
+        task: "market_refresh",
         text: "시장 불안 지표 자료가 없습니다",
         kind: "heavy",
         target: "market_discovery",
@@ -84,6 +101,9 @@ export function collectMaintenance(
     if (!kospi.loading && kospi.state !== "ok" && kospi.state !== "holiday" && kospi.reason) {
       const head = kospi.reason.replace(/\.$/, "");
       list.push({
+        // 시장 목록 응답이 정상이 아니거나 시장 배경이 없으면 '갱신 필요'가 아니라 '상태 모름'(검토 지적 8b)
+        task:
+          market.data.status !== "ok" || !market.data.market_context ? "market_unknown" : "market_refresh",
         text: kospi.basisLine ? `${head} (${kospi.basisLine})` : head,
         kind: "heavy",
         target: "market_discovery",
@@ -99,6 +119,7 @@ export function collectMaintenance(
     if (s.constituents_unavailable_count > 0) {
       // 구성종목 수집은 대량 작업 → heavy (상세 화면).
       list.push({
+        task: "other",
         text: `ETF가 담고 있는 종목 자료가 없습니다 (${s.constituents_unavailable_count}건)`,
         kind: "heavy",
         target: "etf_exposure",
@@ -111,6 +132,7 @@ export function collectMaintenance(
       // 시장 비교 evidence 는 시장 자료 갱신이 필요 → 경량 갱신(현재가)으로 해소
       // 안 됨 → heavy (상세 화면). (2026-07-30 재분류: light→heavy)
       list.push({
+        task: "market_refresh",
         text: `내가 가진 ETF와 시장 비교 자료가 오래되었습니다 (${s.evidence_unavailable_count}건)`,
         kind: "heavy",
         target: "market_discovery",
@@ -121,6 +143,7 @@ export function collectMaintenance(
     }
     if (s.nav_discount_unavailable_count > 0) {
       list.push({
+        task: "other",
         text: `ETF 기준가 비교 자료가 없습니다 (${s.nav_discount_unavailable_count}건)`,
         kind: "heavy",
         target: "etf_exposure",
@@ -131,6 +154,7 @@ export function collectMaintenance(
     }
   } else if (evidence.phase === "error") {
     list.push({
+      task: "read_failed",
       text: "보유 ETF 비교 자료를 불러오지 못했습니다",
       kind: "heavy",
       target: "market_discovery",
@@ -147,6 +171,7 @@ export function collectMaintenance(
     const fc = s?.failed_count;
     if (typeof uc !== "number" || typeof fc !== "number") {
       list.push({
+        task: "read_failed",
         text: "ETF 기준가 자료 상태를 확인할 수 없습니다",
         kind: "heavy",
         target: "etf_exposure",
@@ -156,6 +181,7 @@ export function collectMaintenance(
       });
     } else if (uc + fc > 0) {
       list.push({
+        task: "other",
         text: `ETF 기준가 자료가 일부 없습니다 (${uc + fc}건)`,
         kind: "heavy",
         target: "etf_exposure",
@@ -166,6 +192,7 @@ export function collectMaintenance(
     }
   } else if (nav.phase === "error") {
     list.push({
+      task: "read_failed",
       text: "ETF 기준가 자료를 불러오지 못했습니다",
       kind: "heavy",
       target: "etf_exposure",

@@ -10,6 +10,8 @@
 // - 브라우저 새로고침 시 모듈 메모리가 초기화되어 정상 재조회.
 // - localStorage / sessionStorage / DB / 파일 저장 없음.
 // - 무효화(invalidate)는 변경 성공 이벤트에서만 호출. 변경 실패 시 무효화 금지.
+// - 2026-11-02 POC6-16: 성공한 값과 그 값을 받은 시각(successAt · 이 탭 메모리)을 같이 둔다.
+//   실패 · 캐시 재사용 · 다시 그리기 때는 시각을 바꾸지 않는다(판정 §4 — 이전 결과를 보일 때 그 시각).
 
 import { useCallback, useEffect, useState } from "react";
 
@@ -20,6 +22,8 @@ type Entry<T> = {
   inflight?: Promise<T>;
   // 마지막 성공값 (재조회 실패 시 이전 성공값 구분용 · §4.4).
   lastSuccess?: T;
+  // 마지막 성공값을 받은 시각(Date.now · POC6-16). 성공 때만 새로 쓴다.
+  lastSuccessAt?: number;
   // 재조회 실패 여부. 캐시 엔트리에 저장하므로 화면 재진입해도 유지된다
   // (A-1(2): 이전 성공값이 재진입 후 정상값으로 위장되지 않게).
   refetchFailed?: boolean;
@@ -73,6 +77,7 @@ async function fetchShared<T>(
         status: "success",
         data,
         lastSuccess: data,
+        lastSuccessAt: Date.now(),
         refetchFailed: false,
       });
       notify(key);
@@ -88,6 +93,7 @@ async function fetchShared<T>(
         status: hasPrev ? "success" : "error",
         data: prev?.lastSuccess,
         lastSuccess: prev?.lastSuccess,
+        lastSuccessAt: prev?.lastSuccessAt,
         refetchFailed: true,
       });
       notify(key);
@@ -98,6 +104,7 @@ async function fetchShared<T>(
     status: existing?.status === "success" ? "success" : "loading",
     data: existing?.data,
     lastSuccess: existing?.lastSuccess,
+    lastSuccessAt: existing?.lastSuccessAt,
     refetchFailed: existing?.refetchFailed,
     inflight,
   });
@@ -128,7 +135,7 @@ export function __resetQueryCache(): void {
 export type QueryState<T> =
   | { phase: "idle" } // not_loaded — 아직 조회 안 함 (§ lazy 시장 카드)
   | { phase: "loading" }
-  | { phase: "success"; data: T; stale: boolean }
+  | { phase: "success"; data: T; stale: boolean; successAt?: number }
   | { phase: "error"; lastData?: T };
 
 /**
@@ -186,7 +193,12 @@ export function useSharedQuery<T>(
   let state: QueryState<T>;
   if (entry?.status === "success" && entry.data !== undefined) {
     // 이전 성공값 존재. refetchFailed 면 stale=true (재조회 실패 · 최신 아님).
-    state = { phase: "success", data: entry.data, stale: !!entry.refetchFailed };
+    state = {
+      phase: "success",
+      data: entry.data,
+      stale: !!entry.refetchFailed,
+      successAt: entry.lastSuccessAt,
+    };
   } else if (entry?.inflight) {
     state = { phase: "loading" };
   } else if (entry?.status === "error") {

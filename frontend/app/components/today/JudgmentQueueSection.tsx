@@ -4,6 +4,9 @@
 // `TodayInvestmentCheckView.tsx` 가 907줄로 KS-10 프론트 임계(>900)를 넘어
 // 책임별로 분리했다. 분리 때는 JSX·문구·className·핸들러·호출 조건을 고치지 않았다
 // (파일 배치와 import/export 줄만). 그 뒤 화면은 POC5-09 · POC5-UI-03 · POC5-13 · POC5-15 에서 바뀌었다.
+// 2026-11-02 POC6-16: 맨 위 「지금 확인할 내용」이 생겨 이 카드 제목은 「보유 · 잘 오르는 ETF 자세히」(AC-7 — 이 화면은 '후보' 낱말을 쓰지 않음).
+//   후보 부분 '요즘 잘 오르는 ETF 10개'(요청 개수와 같은 응답 길이 · 기간 · 조건 표시 없음)를
+//   '1개월 수익률 상위 N개 · 기간 · 제외 조건 · 상위 3개'로(판정 §5 · 같은 응답 · 순서 그대로).
 
 import { useState } from "react";
 import type { QueryState } from "@/lib/api/queryCache";
@@ -17,6 +20,7 @@ import type {
 } from "@/lib/api";
 import type { MenuKey } from "../LeftSidebar";
 import { fmtPct } from "./todayHelpers";
+import { candidateConditions, candidateLabel, candidatePeriod } from "./summaryLines";
 import { describeMismatched, windowMismatchText } from "@/lib/priceBasis";
 import { aggregateHoldingsByTicker } from "../holdings_compare/helpers";
 import { PARTIAL_EVAL_TEXT, fmtShare } from "../holdings_risk_evidence/declineSummary";
@@ -209,37 +213,53 @@ export default function JudgmentQueueSection({
   // 두 조회가 끝나기 전이면 null(띠 없음) · 실패여도 띠는 상태와 실제 실패 사유를 보인다(PLAN 판정 Q1).
   const risk = riskStateFromQueries(holdings, evidence);
   const decline = risk?.summary ?? null;
-  const candCount =
-    market.phase === "success" && market.data.status === "ok"
-      ? market.data.candidates.length
-      : null;
+  const candOk = market.phase === "success" && market.data.status === "ok" ? market.data : null;
+  const topCands = candOk ? candOk.candidates.slice(0, 3) : [];
 
   return (
-    <section className="tc-card" aria-label="오늘 내가 확인할 것">
-      <h2 className="tc-h2">오늘 내가 확인할 것</h2>
+    <section className="tc-card" aria-label="보유 · 잘 오르는 ETF 자세히">
+      <h2 className="tc-h2">보유 · 잘 오르는 ETF 자세히</h2>
 
-      {/* 요즘 잘 오르는 ETF — 건수 + 진입 (상세 표는 대시보드에 두지 않음) */}
-      <div className="tc-queue-item">
+      {/* 요즘 잘 오르는 ETF — 대시보드 고정 조건 목록의 실제 길이 · 기간 · 조건 · 상위 3개(상세 표는 두지 않음) */}
+      <div className="tc-queue-item" data-testid="tc-cand-block">
         <div className="tc-queue-head">
           요즘 잘 오르는 ETF{" "}
-          {candCount != null ? (
-            <strong>{candCount}개</strong>
+          {candOk ? (
+            <strong>{candidateLabel(candOk)}</strong>
           ) : market.phase === "loading" ? (
             <span className="tc-muted tc-small">불러오는 중...</span>
           ) : (
             <span className="tc-muted tc-small">확인 불가</span>
           )}
         </div>
-        <p className="tc-muted tc-small">
-          최근 시장보다 강한 흐름을 보이는 ETF를 확인합니다.
-        </p>
-        <button
-          type="button"
-          className="tc-btn"
-          onClick={() => onNavigate("workbench")}
-        >
-          ETF 비교하기
-        </button>
+        {candOk ? (
+          <p className="tc-muted tc-small">
+            {candidatePeriod(candOk.candidates)} · {candidateConditions(candOk)} · 「요즘 잘 오르는 ETF」에서 고른
+            기간 · 정렬과 다를 수 있습니다.
+          </p>
+        ) : (
+          <p className="tc-muted tc-small">최근 시장보다 강한 흐름을 보이는 ETF를 확인합니다.</p>
+        )}
+        {topCands.length > 0 ? (
+          <ol className="tc-cand-top">
+            {topCands.map((c) => (
+              <li key={c.ticker}>
+                {c.name ?? c.ticker}{" "}
+                <strong>
+                  {typeof c.selected_return_pct === "number" ? fmtPct(c.selected_return_pct) : "수익률 확인 불가"}
+                </strong>
+              </li>
+            ))}
+          </ol>
+        ) : null}
+        <div className="tc-btn-row">
+          <button type="button" className="tc-btn" onClick={() => onNavigate("market_discovery")}>
+            요즘 잘 오르는 ETF
+          </button>
+          <button type="button" className="tc-btn tc-btn-link" onClick={() => onNavigate("workbench")}>
+            ETF 비교하기
+          </button>
+        </div>
       </div>
 
       {/* 내가 가진 ETF — 평가·확인 근거 직접 동선 (POC3-05 DESIGN_V2 §7·AC-13). */}
