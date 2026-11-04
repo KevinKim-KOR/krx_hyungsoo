@@ -343,6 +343,8 @@ threshold / label / 모델 / 학습 데이터는 본 시점에 확정하지 않�
   > 2026-10-26 POC6-10 연구 한정 예외: 외부 참고 구조(친구 저장소는 참조만 · 코드·DB·브로커·발송 모듈 import 없음)를 바탕으로 한 고정 주간 추세 규칙 하나와 비교 기준 둘을, 봉인 KRX 한 판의 기준가 중립 합성 가격지수와 PC 연구 전용 Backtrader로 고정 공식 묶음 1회 회고 계산하는 PC 연구만 허용한다. 설계 및 PLAN 판정의 비중 축소 취소·전량 매도 이연·슬롯/현금·평가 시각 계약을 따른다. 결과는 가격지수 사례 판정이며 실제 계좌 수익·운영 매매 지시·종목 추천·PARAM·seed 변경·ML 학습·승격이 아니다. 설치는 유효한 사용자 승인, 공개 배포는 라이선스 조건 확인과 사용자 승인 범위 안에서 처리한다. 05 보관·06 전향 기록·월별 학습, Q6 OPEN, ML_OPERATION_PROMOTION=NOT_APPROVED, CURRENT_DEPLOYABLE_ML_MODEL=none을 유지한다. (출처: `docs/ai_design/POC6/POC6-10_REFERENCE_WEEKLY_TREND_BASELINE_PLAN_DECISION_2026-10-26.md` §6)
 - **2026-10-26 POC6-11 연구 한정 예외** (POC6-11 PLAN 판정 §6 · 원문 그대로):
   > POC6-11 H1에 한해 기존 봉인 KRX 자료로 가격·거래량 30열, 60거래일 상대성과 순위와 CPU LightGBM을 연구한다. 고정 주간 모의 운용의 합성 가격지수 결과만 비교하며 실계좌/추천 출력/OCI/PUSH/기존 전향 모델에는 적용하지 않는다. Q6 OPEN과 운영 ML 미승격은 유지한다. (출처: `docs/ai_design/POC6/POC6-11_WEEKLY_ETF_RELATIVE_RETURN_SELECTION_PLAN_DECISION_2026-10-26.md` §6)
+- **2026-11-04 POC6-20 연구 한정 예외** (POC6-20 PLAN 판정 §2 · 원문 그대로):
+  > POC6-20에 한해 기존 봉인 KRX 자료와 POC6-19의 검증된 연구 사본을 사용하여, 가격·거래량 30열과 여기에 시장 정보 4열(외국인 수급 방향·기관계 수급 방향·원/달러 변화·WTI 가격 차이)을 추가한 입력을 동일 CPU LightGBM ML_B·공통 학습 행·주간 모의 운용 조건에서 비교한다. 대상·정보 가용 시각 가정·모델·기간·운용·비용·판정·실행 예산은 POC6-20 설계와 PLAN 판정에 따라 성과 계산 전에 고정한다. 합성 가격지수의 회고 비교이며 총수익 검증·실제 권고 채택을 뜻하지 않는다. 운영 DB·OCI·PUSH·기존 전향 모델을 변경하지 않고 새 외부 조회·공급자·설치를 추가하지 않는다. Q6 OPEN과 운영 ML 미승격을 유지한다. (출처: `docs/ai_design/POC6/POC6-20_MARKET_CONTEXT_INCREMENTAL_VALUE_PLAN_DECISION_2026-11-04.md` §2)
   위 축 2 의 표현 정의(불변)와 POC5-06 · 08 예외는 그대로다. 자료 손상 · 시각 누출 등 나머지 중단 조건도 그대로 적용한다.
 
 ### 2026-06-06 시점의 한계
