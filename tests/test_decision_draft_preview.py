@@ -36,6 +36,7 @@ from app.decision_preview_sources import CandidateListQuery
 
 SECTIONS = (
     "[대상]",
+    "[보유 · 자금 기준]",  # POC6-24
     "[시장]",
     "[가격 흐름 · PC 저장 종가]",
     "[KODEX200 동일 기간 비교]",
@@ -190,8 +191,9 @@ def test_build_preview_text_holding(tmp_db: Path) -> None:
     text = res.preview_text or ""
     for header in SECTIONS:
         assert header in text
-    # 기존 정책 유지 — 평가 비중 · 손익.
-    assert "평가비중 +15.50% · 손익률 +3.20%" in text
+    # 손익률은 그대로 · 평가 비중은 [보유 · 자금 기준] 묶음으로 옮김(POC6-24 판정 Q2).
+    assert "손익률 +3.20% · 비중은 [보유 · 자금 기준]에 적음" in text
+    assert "평가비중" not in text
     # 시작일이 달라 비운 단기 차이는 사유로(줄 삭제 · 0 대입 없음).
     assert "10저장일 시작일 달라 비움" in text
     assert "20저장일 +1.20%p" in text
@@ -632,10 +634,14 @@ def test_fix_r6_canonical_holding_matches_screen_values_079_and_5511(
             ticker="0052D0",
             target_evidence=canonical,
             db_path=tmp_db,
+            # POC6-24 — 평가 비중은 [보유 · 자금 기준] 묶음(endpoint 와 같은 줄).
+            capital_lines=api_decision_draft_preview._load_capital_lines(
+                "0052D0", TARGET_KIND_HOLDING
+            ),
         ).preview_text
         or ""
     )
-    assert "0.79%" in text
+    assert "보유 내 0.79%(현금 제외)" in text
     assert "55.11%" in text
 
 
@@ -670,11 +676,14 @@ def test_fix_r5_canonical_holding_evidence_includes_weight_and_pnl(
             ticker="0052D0",
             target_evidence=canonical,
             db_path=tmp_db,
+            capital_lines=api_decision_draft_preview._load_capital_lines(
+                "0052D0", TARGET_KIND_HOLDING
+            ),
         ).preview_text
         or ""
     )
     assert "55.11%" in text
-    assert "100.00%" in text
+    assert "보유 내 100.00%(현금 제외)" in text
     assert "20저장일 +2.34%p" in text
 
 

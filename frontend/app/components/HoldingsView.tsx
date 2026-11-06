@@ -10,6 +10,8 @@
 // - 시세 갱신(Naver) = 기존 refreshMarket 계약 그대로. 사용자 액션에서만 호출.
 // - enriched 조회는 캐시에서 표시 (page load 시 저장분 1회 조회, 외부 시세 fetch 는
 //   [시세 갱신] 버튼에서만).
+// - POC6-24: 보유 배너 아래 자금 기준 카드(CapitalContextPanel) · 보유가 없어도 카드는 보인다.
+//   카드 숫자 = 같은 enriched 응답의 capital 칸(서버 저장값) · 저장 뒤 enriched 를 다시 읽는다.
 
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -17,9 +19,11 @@ import {
   ApiRequestError,
   fetchEnrichedHoldings,
   refreshMarket,
+  type CapitalView,
   type EnrichedHolding,
 } from "@/lib/api";
 import EnrichedSection from "./EnrichedHoldingsSection";
+import CapitalContextPanel from "./holdings/CapitalContextPanel";
 import type { MenuKey } from "./LeftSidebar";
 
 interface Props {
@@ -28,6 +32,7 @@ interface Props {
 
 export default function HoldingsView({ onNavigate }: Props) {
   const [enriched, setEnriched] = useState<EnrichedHolding[]>([]);
+  const [capital, setCapital] = useState<CapitalView | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -56,7 +61,9 @@ export default function HoldingsView({ onNavigate }: Props) {
     try {
       const data = await fetchEnrichedHoldings();
       setEnriched(data.items);
+      setCapital(data.capital ?? null);
     } catch (e) {
+      setCapital(null); // 확인 불가(0원 · 미입력으로 보지 않음)
       handleApiError(e);
     }
   }, [handleApiError]);
@@ -141,11 +148,17 @@ export default function HoldingsView({ onNavigate }: Props) {
             불러오는 중...
           </div>
         ) : enriched.length > 0 ? (
-          <EnrichedSection items={enriched} />
+          <EnrichedSection
+            items={enriched}
+            capitalSlot={<CapitalContextPanel capital={capital} onSaved={loadEnriched} />}
+          />
         ) : (
-          <div className="message info" style={{ marginTop: 8 }}>
-            저장된 보유 종목이 없습니다. &lsquo;종목 관리&rsquo;에서 보유 종목을 입력·저장하세요.
-          </div>
+          <>
+            <div className="message info" style={{ marginTop: 8 }}>
+              저장된 보유 종목이 없습니다. &lsquo;종목 관리&rsquo;에서 보유 종목을 입력·저장하세요.
+            </div>
+            <CapitalContextPanel capital={capital} onSaved={loadEnriched} />
+          </>
         )}
       </div>
     </section>

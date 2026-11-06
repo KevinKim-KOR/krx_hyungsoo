@@ -6,15 +6,18 @@
   (holdings_store)를 지나며, 수량 · 평단을 직접 고친 것은 매매가 아니라 입력 정정으로
   기록된다(app/holdings_history.save_full_list). 이력 문서에 revision 없는 요청은 409.
 - POC3-08 (A) strict_ticker 검증 · POC2 Step 1 E항(검증 실패 = 422 · run 생성 없음) 유지.
+- POC6-24: PUT /holdings/capital-context — 자금 기준(현금 · 추가 투입 한도 · 확인일) 한 묶음 저장 ·
+  비우기(`app/holdings_capital.py` · holdings_latest.json 과 별도 파일 · OCI 로 보내지 않음).
 """
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from app import holdings_capital
 from app.holdings_edit import current_holdings, save_full_list
 from app.holdings_history import HistoryConflict, HistoryInputError
 from app.holdings_store import DocumentCorrupt
@@ -47,6 +50,42 @@ class HoldingsResponse(BaseModel):
     status: str
 
 
+class CapitalPayload(BaseModel):
+    # 세 칸 모두 보내야 한다(빠진 칸을 비움으로 보지 않음) · 형 검사는 holdings_capital.validate.
+    cash_krw: Any
+    limit_krw: Any
+    confirmed_on: Any
+
+
+class CapitalStateResponse(BaseModel):
+    status: str  # NOT_ENTERED / ENTERED / READ_FAILED
+    cash_krw: Optional[int] = None
+    limit_krw: Optional[int] = None
+    confirmed_on: Optional[str] = None
+    saved_at: Optional[str] = None
+
+
+class CapitalPriceDate(BaseModel):
+    state: str  # NO_HOLDINGS / NONE_PRICED / UNKNOWN / KNOWN
+    min: Optional[str] = None
+    max: Optional[str] = None
+
+
+class CapitalViewResponse(CapitalStateResponse):
+    """`/holdings/enriched` 의 capital 칸(holdings_capital.view)."""
+
+    holdings_value: float
+    holdings_rows: int
+    priced_rows: int
+    complete: bool
+    price_date: CapitalPriceDate
+    total_krw: Optional[float] = None
+    total_reason: Optional[str] = None  # NO_CASH / PARTIAL / READ_FAILED
+    holdings_share_pct: Optional[float] = None
+    cash_share_pct: Optional[float] = None
+    same_day: Optional[bool] = None
+
+
 @router.get("/holdings", response_model=HoldingsResponse)
 def get_holdings() -> dict:
     """현재 보유(줄 ID 포함) · revision · 상태. 파일 없으면 빈 목록 + NO_FILE. 쓰기 0."""
@@ -71,3 +110,17 @@ def put_holdings(payload: HoldingsPayload) -> dict:
         raise HTTPException(status_code=409, detail=str(e))
     except DocumentCorrupt as e:
         raise HTTPException(status_code=500, detail=f"holdings 저장 파일 손상: {e}")
+
+
+@router.put("/holdings/capital-context", response_model=CapitalStateResponse)
+def put_capital_context(payload: CapitalPayload) -> dict:
+    """자금 기준 한 묶음 저장 · 비우기(세 칸 null). 422 = 입력 오류(파일 그대로) · 500 = 파일 손상(덮어쓰지 않음)."""
+    try:
+        return holdings_capital.save(
+            payload.cash_krw, payload.limit_krw, payload.confirmed_on
+        )
+    except holdings_capital.CapitalInputError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except holdings_capital.CapitalCorrupt as e:
+        # 이 문구 머리는 화면이 '쓰기 전 거절'을 알아보는 데 쓴다(CapitalContextPanel.refusedBeforeWrite).
+        raise HTTPException(status_code=500, detail=f"자금 기준 파일 손상: {e}")

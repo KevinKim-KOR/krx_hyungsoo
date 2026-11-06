@@ -238,9 +238,11 @@ function accountBarRank(ag: string): number {
 
 interface EnrichedSectionProps {
   items: EnrichedHolding[];
+  // POC6-24 — 보유 배너 바로 아래 자금 기준 카드(HoldingsView 가 넘김 · 계산은 서버).
+  capitalSlot?: React.ReactNode;
 }
 
-export default function EnrichedSection({ items }: EnrichedSectionProps) {
+export default function EnrichedSection({ items, capitalSlot }: EnrichedSectionProps) {
   const summary = useMemo(() => computeSummaryFor(items), [items]);
   const accountSummaries = useMemo(() => groupByAccount(items), [items]);
   const hasAnyPrice = summary.priced_count > 0;
@@ -306,6 +308,7 @@ export default function EnrichedSection({ items }: EnrichedSectionProps) {
   return (
     <div style={{ marginTop: 24 }}>
       <HoldingsHero summary={summary} accounts={accountSummaries} />
+      {capitalSlot}
 
       <p className="helper" style={{ margin: "0 0 12px" }}>
         {hasAnyPrice
@@ -483,7 +486,7 @@ function CompositionBar({
   return (
     <div className="hld-comp">
       <div className="hld-comp-lbl">
-        <span>계좌별 구성 (평가금액 기준)</span>
+        <span>계좌별 구성 (보유 평가액 기준 · 현금 제외)</span>
       </div>
       <div className="hld-comp-bar">
         {segs.map((s) => {
@@ -604,7 +607,11 @@ function HoldingRow({
   const pnlText = fmtSignedMoney(it.pnl_amount);
   const pnlRateText = fmtSignedPct(it.pnl_rate_pct);
   // 비중은 숫자로만(막대는 상단 계좌별 구성 막대로 통합 — 개별 행 막대 제거).
-  const mwText = fmtPct(it.market_weight_pct);
+  // POC6-24 — 값 없음(null)을 '0%'로 그리지 않는다(toFiniteNumber(null) = 0 이라 먼저 거름).
+  const mwText = it.market_weight_pct == null ? null : fmtPct(it.market_weight_pct);
+  // POC6-24 — 둘째 줄 '입력 현금 포함'(서버가 계산할 수 있을 때만 값 · 이 계좌 행 기준).
+  const cwText =
+    it.cash_inclusive_weight_pct == null ? null : fmtPct(it.cash_inclusive_weight_pct);
   const avgText = fmtMoney(it.avg_buy_price);
   const curText = fmtMoney(it.current_price);
   const qtyText = Number.isFinite(it.quantity)
@@ -655,18 +662,21 @@ function HoldingRow({
         </div>
         {/* 하단: 좌 티커/수량/비중 / 우 매입가→현재가 */}
         <div className="hld-row-bot">
-          <div className="hld-row-facts">
-            <span className="tk">{it.ticker}</span>
-            <span className="sep">/</span>
-            <span>{qtyText}주</span>
-            <span className="sep">/</span>
-            {mwText ? (
-              <span>
-                비중 <span className="hld-wv">{mwText}</span>
-              </span>
-            ) : (
-              <span className="muted">비중 계산 불가</span>
-            )}
+          <div className={cwText ? "hld-row-facts two" : "hld-row-facts"}>
+            <span className="fl">
+              <span className="tk">{it.ticker}</span>
+              <span className="sep">/</span>
+              <span>{qtyText}주</span>
+              <span className="sep">/</span>
+              {mwText ? (
+                <span>
+                  보유 내 비중 <span className="hld-wv">{mwText}</span>
+                </span>
+              ) : (
+                <span className="muted">비중 계산 불가</span>
+              )}
+            </span>
+            {cwText ? <span className="hld-wv2">입력 현금 포함 {cwText}</span> : null}
           </div>
           <div className="hld-row-price">
             {avgText ? (

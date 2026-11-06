@@ -104,10 +104,54 @@ export interface EnrichedHolding {
   // POC2 Step 2C: 표시/그룹용 라벨 + UI key 안정성을 위한 행 위치.
   account_group?: string;
   source_index?: number;
+  // POC6-24: 이 계좌 행 평가금액 ÷ 보유 + 입력 현금 합계(계산할 수 있을 때만 · 서버 저장값 기준).
+  cash_inclusive_weight_pct?: number | null;
+}
+
+// ─── POC6-24 자금 기준(검토에 포함할 현금 · 이번 검토의 추가 투입 한도 · 확인일) ─────
+// 화면 계산 · 미리보기는 서버에 저장된 값만 쓴다(편집 중 값은 보내기 전까지 쓰지 않음).
+
+export type CapitalStatus = "NOT_ENTERED" | "ENTERED" | "READ_FAILED";
+
+export interface CapitalState {
+  status: CapitalStatus;
+  cash_krw: number | null;
+  limit_krw: number | null;
+  confirmed_on: string | null;
+  saved_at: string | null;
+}
+
+export interface CapitalView extends CapitalState {
+  holdings_value: number;
+  holdings_rows: number;
+  priced_rows: number;
+  complete: boolean;
+  price_date: {
+    state: "NO_HOLDINGS" | "NONE_PRICED" | "UNKNOWN" | "KNOWN";
+    min: string | null;
+    max: string | null;
+  };
+  total_krw: number | null;
+  total_reason: "NO_CASH" | "PARTIAL" | "READ_FAILED" | null;
+  holdings_share_pct: number | null;
+  cash_share_pct: number | null;
+  same_day: boolean | null;
+}
+
+export interface CapitalPayload {
+  cash_krw: number | null;
+  limit_krw: number | null;
+  confirmed_on: string | null;
+}
+
+// 한 묶음 저장 · 비우기(세 칸 null). 422 = 입력 오류(저장값 그대로) · 500 = 파일 손상.
+export function saveCapitalContext(payload: CapitalPayload): Promise<CapitalState> {
+  return request<CapitalState>("PUT", "/holdings/capital-context", payload);
 }
 
 export interface EnrichedHoldingsResult {
   items: EnrichedHolding[];
+  capital?: CapitalView | null; // POC6-24 — 자금 기준(읽기 실패여도 보유 응답은 그대로)
 }
 
 // 명시적 사용자 액션에서만 호출 (page load / polling / 새로고침에서 호출 금지).

@@ -10,9 +10,12 @@
   묶음별 글로만 옮긴다 — 새 산식 · 점수 · 등급 · 결론 없음. 값이 없으면 줄을 빼거나 0 · 다른 값으로
   채우지 않고 그 묶음 안에 사유를 남긴다.
 
-묶음 순서: [대상] [시장] [시장 흐름 …] [가격 흐름 · PC 저장 종가] [KODEX200 동일 기간 비교] [거래량]
-[가격 흔들림] [중복 · 자료 상태] [AI에게 요청] [검토 질문]. 숫자 표시 정밀도는 화면 규칙과 같다(%·%p 소수 둘째 ·
+묶음 순서: [대상] [보유 · 자금 기준] [시장] [시장 흐름 …] [가격 흐름 · PC 저장 종가] [KODEX200 동일 기간 비교]
+[거래량] [가격 흔들림] [중복 · 자료 상태] [AI에게 요청] [검토 질문]. 숫자 표시 정밀도는 화면 규칙과 같다(%·%p 소수 둘째 ·
 거래량 저장값 그대로 · 평균 · 배수 소수 둘째 · 하락 구간 판정값 소수 첫째).
+
+POC6-24 — [대상] 다음 [보유 · 자금 기준] 묶음(호출자가 `app/holdings_capital.preview_lines` 로 만든 줄 · 보유 ·
+후보 공통) · 보유 [대상]의 평가비중은 그 묶음으로 옮김(판정 Q2 · 손익률 뜻 · 집계 불변).
 
 POC6-07 — 가격 흐름 묶음의 '변화율 …' 줄 다음(없으면 묶음 끝)에 종목 이동평균 세 줄
 (`app/pc_selected_moving_average.py` · 값은 자료 모으기가 만든 객체 그대로 · 응답 선택 필드와 같은 객체) ·
@@ -45,6 +48,7 @@ from app.decision_preview_lines import (
     volatility_lines,
     volume_lines,
 )
+from app.holdings_capital import preview_lines as capital_preview_lines
 from app.market_data_store import DEFAULT_DB_PATH
 from app.pc_selected_moving_average import ETF_UNKNOWN_REASON, moving_average_lines
 
@@ -134,8 +138,8 @@ def _holding_sections(ev: dict[str, Any], db_path: Path) -> Sections:
     market, k_asof, v_asof = market_lines(regime, db_path)
     target = [
         f"{one_line(ev.get('name') or ev.get('ticker'))} ({ev.get('ticker')}) · 보유 종목{kind}",
-        f"평가비중 {fmt_pct(ev.get('market_weight_pct'), plus_zero=True)} · "
-        f"손익률 {fmt_pct(ev.get('pnl_rate_pct'), plus_zero=True)}",
+        f"손익률 {fmt_pct(ev.get('pnl_rate_pct'), plus_zero=True)} · "
+        "비중은 [보유 · 자금 기준]에 적음",
     ]
     if bundle is None:
         no = ["값 없음 — 보유 근거 응답에 이 종목이 없습니다."]
@@ -234,11 +238,13 @@ def build_preview_text(
     db_path: Path = DEFAULT_DB_PATH,
     generated_at: Optional[datetime] = None,
     flow_period: str = "6M",
+    capital_lines: Optional[list[str]] = None,
 ) -> PreviewResult:
     """선택 종목 하나의 preview_text 를 결정적으로 조립(부작용 없음).
 
     target_evidence: 보유 = {ticker, name, market_weight_pct, pnl_rate_pct, bundle} ·
     후보 = `load_candidate_bundle` 결과(`app/decision_preview_sources.py`).
+    capital_lines: [보유 · 자금 기준] 줄(없으면 '확인 불가' 한 줄 · 0원으로 채우지 않음).
     """
     if target_kind not in ALLOWED_TARGET_KINDS or not ticker:
         return PreviewResult(status="error", message=_FAILURE)
@@ -262,8 +268,20 @@ def build_preview_text(
         "중복 · 자료 상태",
     ]
     sections = [_section(t, b) for t, b in zip(titles, bodies)]
+    # POC6-24 — '대상' 바로 다음에 보유 · 자금 기준.
+    sections.insert(
+        1,
+        _section(
+            "보유 · 자금 기준",
+            (
+                capital_lines
+                if capital_lines is not None
+                else capital_preview_lines(None, None)
+            ),
+        ),
+    )
     # POC6-01 — '시장' 바로 다음에 시장 흐름(화면에서 고른 기간 · 서버 공통 글).
-    sections.insert(2, _market_flow_section(db_path, flow_period))
+    sections.insert(3, _market_flow_section(db_path, flow_period))
     sections.append(_section("AI에게 요청", AI_REQUEST))
     sections.append(_section("검토 질문", REVIEW_QUESTIONS))
     return PreviewResult(

@@ -40,6 +40,7 @@ from app import (
     delivery,
     draft,
     holdings as holdings_module,
+    holdings_capital,
     holdings_enrich,
     market_cache,
     market_data_store,
@@ -51,7 +52,7 @@ from app.api_decision_draft_preview import router as decision_draft_preview_rout
 from app.api_decision_ledger import router as decision_ledger_router
 from app.api_decision_sessions import router as decision_sessions_router
 from app.api_etf_constituents import router as etf_constituents_router
-from app.api_holdings import router as holdings_router
+from app.api_holdings import CapitalViewResponse, router as holdings_router
 from app.api_holdings_history import router as holdings_history_router
 from app.api_holdings_market_evidence import router as holdings_market_evidence_router
 from app.api_holdings_oci_apply import router as holdings_oci_apply_router
@@ -332,10 +333,12 @@ class EnrichedHoldingResponse(BaseModel):
     # POC2 Step 2C: 표시/그룹용 라벨 + UI key 안정성을 위한 행 위치.
     account_group: str = "일반"
     source_index: int = 0
+    cash_inclusive_weight_pct: Optional[float] = None  # POC6-24 행 ÷ 합계 T
 
 
 class EnrichedHoldingsResponse(BaseModel):
     items: list[EnrichedHoldingResponse]
+    capital: Optional[CapitalViewResponse] = None  # POC6-24 자금 기준
 
 
 @app.post("/holdings/market/refresh", response_model=MarketRefreshResponse)
@@ -409,7 +412,10 @@ def get_holdings_enriched() -> EnrichedHoldingsResponse:
         h.ticker: all_quotes[h.ticker] for h in loaded if h.ticker in all_quotes
     }
     enriched = holdings_enrich.enrich_holdings(loaded, relevant_quotes)
+    cv = holdings_capital.view(enriched, holdings_capital.load_status())
+    with_cash = holdings_capital.with_cash_pct  # 자금 읽기 실패여도 보유 응답은 200
     return EnrichedHoldingsResponse(
+        capital=cv,
         items=[
             EnrichedHoldingResponse(
                 ticker=e.ticker,
@@ -429,9 +435,10 @@ def get_holdings_enriched() -> EnrichedHoldingsResponse:
                 calc_missing=e.calc_missing,
                 account_group=e.account_group,
                 source_index=e.source_index,
+                cash_inclusive_weight_pct=with_cash(e.eval_amount, cv),
             )
             for e in enriched
-        ]
+        ],
     )
 
 

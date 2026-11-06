@@ -997,6 +997,189 @@ li.account-summary-item:last-child {
   margin: 0 5px;
   color: #b8c0cc;
 }
+/* POC6-24 — 종목 행 비중 둘째 줄(입력 현금 포함 · 계산될 때만) */
+.hld-row-facts .fl {
+  display: inline-flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.hld-row-facts.two {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+}
+.hld-wv2 {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+/* POC6-24 — 자금 기준 카드(보유 배너 아래 · 목업 A · B · C) */
+.cap-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin: 18px 0 14px;
+}
+.cap-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.cap-title {
+  font-size: 15px;
+  font-weight: 700;
+}
+.cap-tag {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  margin-left: 8px;
+}
+.cap-tag.edit {
+  color: #92400e;
+  background: #fef3c7;
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+.cap-actions {
+  margin-top: 10px;
+}
+.cap-conc {
+  margin-top: 6px;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.cap-conc b {
+  font-size: 20px;
+}
+.cap-conc .split {
+  margin-left: 10px;
+  color: var(--muted);
+}
+.cap-conc.none {
+  color: var(--muted);
+}
+.cap-bar {
+  display: flex;
+  height: 10px;
+  border-radius: 5px;
+  overflow: hidden;
+  margin: 8px 0 4px;
+  background: var(--border-soft);
+}
+.cap-bar .h,
+.cap-legend .sw.h {
+  background: #64748b;
+}
+.cap-bar .c,
+.cap-legend .sw.c {
+  background: #a7f3d0;
+}
+.cap-legend {
+  font-size: 12px;
+  color: var(--muted);
+  display: flex;
+  gap: 14px;
+}
+.cap-legend .sw {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  margin-right: 4px;
+  vertical-align: -1px;
+}
+.cap-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px 14px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-soft);
+}
+.cap-grid .k {
+  font-size: 12px;
+  color: var(--muted);
+}
+.cap-grid .v {
+  font-size: 15px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.cap-grid .v.na {
+  color: var(--muted);
+  font-weight: 500;
+}
+.cap-grid .s {
+  font-size: 11px;
+  color: var(--muted);
+}
+.cap-note {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 8px;
+}
+.cap-warn {
+  font-size: 12px;
+  color: #92400e;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 6px;
+  padding: 4px 8px;
+  margin-top: 8px;
+}
+.cap-err {
+  font-size: 13px;
+  color: var(--danger);
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  padding: 6px 10px;
+  margin-top: 10px;
+}
+.cap-help {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 6px;
+}
+.cap-help summary {
+  cursor: pointer;
+  color: var(--accent);
+}
+.cap-form {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px 14px;
+  margin-top: 12px;
+}
+.cap-form .lbl {
+  font-size: 13px;
+  color: var(--fg);
+  font-weight: 600;
+  align-self: end;
+}
+.cap-form input {
+  width: 100%;
+  height: 40px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 15px;
+  background: var(--bg);
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+}
+.cap-form .hint {
+  font-size: 11px;
+  color: var(--muted);
+}
+.ddp-amount-note {
+  margin: 6px 0 0;
+}
 /* 상세 펼침 영역 */
 .hld-row-detail {
   padding: 4px 15px 14px 15px;

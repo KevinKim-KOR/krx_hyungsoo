@@ -731,7 +731,7 @@ def test_endpoint_text_equals_field_and_independent_sql(
     secs = body["preview_text"].split("\n\n")
     assert secs[-2] == "[AI에게 요청]\n" + "\n".join(f"- {x}" for x in AI_REQUEST)
     assert secs[-1] == "[검토 질문]\n" + "\n".join(f"- {x}" for x in REVIEW_QUESTIONS)
-    assert len(secs) == 10
+    assert len(secs) == 11  # POC6-24 [보유 · 자금 기준] 묶음 포함
 
 
 def test_endpoint_existing_holding_flow_lines_unchanged(
@@ -807,7 +807,7 @@ def test_endpoint_empty_classification_is_unknown_not_stock(
             and not ln.startswith("- 이동평균 계산 구간")
         ]
         assert [ln for ln in new_sec.split("\n") if ln in keep] == keep
-    assert secs[-1].startswith("[검토 질문]") and len(secs) == 10
+    assert secs[-1].startswith("[검토 질문]") and len(secs) == 11  # POC6-24 자금 묶음
 
 
 def test_endpoint_classification_read_failure_keeps_error_contract(
@@ -999,6 +999,13 @@ def test_endpoint_same_ticker_two_accounts(seeded: TestClient) -> None:  # noqa:
     from app.decision_preview_lines import fmt_pct
 
     assert (
-        f"평가비중 {fmt_pct(agg['market_weight_pct'], plus_zero=True)} · "
-        f"손익률 {fmt_pct(agg['pnl_rate_pct'], plus_zero=True)}"
+        f"손익률 {fmt_pct(agg['pnl_rate_pct'], plus_zero=True)} · "
+        "비중은 [보유 · 자금 기준]에 적음"
+    ) in body["preview_text"]
+    # POC6-24 — 종목 합산 보유 내 비중은 [보유 · 자금 기준] 묶음(일부 계좌 행 미평가면 미확인).
+    w = agg["market_weight_pct"]
+    assert (
+        "보유 내 미확인"
+        if agg["eval_partial_unavail"]
+        else f"보유 내 {w:.2f}%(현금 제외"
     ) in body["preview_text"]

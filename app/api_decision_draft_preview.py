@@ -12,6 +12,9 @@
 
 POC5-23(2026-10-18) — 자료는 화면이 쓰는 두 PC API 응답에서 꺼낸다(`app/decision_preview_sources.py`).
 후보 요청은 화면 목록 조건을 선택 필드로 받는다(판정 Q1 (a) · 없으면 기존 기본 조건).
+
+POC6-24 — [보유 · 자금 기준] 줄은 `_load_capital_lines`(보유 · 후보 공통 · 화면 `/holdings/enriched` 와 같은
+계산 · 서버 저장값만 · 자금 읽기 실패여도 미리보기는 그대로).
 """
 
 from __future__ import annotations
@@ -142,6 +145,61 @@ def _load_holdings_evidence(ticker: str) -> Optional[dict[str, Any]]:
         "pnl_rate_pct": (aggregated_row or {}).get("pnl_rate_pct"),
         "bundle": bundle,
     }
+
+
+def _load_capital_lines(ticker: str, target_kind: str) -> list[str]:
+    """[보유 · 자금 기준] 줄(POC6-24) — 보유 여부는 시세와 분리(등록 보유에 같은 종목이 있으면 보유 중).
+
+    보유 자료를 읽지 못하면 '확인 불가' 한 줄(0원으로 보지 않음 · 예외 묶음 = 후보 경로
+    `decision_preview_sources.load_candidate_bundle` 과 같음). 그 뒤 단계(시세 캐시 · 계산 · 글)의 예상 밖
+    실패는 시장 흐름 묶음(`_market_flow_section`)과 같이 이 묶음만 실패로 적고 미리보기는 그대로 둔다
+    (설계 B-4 · AC7 · traceback 은 서버 로그).
+    """
+    import logging
+
+    from app import holdings_capital, market_cache
+    from app.holdings import HoldingsValidationError, load as load_holdings
+    from app.holdings_enrich import enrich_holdings
+
+    logger = logging.getLogger(__name__)
+    try:
+        holdings = load_holdings()
+    except (OSError, ValueError, HoldingsValidationError) as exc:
+        logger.warning(
+            "decision-draft/preview: capital lines holdings load error: %s",
+            type(exc).__name__,
+        )
+        return holdings_capital.preview_lines(None, None)
+    try:
+        all_quotes = market_cache.get_all()
+        enriched = enrich_holdings(
+            holdings,
+            {
+                h.ticker: all_quotes[h.ticker]
+                for h in holdings
+                if h.ticker in all_quotes
+            },
+        )
+        cv = holdings_capital.view(enriched, holdings_capital.load_status())
+        agg = {a["ticker"]: a for a in _aggregate_enriched_by_ticker(enriched)}.get(
+            ticker
+        )
+        target = {
+            "kind": target_kind,
+            "held": agg is not None,
+            "weight_in": None if agg is None else agg["market_weight_pct"],
+            "weight_with_cash": (
+                None
+                if agg is None
+                else holdings_capital.with_cash_pct(agg["eval_amount"], cv)
+            ),
+            "unknown": agg is not None and agg["eval_partial_unavail"],
+            "partial": not cv["complete"],
+        }
+        return holdings_capital.preview_lines(cv, target)
+    except Exception:  # noqa: BLE001 — 이 묶음만 실패로 적고 미리보기는 그대로(B-4)
+        logger.exception("decision-draft/preview: capital lines failed")
+        return [holdings_capital.UNBUILT_LINE]
 
 
 def _aggregate_enriched_by_ticker(enriched: list) -> list[dict[str, Any]]:
@@ -283,6 +341,7 @@ def post_decision_draft_preview(req: PreviewRequest) -> PreviewResponse:
             target_evidence = _load_candidate_evidence(ticker, query)
             if target_evidence is None:
                 return PreviewResponse(status="error", message=_NOT_IN_LIST_MESSAGE)
+        capital_lines = _load_capital_lines(ticker, req.target_kind)
     except CandidateListUnavailable as exc:
         # 시장 목록 자료 자체가 없음 · 손상 — '목록에 없음'으로 바꾸지 않고 일반 실패.
         _preview_logger.warning(
@@ -312,6 +371,7 @@ def post_decision_draft_preview(req: PreviewRequest) -> PreviewResponse:
             target_evidence=target_evidence,
             db_path=DEFAULT_DB_PATH,
             flow_period=flow_period,
+            capital_lines=capital_lines,
         )
     except Exception as exc:  # noqa: BLE001 — endpoint 경계 응답 계약 유지
         _preview_logger.error(

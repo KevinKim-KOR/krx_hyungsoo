@@ -1,0 +1,566 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>POC6-24 자금 기준 목업</title>
+<style>
+:root {
+  --bg: #f5f7fa; --fg: #1a1d23; --muted: #6b7280; --card: #ffffff; --border: #d1d5db; --border-soft: #e8ebf0;
+  --accent: #2563eb; --accent-hover: #1d4ed8; --ok: #16a34a; --warn: #d97706; --danger: #dc2626; --info: #6b7280;
+  --pnl-up: #d92d20; --pnl-down: #1570ef;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: var(--bg); color: var(--fg);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; line-height: 1.5; }
+main { max-width: 820px; margin: 0 auto; padding: 32px 20px; }
+button { background: var(--accent); color: white; border: none; min-height: 48px; padding: 0 16px; border-radius: 8px;
+  cursor: pointer; font-size: 16px; font-weight: 600; line-height: 1.25; }
+button.reject { background: transparent; color: var(--fg); border: 1px solid var(--border); }
+button.btn-md { min-height: 40px; padding: 0 12px; font-size: 14px; }
+.btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.helper { color: var(--muted); font-size: 12px; margin-top: 6px; }
+.muted { color: var(--muted); }
+}
+
+/* ═══ POC3-08 보유 현황 증권사 스타일 ═══ */
+
+/* 상단 평가 배너 */
+.hld-hero {
+  background: var(--card);
+  border: 1px solid var(--border-soft, #e8ebf0);
+  border-radius: 14px;
+  padding: 18px 20px;
+  margin-bottom: 14px;
+}
+.hld-hero-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.hld-hero-lbl {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 3px;
+}
+.hld-hero-amt {
+  font-size: 27px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.5px;
+}
+.hld-hero-pnl {
+  text-align: right;
+}
+.hld-hero-pamt {
+  font-size: 20px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.hld-hero-rate {
+  font-size: 13px;
+  font-weight: 700;
+  margin-left: 6px;
+}
+.hld-hero-sub {
+  display: flex;
+  gap: 22px;
+  margin-top: 14px;
+  padding-top: 13px;
+  border-top: 1px solid #f1f3f6;
+  flex-wrap: wrap;
+}
+.hld-kv .k {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.hld-kv .v {
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.hld-hero-warn {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--warn);
+}
+/* 계산 기준(N/M) 표기 — 부분 합계임을 명시 */
+.hld-basis {
+  font-size: 11px;
+  font-weight: 600;
+  margin-left: 5px;
+}
+.hld-basis.part {
+  color: var(--warn);
+}
+
+/* 계좌별 구성 막대 */
+.hld-comp {
+  margin-top: 15px;
+  padding-top: 14px;
+  border-top: 1px solid #f1f3f6;
+}
+.hld-comp-lbl {
+  font-size: 11.5px;
+  color: var(--muted);
+  margin-bottom: 7px;
+}
+.hld-comp-bar {
+  display: flex;
+  height: 22px;
+  border-radius: 7px;
+  overflow: hidden;
+  background: #eef1f5;
+}
+.hld-comp-seg {
+  height: 100%;
+  border-right: 1px solid rgba(255, 255, 255, 0.7);
+  transition: filter 0.1s;
+}
+.hld-comp-seg:last-child {
+  border-right: none;
+}
+.hld-comp-seg:hover {
+  filter: brightness(0.92);
+}
+.hld-comp-legend {
+  display: flex;
+  gap: 14px;
+  margin-top: 8px;
+  font-size: 11.5px;
+  color: var(--muted);
+  flex-wrap: wrap;
+}
+.hld-comp-legend .lg {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-variant-numeric: tabular-nums;
+}
+.hld-comp-legend .sw {
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+  display: inline-block;
+}
+
+/* 계좌 섹션 */
+.hld-acct {
+  margin-bottom: 12px;
+  background: var(--card);
+  border: 1px solid var(--border-soft, #e8ebf0);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.hld-acct-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 15px;
+  background: #fafbfc;
+  border-bottom: 1px solid var(--border-soft, #e8ebf0);
+}
+.hld-acct-cnt {
+  font-size: 12px;
+  color: var(--muted);
+}
+.hld-acct-sub {
+  margin-left: auto;
+  text-align: right;
+  font-size: 12px;
+  color: var(--muted);
+}
+.hld-acct-sub .amt {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 종목 행: 2단 × 2열 */
+.hld-row {
+  padding: 12px 15px;
+  border-bottom: 1px solid #f2f4f7;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.hld-row:last-child {
+  border-bottom: none;
+}
+.hld-row:hover {
+  background: #fafbfe;
+}
+.hld-row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.hld-row-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+.hld-row-name {
+  font-weight: 700;
+  font-size: 14px;
+}
+.hld-badges {
+  margin-left: 7px;
+  display: inline-flex;
+  gap: 5px;
+  vertical-align: middle;
+}
+.hld-b-hold {
+  padding: 1px 7px;
+  border-radius: 5px;
+  font-size: 10.5px;
+  font-weight: 700;
+  background: rgba(37, 99, 235, 0.1);
+  color: var(--accent);
+}
+.hld-b-warn {
+  padding: 1px 7px;
+  border-radius: 5px;
+  font-size: 10.5px;
+  font-weight: 700;
+  background: rgba(217, 119, 6, 0.12);
+  color: var(--warn);
+}
+.hld-row-pnl {
+  text-align: right;
+  white-space: nowrap;
+}
+.hld-row-pnl .amt {
+  font-size: 15px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.hld-row-pnl .rate {
+  font-size: 12.5px;
+  font-weight: 700;
+  margin-left: 6px;
+}
+.hld-row-bot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+}
+.hld-row-facts {
+  font-size: 12px;
+  color: var(--muted);
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.hld-row-facts .tk {
+  font-variant-numeric: tabular-nums;
+}
+.hld-row-facts .sep {
+  color: #cbd2dc;
+}
+.hld-wv {
+  font-weight: 700;
+  color: #4b5563;
+  font-variant-numeric: tabular-nums;
+}
+.hld-row-price {
+  font-size: 12.5px;
+  color: var(--muted);
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.hld-row-price b {
+  color: var(--fg);
+  font-weight: 700;
+}
+.hld-row-price .arw {
+  margin: 0 5px;
+  color: #b8c0cc;
+}
+/* 상세 펼침 영역 */
+
+
+/* ── 목업 페이지 머리 · 구역 ── */
+.mk-head { background: #fff7e6; border: 1px solid #f5c26b; border-radius: 10px; padding: 12px 16px; margin-bottom: 20px; font-size: 14px; }
+.mk-head h1 { font-size: 18px; margin: 0 0 4px; }
+.mk-sec { margin: 34px 0 10px; font-size: 15px; font-weight: 700; border-left: 4px solid var(--accent); padding-left: 8px; }
+.mk-sub { font-size: 13px; color: var(--muted); margin: -4px 0 10px 12px; }
+.mk-new { outline: 2px dashed #f59e0b; outline-offset: 4px; }
+.mk-tagnew { display: inline-block; font-size: 11px; font-weight: 700; color: #92400e; background: #fde68a; border-radius: 4px; padding: 0 6px; margin-left: 6px; vertical-align: 2px; }
+
+/* ── 새 자금 기준 카드(cap-*) ── */
+.cap-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin: 18px 0 14px; }
+button:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
+.fl { display: inline-flex; gap: 6px; align-items: baseline; }
+.cap-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.cap-title { font-size: 15px; font-weight: 700; }
+.cap-tag { font-size: 12px; font-weight: 500; color: var(--muted); margin-left: 8px; }
+.cap-tag.edit { color: #92400e; background: #fef3c7; border-radius: 4px; padding: 1px 6px; }
+.cap-conc { margin-top: 6px; font-size: 14px; }
+.cap-conc b { font-size: 20px; }
+.cap-conc .split { margin-left: 10px; color: var(--muted); }
+.cap-conc.none { color: var(--muted); font-size: 14px; }
+.cap-bar { display: flex; height: 10px; border-radius: 5px; overflow: hidden; margin: 8px 0 4px; background: var(--border-soft); }
+.cap-bar .h { background: #64748b; } .cap-bar .c { background: #a7f3d0; }
+.cap-legend { font-size: 12px; color: var(--muted); display: flex; gap: 14px; }
+.cap-legend .sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+.cap-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px 14px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border-soft); }
+.cap-grid .k { font-size: 12px; color: var(--muted); }
+.cap-grid .v { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.cap-grid .v.na { color: var(--muted); font-weight: 500; }
+.cap-grid .s { font-size: 11px; color: var(--muted); }
+.cap-note { font-size: 12px; color: var(--muted); margin-top: 8px; }
+.cap-warn { font-size: 12px; color: #92400e; background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 4px 8px; margin-top: 8px; }
+.cap-err { font-size: 13px; color: var(--danger); background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 6px 10px; margin-top: 10px; }
+.cap-help { font-size: 12px; color: var(--muted); margin-top: 6px; }
+.cap-help summary { cursor: pointer; color: var(--accent); }
+.cap-form { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px 14px; margin-top: 12px; }
+.cap-form .lbl { font-size: 13px; color: var(--fg); font-weight: 600; align-self: end; }
+.cap-form input { width: 100%; height: 40px; padding: 0 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 15px; background: var(--bg); font-variant-numeric: tabular-nums; }
+.cap-form .hint { font-size: 11px; color: var(--muted); }
+.cap-variants { display: grid; grid-template-columns: 1fr; gap: 0; }
+.hld-wv2 { display: block; font-size: 12px; color: var(--muted); }
+
+/* ── 판단 근거 미리보기 모양(실제 카드 단순화) ── */
+.pv-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; }
+.pv-sec { margin-top: 10px; }
+.pv-sec h4 { font-size: 13px; margin: 0 0 2px; }
+.pv-sec ul { margin: 0; padding-left: 18px; font-size: 13px; }
+.pv-sec.new { background: #fffbeb; border-radius: 6px; padding: 6px 8px; }
+.pv-added { background: #fef3c7; }
+</style>
+</head>
+<body>
+<main>
+
+<div class="mk-head">
+  <h1>POC6-24 화면 배치 목업 — 「보유 현황」 자금 기준 · 판단 근거 미리보기</h1>
+  모든 금액은 설계 AC2 예시의 <b>가상 값</b>입니다(실제 보유 아님). 색 · 모양보다 <b>배치 · 글 · 입력 동작</b>을 보는 용도입니다.
+  점선 테두리 · <span class="mk-tagnew">새로</span> 표시 = 이번에 더해지는 부분, 나머지는 지금 화면 그대로입니다.
+</div>
+
+<!-- ───────────────────────── A ───────────────────────── -->
+<div class="mk-sec">A. 「보유 현황」 기본 화면 — 자금 기준을 저장해 둔 경우(모든 종목 시세 확인)</div>
+
+<div class="hld-hero">
+  <div class="hld-hero-top">
+    <div class="hld-hero-eval">
+      <div class="hld-hero-lbl">총 평가금액</div>
+      <div class="hld-hero-amt">600,000원</div>
+    </div>
+    <div class="hld-hero-pnl">
+      <div class="hld-hero-lbl">평가손익</div>
+      <div class="hld-hero-pamt up">+30,000원<span class="hld-hero-rate">+5.26%</span></div>
+    </div>
+  </div>
+  <div class="hld-hero-sub">
+    <div class="hld-kv"><div class="k">총 매입금액</div><div class="v">570,000원</div></div>
+    <div class="hld-kv"><div class="k">보유 종목</div><div class="v">6개</div></div>
+    <div class="hld-kv"><div class="k">평가 계산</div><div class="v">6/6개</div></div>
+  </div>
+  <div class="hld-comp">
+    <div class="hld-comp-lbl"><span>계좌별 구성 (보유 평가액 기준 · 현금 제외)<span class="mk-tagnew">글 바뀜</span></span></div>
+    <div class="hld-comp-bar">
+      <div class="hld-comp-seg" style="width:55%;background:#93c5fd"></div>
+      <div class="hld-comp-seg" style="width:45%;background:#c4b5fd"></div>
+    </div>
+    <div class="hld-comp-legend"><span class="lg"><span class="sw" style="background:#93c5fd"></span>일반 55%</span><span class="lg"><span class="sw" style="background:#c4b5fd"></span>연금저축 45%</span></div>
+  </div>
+</div>
+
+<div class="cap-card mk-new">
+  <div class="cap-head">
+    <div class="cap-title">자금 기준<span class="mk-tagnew">새로</span><span class="cap-tag">직접 입력 · 확인일 2026-11-06</span></div>
+    <button class="btn-md">입력·수정</button>
+  </div>
+  <div class="cap-conc">보유 + 입력 현금 합계 <b>1,000,000원</b><span class="split">보유 60% · 현금 40%</span></div>
+  <div class="cap-bar"><div class="h" style="width:60%"></div><div class="c" style="width:40%"></div></div>
+  <div class="cap-legend"><span><span class="sw" style="background:#64748b"></span>보유 평가액 60%</span><span><span class="sw" style="background:#a7f3d0"></span>입력 현금 40%</span></div>
+  <div class="cap-grid">
+    <div><div class="k">검토에 포함할 현금</div><div class="v">400,000원</div></div>
+    <div><div class="k">이번 검토의 추가 투입 한도</div><div class="v">100,000원</div><div class="s">합계에 더하지 않음</div></div>
+    <div><div class="k">현금 · 한도 확인일</div><div class="v">2026-11-06</div></div>
+    <div><div class="k">보유 평가액 · 가격 기준일</div><div class="v">600,000원</div><div class="s">2026-11-05 · 6/6종목</div></div>
+  </div>
+  <div class="cap-warn">가격 기준일(11-05)과 현금 확인일(11-06)이 달라 <b>기준일이 다른 참고 합계</b>입니다.</div>
+  <div class="cap-note">직접 입력한 확인일 기준 값 · 거래 · 입출금 뒤 자동으로 바뀌지 않습니다 · 합계는 이 보유 목록과 입력 현금의 평가 합계이며 투자 총예산 · 전체 재산이 아닙니다.</div>
+  <details class="cap-help"><summary>자세히</summary>
+    생활비 · 비상금은 넣지 않아도 됩니다. '총 매입금액'은 지금 보유분의 취득금액이며 넣은 원금이 아닙니다. 매매 · 입출금 뒤에는 다음 검토 때 직접 고쳐 주세요(날짜도 자동으로 바뀌지 않음).
+  </details>
+</div>
+
+<p class="helper" style="margin:0 0 12px">캐시된 Naver 시세 기준 평가. 갱신은 위의 [시세 갱신] 버튼.</p>
+
+<div class="hld-row">
+  <div class="hld-row-top">
+    <div class="hld-row-name">KODEX 200 <span class="muted" style="font-size:12px">(일반 계좌 행)</span><span class="hld-badges"><span class="hld-b-hold">보유</span></span></div>
+    <div class="hld-row-pnl"><span class="amt up">+6,000원</span><span class="rate up">+5.26%</span></div>
+  </div>
+  <div class="hld-row-bot">
+    <div class="hld-row-facts mk-new" style="flex-direction:column;align-items:flex-start;gap:0">
+      <span class="fl"><span class="tk">069500</span><span class="sep">/</span><span>3주</span><span class="sep">/</span><span>보유 내 비중 <span class="hld-wv">20.00%</span></span></span>
+      <span class="hld-wv2">입력 현금 포함 12.00%<span class="mk-tagnew">새로</span></span>
+    </div>
+    <div class="hld-row-price">38,000 → <b>40,000</b></div>
+  </div>
+</div>
+<div class="hld-row">
+  <div class="hld-row-top">
+    <div class="hld-row-name">KODEX 200 <span class="muted" style="font-size:12px">(연금저축 계좌 행)</span><span class="hld-badges"><span class="hld-b-hold">보유</span></span></div>
+    <div class="hld-row-pnl"><span class="amt up">+1,000원</span><span class="rate up">+2.56%</span></div>
+  </div>
+  <div class="hld-row-bot">
+    <div class="hld-row-facts" style="flex-direction:column;align-items:flex-start;gap:0">
+      <span class="fl"><span class="tk">069500</span><span class="sep">/</span><span>1주</span><span class="sep">/</span><span>보유 내 비중 <span class="hld-wv">6.67%</span></span></span>
+      <span class="hld-wv2">입력 현금 포함 4.00%</span>
+    </div>
+    <div class="hld-row-price">39,000 → <b>40,000</b></div>
+  </div>
+</div>
+<p class="helper">… 나머지 4종목 행 생략 …</p>
+<p class="helper">비중 셀: 첫 줄 = 지금과 같은 값(현금 제외 · 이 계좌 행 기준) · 둘째 줄 = 계산할 수 있을 때만(입력 현금 포함 · 이 계좌 행 ÷ 보유+입력 현금 합계). 같은 종목이 여러 계좌에 있으면 행마다 따로 나옵니다.</p>
+
+<!-- ───────────────────────── B ───────────────────────── -->
+<div class="mk-sec">B. 자금 기준 카드 — 상태별 모습</div>
+<div class="mk-sub">각 상태에서 '0원'과 '미입력', '미정', '계산 안 함', '확인 불가'를 서로 다른 글로 보여 줍니다.</div>
+
+<div class="cap-card">
+  <div class="cap-head"><div class="cap-title">자금 기준<span class="cap-tag">아직 입력하지 않음</span></div><button class="btn-md">입력</button></div>
+  <div class="cap-conc none">현금 미입력 — 보유 + 입력 현금 합계와 '입력 현금 포함' 비중은 현금을 입력하면 계산합니다.</div>
+  <div class="cap-grid">
+    <div><div class="k">검토에 포함할 현금</div><div class="v na">미입력</div></div>
+    <div><div class="k">이번 검토의 추가 투입 한도</div><div class="v na">미입력</div></div>
+    <div><div class="k">현금 · 한도 확인일</div><div class="v na">—</div></div>
+    <div><div class="k">보유 평가액 · 가격 기준일</div><div class="v">600,000원</div><div class="s">2026-11-05 · 6/6종목</div></div>
+  </div>
+</div>
+
+<div class="cap-card">
+  <div class="cap-head"><div class="cap-title">자금 기준<span class="cap-tag">직접 입력 · 확인일 2026-11-06</span></div><button class="btn-md">입력·수정</button></div>
+  <div class="cap-conc">보유 + 입력 현금 합계 <b>1,000,000원</b><span class="split">보유 60% · 현금 40%</span></div>
+  <div class="cap-grid">
+    <div><div class="k">검토에 포함할 현금</div><div class="v">400,000원</div></div>
+    <div><div class="k">이번 검토의 추가 투입 한도</div><div class="v na">미정</div><div class="s">현금 전액을 한도로 보지 않음</div></div>
+    <div><div class="k">현금 · 한도 확인일</div><div class="v">2026-11-06</div></div>
+    <div><div class="k">보유 평가액 · 가격 기준일</div><div class="v">600,000원</div><div class="s">2026-11-05 · 6/6종목</div></div>
+  </div>
+</div>
+
+<div class="cap-card">
+  <div class="cap-head"><div class="cap-title">자금 기준<span class="cap-tag">직접 입력 · 확인일 2026-11-06</span></div><button class="btn-md">입력·수정</button></div>
+  <div class="cap-conc none">보유 5/6종목만 시세 확인 — 합계 · 보유/현금 구성 · '입력 현금 포함' 비중은 계산하지 않습니다(부분 합계를 전체처럼 보이지 않게).</div>
+  <div class="cap-grid">
+    <div><div class="k">검토에 포함할 현금</div><div class="v">400,000원</div></div>
+    <div><div class="k">이번 검토의 추가 투입 한도</div><div class="v">100,000원</div></div>
+    <div><div class="k">현금 · 한도 확인일</div><div class="v">2026-11-06</div></div>
+    <div><div class="k">보유 평가액 · 가격 기준일</div><div class="v">500,000원</div><div class="s">부분 합계 · 5/6종목</div></div>
+  </div>
+</div>
+
+<div class="cap-card">
+  <div class="cap-head"><div class="cap-title">자금 기준<span class="cap-tag">직접 입력 · 확인일 2026-11-06</span></div><button class="btn-md">입력·수정</button></div>
+  <div class="cap-conc">보유 + 입력 현금 합계 <b>600,000원</b><span class="split">보유 100% · 현금 0%</span></div>
+  <div class="cap-grid">
+    <div><div class="k">검토에 포함할 현금</div><div class="v">0원</div><div class="s">직접 입력한 0원</div></div>
+    <div><div class="k">이번 검토의 추가 투입 한도</div><div class="v">0원</div></div>
+    <div><div class="k">현금 · 한도 확인일</div><div class="v">2026-11-06</div></div>
+    <div><div class="k">보유 평가액 · 가격 기준일</div><div class="v">600,000원</div><div class="s">2026-11-05 · 6/6종목</div></div>
+  </div>
+</div>
+
+<div class="cap-card">
+  <div class="cap-head"><div class="cap-title">자금 기준<span class="cap-tag">직접 입력 · 확인일 2026-11-06</span></div><button class="btn-md">입력·수정</button></div>
+  <div class="cap-conc">보유 + 입력 현금 합계 <b>0원</b><span class="split">보유 · 현금 구성 계산 불가(합계 0원)</span></div>
+  <div class="cap-grid">
+    <div><div class="k">검토에 포함할 현금</div><div class="v">0원</div><div class="s">직접 입력한 0원</div></div>
+    <div><div class="k">이번 검토의 추가 투입 한도</div><div class="v na">미정</div></div>
+    <div><div class="k">현금 · 한도 확인일</div><div class="v">2026-11-06</div></div>
+    <div><div class="k">보유 평가액 · 가격 기준일</div><div class="v">0원</div><div class="s">보유 없음 · 가격 기준일 대상 없음</div></div>
+  </div>
+</div>
+
+<div class="cap-card">
+  <div class="cap-head"><div class="cap-title">자금 기준<span class="cap-tag">확인 불가</span></div><button class="btn-md" disabled>입력·수정</button></div>
+  <div class="cap-err" style="margin-top:6px">자금 기준을 불러오지 못했습니다 — 0원으로 보지 않습니다. 보유 조회 · 판단 근거 미리보기는 그대로 쓸 수 있습니다(새로 고침하면 다시 읽음).</div>
+</div>
+
+<!-- ───────────────────────── C ───────────────────────── -->
+<div class="mk-sec">C. [입력·수정]을 누른 뒤 — 편집 중(저장 실패 예시 포함)</div>
+
+<div class="cap-card mk-new">
+  <div class="cap-head"><div class="cap-title">자금 기준 입력 · 수정<span class="cap-tag edit">편집 중 — 저장 전 값은 합계 · 비중 · AI 근거에 쓰지 않음</span></div></div>
+  <div class="btn-row" style="margin-top:10px">
+    <button>저장</button>
+    <button class="reject">취소</button>
+    <button class="reject">비우기</button>
+  </div>
+  <div class="cap-form">
+    <div class="lbl">검토에 포함할 현금(원)</div>
+    <div class="lbl">이번 검토의 추가 투입 한도(원)</div>
+    <div class="lbl">현금 · 한도 확인일</div>
+    <input value="400,000" aria-label="검토에 포함할 현금">
+    <input value="500,000" aria-label="이번 검토의 추가 투입 한도">
+    <input value="2026-11-06" aria-label="확인일">
+    <div class="hint">예수금과 따로 둔 현금 중 이 보유와 함께 볼 금액 · 비우면 미입력 · 0원은 0원</div>
+    <div class="hint">현금 중 이번에 더 살 수 있는 최대 금액 · 비우면 미정 · 현금보다 클 수 없음</div>
+    <div class="hint">기본 오늘 · 지난 날짜 가능 · 미래 날짜 불가</div>
+  </div>
+  <div class="cap-err">저장하지 못했습니다 — 추가 투입 한도(500,000원)가 현금(400,000원)보다 큽니다. 입력한 값은 그대로 두었고, 저장된 값은 바뀌지 않았습니다.</div>
+  <div class="cap-note">지금 저장된 값: 현금 400,000원 · 한도 100,000원 · 확인일 2026-11-06 · [비우기] = 세 칸 모두 미입력으로 저장(0원 아님)</div>
+</div>
+
+<!-- ───────────────────────── D ───────────────────────── -->
+<div class="mk-sec">D. 「요즘 잘 오르는 ETF」 [보유와 비교] → [판단 근거 미리보기 생성] — 새 [보유 · 자금 기준] 묶음</div>
+<div class="mk-sub">미리보기 · [복사] · [AI 세션에서 검토]는 같은 글입니다. 생성 때 저장값이 글에 고정되며, 자금 값을 고친 뒤에는 [다시 생성]해야 바뀝니다.</div>
+
+<div class="pv-card">
+  <div class="btn-row" style="margin-bottom:6px"><button class="btn-md">복사</button><button class="btn-md">AI 세션에서 검토</button></div>
+  <div class="cap-warn" style="margin:0 0 10px">복사·AI 세션 원문에 보유 평가액·현금·한도·합계 금액이 포함됩니다. 외부 AI에 붙여 넣으면 해당 금액도 전달됩니다. <span class="mk-tagnew">새로 · 기본 표시</span></div>
+  <div style="font-size:13px;color:var(--muted)">보유 종목 KODEX 200 을 고른 경우 — 화면 행은 계좌별(20.00% · 6.67%), AI 글은 같은 종목 합산(26.67%)</div>
+  <div class="pv-sec"><h4>[대상]</h4><ul>
+    <li>KODEX 200 (069500) · 보유 종목</li>
+    <li class="pv-added">손익률 +4.58%(같은 종목 두 계좌 합산 · 지금 계산 그대로) · 비중은 [보유 · 자금 기준]에 적음 <span class="mk-tagnew">Q2 (a) 확정</span></li>
+    <li>생성 2026-11-06 10:00 · 가격 기준일 2026-11-05(이 종목 마지막 저장 종가) · …</li></ul></div>
+  <div class="pv-sec new"><h4>[보유 · 자금 기준] <span class="mk-tagnew">새로</span></h4><ul>
+    <li>보유 평가액 600,000원 · 6/6종목 전체 · 가격 기준일 2026-11-05 · 현금 제외 · 모든 계좌 합산</li>
+    <li>검토에 포함할 현금 400,000원 · 이번 검토의 추가 투입 한도 100,000원 · 확인일 2026-11-06 · 직접 입력한 확인일 기준 값 · 거래/입출금 후 자동 반영되지 않음</li>
+    <li>보유 + 입력 현금 합계 1,000,000원(이 보유 목록과 입력 현금의 평가 합계 · 투자 총예산 · 전체 재산 아님 · 한도는 더하지 않음) · 보유 60.00% · 현금 40.00% · 가격 기준일과 현금 확인일이 다른 참고 합계</li>
+    <li>이 종목 비중(같은 종목 모든 계좌 합산): 보유 내 26.67%(현금 제외) · 입력 현금 포함 16.00%</li></ul></div>
+  <div class="pv-sec"><h4>[시장] · [시장 흐름] · [가격 흐름] · … (지금 그대로)</h4></div>
+  <div class="pv-sec"><h4>[AI에게 요청]</h4><ul>
+    <li>위 관측값을 ① 함께 확인되는 사실 ② 가능한 다른 해석 ③ 추가로 확인할 사항으로 나눠 정리해 주세요.</li>
+    <li>날짜가 다른 값은 그 차이를 함께 짚고, 매수 · 매도 결론이나 위험 등급은 만들지 말아 주세요.</li>
+    <li class="pv-added">현금 보유를 추가 매수 승인으로 해석하지 말고, [보유 · 자금 기준]의 추가 투입 한도 · 확인일 · 포함 범위를 전제로 검토해 주세요(한도가 미정 · 미입력이면 그 상태 그대로). <span class="mk-tagnew">새로</span></li></ul></div>
+  <div class="pv-sec"><h4>[검토 질문] (지금 그대로)</h4></div>
+</div>
+
+<div class="pv-card">
+  <div style="font-size:13px;color:var(--muted)">「요즘 잘 오르는 ETF」 후보에서 이미 보유 중인 KODEX 200 을 고른 경우(후보 순위 · 필터는 그대로)</div>
+  <div class="pv-sec new"><h4>[보유 · 자금 기준]</h4><ul>
+    <li>보유 평가액 · 현금 · 한도 · 합계 줄은 위와 같음</li>
+    <li>이 종목: 후보 · 현재 보유 중 — 같은 종목 모든 계좌 합산: 보유 내 26.67%(현금 제외) · 입력 현금 포함 16.00% <span class="mk-tagnew">Q3 (a) 확정</span></li></ul></div>
+</div>
+
+<div class="pv-card">
+  <div style="font-size:13px;color:var(--muted)">보유하지 않은 후보 종목을 고른 경우 · 자금 기준 미입력 · 일부 종목 시세 미확인</div>
+  <div class="pv-sec new"><h4>[보유 · 자금 기준]</h4><ul>
+    <li>보유 평가액 500,000원 · 부분 합계 5/6종목 · 가격 기준일 2026-11-05 · 현금 제외 · 모든 계좌 합산</li>
+    <li>검토에 포함할 현금 미입력(0원 아님) · 추가 투입 한도 미입력 — 합계 · 현금 포함 비중 계산 안 함</li>
+    <li>이 종목: 후보 · 현재 보유 아님 — 보유 비중 없음</li></ul></div>
+</div>
+
+<div class="pv-card">
+  <div style="font-size:13px;color:var(--muted)">자금 기준을 읽지 못한 경우</div>
+  <div class="pv-sec new"><h4>[보유 · 자금 기준]</h4><ul>
+    <li>보유 평가액 600,000원 · 6/6종목 전체 · 가격 기준일 2026-11-05 · 현금 제외 · 모든 계좌 합산</li>
+    <li>자금 기준 읽기 실패 — 현금 · 한도 확인 불가(0원 · 무제한으로 보지 않음) · 합계 · 현금 포함 비중 계산 안 함</li>
+    <li>이 종목 비중(같은 종목 모든 계좌 합산): 보유 내 26.67%(현금 제외) · 입력 현금 포함 계산 안 함</li></ul></div>
+</div>
+
+</main>
+</body>
+</html>

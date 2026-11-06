@@ -166,6 +166,9 @@ state/poc1_handoff/*.json
 state/poc1_handoff_processed/*.json
 state/holdings/holdings_latest.json
 state/holdings/holdings_apply_status_latest.json
+# POC6-24 자금 기준(검토에 포함할 현금 · 추가 투입 한도) — 개인 금액 · 공개 · OCI 전달 대상 아님
+state/holdings/capital_context.json
+state/holdings/.capital-*.tmp
 state/market_cache/*.json
 state/universe/*.json
 
