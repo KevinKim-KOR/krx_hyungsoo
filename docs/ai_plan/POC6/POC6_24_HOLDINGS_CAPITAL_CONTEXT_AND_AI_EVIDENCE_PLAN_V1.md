@@ -6,7 +6,7 @@
 STATUS = PLAN 제출 → 설계자 PLAN 판정 PASS(2026-11-06 · Q1 ~ Q3 (a) · A-4 정정 반영) · 사용자 목업 배치 확인
          → 사용자 한 묶음 승인(2026-11-06 · §8 세 항목) → 구현 · 가상 자료 시험(결과서 docs/ai_result/POC6/POC6_24_HOLDINGS_CAPITAL_CONTEXT_AND_AI_EVIDENCE_RESULT.md)
          → 사용자 실화면 확인 → 검증자 r1 REJECTED(F1) → 정정 → r2 VERIFIED → 설계자 최종 RESULT PASS(2026-11-07 · docs/ai_design/POC6/POC6_24_HOLDINGS_CAPITAL_CONTEXT_AND_AI_EVIDENCE_RESULT_DECISION_2026-11-07.md)
-         → 종료 커밋 · push 진행(승인 ③ · CLOSED 는 push 성공 뒤 기록)
+         → 종료 커밋 f2782680 push 완료(승인 ③) → IMPLEMENTED_VERIFIED_CLOSED(2026-11-07)
 PLAN 판정 = docs/ai_design/POC6/POC6_24_HOLDINGS_CAPITAL_CONTEXT_AND_AI_EVIDENCE_PLAN_DECISION_2026-11-06.md(A 판정 · B 전체 통합설계 V1.1 · 원 설계 · 이 PLAN · 목업보다 우선)
 DESIGN = docs/ai_design/POC6/POC6_24_HOLDINGS_CAPITAL_CONTEXT_AND_AI_EVIDENCE_DESIGN_V1.md
 목업   = docs/ai_plan/POC6/POC6_24_HOLDINGS_CAPITAL_CONTEXT_MOCKUP.html(가상 금액 · 브라우저로 열기) · §5 글 배치

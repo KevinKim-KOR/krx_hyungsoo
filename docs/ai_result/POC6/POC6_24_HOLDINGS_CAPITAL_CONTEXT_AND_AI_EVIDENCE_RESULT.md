@@ -3,8 +3,8 @@
 작성 2026-11-06 · 작성자: 개발자(VSCode Claude) · 수신: 사용자(실화면 확인) → 검증자(Codex) → 설계자
 
 ```text
-STATUS   = IMPLEMENTED(2026-11-06) · 사용자 실화면 확인 완료 → 검증자 r1 REJECTED(F1 · P2 · §10) → 정정 뒤 r2 VERIFIED(§11)
-           → 설계자 최종 RESULT PASS(2026-11-07 · §12) → 종료 커밋 · push 진행(§13 · CLOSED 는 push 성공 뒤 기록)
+STATUS   = IMPLEMENTED_VERIFIED_CLOSED(2026-11-07 · 종료 커밋 f2782680 · push 완료 · §13) — IMPLEMENTED(2026-11-06) · 사용자 실화면 확인 완료 → 검증자 r1 REJECTED(F1 · P2 · §10) → 정정 뒤 r2 VERIFIED(§11)
+           → 설계자 최종 RESULT PASS(2026-11-07 · §12) → 종료 커밋 f2782680 push 완료(원격 일치 · §13) → IMPLEMENTED_VERIFIED_CLOSED(2026-11-07)
            설계 V1 → PLAN V1 · 목업 → 설계자 PLAN 판정 PASS(통합설계 V1.1 · Q1 ~ Q3 (a)) · 사용자 목업 배치 확인
            → 사용자 한 묶음 승인(2026-11-06 · ① 구현 · 가상 자료 시험(Q1 금액 계약 포함) ② 사용자 실화면 ③ 검증 · RESULT 뒤 커밋 · push)
            → 구현 · 관련 / 전체 시험 · 독립 검토 1회(지적 7 · 모두 정정 · §4-2) · 변이 6/6
@@ -46,7 +46,7 @@ PLAN     = docs/ai_plan/POC6/POC6_24_HOLDINGS_CAPITAL_CONTEXT_AND_AI_EVIDENCE_PL
 | B-7 AC8 프런트 lint · build | DONE | lint 통과 · 사용자 승인 뒤 프런트 서버만 중지 · 격리 사본 build 통과 · 기존 프런트 재기동/HTTP 200(§11) |
 | B-7 AC4 실화면(사용자 직접 입력) | DONE | 사용자 '입력·수정·비우기와 미리보기를 모두 확인했습니다'(2026-11-06) · 실제 금액 기록 없음 |
 | PLAN §8 승인 기록 · STATE_LATEST · PROGRAM_TRUTH 반영 | DONE | |
-| 승인 ③ 검증 · RESULT 뒤 코드 · 문서 커밋 · push | 진행 | 최종 RESULT PASS(§12) · 실제 커밋 · push 결과는 §13 |
+| 승인 ③ 검증 · RESULT 뒤 코드 · 문서 커밋 · push | DONE | 종료 커밋 `f2782680` · push 완료 · 원격 일치(§13) |
 
 ## 2. 변경된 파일 목록
 
@@ -364,5 +364,7 @@ Q1 금액 네 종류 한정과 기본 안내, 기존 시장 비중 및 과거 �
 
 ## 13. 종료(커밋 · push · 승인 ③)
 
-- 진행: 이 결과서가 든 종료 커밋(구현 · 시험 · 설계 · 판정 · PLAN · 목업 · 결과서 · 상태 문서 · `.gitignore`)을 `main` 에 커밋하고 `origin/main` 으로 push 한다. 실제 커밋 해시 · 포함 / 제외 · 원격 일치는 push 성공 뒤 이 절에 기록한다(자기 커밋 해시를 미리 적지 않음).
+- **종료 커밋 `f2782680`**(2026-11-07 · `main` · 27개 파일 · 4,221줄 추가 · 48줄 삭제 · `git show --stat f2782680` 실측): 구현(백엔드 6 · 프런트 6 · `.gitignore`) · 시험(신규 2 · 갱신 3) · 문서(설계 V1 · POST23 사실 회신 · PLAN 판정 · 최종 RESULT 판정 원문 · PLAN · 목업 · 결과서 · STATE_LATEST · PROGRAM_TRUTH).
+- **push**: `git push origin main` → `1a4a4698..f2782680  main -> main` · `git fetch` 뒤 HEAD = `origin/main` = `f2782680`(원격 일치).
+- 이 절 · STATUS · STATE_LATEST · PROGRAM_TRUTH · PLAN 의 CLOSED 기록은 문서 보충 커밋 하나로 남긴다(같은 승인 ③ 범위 · 그 커밋의 해시는 여기 적지 않음 — `git log` 로 확인).
 - 제외: 실제 자금 정본(`state/holdings/capital_context.json` · 라이브에 없음) · 보유 정본 · 임시 개인 자료 · 연구 산출물 · 사용자 소유 handoff(`docs/handoff/INVESTMENT_MODEL_V2_MASTER_HANDOFF_2026-07-26.md`).
