@@ -3,7 +3,7 @@
 작성 2026-11-06 · 작성자: 개발자(VSCode Claude) · 수신: 검증자(Codex) → 설계자
 
 ```text
-STATUS   = 연구 수행 PASS · 설계자 최종 RESULT PASS(2026-11-06) · 검증자 r1 VERIFIED → 종료 반영 · 커밋 · push 진행(승인 ④)
+STATUS   = 연구 수행 PASS · IMPLEMENTED_VERIFIED_CLOSED(2026-11-06 · 설계자 최종 RESULT PASS · 검증자 r1 VERIFIED · 종료 커밋 2d22d8f5 · push 완료 · §10-2)
            / DECISION_GAIN NOT_SHOWN · NOT_CANDIDATE · UNCERTAIN · 운영 미채택 · 총수익 검증 아님
 VERIFIER = Codex r1 VERIFIED(2026-11-06 · §11)
            방향 문서 → 적용성 판정(제한적 가능) → 설계 V1 → PLAN V1(읽기 전용 실행 가능성 · 질문 3)
@@ -38,7 +38,7 @@ PLAN     = docs/ai_plan/POC6/POC6_23_COST_AWARE_WEEKLY_DECISION_LEARNING_PLAN_V1
 | ① 기반 문서 세 곳 예외 원문 추가(판정 B §6-3 · 추가만) | DONE | PROJECT_ORIGIN_INTENT +2줄 · ASSUMPTIONS +3줄 · KILL_SWITCHES +1줄 · 삭제 0줄 · 판정 원문과 글자 대조(스크립트 assert) |
 | ② 새 격리 패키지 · CLI · 시험 구현 · 가짜 자료 확인 | DONE | `app/decision_learning/`(10) · `scripts/run_decision_learning.py` · 시험 2개(103개) · 변이 47/47 |
 | ③ 잠금 1회 · 공식 실행 1회 · 저장 산출물 검산 | DONE | 잠금 `20261106T003743Z_84d96a6a` · 실행 `20261106T003757Z_f932ced0`(OK) · verify OK(문제 0) · 외부 조회 · 설치 · 운영 DB 쓰기 · OCI · PUSH 0 |
-| ④ 검증자 · 설계자 최종 판정 뒤 커밋 · push | 진행 | 검증자 r1 VERIFIED · 설계자 최종 RESULT PASS 뒤 종료 반영 · 커밋 · push(§10-2) |
+| ④ 검증자 · 설계자 최종 판정 뒤 커밋 · push | DONE | 종료 커밋 2d22d8f5 · origin/main push 완료(§10-2) |
 | 허용 행동(KEEP · SELL · BUY · SWITCH ≤ 36 · 미결 = KEEP 만 · Q4 보류) | DONE | `actions.allowed` · 시험 행동 · 미결 · Q4 |
 | Q2 예정 슬롯 · 예산 h + (1−c)s > 1e-9 · 매수 직전 슬롯 · 현금 재확인 | DONE | `actions.allowed` · `policy.check_bounds`(walk · branch 매일 호출) · 빈자리 실제 부족 → 매수만 취소 시험 |
 | R0 참조 경로 · 20거래일 분기 g · 제외 규칙 | DONE | `labels` · 참조 598 판단일 · 유효 594 · 제외 NO_ACTION 4 |
@@ -46,7 +46,7 @@ PLAN     = docs/ai_plan/POC6/POC6_23_COST_AWARE_WEEKLY_DECISION_LEARNING_PLAN_V1
 | Q3 40bp b · z · k = 0.004 · 학습값 20bp 그대로 | DONE | `policy.score`(장부 비용) · 시험 40bp |
 | MAE · SPO+ LP · threads=1 · 수치 조건 · LP 전체 목적 절대 차이 | DONE | 70 fit status 0 · abs 차이 ≤ 3.6e-15 · 상계 여유 최소 0.00133 |
 | 선행 4장부 · 주 평가 8장부 · AC3 ~ AC7 · bootstrap | DONE | 판정 NOT_SHOWN · NOT_CANDIDATE(§9-3) |
-| STATE_LATEST · PROGRAM_TRUTH 실제 상태 반영 | DONE | 최종 RESULT PASS · 종료 반영(CLOSED 는 커밋 · push 성공 뒤 기록) |
+| STATE_LATEST · PROGRAM_TRUTH 실제 상태 반영 | DONE | 최종 RESULT PASS · 종료 반영 · CLOSED(종료 커밋 · push 성공 뒤 기록) |
 
 ## 2. 변경된 파일 목록
 
@@ -100,7 +100,6 @@ H1 · POC6-19 · 20 · 21 · 22 코드 · 시험 · 산출물 · 운영 코드 �
 - 선형 · 가산 행동 표현이며 비선형 상호작용을 표현하지 않는다.
 - 결과의 원인(학습 목적 · 상태 분포 · 관측 기간 · 표현)은 분리하지 않았다. 보유 이력 Q4 보류의 인과 효과도 해석하지 않는다.
 - 40bp 장부는 같은 계수 · 학습 통계의 비용 스트레스다. 자기 상태와 비용에 따라 b · z · k · 선택 경로가 달라질 수 있어, 20bp → 40bp 성과 차이를 같은 거래에 수수료만 더한 효과로 분해하지 않았다(추가 계산 없음 · 최종 RESULT 판정 §4). 40bp 에서 S 가 P 보다 높았다는 관측만으로 새 비용 구간 · 주 평가 대상을 고르지 않는다.
-- 종료 커밋 · push 는 최종 RESULT PASS 뒤 승인 ④ 로 한다(§10-2).
 
 ## 6. 다음 검증자(Codex)에게 알릴 점(검증 전 인계 이력 — 검증자 r1 VERIFIED 로 처리 완료 · 지금 남은 작업 아님)
 
@@ -212,6 +211,14 @@ M  docs/STATE_LATEST.md · docs/PROGRAM_TRUTH.md                                
 ```
 
 `git diff --cached --diff-filter=M --name-only` = 위 문서 5개만(기존 코드 수정 0). 산출물 `state/ml/research/poc6_23/` 은 `.gitignore` 233행으로 제외.
+
+### 10-2. 종료 커밋 · push(2026-11-06 · 승인 ④)
+
+- 종료 커밋 `2d22d8f5`(main) — 25개 파일(신규 20 · 수정 5 · 6,099줄 추가 · 2줄 삭제) = 위 §10 의 24개 + 최종 RESULT 판정 원문 1개. 수정 5개는 문서뿐(기존 코드 수정 0).
+- push: `d050c83d..2d22d8f5 main -> main` 성공 · push 뒤 `main...origin/main` 같음.
+- 포함: 연구 패키지 · CLI · 시험 · 방향 / 적용성 / 설계 / PLAN 판정 / 최종 RESULT 판정 원문 · PLAN · 결과서 · 기반 문서 예외 · 상태 문서.
+- 제외: `state/ml/research/poc6_23/`(잠금 · 실행 · 모형 · verify 기록 · `.gitignore` 233행) · 저장소 밖 임시 스크립트 · 사용자 소유 handoff(미추적 유지) · OCI 배포 · 운영 변경 없음.
+- 이 CLOSED 기록(STATUS · §1 · §10-2 · STATE_LATEST · PROGRAM_TRUTH · PLAN)은 종료 커밋 뒤 별도 문서 커밋으로 올린다(해시 = `git log`).
 
 ## 11. 검증자 r1 — VERIFIED(2026-11-06)
 
