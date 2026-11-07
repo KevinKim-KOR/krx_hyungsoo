@@ -3,8 +3,8 @@
 작성 2026-11-07 · 작성자: 개발자(VSCode Claude) · 수신: 사용자(실화면 확인) → 검증자(Codex) → 설계자
 
 ```text
-STATUS   = IMPLEMENTED(2026-11-07) · 사용자 실화면 확인 완료(2026-11-07) → 검증자 r1 VERIFIED(§10)
-           → 설계자 최종 RESULT PASS(2026-11-07 · §11) → 종료 커밋 · push 진행(§12 · CLOSED 는 push 성공 뒤 기록)
+STATUS   = IMPLEMENTED_VERIFIED_CLOSED(2026-11-07 · 종료 커밋 e8760d90 · push 완료 · §12) — IMPLEMENTED(2026-11-07) · 사용자 실화면 확인 완료(2026-11-07) → 검증자 r1 VERIFIED(§10)
+           → 설계자 최종 RESULT PASS(2026-11-07 · §11) → 종료 커밋 e8760d90 push 완료(원격 일치 · §12) → IMPLEMENTED_VERIFIED_CLOSED(2026-11-07)
            설계 V1 → 짧은 PLAN V1 → 설계자 PLAN 판정 PASS(통합설계 V1.1 · Q1 (a) = 세 표시)
            → 사용자 한 묶음 승인(2026-11-07 · ① 구현 · 가상 응답 시험 ② 프런트만 중지 · 격리 사본 build · 재기동 ③ 사용자 실화면 ④ 검증 · RESULT 뒤 커밋 · push)
            → 시험 먼저 작성 · 정정 전 재현(값 없음 2 실패 · 정상 / 0 대조 통과) → 정정 → 렌더 시험 · 프런트 전체 검사 · 격리 사본 build · 프런트 재기동 HTTP 200
@@ -41,7 +41,7 @@ RESULT   = docs/ai_design/POC6/POC6_25_HOLDINGS_MISSING_VALUE_DISPLAY_FIX_RESULT
 | B-5 AC5 프런트 타입 · lint · 전체 vitest · build | DONE | §4 · build = 승인 ② 방식 |
 | B-5 AC6 실제 「보유 현황」 정상 행 · 상세 배치 유지 | DONE | 사용자 실화면(승인 ③) 회신 '네 확인했습니다'(2026-11-07) · 시세 없는 행 경우는 렌더 시험(§4)으로 확인 |
 | PLAN §5 승인 기록 · STATE_LATEST · PROGRAM_TRUTH | DONE | |
-| 승인 ④ 검증 · RESULT 뒤 코드 · 문서 커밋 · push | 진행 | 최종 RESULT PASS(§11) · 실제 커밋 · push 결과는 §12 |
+| 승인 ④ 검증 · RESULT 뒤 코드 · 문서 커밋 · push | DONE | 종료 커밋 `e8760d90` · push 완료 · 원격 일치(§12) |
 
 ## 2. 변경된 파일 목록
 
@@ -161,5 +161,9 @@ AC6은 보고된 사용자의 정상 행·상세 배치 실화면 확인을 수�
 
 ## 12. 종료(커밋 · push · 승인 ④)
 
-- 진행: 이 결과서가 든 종료 커밋(제품 1 · 렌더 시험 1 · 설계 · PLAN 판정 · 최종 RESULT 판정 원문 · PLAN · 결과서 · STATE_LATEST · PROGRAM_TRUTH · 예상 9개)을 `main` 에 커밋하고 `origin/main` 으로 push 한다. 실제 커밋 해시 · 포함 목록 · 원격 일치는 push 성공 뒤 이 절에 기록한다(자기 커밋 해시를 미리 적지 않음).
+- **종료 커밋 `e8760d90`**(2026-11-07 · `main` · 9개 파일 · 503줄 추가 · 10줄 삭제 · `git show --stat e8760d90` 실측):
+  - 수정: `frontend/app/components/EnrichedHoldingsSection.tsx` · `frontend/app/components/EnrichedHoldingsSection.eval.test.tsx` · `docs/STATE_LATEST.md` · `docs/PROGRAM_TRUTH.md`
+  - 신규: `docs/ai_design/POC6/POC6_25_HOLDINGS_MISSING_VALUE_DISPLAY_FIX_DESIGN_V1.md` · `…_PLAN_DECISION_2026-11-07.md` · `…_RESULT_DECISION_2026-11-07.md` · `docs/ai_plan/POC6/POC6_25_HOLDINGS_MISSING_VALUE_DISPLAY_FIX_PLAN_V1.md` · 이 결과서
+- **push**: `git push origin main` → `a3ac13ed..e8760d90  main -> main` · `git fetch` 뒤 HEAD = `origin/main` = `e8760d90`(원격 일치).
+- 이 절 · STATUS · PLAN · STATE_LATEST · PROGRAM_TRUTH 의 CLOSED 기록은 문서 보충 커밋 하나로 남긴다(같은 승인 ④ · 그 커밋의 해시는 여기 적지 않음 — `git log` 로 확인).
 - 제외: 사용자 소유 handoff(`docs/handoff/INVESTMENT_MODEL_V2_MASTER_HANDOFF_2026-07-26.md`) · 개인 자료(보유 · 자금 정본 등).

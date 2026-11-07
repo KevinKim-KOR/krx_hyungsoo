@@ -5,7 +5,7 @@
 ```text
 STATUS = PLAN 제출 → 설계자 PLAN 판정 PASS(2026-11-07 · Q1 (a) · 범위 = current_price · eval_amount 의 세 표시) · 사용자 한 묶음 승인(2026-11-07 · §5 네 항목) → 구현
          → 사용자 실화면 확인 → 검증자 r1 VERIFIED → 설계자 최종 RESULT PASS(2026-11-07 · docs/ai_design/POC6/POC6_25_HOLDINGS_MISSING_VALUE_DISPLAY_FIX_RESULT_DECISION_2026-11-07.md)
-         → 종료 커밋 · push 진행(승인 ④ · CLOSED 는 push 성공 뒤 기록)
+         → 종료 커밋 e8760d90 push 완료(승인 ④) → IMPLEMENTED_VERIFIED_CLOSED(2026-11-07)
 PLAN 판정 = docs/ai_design/POC6/POC6_25_HOLDINGS_MISSING_VALUE_DISPLAY_FIX_PLAN_DECISION_2026-11-07.md(A 판정 · B 통합설계 V1.1 · 원 설계 · 이 PLAN 보다 우선)
 DESIGN = docs/ai_design/POC6/POC6_25_HOLDINGS_MISSING_VALUE_DISPLAY_FIX_DESIGN_V1.md
 범위   = 설계 §4 접점만 읽기 확인(원인 재조사 · 목업 없음 · 코드 · 설정 · 데이터 변경 0)
