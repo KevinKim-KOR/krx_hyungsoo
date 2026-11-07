@@ -613,7 +613,8 @@ function HoldingRow({
   const cwText =
     it.cash_inclusive_weight_pct == null ? null : fmtPct(it.cash_inclusive_weight_pct);
   const avgText = fmtMoney(it.avg_buy_price);
-  const curText = fmtMoney(it.current_price);
+  // POC6-25 — 값 없음(null · 누락)은 형식화 전에 거른다(fmtMoney(null) = '0원' · 숫자 0 은 '0원' 그대로).
+  const curText = it.current_price == null ? null : fmtMoney(it.current_price);
   const qtyText = Number.isFinite(it.quantity)
     ? it.quantity.toLocaleString("ko-KR")
     : "-";
@@ -688,7 +689,7 @@ function HoldingRow({
                     현재 <b>{curText}</b>
                   </>
                 ) : (
-                  <span className="muted">현재 확인 불가</span>
+                  <span className="muted">현재 미확인</span>
                 )}
               </>
             ) : (
@@ -716,10 +717,9 @@ function DetailRowFields({ it }: { it: EnrichedHolding }) {
   if (inv) lines.push(["매입금액", inv]);
   const bw = fmtPct(it.buy_weight_pct);
   if (bw) lines.push(["매입비중", bw]);
-  const cur = fmtMoney(it.current_price);
-  if (cur) lines.push(["현재가", cur]);
-  const ev = fmtMoney(it.eval_amount);
-  if (ev) lines.push(["평가금액", ev]);
+  // POC6-25 — 값 없음이어도 항목은 숨기지 않고 '미확인' · '평가 불가'로 적는다(0 · 다른 값으로 채우지 않음).
+  lines.push(["현재가", it.current_price == null ? "미확인" : (fmtMoney(it.current_price) ?? "미확인")]);
+  lines.push(["평가금액", it.eval_amount == null ? "평가 불가" : (fmtMoney(it.eval_amount) ?? "평가 불가")]);
   if (it.price_asof) lines.push(["가격 기준시각", it.price_asof]);
   if (it.price_source) lines.push(["데이터 출처", it.price_source]);
   return (
