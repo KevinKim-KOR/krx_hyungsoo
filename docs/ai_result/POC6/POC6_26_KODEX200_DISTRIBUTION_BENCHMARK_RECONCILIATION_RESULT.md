@@ -3,8 +3,8 @@
 작성 2026-11-08 · 작성자: 개발자(VSCode Claude) · 수신: 검증자(Codex) → 설계자
 
 ```text
-STATUS   = 본계산 1회 완료 · SAMPLE_RECONCILED('069500 · 2025년 1주 표본 검산 완료' 조건 충족 · 2026-11-08) → 검증자 r1 VERIFIED(§10)
-           → 설계자 최종 RESULT PASS(2026-11-08 · §11 · SAMPLE_RECONCILED) → 종료 커밋 · push 진행(§12 · CLOSED 는 push 성공 뒤 기록)
+STATUS   = IMPLEMENTED_VERIFIED_CLOSED(2026-11-08 · 종료 커밋 2dcba050 · push 완료 · §12) — 본계산 1회 완료 · SAMPLE_RECONCILED('069500 · 2025년 1주 표본 검산 완료' 조건 충족 · 2026-11-08) → 검증자 r1 VERIFIED(§10)
+           → 설계자 최종 RESULT PASS(2026-11-08 · §11 · SAMPLE_RECONCILED) → 종료 커밋 2dcba050 push 완료(원격 일치 · §12) → IMPLEMENTED_VERIFIED_CLOSED(2026-11-08)
            설계 V1 → PLAN V1 → 판정 V1.1 HOLD_SOURCE_CONFIRMATION → 사용자 Q1 (a) 결정(2026-11-07)
            → 재개 판정 V1.2 PASS_WITH_REQUIRED_CORRECTIONS → PLAN 정정 → 사용자 한 묶음 승인(2026-11-08 · ① ~ ④)
            → 구현 · 단위 시험 30 → 공식 자료 확인(다운로드 1 · 팩트시트 1) → 여섯 행 최소 기록 · 임시 원본 삭제 → 본계산 1회
@@ -50,7 +50,7 @@ PLAN     = docs/ai_plan/POC6/POC6_26_KODEX200_DISTRIBUTION_BENCHMARK_RECONCILIAT
 | 결제일 경계 · 기말 미지급 분기를 가상 자료로 확인 | DONE | 단위 시험 §4-4 |
 | 저장소 문서 = 출처 · 방법 · 건수 · 판정 · 한계(+ A · B · C · 차이 = 사용자 결정) | DONE | 이 문서 · PLAN 공개본 |
 | 검증자 원천 대조 1회 | DONE | 공식 다운로드 HTTP 200 · 파일 SHA-256 동일 · 여섯 행 독립 대조 일치(§10) · 합계 3/5회 · 남은 예비 2회 |
-| 승인 ④ 검증 · RESULT 뒤 종료 반영 · 커밋 · push | 진행 | 최종 RESULT PASS(§11) · 실제 커밋 · push 결과는 §12 |
+| 승인 ④ 검증 · RESULT 뒤 종료 반영 · 커밋 · push | DONE | 종료 커밋 `2dcba050` · push 완료 · 원격 일치(§12) |
 
 ## 2. 변경된 파일 목록
 
@@ -206,5 +206,9 @@ A  tests/test_poc6_26_distribution_check.py
 
 ## 12. 종료(커밋 · push · 승인 ④)
 
-- 진행: 이 결과서가 든 종료 커밋(검산 도구 · 단위 시험 · 설계 · 판정 V1.1 · V1.2 · 최종 RESULT 판정 원문 · PLAN 공개본 · 결과서 · STATE_LATEST · PROGRAM_TRUTH · 예상 10개)을 `main` 에 커밋하고 `origin/main` 으로 push 한다. 실제 해시 · 포함 목록 · 원격 일치는 push 성공 뒤 이 절에 기록한다(자기 커밋 해시를 미리 적지 않음).
+- **종료 커밋 `2dcba050`**(2026-11-08 · `main` · 10개 파일 · 1,266줄 추가 · 2줄 삭제 · `git show --stat 2dcba050` 실측):
+  - 신규: `scripts/run_kodex200_distribution_check.py` · `tests/test_poc6_26_distribution_check.py` · `docs/ai_design/POC6/POC6_26_…_DESIGN_V1.md` · `…_PLAN_DECISION_2026-11-07.md` · `…_PLAN_DECISION_V1_2_2026-11-07.md` · `…_RESULT_DECISION_2026-11-08.md` · `docs/ai_plan/POC6/POC6_26_…_PLAN_V1.md` · 이 결과서
+  - 수정: `docs/STATE_LATEST.md` · `docs/PROGRAM_TRUTH.md`
+- **push**: `git push origin main` → `4f99fbb1..2dcba050  main -> main` · `git fetch` 뒤 HEAD = `origin/main` = `2dcba050`(원격 일치).
+- 이 절 · STATUS · PLAN · STATE_LATEST · PROGRAM_TRUTH 의 CLOSED 기록은 문서 보충 커밋 하나로 남긴다(같은 승인 ④ · 그 커밋의 해시는 여기 적지 않음 — `git log` 로 확인).
 - 제외: 로컬 연구 자료(`state/ml/research/poc6_26/` 실행 폴더 · 여섯 행 · 상세 장부) · 원본 · 전사 자료 · 검토 원본 PLAN · 사용자 소유 handoff.
