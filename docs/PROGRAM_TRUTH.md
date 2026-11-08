@@ -2,7 +2,8 @@
 
 현행 프로그램 통합 설계서 (PROGRAM_TRUTH_RECONSTRUCTION_V1)
 
-- **최종 반영**: 2026-11-08 — **`POC6-26` KODEX200 분배금 포함 보유 기준선 검산(설계 V1 · PLAN 판정 V1.1 HOLD → 사용자 Q1 (a) → 재개 판정 V1.2 PASS_WITH_REQUIRED_CORRECTIONS · 사용자 한 묶음 승인 · 본계산 1회 2026-11-08 SAMPLE_RECONCILED · 검증자 r1 VERIFIED · 설계자 최종 RESULT PASS · IMPLEMENTED_VERIFIED_CLOSED(2026-11-08 · 종료 커밋 2dcba050) · 결과서 `docs/ai_result/POC6/POC6_26_KODEX200_DISTRIBUTION_BENCHMARK_RECONCILIATION_RESULT.md`)**: PC 연구 1회성 검산 도구 `scripts/run_kodex200_distribution_check.py`(봉인 판 reader 읽기 전용 · 외부 호출 0) · 069500 · 2025 · 1주 · A 무조정 +89.98% · B 분배금 현금 보유 +92.64% · C 기존 연결(KRX_BASEPRICE_CHAIN) +94.24% · 공식 분배 자료 = 삼성자산운용 [분배금현황 다운로드](사용자 결정 · 비공개 로컬 최소 기록) · 기존 연구 결론 · 비교 기준 · 운영 · 화면 · API 변경 0.
+- **최종 반영**: 2026-11-08 — **구간 1(운영 흐름 완결) 마감 판정 반영(`docs/ai_design/POC6/POC6_MILESTONE_1_CLOSEOUT_DECISION_2026-11-08.md` · PASS · 종료)**: 프로세스 A 등급 = 2026-10-09 실제 적용 확인 · 2026-11-08 적용 대기(pending_apply) 사실 · 흐름도를 현재 적용 경로로 정정. 코드 · 운영 변경 0.
+- (그 전) 2026-11-08 — **`POC6-26` KODEX200 분배금 포함 보유 기준선 검산(설계 V1 · PLAN 판정 V1.1 HOLD → 사용자 Q1 (a) → 재개 판정 V1.2 PASS_WITH_REQUIRED_CORRECTIONS · 사용자 한 묶음 승인 · 본계산 1회 2026-11-08 SAMPLE_RECONCILED · 검증자 r1 VERIFIED · 설계자 최종 RESULT PASS · IMPLEMENTED_VERIFIED_CLOSED(2026-11-08 · 종료 커밋 2dcba050) · 결과서 `docs/ai_result/POC6/POC6_26_KODEX200_DISTRIBUTION_BENCHMARK_RECONCILIATION_RESULT.md`)**: PC 연구 1회성 검산 도구 `scripts/run_kodex200_distribution_check.py`(봉인 판 reader 읽기 전용 · 외부 호출 0) · 069500 · 2025 · 1주 · A 무조정 +89.98% · B 분배금 현금 보유 +92.64% · C 기존 연결(KRX_BASEPRICE_CHAIN) +94.24% · 공식 분배 자료 = 삼성자산운용 [분배금현황 다운로드](사용자 결정 · 비공개 로컬 최소 기록) · 기존 연구 결론 · 비교 기준 · 운영 · 화면 · API 변경 0.
 - (그 전) 2026-11-07 — **`POC6-25` 보유 시세 · 평가금액의 미확인 표시 정정(설계 V1 · PLAN 판정 2026-11-07 PASS(통합설계 V1.1 · Q1 (a)) · 사용자 한 묶음 승인 · 구현 · 시험 · 격리 사본 build 2026-11-07 · 사용자 실화면 확인 완료 · 검증자 r1 VERIFIED · 설계자 최종 RESULT PASS(2026-11-07 · `docs/ai_design/POC6/POC6_25_HOLDINGS_MISSING_VALUE_DISPLAY_FIX_RESULT_DECISION_2026-11-07.md`) · IMPLEMENTED_VERIFIED_CLOSED(2026-11-07 · 종료 커밋 e8760d90) · 결과서 `docs/ai_result/POC6/POC6_25_HOLDINGS_MISSING_VALUE_DISPLAY_FIX_RESULT.md`)**: 「보유 현황」 `EnrichedHoldingsSection.tsx` 에서 `current_price` · `eval_amount` 가 값 없음(null · 칸 없음)이면 행 '현재 미확인' · 상세 '현재가 미확인' · '평가금액 평가 불가'(예전 '0원' · 줄 숨김) · 숫자(0 포함) 표시 · API · 계산 · 매입비중 · 다른 화면 무변경.
 - (그 전) 2026-11-07 — **`POC6-24` 보유 판단의 현금 · 추가 투입 한도와 AI 근거 연결(설계 V1 · PLAN 판정 2026-11-06 PASS(통합설계 V1.1 · Q1 ~ Q3 (a)) · 사용자 목업 배치 확인 · 사용자 한 묶음 승인 · 구현 · 가상 자료 시험 2026-11-06 · 사용자 실화면 확인 완료 · 검증자 r1 REJECTED(F1) → 정정 → 검증자 r2 VERIFIED(프런트 build 통과) · 설계자 최종 RESULT PASS(2026-11-07 · `docs/ai_design/POC6/POC6_24_HOLDINGS_CAPITAL_CONTEXT_AND_AI_EVIDENCE_RESULT_DECISION_2026-11-07.md`) · IMPLEMENTED_VERIFIED_CLOSED(2026-11-07 · 종료 커밋 f2782680) · 결과서 `docs/ai_result/POC6/POC6_24_HOLDINGS_CAPITAL_CONTEXT_AND_AI_EVIDENCE_RESULT.md`)**: 「보유 현황」 보유 배너 아래 「자금 기준」 카드(검토에 포함할 현금 C · 이번 검토의 추가 투입 한도 A · 확인일 · 보유 + 입력 현금 합계 T · 보유/현금 구성 · 입력 · 수정 · 비우기) · 종목 행 비중 = 첫 줄 '보유 내 비중'(기존 값 그대로) + 계산될 때만 둘째 줄 '입력 현금 포함' · 자금 값은 `state/holdings/capital_context.json`(holdings_latest.json · 「보유 OCI 반영」 밖 · git 제외) · `PUT /holdings/capital-context` · `/holdings/enriched` 응답 `capital` · 행 `cash_inclusive_weight_pct` · 판단 근거 미리보기에 [보유 · 자금 기준] 묶음(V · C · A · T 원 단위 금액만 · 종목 합산 두 비중 · 묶음 11개) · [대상]의 평가비중은 그 묶음으로 이동 · [AI에게 요청] 한 줄 · [복사] 옆 금액 포함 기본 안내. 기존 시장 비중 분모 · 손익 · OCI · PUSH · PARAM 변경 0.
 - (그 전) 2026-11-06 — **`POC6-23` 비용을 반영한 주간 의사결정 학습(설계 V1 · PLAN 판정 2026-11-05 PASS(통합 설계 V1 개정 2) · 사용자 한 묶음 승인 · 구현 · 시험 103 · 변이 47/47 · 실행 전 독립 검토 1회 · 공식 실행 1회 2026-11-06 09:37 KST · OK · verify OK · 검증자 r1 VERIFIED · 설계자 최종 RESULT PASS · IMPLEMENTED_VERIFIED_CLOSED(2026-11-06 · 종료 커밋 2d22d8f5 · push 완료) · 결과서 `docs/ai_result/POC6/POC6_23_COST_AWARE_WEEKLY_DECISION_LEARNING_RESULT.md`)**: 새 PC 연구 CLI `scripts/run_decision_learning.py` · 패키지 `app/decision_learning/`(H1 · POC6-20 · 21 코드 재사용 · 수정 0) · 화면 · API · OCI · PUSH 변경 0. 결론 = 같은 입력 · 70계수 선형 · 같은 허용 행동에서 SPO+(S)가 MAE(P)보다 비용 후 성과가 좋다는 근거 없음(20bp CAGR S − P = −5.23%p · NOT_SHOWN · NOT_CANDIDATE · UNCERTAIN) · 운영 미채택 · 총수익 검증 아님. 산출물 `state/ml/research/poc6_23/`(git 제외).
@@ -422,14 +423,17 @@ flowchart LR
 - **APPROVED**: PC 입력 → PC 저장 → OCI 전달 → OCI 반영 → 다음 평가 사용.
 - **SOURCE 현재**: `HoldingsManageView` → 매매 `PUT /holdings/trade-history` · 입력 정정 `PUT /holdings` → `app/holdings_store.py :: commit`(threading.Lock · revision · 같은 디렉터리 임시 파일 → `os.replace`) → `state/holdings/holdings_latest.json`(보유 + 이력 한 문서) + **POC3-07: `POST /holdings/apply`(OCI 적용 버튼)** → **POC5-05: 허용 5필드 payload 생성** → 단일 payload atomic replace → active 재독출 hash(payload 기준) 확인. **POC6-24**: 자금 기준(`PUT /holdings/capital-context` → `state/holdings/capital_context.json`)은 이 문서 · OCI 적용 경로 밖(별도 파일 · 별도 잠금 · OCI 전달 0).
 - **단절 지점 (POC3-07 이후 정정)**: 이제 화면에서 OCI 적용 가능(별도 sync 스크립트 불필요). 단 **저장·적용은 별도 2동작**(설계자 Q3 명시적 분리)이고, **실전 write 는 사용자 명시 클릭 필요**(개발자 dry-run만 — Q11). 실패 시 기존 active 보존.
-- 등급: SOURCE_CONFIRMED(PC 저장·OCI 적용 코드) / RUNTIME_VERIFIED 미완(사용자 실클릭 전).
+- 등급: SOURCE_CONFIRMED(PC 저장·OCI 적용 코드) / **RUNTIME_VERIFIED — 2026-10-09 실제 적용 확인**(사용자 「종목 관리」 [OCI 적용] · 마지막 성공 2026-10-09 07:34 KST(2026-10-08 22:34 UTC) · `OCI_APPLIED` · OCI 재독출 확인 · 기록 `state/holdings/holdings_apply_status_latest.json` · 구간 1 마감 판정 2026-11-08).
+- 저장(PC · `PUT /holdings` · `PUT /holdings/trade-history`)과 적용(사용자 선택 · `POST /holdings/apply`)은 별도 동작이다. **2026-11-08 시점 사실**: `GET /holdings/apply/status` `pending_apply = true`(10-09 적용 뒤 PC 보유가 바뀌었고 아직 적용하지 않음) — OCI 보유 알림은 마지막 적용 보유를 기준으로 한다(최신 PC 보유를 쓰려면 사용자 [OCI 적용] · 미루면 그 운영 선택 기록).
 
 ```mermaid
 flowchart LR
   A[종목 관리 화면] --> B[PUT /holdings/trade-history · PUT /holdings]
   B --> C[holdings_latest.json 저장 · 보유 + 이력]
-  C -. 단절: 화면에서 OCI 전달 없음 .-> D[(OCI 반영)]
-  D --> E[다음 평가]
+  C --> F[사용자 선택 · 종목 관리 OCI 적용 · POST /holdings/apply]
+  F --> D[(OCI 반영 · 허용 5필드 payload · 재독출 확인)]
+  D --> E[다음 평가 · OCI 보유 알림]
+  C -. 적용 전 PC 변경 = pending_apply .-> F
 ```
 
 ### 프로세스 B — 승인 기준(seed·PARAM) 전달
