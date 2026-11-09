@@ -29,6 +29,7 @@ import {
   fetchNavDiscountLatest,
   type NavDiscountLatestResponse,
   refreshMarket,
+  type MarketRefreshStatusResponse,
 } from "@/lib/api";
 import { commitQuery, markQueryFailed, useSharedQuery, type QueryState } from "@/lib/api/queryCache";
 import {
@@ -42,7 +43,14 @@ import {
 import { fetchForwardComparison, type ForwardComparisonResponse } from "@/lib/api/mlForwardComparison";
 import { fetchMarketFlowContext, type MarketFlowContext } from "@/lib/api/marketFlow";
 import { todayMarketKey, useMarketCondition } from "@/lib/marketConditionStore";
-import { freshnessRows, kstDate, needsAttention, type FreshSources } from "@/lib/todayFreshness";
+import {
+  freshnessRows,
+  kstDate,
+  needsAttention,
+  refreshFailureLines,
+  staleAfterRefreshText,
+  type FreshSources,
+} from "@/lib/todayFreshness";
 import { buildTodayMarketCopyText } from "@/lib/todayMarketCopyText";
 import { md } from "@/lib/todayMarketLines";
 import type { MenuKey } from "./LeftSidebar";
@@ -166,7 +174,14 @@ export default function TodayInvestmentCheckView({ onNavigate }: Props) {
   const [holdResult, setHoldResult] = useState<{ text: string; warn: boolean } | null>(null);
   // F1 — 시장 갱신이 끝나 자료를 새로 읽으면 올라간다. 그 전에 받아 둔 [요약 다시 읽기] 결과는 반영하지 않는다(새 값을 옛 값으로 덮지 않음).
   const dataGenRef = useRef(0);
-  const [marketResult, setMarketResult] = useState<string | null>(null);
+  // 시장 갱신 결과(설계자 2026-11-10) — 기준일 대조 · 갱신 뒤에도 기대일보다 늦은 자료 · ETF 가격 실패 · 그 밖의 확인 필요를 줄을 나눠 보인다.
+  const [marketResult, setMarketResult] = useState<{
+    compare: string | null;
+    behind: string | null;
+    etf: string | null;
+    other: string | null;
+  } | null>(null);
+  const lastRefreshStatusRef = useRef<MarketRefreshStatusResponse | null>(null);
   // 'VIX 다시 받기'(「요즘 잘 오르는 ETF」에서 시작)가 도는 중이면 전체 갱신은 서버가 시작하지 않는다 — 실패가 아니라 진행 중으로 보이고 버튼을 막는다.
   const [vixRetryRunning, setVixRetryRunning] = useState(false);
   // 사용자 결정 ⑤(2026-11-09) — 맨 위 두 카드(자료 최신화 필요 · OCI 운영 스케줄 확인)는 함께 펼치고 접는다(화면 안 상태 · 다시 들어오면 접힘).
@@ -189,7 +204,10 @@ export default function TodayInvestmentCheckView({ onNavigate }: Props) {
   // ── [최신 시장 데이터 갱신] — 「요즘 잘 오르는 ETF」와 같은 작업 · 진행(공용 hook · 판정 Q7) ──
   const marketRefresh = useMarketRefresh({
     probeOnMount: true,
-    onStatus: (s) => setVixRetryRunning(s.vix_retry?.status === "running"),
+    onStatus: (s) => {
+      lastRefreshStatusRef.current = s;
+      setVixRetryRunning(s.vix_retry?.status === "running");
+    },
     takeOver: (started) => {
       if (started.status !== "vix_retry_running") return false;
       setVixRetryRunning(true);
@@ -197,7 +215,9 @@ export default function TodayInvestmentCheckView({ onNavigate }: Props) {
     },
     onCompleted: () => {
       dataGenRef.current += 1;
-      setMarketResult(null);
+      // 끝난 상태 응답(완료 직전 onStatus)의 실패 · 그 밖의 확인 필요는 바로 · 기준일 줄은 다시 읽은 뒤.
+      const fails = refreshFailureLines(lastRefreshStatusRef.current);
+      setMarketResult({ compare: null, behind: null, ...fails });
       // 열려 있던 확인 창의 자료는 이제 낡았다 — 닫고 알린다(받아 둔 다시 읽기 결과는 버림 · 복사는 다시 누르게).
       if (confirm?.purpose === "reload") setReload({ phase: "superseded", at: Date.now() });
       if (confirm?.purpose === "copy")
@@ -212,16 +232,33 @@ export default function TodayInvestmentCheckView({ onNavigate }: Props) {
         evidence.reloadAsync(),
         nav.reloadAsync(),
       ]).then(([m, f]) => {
-        const after = sourceDates(
-          m.status === "fulfilled" ? (m.value as MarketTopNResponse) : null,
-          f.status === "fulfilled" ? (f.value as MarketFlowContext) : null,
-        );
+        const newMarket = m.status === "fulfilled" ? (m.value as MarketTopNResponse) : null;
+        const newFlow = f.status === "fulfilled" ? (f.value as MarketFlowContext) : null;
+        const after = sourceDates(newMarket, newFlow);
         const failed = [m.status === "rejected" ? "시장 판정 · 목록" : null, f.status === "rejected" ? "수급 · 환율 · 유가" : null]
           .filter(Boolean)
           .join(" · ");
-        setMarketResult(
-          `시장 데이터 갱신 완료 · ${compareDates(before, after)}` + (failed ? ` · 다시 읽기 실패: ${failed}` : ""),
+        // 다시 읽은 자료로 같은 최신성 판정(기준일 판정 그대로) — 기대일보다 늦은 자료만 한 줄로.
+        const behind = staleAfterRefreshText(
+          freshnessRows(
+            {
+              market: newMarket,
+              marketPhase: newMarket ? "success" : "error",
+              flow: newFlow,
+              flowFailed: !newFlow,
+              holdings: null,
+              holdingsFailed: false,
+              evidence: null,
+              evidenceFailed: false,
+            },
+            "copy",
+          ),
         );
+        setMarketResult({
+          compare: `시장 데이터 갱신 완료 · ${compareDates(before, after)}` + (failed ? ` · 다시 읽기 실패: ${failed}` : ""),
+          behind,
+          ...fails,
+        });
       });
     },
   });
@@ -419,9 +456,18 @@ export default function TodayInvestmentCheckView({ onNavigate }: Props) {
                 mr.cooldownRemainingSeconds / 60,
               )}분)`
             : mr.kind === "completed"
-              ? (marketResult ?? "시장 데이터 갱신 완료 · 자료를 다시 읽는 중...") +
-                (mr.note ? ` · 일부 실패: ${mr.note}` : "")
+              ? (marketResult?.compare ?? "시장 데이터 갱신 완료 · 자료를 다시 읽는 중...") +
+                (marketResult ? "" : mr.note ? ` · 일부 실패: ${mr.note}` : "")
               : null;
+  // 완료 뒤 줄을 나눠 보이는 것(설계자 2026-11-10): 기대일보다 늦은 자료 · ETF 가격 실패 · 그 밖의 확인 필요.
+  const marketExtra =
+    mr.kind === "completed" && marketResult
+      ? [
+          { key: "behind", text: marketResult.behind, warn: false },
+          { key: "fail", text: marketResult.etf, warn: true },
+          { key: "other", text: marketResult.other, warn: true },
+        ].filter((x): x is { key: string; text: string; warn: boolean } => !!x.text)
+      : [];
 
   return (
     <div className="tc-root">
@@ -472,9 +518,14 @@ export default function TodayInvestmentCheckView({ onNavigate }: Props) {
           </p>
         ) : null}
         {marketLine ? (
-          <p className={mr.kind === "failed" ? "tc-warn tc-small" : "tc-muted tc-small"} data-testid="tc-market-result">
-            {marketLine}
-          </p>
+          <div data-testid="tc-market-result">
+            <p className={mr.kind === "failed" ? "tc-warn tc-small" : "tc-muted tc-small"}>{marketLine}</p>
+            {marketExtra.map((x) => (
+              <p key={x.key} className={x.warn ? "tc-warn tc-small" : "tc-small"} data-testid={`tc-market-${x.key}`}>
+                {x.text}
+              </p>
+            ))}
+          </div>
         ) : null}
       </header>
 

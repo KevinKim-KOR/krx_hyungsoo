@@ -64,6 +64,11 @@ export default function StaleConfirmDialog({
             </li>
           ))}
         </ul>
+        {purpose === "reload" ? (
+          <p className="tc-small" data-testid="tc-stale-continue-note">
+            [이 자료로 계속]을 선택하면 위에 표시된 기준일로 볼 수 있습니다.
+          </p>
+        ) : null}
         <p className="tc-muted tc-small">
           {purpose === "reload"
             ? "계속하면 방금 읽은 값으로 요약을 바꾸고 각 줄에 기준일과 상태를 남깁니다. 취소하면 지금 화면을 그대로 둡니다."

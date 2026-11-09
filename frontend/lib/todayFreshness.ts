@@ -15,7 +15,7 @@ import type {
 } from "@/lib/api";
 import type { MarketFlowContext } from "@/lib/api/marketFlow";
 import { kospiStatusView } from "@/lib/kospiStatus";
-import { isRealDate, parseIsoInstant } from "@/lib/todayMarketLines";
+import { isRealDate, josa, md, parseIsoInstant } from "@/lib/todayMarketLines";
 
 export type FreshState = "fresh" | "late" | "check";
 // 이 자료를 새로 받는 이 화면의 동작(상단 버튼과 같은 작업).
@@ -271,6 +271,37 @@ export function freshnessRows(src: FreshSources, scope: "reload" | "copy"): Fres
     }
   }
   return rows;
+}
+
+// 시장 갱신 뒤에도 기대일보다 늦은 자료 — '갱신 후에도 코스피·원/달러는 11/6 기준입니다. 화면 기대일은 11/9입니다.'
+// (설계자 2026-11-10 · 기준일 판정은 그대로 · 날짜가 여럿이면 '코스피는 11/6 · 외국인 수급은 11/5 기준입니다.')
+export function staleAfterRefreshText(rows: FreshRow[]): string | null {
+  const late = rows.filter((r) => r.state === "late" && r.lastDate);
+  if (late.length === 0) return null;
+  const groups: { date: string; labels: string[] }[] = [];
+  for (const r of late) {
+    const g = groups.find((x) => x.date === r.lastDate);
+    if (g) g.labels.push(r.label);
+    else groups.push({ date: r.lastDate as string, labels: [r.label] });
+  }
+  const body = groups.map((g) => `${josa(g.labels.join("·"), "은", "는")} ${md(g.date)}`).join(" · ");
+  const expected = late.find((r) => r.expected)?.expected ?? null;
+  return `갱신 후에도 ${body} 기준입니다.` + (expected ? ` 화면 기대일은 ${md(expected)}입니다.` : "");
+}
+
+// 시장 갱신 상태의 실패 — ETF 가격 실패 건수는 서버 칸(price_fail_count)에서 · 서버 요약 문구에서 그 부분을 뺀 나머지는 그대로
+// (요약은 ' · '로 이어 붙인 문구이고 ETF 가격 부분이 맨 앞 · 건수가 같을 때만 그 앞부분을 뺀다 — 다른 실패 문구를 잃지 않음).
+export function refreshFailureLines(
+  st: { price_fail_count?: number | null; error_summary?: string | null } | null,
+): { etf: string | null; other: string | null } {
+  const n = typeof st?.price_fail_count === "number" && st.price_fail_count > 0 ? st.price_fail_count : null;
+  const summary = st?.error_summary?.trim() || null;
+  const etf = n != null ? `ETF 가격 ${n}건은 이번에 갱신하지 못했습니다.` : null;
+  if (!summary) return { etf, other: null };
+  const head = n != null ? `price_partial_failure: fail=${n}` : null;
+  const rest = head && summary.startsWith(head) ? summary.slice(head.length).replace(/^\s*·\s*/, "") : summary;
+  if (!rest) return { etf, other: null };
+  return { etf, other: `${etf ? "그 밖의 확인 필요" : "확인 필요"}: ${rest}` };
 }
 
 export function needsAttention(rows: FreshRow[]): FreshRow[] {

@@ -510,3 +510,17 @@ KS-10: 컴포넌트 최대 `MarketDiscoveryView.tsx` 739(< 850) · 백엔드 최
 - 구현 커밋 `589f3773` — `feat(poc6-27): 「오늘의 투자 점검」 개편 …` · 65개 파일(작업 트리 검증 변경 58 + 본 저장소 문서 7) · `git push origin main` = `97991d18..589f3773` · 원격 일치(`HEAD` = `origin/main`). 제외 = 사용자 handoff(`docs/handoff/INVESTMENT_MODEL_V2_MASTER_HANDOFF_2026-07-26.md` · 미추적 그대로) · 개인 자료 · 화면 캡처.
 - 상태: **IMPLEMENTED_VERIFIED_CLOSED** — 설계자 RESULT 판정 §4-3 의 실제 PC 반영(§15) · 승인된 커밋 · push 기록.
 - 남긴 것(이번 범위 밖 · 자동 후속 없음): 미사용 파일 2개(`TodayFlowLines.tsx` · `OciStatusOneLine.tsx` · `flowBasisNote`) 삭제는 별도 사용자 승인 · `crontab` 주석 줄 판독 한계(활성 예약 구분이 필요한 운영 작업 때) · PC 원장 사본 마지막 동기화 2026-10-23(「받은 알림 기록」 [원장 새로고침]은 사용자 버튼) · 격리 작업 트리 폴더 `/Users/hyungsookim/projects/krx_hyungsoo_wt_poc6_27`(브랜치 `poc6-27-today-check` · 커밋 없음) 정리는 삭제 승인 뒤.
+
+## 17. 종료 뒤 UI 문구 보완(설계자 지시 2026-11-10)
+
+- 계기: 11/10 00:12 사용자 실사용 — [보유 현재가 업데이트] · [최신 시장 데이터 갱신] 뒤에도 '최신이 아님'. 실측: 보유 현재가 · 보유 근거 · 시장 판정 = 11/9(최신) · 코스피 · 원/달러 · 외국인 수급 = 11/6(기대일 11/9 대비 1거래일 늦음 · 11/9 자료가 원천에 아직 없음) · ETF 가격 7건 받기 실패.
+- 설계자 지시(사용자 전달 · 2026-11-10): **기준일 판정은 유지**(공개 예상 · 날짜 경계 · 수집 일정으로 '아직 공개 전' · '10시 이후 갱신 가능'을 확정 표시하는 안은 보류) · 갱신 결과 줄에서 날짜와 실패를 나눠 보이고 · [요약 다시 읽기] 확인 창에 '[이 자료로 계속]을 선택하면 위에 표시된 기준일로 볼 수 있습니다.'를 넣는다 · 시험은 기존 화면 시험에서 두 경우 · UI 시험으로 마감.
+- 구현(프론트만 · 본 저장소 · 백엔드 · PC 재기동 · OCI 0):
+  - `lib/todayFreshness.ts :: staleAfterRefreshText` — 다시 읽은 자료로 같은 최신성 판정(`freshnessRows` 'copy')을 해 늦은 줄만 '갱신 후에도 A·B는 M/D 기준입니다. 화면 기대일은 M/D입니다.'(날짜가 여럿이면 'A는 M/D · B는 M/D').
+  - `refreshFailureLines` — ETF 가격 실패 건수는 상태 응답 칸 `price_fail_count`(글자에서 뽑지 않음) · 서버 요약(' · '로 이은 문구 · ETF 부분이 맨 앞)에서 같은 건수의 앞부분만 빼고 나머지는 '그 밖의 확인 필요: …'로 그대로(다른 실패 문구를 잃지 않음 · 예전 화면은 요약 원문 'price_partial_failure: fail=7'을 그대로 보였다).
+  - `TodayInvestmentCheckView.tsx` — 완료 줄 아래 `tc-market-behind` · `tc-market-fail` · `tc-market-other` 줄 · 마지막 상태 응답은 `onStatus` 로 기억.
+  - `today/StaleConfirmDialog.tsx` — [요약 다시 읽기] 창에만 안내 문장(`tc-stale-continue-note`).
+- 시험: '갱신 뒤에도 저장일이 그대로면 기준일 안내 · ETF 실패 7건 · 그 밖의 확인 필요를 줄을 나눠'(요약 원문 노출 없음) · 기존 '그 사이 끝났으면 완료 처리'에 '기대일로 갱신되면 안내 · 실패 줄 없음' · 기존 Q3 확인 창 시험에 안내 문장. 프론트 `npx tsc --noEmit` · `npx eslint app lib vitest.setup.ts` 출력 없음 · `npx vitest run` = 86 파일 1,277 통과.
+- 줄 수: `TodayInvestmentCheckView.tsx` 595 → 646 · `todayFreshness.ts` 303 → 334 · `StaleConfirmDialog.tsx` 83 → 88 · 시험 `TodayMarketFlow.test.tsx` 446 → 473 · `TodaySummary.test.tsx` 504 → 506.
+- PC 화면(3000 · `next dev`)은 새 코드를 바로 다시 읽었다(HTTP 200). 확인 창 문장은 지금 화면에서 · 갱신 결과 줄은 다음 [최신 시장 데이터 갱신] 뒤에 보인다.
+- 마감: 설계자 지시대로 UI 시험으로 마감(검증자 · 설계자 재판정 없음) · 사용자 지시 '커밋 및 푸시까지'(2026-11-10)로 커밋 · push(`fix(poc6-27): …` · 커밋 번호는 git log).

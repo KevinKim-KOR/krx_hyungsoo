@@ -399,6 +399,33 @@ describe("판정 Q7 — 다른 화면에서 시작한 시장 갱신을 이어 �
     await act(async () => resolveStatus({ status: "completed", refresh_id: "r9", error_summary: null, cooldown_remaining_seconds: 21600 }));
     await waitFor(() => expect(screen.getByTestId("tc-market-result").textContent).toContain("시장 데이터 갱신 완료 · 코스피 11/6 그대로 · 외국인 수급 11/5 → 11/6"));
     expect(getStartedRefreshId()).toBeNull();
+    // 설계자 2026-11-10 — 기대일로 갱신되면 이전 기준일 안내 · 실패 줄이 없다.
+    expect(screen.queryByTestId("tc-market-behind")).toBeNull();
+    expect(screen.queryByTestId("tc-market-fail")).toBeNull();
+    expect(screen.queryByTestId("tc-market-other")).toBeNull();
+  });
+
+  it("설계자 2026-11-10 — 갱신 뒤에도 저장일이 그대로면 기준일 안내와 ETF 실패 건수 · 그 밖의 확인 필요를 줄을 나눠 보인다", async () => {
+    prime("late");
+    setStartedRefreshId("r9");
+    let resolveStatus!: (v: unknown) => void;
+    fetchMarketRefreshStatus.mockImplementation(() => new Promise((r) => (resolveStatus = r)));
+    await renderView();
+    fetchMarketFlowContext.mockResolvedValue(flow1109("late")); // 다시 읽어도 수급 11/5 그대로
+    await act(async () =>
+      resolveStatus({
+        status: "completed",
+        refresh_id: "r9",
+        price_fail_count: 7,
+        error_summary: "price_partial_failure: fail=7 · 시장 불안 지표(VIX)를 갱신하지 못했습니다",
+        cooldown_remaining_seconds: 21600,
+      }),
+    );
+    expect(await screen.findByTestId("tc-market-behind")).toHaveTextContent("갱신 후에도 외국인 수급은 11/5 기준입니다. 화면 기대일은 11/6입니다.");
+    expect(screen.getByTestId("tc-market-fail")).toHaveTextContent("ETF 가격 7건은 이번에 갱신하지 못했습니다.");
+    expect(screen.getByTestId("tc-market-other")).toHaveTextContent("그 밖의 확인 필요: 시장 불안 지표(VIX)를 갱신하지 못했습니다");
+    expect(screen.getByTestId("tc-market-result").textContent).toContain("시장 데이터 갱신 완료 · 코스피 11/6 그대로 · 외국인 수급 11/5 그대로");
+    expect(screen.getByTestId("tc-market-result").textContent).not.toContain("price_partial_failure");
   });
 
   it("이 탭에서 시작한 갱신이 없어도 들어올 때 상태 1회 — 진행 중이면 같은 작업으로 이어 봄(POST 없음) · 아니면 줄 없음", async () => {

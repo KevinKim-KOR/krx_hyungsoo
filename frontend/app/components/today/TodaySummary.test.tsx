@@ -329,6 +329,8 @@ describe("POC6-16 · POC6-27 지금 확인할 내용", () => {
     const dlg = await screen.findByTestId("tc-stale-dialog");
     expect(dlg.textContent).toContain("최신 상태를 확인해야 할 자료가 있습니다. 현재 저장된 자료로 계속할까요?");
     expect(dlg.querySelector('[data-fresh="kospi"]')?.textContent).toContain("마지막 2026-10-22");
+    // 설계자 2026-11-10 — 같은 버튼을 다시 누를지 고민하지 않게
+    expect(screen.getByTestId("tc-stale-continue-note")).toHaveTextContent("[이 자료로 계속]을 선택하면 위에 표시된 기준일로 볼 수 있습니다.");
     // 창이 열려 있는 동안 연구 줄은 이전 값 그대로(새 값 '예측 기록 없음'을 아직 반영하지 않음).
     expect(within(row("research")).getByText("아직 비교할 결과가 없습니다")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "요약 다시 읽기" })).toBeDisabled();
