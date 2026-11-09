@@ -13,9 +13,9 @@ import { forwardConclusion } from "../ml_forward/forwardText";
 import type { MaintenanceItem } from "./maintenanceQueue";
 import {
   candidatePeriod,
-  candidatesRow,
+  candidateConditions,
+  candidateLabel,
   dataRow,
-  marketRow,
   readRangeText,
   readTimeText,
   researchDates,
@@ -39,6 +39,7 @@ function market(over: Record<string, unknown> = {}, ctx: Record<string, unknown>
       status: "ok",
       asof: "2026-10-23",
       basis: "one_month",
+      order: "desc",
       n: 10,
       filters: { exclude_inverse: true, exclude_leveraged: true, exclude_synthetic: true, exclude_futures: true },
       candidates: [cand("A", 11.4873), cand("B", 9.702), cand("C", 8.7055), cand("D", 1)],
@@ -62,63 +63,25 @@ const FLOW_OK: QueryState<MarketFlowContext> = {
   data: { today_lines: ["시장 흐름 6개월(10/22까지): 코스피 -13.78%", "최근 큰 변화: …"] } as unknown as MarketFlowContext,
 };
 const ERR = { phase: "error" } as const;
-const LOADING = { phase: "loading" } as const;
 
-describe("시장 흐름 줄", () => {
-  it("KOSPI 카드와 같은 시장 판정 · 연속 일수 · 서버 문장 · KOSPI · KODEX200 기준일을 따로", () => {
-    const r = marketRow(market(), FLOW_OK);
-    expect(r.badge).toBe("하락장 · 11거래일째");
-    expect(r.text).toBe("KODEX200 기준 시장 판정 · 시장 흐름 6개월(10/22까지): 코스피 -13.78%");
-    expect(r.basis).toBe(
-      "KOSPI 기준일 2026-10-22 · 6거래일 지연 · KODEX200 기준일 2026-10-23 · 시장 판정은 이 화면을 처음 열 때 읽은 값(다시 읽기 제외)",
-    );
-    expect(r.sub).toBe("최근 큰 변화: …");
-    expect(r.actions.map((a) => [a.label, a.primary])).toEqual([
-      ["시장 흐름 자세히", true],
-      ["KOSPI 차트 ↓", false],
-    ]);
-  });
-  it("시장 배경 상태가 partial 이어도 KOSPI 카드처럼 시장 판정을 보인다(실제 자료 2026-11-02 · 카드와 같은 조건)", () => {
-    const r = marketRow(market({}, { status: "partial" }), FLOW_OK);
-    expect(r.badge).toBe("하락장 · 11거래일째");
-    expect(r.basis).toContain("KODEX200 기준일 2026-10-23");
-    const none = marketRow(market({ market_context: null }), FLOW_OK);
-    expect(none.badge).toBe("시장 판정 확인 불가");
-  });
-  it("수급 · 환율 · 유가만 실패하면 시장 판정은 남기고 실패를 구분", () => {
-    const r = marketRow(market(), ERR);
-    expect(r.badge).toBe("하락장 · 11거래일째");
-    expect(r.text).toContain("수급 · 환율 · 유가 자료를 불러오지 못했습니다");
-  });
-  it("시장 목록 조회 실패 — 다시 읽기로 다시 계산하지 않는다는 안내", () => {
-    const r = marketRow(ERR, FLOW_OK);
-    expect([r.tone, r.badge]).toEqual(["bad", "불러오지 못함"]);
-    expect(r.basis).toContain("브라우저를 새로 고치면 다시 읽습니다");
-  });
-  it("수급 등 다시 읽기 실패 — 이전 값 · 그 값을 받은 시각", () => {
-    const stale: QueryState<MarketFlowContext> = { ...FLOW_OK, stale: true, successAt: Date.UTC(2026, 10, 1, 17, 25, 0) } as QueryState<MarketFlowContext>;
-    expect(marketRow(market(), stale).staleNote).toBe(
-      "수급 · 환율 · 유가: 다시 읽기 실패 · 2026-11-02 02:25:00에 읽은 값을 표시 중",
-    );
-  });
-});
-
-describe("잘 오르는 ETF 줄(판정 §5)", () => {
-  it("요청 상한이 아니라 실제 길이 N · 기준 · 1위 · 기간 · 제외 조건", () => {
-    const r = candidatesRow(market());
-    expect(r.badge).toBe("1개월 수익률 상위 4개");
-    expect(r.text).toBe("1위 ETF A +11.49% 외 3개 · 상위 3개는 아래");
-    expect(r.basis).toBe(
-      "2026-09-23 ~ 2026-10-23 · 인버스 · 레버리지 · 합성 · 선물 제외 · 최대 10개 · 「요즘 잘 오르는 ETF」에서 고른 기간 · 정렬과 다를 수 있음",
-    );
+describe("잘 오르는 ETF 이름 · 기간 · 조건(판정 §5 · POC6-27 — 두 카드가 쓰는 함수)", () => {
+  const data = (over: Record<string, unknown> = {}) =>
+    (market(over) as { data: MarketTopNResponse }).data;
+  it("요청 상한이 아니라 실제 길이 N · 기준 · 방향 · 기간 · 제외 조건", () => {
+    expect(candidateLabel(data())).toBe("1개월 수익률 높은 순 4개");
+    expect(candidatePeriod(data().candidates)).toBe("2026-09-23 ~ 2026-10-23");
+    expect(candidateConditions(data())).toBe("인버스 · 레버리지 · 합성 · 선물 제외 · 최대 10개");
   });
   it.each([
-    [[], "1개월 수익률 상위 0개", "조건에 맞는 ETF가 없습니다"],
-    [[cand("A", 2)], "1개월 수익률 상위 1개", "1위 ETF A +2.00%"],
-    [[cand("A", null), cand("B", 1)], "1개월 수익률 상위 2개", "1위 ETF A 수익률 확인 불가 외 1개 · 상위 2개는 아래"],
-  ])("목록 길이 그대로 — %#", (cs, badge, text) => {
-    const r = candidatesRow(market({ candidates: cs }));
-    expect([r.badge, r.text]).toEqual([badge, text]);
+    [[], "1개월 수익률 높은 순 0개"],
+    [[cand("A", 2)], "1개월 수익률 높은 순 1개"],
+    [[cand("A", null), cand("B", 1)], "1개월 수익률 높은 순 2개"],
+  ])("목록 길이 그대로 — %#", (cs, label) => {
+    expect(candidateLabel(data({ candidates: cs }))).toBe(label);
+  });
+  it("오름차순 응답은 '낮은 순' · 방향 칸이 없으면 '방향 확인 불가'(POC6-27 판정 §4)", () => {
+    expect(candidateLabel(data({ order: "asc" }))).toBe("1개월 수익률 낮은 순 4개");
+    expect(candidateLabel(data({ order: undefined }))).toBe("1개월 수익률 방향 확인 불가 4개");
   });
   it("종목별 계산 기간이 다르면 선두 종목 날짜로 덮지 않는다", () => {
     expect(candidatePeriod([cand("A", 1), cand("B", 1, "2026-09-22")] as never)).toBe(
@@ -126,9 +89,8 @@ describe("잘 오르는 ETF 줄(판정 §5)", () => {
     );
   });
   it("화면 글자에 '후보' 낱말을 쓰지 않는다(AC-7)", () => {
-    for (const q of [market(), ERR, LOADING, market({ candidates: [] })] as QueryState<MarketTopNResponse>[]) {
-      const r = candidatesRow(q);
-      expect(`${r.area} ${r.badge} ${r.text} ${r.basis ?? ""}`).not.toContain("후보");
+    for (const d of [data(), data({ candidates: [] }), data({ order: "asc" })]) {
+      expect(`${candidateLabel(d)} ${candidatePeriod(d.candidates)} ${candidateConditions(d)}`).not.toContain("후보");
     }
   });
 });
@@ -143,17 +105,18 @@ const item = (task: MaintenanceItem["task"], text: string): MaintenanceItem => (
 
 describe("지금 할 일(판정 §3-1)", () => {
   const H_OK: QueryState<EnrichedHoldingsResult> = { phase: "success", stale: false, data: { items: [] } as unknown as EnrichedHoldingsResult };
-  it("시장 자료 지연 — 실제 자료일 · 사유 · 갱신 화면 이동(명령 아님) · 이동 후 누를 버튼 이름", () => {
+  it("시장 자료 지연 — 실제 자료일 · 사유 · 이 화면 [최신 시장 데이터 갱신](상단 버튼과 같은 작업 · POC6-27)", () => {
     const t = summaryTasks([item("market_refresh", "KOSPI 원자료가 … 6거래일 지연"), item("other", "구성종목 없음")], false, market(), H_OK, FLOW_OK);
     expect(t.map((x) => x.id)).toEqual(["market_refresh"]);
     expect(t[0].title).toBe("시장 자료 갱신이 필요합니다.");
     expect(t[0].reasons).toEqual(["지금 PC에 저장된 시장 자료: KOSPI 2026-10-22 · ETF 가격 2026-10-23", "KOSPI 원자료가 … 6거래일 지연"]);
     expect(t[0].doText).toContain("[최신 시장 데이터 갱신]");
-    expect(t[0].action).toEqual({ label: "시장 자료 갱신 화면", target: { kind: "menu", key: "market_discovery" }, primary: true });
+    expect(t[0].action).toEqual({ label: "최신 시장 데이터 갱신", target: { kind: "market_refresh" }, primary: true });
   });
-  it("보유 현재가 결측 — 이 화면 [업데이트] 위치로(새 명령 버튼 없음)", () => {
+  it("보유 현재가 결측 — 이 화면 [보유 현재가 업데이트](상단 버튼과 같은 작업 · POC6-27)", () => {
     const t = summaryTasks([item("holdings_price", "보유 종목 현재가를 불러오지 못했습니다 (1건)")], false, market(), H_OK, FLOW_OK);
-    expect(t.map((x) => [x.id, x.action?.target.kind])).toEqual([["holdings_price", "scroll"]]);
+    expect(t.map((x) => [x.id, x.action?.target.kind])).toEqual([["holdings_price", "holdings_refresh"]]);
+    expect(t[0].doText).toContain("[보유 현재가 업데이트]");
   });
   it("첫 조회 실패 · 응답 손상 = 상태 모름(미갱신으로 단정 안 함) · 다시 읽는 원천만 [요약 다시 읽기]", () => {
     const t = summaryTasks([item("read_failed", "보유 ETF 비교 자료를 불러오지 못했습니다")], false, ERR, ERR, ERR);
@@ -186,9 +149,9 @@ describe("지금 할 일(판정 §3-1)", () => {
 describe("자료 확인 · 연구 줄", () => {
   it("자료 확인 — 기존 건수 · 앞 두 항목 · 투자 위험 표시 아님 · 목록 이동은 보조", () => {
     const r = dataRow([item("market_refresh", "가"), item("other", "나"), item("other", "다")], false, true);
-    expect([r.badge, r.text]).toEqual(["자료 최신화 필요 3건", "가 · 나 외 1건"]);
+    expect([r.badge, r.text]).toEqual(["확인할 자료 3건", "가 · 나 외 1건"]);
     expect(r.basis).toContain("투자 위험 표시가 아닙니다");
-    expect(r.actions.every((a) => !a.primary)).toBe(true);
+    expect(r.actions).toEqual([]); // POC6-27 — 정비 목록은 이 줄 바로 아래 펼침
     expect(dataRow([], false, false).badge).toBe("갱신 필요 없음");
     expect(dataRow([], true, false).badge).toBe("확인 중");
   });
@@ -225,19 +188,9 @@ describe("검토 정정", () => {
       "ETF 기준가: 다시 읽기 실패 · 2026-11-02 02:25:00에 읽은 값을 표시 중 / 보유 근거: 다시 읽기 실패 · 2026-11-02 02:25:00에 읽은 값을 표시 중",
     );
   });
-  it("시장 흐름 줄 — KOSPI 시계열 다시 읽기 실패도 시각", () => {
-    expect(marketRow(market(), FLOW_OK, staleQ({}) as never).staleNote).toBe(
-      "KOSPI 가격 흐름: 다시 읽기 실패 · 2026-11-02 02:25:00에 읽은 값을 표시 중",
-    );
-  });
   it("자료 확인 줄 — 불러오지 못한 항목만이면 '오래됨'이라고 쓰지 않음", () => {
     expect(dataRow([item("read_failed", "가")], false, true).basis).toContain("오래됐다는 뜻은 아님");
     expect(dataRow([item("read_failed", "가"), item("other", "나")], false, false).basis).toContain("함께 있습니다");
-  });
-  it("목록 응답이 정상이 아니면 서버 원문을 옮기지 않는다", () => {
-    const r = candidatesRow(market({ status: "invalid", error: "SQLite 조회 실패: OperationalError" }));
-    expect(`${r.text} ${r.basis}`).not.toContain("SQLite");
-    expect(r.badge).toBe("확인 불가");
   });
   it("연구 — 대시보드에 없는 '아래 안내' 대신 화면 이름", () => {
     const bad = { phase: "success", stale: false, data: { ...FWD, basis: { ...FWD.basis!, unreadable_runs: ["r1"] } } } as QueryState<ForwardComparisonResponse>;
@@ -245,16 +198,12 @@ describe("검토 정정", () => {
     expect(r.text).toContain("「예측과 결과 비교」에서 안내를 확인해 주세요");
     expect(r.text).not.toContain("아래 안내");
   });
-  it("연속 일수 없음 — KOSPI 카드처럼 '지속일 자료 없음'", () => {
-    expect(marketRow(market({}, { regime_streak: null }), FLOW_OK).badge).toBe("하락장 · 지속일 자료 없음");
-  });
 });
 
 // 검증자 r1 F1 — 첫 조회 실패(이전 값 없음)도 줄 · 할 일에 남는다 · F2 — 연구 줄에 실제 예측 기준일.
 describe("검증자 r1 정정", () => {
   const H_OK: QueryState<EnrichedHoldingsResult> = { phase: "success", stale: false, data: { items: [] } as unknown as EnrichedHoldingsResult };
   it("KOSPI 가격 흐름 첫 조회 실패 — 시장 흐름 줄 메모 · 다시 읽기 할 일", () => {
-    expect(marketRow(market(), FLOW_OK, ERR as never).staleNote).toBe("KOSPI 가격 흐름: 불러오지 못했습니다(이전 값 없음)");
     const t = summaryTasks([], false, market(), H_OK, FLOW_OK, ERR as never, undefined);
     expect(t.map((x) => x.id)).toEqual(["read_failed"]);
     expect(t[0].reasons).toEqual(["KOSPI 가격 흐름 자료를 불러오지 못했습니다"]);
@@ -300,13 +249,13 @@ describe("자료 확인 줄 뜻 — 8조합", () => {
   it.each([
     ["항목 없음 · 확인 못한 원천 없음", [], [], "갱신 필요 없음", MEAN.ok],
     ["항목 없음 · 확인 못한 원천 있음", [], ["보유"], "일부 확인 못함", MEAN.unknownOnlyNoItems],
-    ["불러오지 못함만 · 원천 없음", [U], [], "자료 최신화 필요 1건", MEAN.unknown],
-    ["불러오지 못함만 · 원천 있음(보유 + NAV 실패)", [U], ["보유"], "자료 최신화 필요 1건", MEAN.unknown],
-    ["불러오지 못함만 · 원천 있음(시장 목록 + NAV 실패)", [U], ["시장 판정 · 요즘 잘 오르는 ETF 목록"], "자료 최신화 필요 1건", MEAN.unknown],
-    ["오래됨/없음만 · 원천 없음", [S], [], "자료 최신화 필요 1건", MEAN.stale],
-    ["오래됨/없음만 · 원천 있음", [S], ["보유"], "자료 최신화 필요 1건", MEAN.mixed],
-    ["섞임 · 원천 없음", [S, U], [], "자료 최신화 필요 2건", MEAN.mixed],
-    ["섞임 · 원천 있음", [S, U], ["보유"], "자료 최신화 필요 2건", MEAN.mixed],
+    ["불러오지 못함만 · 원천 없음", [U], [], "확인할 자료 1건", MEAN.unknown],
+    ["불러오지 못함만 · 원천 있음(보유 + NAV 실패)", [U], ["보유"], "확인할 자료 1건", MEAN.unknown],
+    ["불러오지 못함만 · 원천 있음(시장 목록 + NAV 실패)", [U], ["시장 판정 · 요즘 잘 오르는 ETF 목록"], "확인할 자료 1건", MEAN.unknown],
+    ["오래됨/없음만 · 원천 없음", [S], [], "확인할 자료 1건", MEAN.stale],
+    ["오래됨/없음만 · 원천 있음", [S], ["보유"], "확인할 자료 1건", MEAN.mixed],
+    ["섞임 · 원천 없음", [S, U], [], "확인할 자료 2건", MEAN.mixed],
+    ["섞임 · 원천 있음", [S, U], ["보유"], "확인할 자료 2건", MEAN.mixed],
   ] as [string, MaintenanceItem[], string[], string, string | null][])("%s", (_n, items, unknownSources, badge, meaning) => {
     const r = dataRow(items, false, false, undefined, undefined, unknownSources);
     expect(r.badge).toBe(badge);
@@ -342,7 +291,7 @@ describe("수급 기간 제한 · 연결 상태(POC6-17)", () => {
     expect(t.map((x) => x.id)).toEqual(["market_refresh"]);
     expect(t[0].reasons).toContain(LIMIT);
     expect(t[0].doText).toContain("자동 실행은 보관본만 받습니다");
-    expect(t[0].action?.target).toEqual({ kind: "menu", key: "market_discovery" });
+    expect(t[0].action?.target).toEqual({ kind: "market_refresh" });
   });
   it("기존 시장 갱신 할 일이 있으면 그 할 일에 이유만 더한다(버튼 하나)", () => {
     const t = summaryTasks([item("market_refresh", "KOSPI 지연")], false, market(), H_OK, flowWith("flows", "kept_local", true));
@@ -378,15 +327,5 @@ describe("수급 기간 제한 · 연결 상태(POC6-17)", () => {
     expect(summaryTasks([], false, market(), H_OK, flowWith("kospi", "applied_local", true))).toEqual([]);
     expect(summaryTasks([], false, market(), H_OK, flowWith("gap", "applied_local", true))).toEqual([]);
     expect(summaryTasks([], false, market(), H_OK, ERR).map((x) => x.id)).toEqual(["read_failed"]);
-  });
-  it("시장 흐름 줄 — 제한 · 경고 상태일 때만 설명(서버 문장) · 정상이면 없음", () => {
-    expect(marketRow(market(), flowWith("flows", "legacy_direct_failed", true, "아직 OCI 수급을 반영한 기록 없음")).note).toBe(
-      `${LIMIT} · 수급 연결: 아직 OCI 수급을 반영한 기록 없음`,
-    );
-    expect(marketRow(market(), flowWith(null, "applied", false)).note).toBeNull();
-    expect(marketRow(market(), flowWith(null, "oci_collect_failed", false, "OCI의 최근 수급 수집이 실패했습니다")).note).toBe(
-      "수급 연결: OCI의 최근 수급 수집이 실패했습니다",
-    );
-    expect(marketRow(market(), FLOW_OK).note).toBeNull(); // 옛 응답(칸 없음)도 그대로
   });
 });

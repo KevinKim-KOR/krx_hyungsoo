@@ -5,7 +5,6 @@
 // 책임별로 분리했다. 분리 때는 JSX·문구·className·핸들러·호출 조건을 고치지 않았다
 // (파일 배치와 import/export 줄만). 그 뒤 화면은 POC5-09 · POC5-UI-03 에서 바뀌었다.
 
-import TodayFlowLines from "@/app/components/marketflow/TodayFlowLines";
 import { useState } from "react";
 import type { QueryState } from "@/lib/api/queryCache";
 import type {
@@ -16,7 +15,6 @@ import type {
   StoredVolumeEvidence,
 } from "@/lib/api";
 import { KOSPI_SOURCE_LINE, kospiStatusView, kospiValuesUsable } from "@/lib/kospiStatus";
-import KospiChart from "./KospiChart";
 import StoredVolumeBlock from "../StoredVolumeBlock";
 import { KODEX200_VOLUME_HELP, NO_VOLUME_TEXT, volumeCells } from "@/lib/storedVolume";
 import { KospiStatusBadges, KospiStatusLines } from "../KospiStatusNote";
@@ -34,13 +32,14 @@ import {
 // 코스피 1개월 · 3개월 · 1년 · 고점 대비 · 기존 시장 판정 · KODEX200 거래량은 카드 아래
 // '시장 수치와 거래량'에서 펼쳐 본다(기본 접힘 · 화면 안 상태만). 접힌 칸의 자료 없음 · 부족 ·
 // 계산 불가는 펼치기 전후 모두 버튼 옆 '확인 필요: …'로 보인다(설계 §3 · 판정 Q3).
-// POC6-16 — areaId: 맨 위 요약의 [KOSPI 차트 ↓] 스크롤 목적지(카드 자체 · 포커스 가능 · 구조 그대로).
+// POC6-27 — 차트는 「시장 흐름」 안 코스피 수치 바로 아래로 옮겼고(사용자 결정 ①) · 흐름 두 줄은 시장 흐름
+// 구역이 대신한다. 이 부품은 [시장 근거와 다른 변화 보기] 안에서 나머지 지표(일간 변화 · KODEX200 기준선 ·
+// '시장 수치와 거래량')만 문구 그대로 보인다(판정 Q1 (a)). embedded 는 그 자리 표시(카드 테두리 · 제목 없음).
 export default function KospiHeadline({
   market,
-  areaId,
 }: {
   market: QueryState<MarketTopNResponse>;
-  areaId?: string;
+  embedded?: boolean;
 }) {
   const ctx =
     market.phase === "success" ? market.data.market_context ?? null : null;
@@ -58,23 +57,8 @@ export default function KospiHeadline({
   const foldNotes = foldedMarketNotes(market, ctx, kospi, vol);
 
   return (
-    <section
-      id={areaId}
-      tabIndex={areaId ? -1 : undefined}
-      className="tc-card tc-headline tc-scroll-target"
-      aria-label="KOSPI 현재 위치"
-    >
-      {/* 사용자 요청: 대표 제목은 "KOSPI". 코스피 가격 = 대표, KODEX200 판정은 별도. */}
-      <h2 className="tc-h2">KOSPI</h2>
-
-      {/* 코스피 차트(좌·넓게) + 일간 변화 · 기준선 패널(우). 전체 폭 대표 영역. */}
-      <div className="tc-headline-grid">
-        <div className="tc-headline-chart">
-          <div className="tc-label">코스피 가격 흐름</div>
-          {/* POC3-02D-OPS-03 — 차트도 같은 KOSPI 판정(배지 · 기준 줄)을 단다. */}
-          <KospiChart kospi={kospi} phase={market.phase} />
-        </div>
-
+    <section className="tc-headline tc-headline-embedded" aria-label="KOSPI 현재 위치">
+      <div className="tc-headline-grid tc-headline-grid-embedded">
         <div className="tc-headline-stats">
           <div className="tc-stat-block" data-testid="tc-kospi-daily">
             <div className="tc-label">코스피 일간 변화</div>
@@ -128,9 +112,6 @@ export default function KospiHeadline({
           </div>
         </div>
       </div>
-
-      {/* POC6-01 — 시장 흐름 짧은 두 줄(6개월 요약 · 최근 큰 변화 · 카드 안). */}
-      <TodayFlowLines />
 
       <div className="tc-fold-row tc-divider">
         <button

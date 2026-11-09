@@ -107,9 +107,9 @@ describe("MainPanel 라우팅 관통 (POC3-02D-OPS-02 3-1)", () => {
       await screen.findByRole("heading", { level: 1, name: "오늘의 투자 점검" }),
     ).toBeInTheDocument();
 
-    fireEvent.click(
-      await screen.findByRole("button", { name: "OCI 운영·적용에서 상세 보기 →" }),
-    );
+    // POC6-27 — OCI 한 줄은 「OCI 운영 스케줄 확인」 카드(기본 접힘)로 옮겼다.
+    fireEvent.click(await screen.findByRole("button", { name: "OCI 운영 스케줄 확인 펼치기" }));
+    fireEvent.click(await screen.findByRole("button", { name: "OCI 운영·적용 →" }));
 
     // 도착 화면 = 「OCI 운영·적용」. 「개발·실험용」이 아니다.
     expect(

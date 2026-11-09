@@ -35,6 +35,12 @@ class OciJobStatusModel(BaseModel):
     detail: str = ""
 
 
+class OciScheduleRowModel(BaseModel):
+    kind: str
+    label: str
+    state: str  # registered · missing · unknown (POC6-27)
+
+
 class OciStartupStatusResponse(BaseModel):
     checked_at: str | None
     reachable: bool
@@ -43,6 +49,8 @@ class OciStartupStatusResponse(BaseModel):
     crontab_active: bool | None
     jobs: list[OciJobStatusModel]
     note: str
+    # POC6-27 — 필수 3종 예약 상태(기동 스냅샷에서 · OCI 재조회 없음)
+    schedule: list[OciScheduleRowModel] = []
 
 
 def _param_active_row(
@@ -81,4 +89,7 @@ def get_oci_startup_status() -> OciStartupStatusResponse:
             OciJobStatusModel(job=j.job, status=j.status, detail=j.detail) for j in jobs
         ],
         note=snap.note,
+        schedule=[
+            OciScheduleRowModel(**r) for r in oci_startup_status.schedule_rows(snap)
+        ],
     )

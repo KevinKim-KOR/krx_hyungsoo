@@ -404,7 +404,7 @@ describe("최대 3개 — 이름 · 5일 · 비중 + 종목별 '수치 더보기
     fireEvent.click(within(rows[0]).getByRole("button", { name: "가 수치 더보기" }));
     expect(rows[0].textContent).toContain("확인 필요: KODEX200 대비 20일: 종목 비교 기간");
     expect(rows[0].textContent).toContain("KODEX200 대비 -");
-    expect(screen.getByLabelText("보유 · 잘 오르는 ETF 자세히").textContent).not.toMatch(/위험|하락 신호|경보/);
+    expect(screen.getByLabelText("보유 자세히").textContent).not.toMatch(/위험|하락 신호|경보/);
   });
 });
 

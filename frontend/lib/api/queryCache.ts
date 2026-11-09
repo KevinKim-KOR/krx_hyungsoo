@@ -12,6 +12,10 @@
 // - 무효화(invalidate)는 변경 성공 이벤트에서만 호출. 변경 실패 시 무효화 금지.
 // - 2026-11-02 POC6-16: 성공한 값과 그 값을 받은 시각(successAt · 이 탭 메모리)을 같이 둔다.
 //   실패 · 캐시 재사용 · 다시 그리기 때는 시각을 바꾸지 않는다(판정 §4 — 이전 결과를 보일 때 그 시각).
+// - 2026-11-09 POC6-27(검증자 r1 F1): 응답 순서 보호 — 키마다 쓰기 순번(seq)을 둔다. 조회는 시작할 때 순번을
+//   받고, 끝났을 때 그 키의 순번이 그대로일 때만 쓴다. [이 자료로 계속] 반영(commitQuery)이나 같은 키의 새 조회가
+//   순번을 바꾸면 그 전에 시작한 조회의 늦은 성공 · 실패는 버린다(새 값을 옛 응답이 덮지 않음). 무효화로 칸이
+//   비었고 새 조회가 없으면 기존처럼 그 응답을 넣는다(비운 칸을 '불러오는 중'에 묶어 두지 않음).
 
 import { useCallback, useEffect, useState } from "react";
 
@@ -27,12 +31,15 @@ type Entry<T> = {
   // 재조회 실패 여부. 캐시 엔트리에 저장하므로 화면 재진입해도 유지된다
   // (A-1(2): 이전 성공값이 재진입 후 정상값으로 위장되지 않게).
   refetchFailed?: boolean;
+  // 쓰기 순번(POC6-27 · 위 계약). 조회 시작 · 반영 때 새로 받는다.
+  seq?: number;
 };
 
 // 키 → 엔트리. 모듈 스코프라 앱 세션 동안만 유지 (새로고침 시 소멸).
 const store = new Map<string, Entry<unknown>>();
 // 키별 구독자 (해당 키 갱신 시 리렌더 트리거).
 const subscribers = new Map<string, Set<() => void>>();
+let seqCounter = 0;
 
 function notify(key: string) {
   const subs = subscribers.get(key);
@@ -70,8 +77,15 @@ async function fetchShared<T>(
     return existing.inflight;
   }
 
+  const mySeq = ++seqCounter;
+  // 끝났을 때 이 조회가 아직 그 키의 마지막 쓰기인가(반영 · 새 조회가 있었으면 아님 · 무효화로 빈 칸이면 씀).
+  const stillMine = () => {
+    const cur = store.get(key);
+    return cur === undefined || cur.seq === mySeq;
+  };
   const inflight = fetcher()
     .then((data) => {
+      if (!stillMine()) return data; // 늦은 옛 응답 — 캐시에 쓰지 않는다(F1)
       // 성공: refetchFailed 해제 (stale 경고 제거).
       store.set(key, {
         status: "success",
@@ -79,6 +93,7 @@ async function fetchShared<T>(
         lastSuccess: data,
         lastSuccessAt: Date.now(),
         refetchFailed: false,
+        seq: mySeq,
       });
       notify(key);
       return data;
@@ -87,6 +102,7 @@ async function fetchShared<T>(
       // 재조회 실패: 이전 성공값(lastSuccess)은 보존하되 refetchFailed 를 캐시
       // 엔트리에 저장한다 (A-1(2): 화면 재진입해도 stale 유지). 이전 성공값이
       // 없으면 error.
+      if (!stillMine()) throw err; // 늦은 옛 실패 — 더 새 값에 '다시 읽기 실패'를 붙이지 않는다(F1)
       const prev = store.get(key) as Entry<T> | undefined;
       const hasPrev = prev?.lastSuccess !== undefined;
       store.set(key, {
@@ -95,6 +111,7 @@ async function fetchShared<T>(
         lastSuccess: prev?.lastSuccess,
         lastSuccessAt: prev?.lastSuccessAt,
         refetchFailed: true,
+        seq: mySeq,
       });
       notify(key);
       throw err;
@@ -107,6 +124,7 @@ async function fetchShared<T>(
     lastSuccessAt: existing?.lastSuccessAt,
     refetchFailed: existing?.refetchFailed,
     inflight,
+    seq: mySeq,
   });
   return inflight;
 }
@@ -124,6 +142,40 @@ export function invalidateQueries(keyPrefix: string): void {
     store.delete(k);
     notify(k);
   }
+}
+
+// POC6-27 — '받아 두고 고른 뒤 반영'([요약 다시 읽기] 확인 창). 받는 동안은 캐시를 건드리지 않고
+// (호출부가 fetcher 를 직접 부름), 사용자가 [이 자료로 계속]을 고르면 그 결과를 아래 둘로 반영한다.
+// [취소]면 아무것도 부르지 않는다 — 이전 값 · 성공 시각 · 실패 표시가 그대로 남는다.
+// `at` = 실제로 받은 시각(창을 오래 열어 둬도 '읽은 시각'이 고른 시각으로 밀리지 않게 · 판정 Q8).
+// 반영은 새 순번을 받는다 — 그 전에 시작한 조회(예: 화면을 열 때의 첫 조회)가 늦게 끝나도 이 값을 덮지 않는다(검증자 r1 F1).
+export function commitQuery<T>(key: string, data: T, at: number = Date.now()): void {
+  store.set(key, {
+    status: "success",
+    data,
+    lastSuccess: data,
+    lastSuccessAt: at,
+    refetchFailed: false,
+    seq: ++seqCounter,
+  });
+  notify(key);
+}
+
+// 받아 둔 조회가 실패했을 때 — fetchShared 실패 경로와 같은 표시(이전 값 · 그 시각 보존 · 다시 읽기 실패).
+// 새 값을 쓰지 않으므로 진행 중인 조회의 순번은 그대로 둔다 — 그 조회가 나중에 성공하면 그 값이 들어온다.
+// (표시는 지금 실패 그대로 — 이전 값이 없으면 오류 · 요청 공유는 끊는다)
+export function markQueryFailed(key: string): void {
+  const prev = store.get(key);
+  const hasPrev = prev?.lastSuccess !== undefined;
+  store.set(key, {
+    status: hasPrev ? "success" : "error",
+    data: prev?.lastSuccess,
+    lastSuccess: prev?.lastSuccess,
+    lastSuccessAt: prev?.lastSuccessAt,
+    refetchFailed: true,
+    seq: prev?.seq,
+  });
+  notify(key);
 }
 
 // 테스트/디버그용: 전체 캐시 초기화 (새로고침 상당).

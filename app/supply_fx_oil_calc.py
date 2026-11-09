@@ -237,8 +237,21 @@ def price_events(points: list[Point], label: str, unit: str) -> list[dict]:
                 else f"{md(st['date'])} {label} 변화 확대({signed(e['delta'], unit)} · "
                 f"이전 20회 평균 변화의 {e['ratio']:.1f}배)"
             )
+            # POC6-27 — 화면 · 복사문이 관측값과 비교값을 나눠 쓰도록 계산 값을 그대로 싣는다(문장 불변).
             ev.append(
-                {"date": st["date"], "series": label, "kind": "expansion", "text": text}
+                {
+                    "date": st["date"],
+                    "series": label,
+                    "kind": "expansion",
+                    "text": text,
+                    "value": st["value"],
+                    "unit": unit,
+                    "delta": e["delta"],
+                    "ratio": None if e["zero_base"] else e["ratio"],
+                    "base_from": e["base_from"],
+                    "base_to": e["base_to"],
+                    "zero_base": e["zero_base"],
+                }
             )
         r = st["range"]
         if r:
@@ -250,6 +263,12 @@ def price_events(points: list[Point], label: str, unit: str) -> list[dict]:
                     "kind": "range",
                     "text": f"{md(st['date'])} {label} 직전 20개 관측 범위 {r['dir']}"
                     f"({num(r['bound'], unit)} · {md(r['bound_date'])} {edge})",
+                    # POC6-27 — value = 그날 관측값 · bound = 직전 20개 범위 경계(비교 기준값)
+                    "value": st["value"],
+                    "unit": unit,
+                    "dir": r["dir"],
+                    "bound": r["bound"],
+                    "bound_date": r["bound_date"],
                 }
             )
     return ev
@@ -269,7 +288,20 @@ def flow_events(net: list[Point], label: str, expected: list[str]) -> list[dict]
             if f["ratio"] is not None
             else f"{md(f['date'])} {label} 직전 20거래일 순매수 0, 이번 {way} {won(f['value'])}"
         )
-        ev.append({"date": f["date"], "series": label, "kind": "flow", "text": text})
+        ev.append(
+            {
+                "date": f["date"],
+                "series": label,
+                "kind": "flow",
+                "text": text,
+                # POC6-27 — 계산 값 그대로(원 · 비교 구간)
+                "value": f["value"],
+                "unit": "원",
+                "ratio": f["ratio"],
+                "base_from": f.get("base_from"),
+                "base_to": f.get("base_to"),
+            }
+        )
     return ev
 
 

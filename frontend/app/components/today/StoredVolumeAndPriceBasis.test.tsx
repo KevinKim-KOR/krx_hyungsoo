@@ -167,8 +167,8 @@ describe("「오늘의 투자 점검」 저장 거래량 · 가격 기준일 (PO
     );
     // UI-03 — '없다' 확인은 종목별 수치를 편 뒤에도 본다(판정 §3).
     screen.getAllByRole("button", { name: /수치 더보기$/ }).forEach((b) => fireEvent.click(b));
-    expect(screen.getByLabelText("보유 · 잘 오르는 ETF 자세히").textContent).toContain("20일 -11.76%");
-    const text = screen.getByLabelText("보유 · 잘 오르는 ETF 자세히").textContent ?? "";
+    expect(screen.getByLabelText("보유 자세히").textContent).toContain("20일 -11.76%");
+    const text = screen.getByLabelText("보유 자세히").textContent ?? "";
     expect(text).not.toMatch(/정상|안전|위험 경보/);
   });
 

@@ -12,19 +12,16 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  ApiConfigError,
-  ApiRequestError,
-  DEFAULT_MARKET_ORDER,
-  DEFAULT_MARKET_TOPN_FILTERS,
-  fetchMarketRefreshStatus,
-  postMarketRefresh,
   type MarketBasis,
   type MarketOrder,
-  type MarketRefreshStartResponse,
   type MarketRefreshStatusResponse,
   type MarketTopNResponse,
 } from "@/lib/api";
 import { invalidateQueries, useSharedQuery } from "@/lib/api/queryCache";
+// POC6-27 — 목록 조건(기간 · 방향 · 제외)은 「오늘의 투자 점검」과 같은 탭 안에서 공유한다(판정 §4).
+import { getMarketCondition, setMarketCondition } from "@/lib/marketConditionStore";
+// POC6-27 — 시장 갱신 시작 · 상태 확인 · 완료 처리는 두 화면 공용 hook(판정 Q7 · 코드는 그대로 옮김).
+import { describeError, useMarketRefresh, type RefreshUiState } from "./useMarketRefresh";
 import {
   MARKET_INVALIDATION_KEYS,
   DASH_KEY_HOLDINGS,
@@ -54,30 +51,7 @@ import { useMarketVixRetry, type VixButton } from "./useMarketVixRetry";
 import { useMarketTopnLoad } from "./useMarketTopnLoad";
 import TransferToETFExposureCard from "./TransferToETFExposureCard";
 
-type RefreshUiState =
-  | { kind: "idle" }
-  | { kind: "starting" }
-  | { kind: "running"; refreshId: string | null }
-  // POC5-10 — 완료여도 확인할 사유(예: 보유 개별주 가격 갱신 실패)가 있으면 note 로 보인다.
-  | { kind: "completed"; refreshId: string | null; note: string | null }
-  | { kind: "failed"; message: string }
-  | { kind: "cooldown"; cooldownRemainingSeconds: number };
-
-const POLL_INTERVAL_MS = 4000;
-// 2026-05-22 — 운영 사고 1건 후 90 → 120 으로 상향. 1115 ETF 가격 수집이
-// 약 6분 8초 (368s) 걸려 90 × 4s = 360s 상한을 8초 초과했고, 그 결과 frontend
-// 가 fail 표시했지만 백엔드는 그 사이 정상 완료한 사례를 차단.
-const POLL_MAX_TICKS = 120; // 8분 안전 상한
-
 const DASH = "-";
-
-function describeError(e: unknown): string {
-  if (e instanceof ApiConfigError) return `구성 오류: ${e.message}`;
-  if (e instanceof ApiRequestError) {
-    return `요청 실패(HTTP ${e.httpStatus}): ${e.message}`;
-  }
-  return `알 수 없는 오류: ${(e as Error).message}`;
-}
 
 function fmt(value: string | null | undefined): string {
   if (value === null || value === undefined || value === "") return DASH;
@@ -220,12 +194,16 @@ interface FilterUiState {
   excludeFutures: boolean;
 }
 
-const DEFAULT_FILTER_UI: FilterUiState = {
-  excludeInverse: DEFAULT_MARKET_TOPN_FILTERS.exclude_inverse,
-  excludeLeveraged: DEFAULT_MARKET_TOPN_FILTERS.exclude_leveraged,
-  excludeSynthetic: DEFAULT_MARKET_TOPN_FILTERS.exclude_synthetic,
-  excludeFutures: DEFAULT_MARKET_TOPN_FILTERS.exclude_futures,
-};
+// POC6-27 — 첫 조건은 탭 공유 저장소에서(탭을 처음 열면 저장 기본 기간 · 기본 방향 · 기본 제외 4종).
+function sharedFilterUi(): FilterUiState {
+  const f = getMarketCondition().filters;
+  return {
+    excludeInverse: f.exclude_inverse,
+    excludeLeveraged: f.exclude_leveraged,
+    excludeSynthetic: f.exclude_synthetic,
+    excludeFutures: f.exclude_futures,
+  };
+}
 
 // 2026-06-08 — FilterCard 제거 (사용자 요청: 후보 정제 옵션 별도 카드 삭제,
 // TopControlsRow 가 갱신 버튼 옆에 체크박스를 함께 배치).
@@ -244,12 +222,24 @@ interface MarketDiscoveryViewProps {
 export default function MarketDiscoveryView({
   onNavigate,
 }: MarketDiscoveryViewProps = {}) {
-  const [refreshUi, setRefreshUi] = useState<RefreshUiState>({ kind: "idle" });
-  const [filters, setFilters] = useState<FilterUiState>(DEFAULT_FILTER_UI);
+  const [filters, setFilters] = useState<FilterUiState>(sharedFilterUi);
   // POC5-26 — 기본 조회 기준(이 브라우저 저장)을 상태 초기값에서 한 번 읽는다 → 첫 조회부터 그 기준.
+  // POC6-27 — 같은 탭에서 이미 고른 조건이 있으면 그 조건(공유 저장소 · 처음이면 저장 기본 기간과 같음).
   const basisDefault = useMarketBasisDefault();
-  const [basis, setBasis] = useState<MarketBasis>(basisDefault.initial.basis);
-  const [order, setOrder] = useState<MarketOrder>(DEFAULT_MARKET_ORDER);
+  const [basis, setBasis] = useState<MarketBasis>(() => getMarketCondition().basis);
+  const [order, setOrder] = useState<MarketOrder>(() => getMarketCondition().order);
+  useEffect(() => {
+    setMarketCondition({
+      basis,
+      order,
+      filters: {
+        exclude_inverse: filters.excludeInverse,
+        exclude_leveraged: filters.excludeLeveraged,
+        exclude_synthetic: filters.excludeSynthetic,
+        exclude_futures: filters.excludeFutures,
+      },
+    });
+  }, [basis, order, filters]);
   // POC5-12 — 시장 TOP N 조회 · 순번 · 받은 화면 유지 · 최신 입력으로 다시 읽기(hook).
   const { state, reloadError, reloadLatest } = useMarketTopnLoad(filters, basis, order, describeError);
   // 2026-08-16 — RelativeUpsideRunCard 를 ML 실험 메뉴로 옮기면서 이 화면이 들고 있던
@@ -269,9 +259,6 @@ export default function MarketDiscoveryView({
       ? heldTickerSet(holdingsQ.data.items)
       : undefined;
   const [selectedCandidate, setSelectedCandidate] = useState<string | null>(null);
-  const pollTickRef = useRef<number>(0);
-  const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const pollGenRef = useRef(0); // POC5-12 — 멈춘 뒤 온 이전 상태 응답은 버린다(새 갱신 확인을 끊지 않게)
 
   const handleFiltersChange = useCallback((next: FilterUiState) => {
     setFilters(next);
@@ -292,18 +279,16 @@ export default function MarketDiscoveryView({
     [basis],
   );
 
-  const stopPolling = useCallback(() => {
-    pollGenRef.current += 1;
-    if (pollTimerRef.current !== null) {
-      clearInterval(pollTimerRef.current);
-      pollTimerRef.current = null;
-    }
-    pollTickRef.current = 0;
-  }, []);
-
-  useEffect(() => {
-    return () => stopPolling();
-  }, [stopPolling]);
+  // POC6-27 — VIX 다시 받기 hook 과 갱신 hook 이 서로의 상태를 쓴다(받은 상태 · 넘겨받기는 ref 로 잇는다).
+  const vixSinkRef = useRef<{
+    absorb: (st: MarketRefreshStatusResponse) => void;
+    takeOver: ReturnType<typeof useMarketVixRetry>["takeOver"];
+  } | null>(null);
+  const { refreshUi, start: handleStartRefresh } = useMarketRefresh({
+    onCompleted: reloadLatest,
+    onStatus: (st) => vixSinkRef.current?.absorb(st),
+    takeOver: (started) => vixSinkRef.current?.takeOver(started) ?? false,
+  });
 
   const vixRetry = useMarketVixRetry({
     fullRefreshBusy: refreshUi.kind === "starting" || refreshUi.kind === "running",
@@ -312,124 +297,7 @@ export default function MarketDiscoveryView({
       reloadLatest();
     },
   });
-  const absorbVixStatus = vixRetry.absorbStatus;
-  const takeOverVixRetry = vixRetry.takeOver;
-
-  const applyStatus = useCallback(
-    (status: MarketRefreshStatusResponse) => {
-      absorbVixStatus(status);
-      if (status.status === "running") {
-        setRefreshUi({ kind: "running", refreshId: status.refresh_id ?? null });
-        return;
-      }
-      if (status.status === "completed") {
-        stopPolling();
-        setRefreshUi({
-          kind: "completed",
-          refreshId: status.refresh_id ?? null,
-          note: status.error_summary ?? null,
-        });
-        // 갱신 성공 시에만 Dashboard 의 시장 읽기 무효화 (failed 분기는 무효화
-        // 안 함 — §4.5 "변경 실패 시 무효화 금지").
-        for (const k of MARKET_INVALIDATION_KEYS) invalidateQueries(k);
-        reloadLatest();
-        return;
-      }
-      if (status.status === "failed") {
-        stopPolling();
-        setRefreshUi({
-          kind: "failed",
-          message: status.error_summary ?? "원인 미상",
-        });
-        return;
-      }
-      if (status.status === "skipped_cooldown") {
-        stopPolling();
-        setRefreshUi({
-          kind: "cooldown",
-          cooldownRemainingSeconds: status.cooldown_remaining_seconds,
-        });
-        return;
-      }
-      // idle — 폴링 종료
-      stopPolling();
-      setRefreshUi({ kind: "idle" });
-    },
-    [stopPolling, reloadLatest, absorbVixStatus],
-  );
-
-  const startPolling = useCallback(() => {
-    stopPolling();
-    const gen = pollGenRef.current;
-    pollTimerRef.current = setInterval(async () => {
-      pollTickRef.current += 1;
-      if (pollTickRef.current > POLL_MAX_TICKS) {
-        // 2026-05-22 — 운영 사고 1건 후 polling 상한 진입 시점에 한 번 더 status
-        // 명시 조회. 백엔드가 polling tick 사이의 짧은 틈에 완료했지만 frontend
-        // 가 fail 표시로 가버리는 케이스 차단. applyStatus 가 completed / failed /
-        // cooldown / idle 모두 처리하므로 결과를 그대로 신뢰한다.
-        stopPolling();
-        try {
-          const finalStatus = await fetchMarketRefreshStatus();
-          applyStatus(finalStatus);
-          if (
-            finalStatus.status === "completed" ||
-            finalStatus.status === "failed" ||
-            finalStatus.status === "skipped_cooldown" ||
-            finalStatus.status === "idle"
-          ) {
-            return;
-          }
-        } catch {
-          // 마지막 조회마저 실패하면 아래 fallback fail 표시.
-        }
-        setRefreshUi({
-          kind: "failed",
-          message: "상태 확인 시간이 너무 길어졌습니다. 잠시 후 다시 시도하세요.",
-        });
-        return;
-      }
-      try {
-        const status = await fetchMarketRefreshStatus();
-        if (gen !== pollGenRef.current) return;
-        applyStatus(status);
-      } catch (e) {
-        if (gen !== pollGenRef.current) return;
-        stopPolling();
-        setRefreshUi({ kind: "failed", message: describeError(e) });
-      }
-    }, POLL_INTERVAL_MS);
-  }, [stopPolling, applyStatus]);
-
-  const handleStartRefresh = useCallback(async () => {
-    setRefreshUi({ kind: "starting" });
-    const gen = pollGenRef.current; // 화면을 떠나면 올라간다(POST 응답이 늦어도 상태 확인을 새로 열지 않음)
-    let started: MarketRefreshStartResponse;
-    try {
-      started = await postMarketRefresh();
-    } catch (e) {
-      setRefreshUi({ kind: "failed", message: describeError(e) });
-      return;
-    }
-    if (gen !== pollGenRef.current) return;
-    if (takeOverVixRetry(started)) {
-      setRefreshUi({ kind: "idle" }); // POC5-12 — 'VIX 다시 받기'가 도는 중이라 거절됨 → 그 진행을 보인다
-      return;
-    }
-    if (started.status === "accepted" || started.status === "running") {
-      setRefreshUi({ kind: "running", refreshId: started.refresh_id ?? null });
-      startPolling();
-      return;
-    }
-    if (started.status === "skipped_cooldown") {
-      setRefreshUi({
-        kind: "cooldown",
-        cooldownRemainingSeconds: started.cooldown_remaining_seconds,
-      });
-      return;
-    }
-    setRefreshUi({ kind: "failed", message: started.message });
-  }, [startPolling, takeOverVixRetry]);
+  vixSinkRef.current = { absorb: vixRetry.absorbStatus, takeOver: vixRetry.takeOver };
 
   const buttonDisabled =
     refreshUi.kind === "starting" ||

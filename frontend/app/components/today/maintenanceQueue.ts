@@ -40,6 +40,8 @@ export type MaintenanceItem = {
   // ⓘ 근거: 무엇과 무엇을 비교/확인해 최신이 아닌지 (실제 값 기반 · 임시 숫자 없음).
   // 정비 큐 판정 근거의 정식 표준은 후속 설계에서 확정 (임시 문구).
   reason?: string;
+  // POC6-27 — 위 「자료 최신화 필요」의 코스피 줄과 같은 항목(「자료 확인」 목록에서는 겹치지 않게 뺀다).
+  source?: "kospi";
 };
 
 export function collectMaintenance(
@@ -109,6 +111,7 @@ export function collectMaintenance(
         target: "market_discovery",
         actionLabel: "시장 자료 업데이트로",
         reason: kospiStatusText(market.data.market_context?.kospi),
+        source: "kospi",
       });
     }
   }

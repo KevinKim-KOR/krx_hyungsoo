@@ -101,7 +101,7 @@ describe("최대 3개 비중 · 손익 = 종목 합산 (POC5-09 설계 §10-2-2)
     screen.getAllByRole("button", { name: /수치 더보기$/ }).forEach((b) => fireEvent.click(b));
     const weight = `비중 ${KODEX_WEIGHT.toFixed(1)}%`;
     const pnl = `손익 +${KODEX_PNL.toFixed(2)}%`;
-    const today = screen.getByLabelText("보유 · 잘 오르는 ETF 자세히").textContent ?? "";
+    const today = screen.getByLabelText("보유 자세히").textContent ?? "";
     expect(weight).toBe("비중 89.7%");
     expect(pnl).toBe("손익 +10.05%");
     expect(today).toContain(weight);
@@ -135,7 +135,7 @@ describe("최대 3개 비중 · 손익 = 종목 합산 (POC5-09 설계 §10-2-2)
     );
     // 값이 '없다'를 보는 시험은 펼친 상태에서 본다(UI-03 판정 §3).
     screen.getAllByRole("button", { name: /수치 더보기$/ }).forEach((b) => fireEvent.click(b));
-    const today = screen.getByLabelText("보유 · 잘 오르는 ETF 자세히").textContent ?? "";
+    const today = screen.getByLabelText("보유 자세히").textContent ?? "";
     expect(today).toContain("KODEX 200");
     expect(today).not.toMatch(/비중|손익 /);
   });

@@ -123,6 +123,27 @@ export interface LedgerFeedbackInput {
   memo?: string | null;
 }
 
+// POC6-27 — 종류별 마지막 실행(사본 읽기 전용 · SSH 0 · 건너뜀 · 실패 포함). 오늘 기록 여부는 화면이
+// today_kst · 동기화 날짜 · 실행 날짜를 함께 보고 정한다(같은 날 동기화여도 실행이 과거면 과거 기록).
+export interface LedgerLatestKind {
+  kind: string;
+  label: string;
+  time_kst: string | null;
+  run_date_kst: string | null;
+  delivery_status: string | null;
+  run_status: string | null;
+}
+
+export interface LedgerLatestByKind {
+  today_kst: string;
+  sync: LedgerSyncStatus;
+  kinds: LedgerLatestKind[];
+}
+
+export async function fetchLedgerLatestByKind(): Promise<LedgerLatestByKind> {
+  return request<LedgerLatestByKind>("GET", "/decision-ledger/latest-by-kind");
+}
+
 // SSH 1회(백엔드 60초) 를 포함하므로 기본 timeout(10s) 보다 길게 허용.
 const SYNC_TIMEOUT_MS = 90_000;
 

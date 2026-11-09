@@ -37,6 +37,8 @@ class MarketFlowContextResponse(BaseModel):
     # POC6-17 — 기간 비교 기준일 이유 · 수급 연결 상태(`app/supply_fx_oil_basis.py` · 네 출력 공통 문장)
     end_basis: dict[str, Any]
     flow_link: dict[str, Any]
+    # POC6-27 — 자료별 최신성(국내 T-1 대비 · WTI 관측일만 · `app/market_freshness_rows.py`)
+    freshness: Optional[dict[str, Any]] = None
 
 
 @router.get("/flow-context", response_model=MarketFlowContextResponse)

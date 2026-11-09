@@ -29,6 +29,120 @@ export interface FlowPeriod {
   start: string | null;
   end: string;
   lines: string[];
+  // POC6-27 — 이미 응답에 있던 구조값(화면 숫자 칸 · 복사문이 씀 · 없으면 '확인 불가')
+  covered?: boolean;
+  kospi?: FlowChange | null;
+  investors?: Partial<Record<FlowInvestor, FlowPeriodSum>>;
+}
+
+export interface FlowChange {
+  from_date: string;
+  from: number;
+  to_date: string;
+  to: number;
+  diff: number;
+  pct: number | null;
+}
+
+export interface FlowPeriodSum {
+  sum: number;
+  days: number;
+  expected: number;
+  partial: boolean;
+}
+
+// POC6-27 — 서버가 계산에 쓴 값을 문장과 따로 내보낸 구조 칸(추가 칸 · 옛 응답에는 없음 · 문장은 그대로).
+export interface FlowStep {
+  from_date: string;
+  diff: number;
+  pct: number | null;
+}
+
+export interface FlowRange {
+  dir: "위" | "아래";
+  bound: number; // 비교 기준값(직전 20개 관측의 최고 · 최저) — 그날 종가가 아니다
+  bound_date: string;
+}
+
+export interface FlowPriceObs {
+  date: string;
+  value: number; // 그날 관측값(종가)
+  unit: string;
+  d1: FlowStep | null;
+  d5: FlowStep | null;
+  range: FlowRange | null;
+}
+
+export interface FlowNetObs {
+  date: string;
+  value: number;
+  unit: string;
+  ratio: number | null;
+  base_from: string | null;
+  base_to: string | null;
+  note: string | null;
+}
+
+export type FlowSeriesKey = "kospi" | "usdkrw" | "wti" | "foreign" | "institution";
+
+export interface FlowShortLine {
+  text: string;
+  flags: string[];
+  key?: FlowSeriesKey;
+  obs?: FlowPriceObs | FlowNetObs | null;
+}
+
+export interface FlowEvent {
+  date: string;
+  series: string;
+  kind: string;
+  text: string;
+  key?: FlowSeriesKey;
+  value?: number;
+  unit?: string;
+  dir?: "위" | "아래";
+  bound?: number;
+  bound_date?: string;
+  delta?: number;
+  ratio?: number | null;
+  base_from?: string | null;
+  base_to?: string | null;
+  zero_base?: boolean;
+}
+
+export interface FlowWindowSum {
+  sum: number;
+  avg?: number;
+  from: string;
+  to: string;
+}
+
+export interface FlowWindows {
+  lines: string[];
+  trend?: string | null;
+  trend_short?: string | null;
+  foreign20?: { recent: FlowWindowSum; previous: FlowWindowSum } | null;
+  r60?: Partial<Record<"foreign" | "individual" | "institution", FlowWindowSum | null>> | null;
+}
+
+export type FlowFreshState = "fresh" | "late" | "check" | "observed";
+
+export interface FlowFreshItem {
+  key: string;
+  label: string;
+  last_date: string | null;
+  expected: string | null;
+  basis: string;
+  state: FlowFreshState;
+  behind: number | null;
+  reason: string | null;
+}
+
+export interface FlowFreshness {
+  today_kst: string;
+  expected_kr: string | null;
+  expected_kr_basis: "calendar" | "weekday_fallback" | null;
+  items: FlowFreshItem[];
 }
 
 export interface MarketFlowContext {
@@ -48,9 +162,9 @@ export interface MarketFlowContext {
     };
   };
   periods: Partial<Record<FlowPeriodCode, FlowPeriod>>;
-  windows: { lines: string[] };
-  short_lines: { text: string; flags: string[] }[];
-  events: { date: string; series: string; kind: string; text: string }[];
+  windows: FlowWindows;
+  short_lines: FlowShortLine[];
+  events: FlowEvent[];
   // 최근 5개 관측 사건을 모든 자료에서 비교했는지(검증자 r1 F2). 사건이 없을 때 보일 문장(empty_text) ·
   // 확인 못 한 자료 문장(unchecked_text)은 서버가 만든다 — '큰 변화 없음'은 모두 비교했을 때만.
   event_check: {
@@ -68,6 +182,8 @@ export interface MarketFlowContext {
   // POC6-17 — 기간 비교 기준일 이유 · 수급 연결 상태(서버 한 곳에서 만든 문장 · 네 출력 공통)
   end_basis?: FlowEndBasis;
   flow_link?: FlowLink;
+  // POC6-27 — 자료별 최신성(서버가 기대 기준일을 정하고 화면은 비교만 · 옛 응답에는 없음)
+  freshness?: FlowFreshness;
 }
 
 export interface FlowEndBasis {

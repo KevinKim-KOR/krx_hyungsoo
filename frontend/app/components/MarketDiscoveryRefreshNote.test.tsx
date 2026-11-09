@@ -18,6 +18,7 @@ vi.mock("@/lib/api", async (importOriginal) => {
 });
 
 import MarketDiscoveryView from "./MarketDiscoveryView";
+import { getStartedRefreshId, setStartedRefreshId } from "@/lib/marketRefreshMemory";
 
 function topn() {
   return {
@@ -80,5 +81,36 @@ describe("시장 데이터 갱신 완료 사유 표시 (POC5-10)", () => {
     const text = document.body.textContent ?? "";
     expect(text).toContain("갱신 완료.");
     expect(text).not.toContain("확인 필요");
+  });
+
+  // POC6-27 판정 Q7 — 이 탭에서 시작한 갱신은 화면을 떠났다 돌아와도 이어 본다(새로 시작하지 않음).
+  it("시작한 갱신이 진행 중이면 돌아왔을 때 '갱신 중'을 이어 보이고 끝나면 완료 처리(POST 1번)", async () => {
+    fetchMarketRefreshStatus.mockResolvedValue({ status: "running", refresh_id: "r1", cooldown_remaining_seconds: 0 });
+    const view = render(<MarketDiscoveryView onNavigate={() => undefined} />);
+    await flush();
+    fireEvent.click(screen.getAllByRole("button", { name: "최신 시장 데이터 갱신" })[0]);
+    await flush();
+    expect(getStartedRefreshId()).toBe("r1");
+    view.unmount(); // 다른 메뉴로
+    render(<MarketDiscoveryView onNavigate={() => undefined} />);
+    await flush();
+    expect(document.body.textContent).toContain("갱신 중... (r1)");
+    fetchMarketRefreshStatus.mockResolvedValue({ status: "completed", refresh_id: "r1", error_summary: null, cooldown_remaining_seconds: 0 });
+    await act(async () => {
+      vi.advanceTimersByTime(4100);
+    });
+    await flush();
+    expect(document.body.textContent).toContain("갱신 완료.");
+    expect(postMarketRefresh).toHaveBeenCalledTimes(1);
+    expect(getStartedRefreshId()).toBeNull();
+  });
+
+  it("이 탭에서 시작한 갱신이 없으면 돌아와도 원래 버튼(새 상태 확인 · 시작 없음)", async () => {
+    setStartedRefreshId(null);
+    fetchMarketRefreshStatus.mockResolvedValue({ status: "running", refresh_id: "other", cooldown_remaining_seconds: 0 });
+    render(<MarketDiscoveryView onNavigate={() => undefined} />);
+    await flush();
+    expect(document.body.textContent).not.toContain("갱신 중...");
+    expect(postMarketRefresh).not.toHaveBeenCalled();
   });
 });

@@ -75,6 +75,8 @@ class OciStartupSnapshot:
     oci_param_read_at: Optional[str] = None
     oci_param_source: str = "startup"
     oci_param_unconfirmed: bool = False
+    # POC6-27 — crontab 에서 읽은 push-kind 목록(정렬). 읽지 못했으면 None(예약 '확인 불가' — 누락 아님).
+    scheduled_kinds: Optional[list[str]] = None
 
 
 # 프로세스 로컬 캐시. 기동 시 1회 채워지고 이후 재조회하지 않는다.
@@ -134,6 +136,36 @@ _REQUIRED_PUSH_KINDS = (
     "holdings_briefing",
     "holdings_risk_alert",
 )
+
+
+# POC6-27 — 「오늘의 투자 점검」 예약 줄 이름(필수 3종 · 순서 = _REQUIRED_PUSH_KINDS).
+SCHEDULE_LABELS = {
+    "market_briefing": "시장 브리핑",
+    "holdings_briefing": "보유 브리핑",
+    "holdings_risk_alert": "장중 급등락",
+}
+
+
+def schedule_rows(snap: "OciStartupSnapshot") -> list[dict]:
+    """필수 3종 예약 상태 — registered · missing · unknown.
+
+    기동 읽기 실패 · 목록 없음(등록 0 · `crontab -l` 실패와 구분 불가 = 기존 overall UNKNOWN)은
+    모두 unknown 이다(확인 실패를 '누락'으로 세지 않는다 · PLAN 판정 §4).
+    """
+    kinds = snap.scheduled_kinds
+    known = bool(snap.reachable and kinds)
+    return [
+        {
+            "kind": k,
+            "label": SCHEDULE_LABELS[k],
+            "state": (
+                ("registered" if k in (kinds or []) else "missing")
+                if known
+                else "unknown"
+            ),
+        }
+        for k in _REQUIRED_PUSH_KINDS
+    ]
 
 
 def _classify_schedule(scheduled_kinds: set[str]) -> tuple[str, list[str]]:
@@ -302,6 +334,7 @@ def refresh_snapshot() -> OciStartupSnapshot:
         ),
         oci_param_values=oci_param_values,
         oci_param_read_at=checked_at if oci_param_values else None,
+        scheduled_kinds=sorted(scheduled_kinds),
     )
     return _snapshot
 

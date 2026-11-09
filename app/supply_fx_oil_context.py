@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Optional
 
 from app.market_data_store import DEFAULT_DB_PATH
+from app.market_freshness_rows import freshness_from_series
 from app.supply_fx_oil_basis import end_basis, kst_stamp, read_flow_link
 from app.supply_fx_oil_calc import (
     DEFAULT_PERIOD,
@@ -41,6 +42,7 @@ from app.supply_fx_oil_calc import (
     window,
     won,
 )
+from app.supply_fx_oil_fields import flow_obs, keyed, line, price_obs, windows_fields
 from app.supply_fx_oil_store import (
     USDKRW,
     WTI,
@@ -85,7 +87,10 @@ def _eok_points(points: list[tuple[str, int]]) -> list[tuple[str, float]]:
 
 
 def build_market_flow_context(
-    *, db_path: Path = DEFAULT_DB_PATH, now: Optional[datetime] = None
+    *,
+    db_path: Path = DEFAULT_DB_PATH,
+    now: Optional[datetime] = None,
+    calendar_dir: Optional[Path] = None,
 ) -> dict:
     now = now or datetime.now(timezone.utc)
     kospi = read_benchmark_series("KOSPI", db_path=db_path)
@@ -101,7 +106,7 @@ def build_market_flow_context(
         "has_flows": bool(flows["foreign"]),
         "series": {},
         "periods": {},
-        "windows": {"lines": []},
+        "windows": {"lines": [], "foreign20": None, "r60": None},
         "short_lines": [],
         "events": [],
         "event_check": {
@@ -122,6 +127,8 @@ def build_market_flow_context(
     out["end_basis"] = end_basis(
         D=None, kospi_E=None, flows_E=flows_E, common_ok=False, others=[]
     )
+    # POC6-27 — 자료별 최신성(국내 T-1 대비 · WTI 는 관측일만) · 모든 반환 경로
+    out["freshness"] = freshness_from_series(now, flows_E, fx, oil, calendar_dir)
     if not kospi:
         msg = "코스피 저장 자료가 없어 계산하지 않음(시장 갱신 뒤 다시 확인)"
         out["today_lines"] = [f"시장 흐름: {msg}"]
@@ -262,7 +269,7 @@ def _trend(a: dict, b: dict) -> tuple[str, str]:
 
 def _windows(out: dict, flows: dict, kdates: list[str], D: str) -> None:
     if not out["has_flows"]:
-        out["windows"] = {"lines": [NO_FLOW]}
+        out["windows"] = {"lines": [NO_FLOW], **windows_fields(None)}
         return
     w = {
         k: {
@@ -297,7 +304,8 @@ def _windows(out: dict, flows: dict, kdates: list[str], D: str) -> None:
                 )
             )
         )
-    out["windows"] = {"lines": lines, "trend": trend, "trend_short": short}
+    out["windows"] = dict(lines=lines, trend=trend, trend_short=short)
+    out["windows"].update(windows_fields(w))  # POC6-27 구조 칸
 
 
 def _coverage_reason(checked: int, total: int) -> Optional[str]:
@@ -322,7 +330,7 @@ def _short(out: dict, series: dict, flows: dict, kdates: list[str], D: str) -> N
     for key, label, unit in PRICE:
         pts = series[key]
         if not pts:
-            rows.append({"text": f"{label} 자료 없음", "flags": []})
+            rows.append(line(f"{label} 자료 없음", [], key))
             cover(label, "자료 없음")
             continue
         cover(label, _coverage_reason(*price_event_coverage(pts)))
@@ -355,12 +363,12 @@ def _short(out: dict, series: dict, flows: dict, kdates: list[str], D: str) -> N
             flags.append(f"직전 20개 관측 범위 {st['range']['dir']}")
         if st["date"] < D:
             flags.append(f"늦음 — 최신 {md(st['date'])}(D {md(D)} 보다 이전)")
-        rows.append({"text": " · ".join(parts), "flags": flags})
-        events += price_events(pts, label, unit)
+        rows.append(line(" · ".join(parts), flags, key, price_obs(st, unit)))
+        events += keyed(price_events(pts, label, unit), key)
     for k, label in SHORT_INVESTORS:
         net = flows[k]
         if not net:
-            rows.append({"text": f"{label} 수급 자료 없음", "flags": []})
+            rows.append(line(f"{label} 수급 자료 없음", [], k))
             cover(label, "자료 없음")
             continue
         cover(label, _coverage_reason(*flow_event_coverage(net, kdates)))
@@ -378,10 +386,9 @@ def _short(out: dict, series: dict, flows: dict, kdates: list[str], D: str) -> N
                 else []
             )
         )
-        rows.append(
-            {"text": f"{label} {md(f['date'])} {way} {won(f['value'])}", "flags": flags}
-        )
-        events += flow_events(net, label, kdates)
+        text = f"{label} {md(f['date'])} {way} {won(f['value'])}"
+        rows.append(line(text, flags, k, flow_obs(f)))
+        events += keyed(flow_events(net, label, kdates), k)
     out["short_lines"] = rows
     out["events"] = sorted(events, key=lambda e: e["date"], reverse=True)
     why = " · ".join(f"{u['label']} {u['reason']}" for u in unchecked)

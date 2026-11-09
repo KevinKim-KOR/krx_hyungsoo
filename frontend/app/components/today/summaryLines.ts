@@ -20,24 +20,21 @@ import type {
   NavDiscountLatestResponse,
   PriceSeriesResponse,
 } from "@/lib/api";
-import { flowBasisNote, flowRetryHelps, type MarketFlowContext } from "@/lib/api/marketFlow";
-import { kospiStatusView } from "@/lib/kospiStatus";
+import { flowRetryHelps, type MarketFlowContext } from "@/lib/api/marketFlow";
 import type { MenuKey } from "../LeftSidebar";
 import { kstText } from "../MLCardParts";
 import { forwardConclusion } from "../ml_forward/forwardText";
-import { PARTIAL_EVAL_TEXT, fmtShare } from "../holdings_risk_evidence/declineSummary";
-import { FAILURE_TEXT, PARTIAL_JUDGE_TEXT, riskStateFromQueries } from "../holdings_risk_evidence/riskCombination";
 import type { MaintenanceItem } from "./maintenanceQueue";
-import { fmtKstDate, fmtPct, regimeLabelKo } from "./todayHelpers";
 
-export const SCROLL_KOSPI = "tc-kospi-area";
-export const SCROLL_MAINT = "tc-maint-area";
 
 export type SummaryTone = "ok" | "warn" | "muted" | "bad" | "info";
 export type SummaryTarget =
   | { kind: "menu"; key: MenuKey }
   | { kind: "scroll"; id: string }
-  | { kind: "reload" };
+  | { kind: "reload" }
+  // POC6-27 — 상단 두 최신화 버튼과 같은 작업(「자료 최신화 필요」 카드 안 할 일 버튼 · 판정 Q2 경로 보존)
+  | { kind: "market_refresh" }
+  | { kind: "holdings_refresh" };
 export type SummaryAction = { label: string; target: SummaryTarget; primary: boolean };
 export type SummaryRow = {
   id: "market" | "holdings" | "candidates" | "data" | "research";
@@ -67,11 +64,6 @@ const menu = (label: string, key: MenuKey, primary: boolean): SummaryAction => (
   target: { kind: "menu", key },
   primary,
 });
-const scroll = (label: string, id: string, primary: boolean): SummaryAction => ({
-  label,
-  target: { kind: "scroll", id },
-  primary,
-});
 
 // 성공 시각(ms) → 'YYYY-MM-DD HH:MM:SS'(한국 시각). 없으면 '조회 시각 미확인'(판정 §4).
 export function readTimeText(ms: number | undefined): string {
@@ -79,133 +71,25 @@ export function readTimeText(ms: number | undefined): string {
   return kstText(new Date(ms).toISOString()) ?? "조회 시각 미확인";
 }
 
-function staleOf(label: string, q: QueryState<unknown>): string | null {
+export function staleOf(label: string, q: QueryState<unknown>): string | null {
   if (q.phase !== "success" || !q.stale) return null;
   return `${label}: 다시 읽기 실패 · ${readTimeText(q.successAt)}에 읽은 값을 표시 중`;
 }
 
 // 첫 조회부터 실패해 이전 값도 없는 원천(검증자 r1 F1 — 줄 안에서 빠지지 않게).
-function failOf(label: string, q: QueryState<unknown>): string | null {
+export function failOf(label: string, q: QueryState<unknown>): string | null {
   return q.phase === "error" ? `${label}: 불러오지 못했습니다(이전 값 없음)` : null;
 }
 
 // 줄 아래 상태 메모(다시 읽기 실패 · 첫 조회 실패)를 한 줄로.
-function joinStale(...notes: (string | null)[]): string | null {
+export function joinStale(...notes: (string | null)[]): string | null {
   const xs = notes.filter((x): x is string => !!x);
   return xs.length ? xs.join(" / ") : null;
 }
 
-// ── 시장 흐름 ────────────────────────────────────────────────────────────────
-export function marketRow(
-  market: QueryState<MarketTopNResponse>,
-  flow: QueryState<MarketFlowContext>,
-  series?: QueryState<PriceSeriesResponse>,
-): SummaryRow {
-  const actions = [
-    menu("시장 흐름 자세히", "market_discovery", true),
-    scroll("KOSPI 차트 ↓", SCROLL_KOSPI, false),
-  ];
-  const flowText =
-    flow.phase === "success"
-      ? (flow.data.today_lines[0] ?? "수급 · 환율 · 유가 요약 문장이 없습니다")
-      : flow.phase === "error"
-        ? "수급 · 환율 · 유가 자료를 불러오지 못했습니다"
-        : "수급 · 환율 · 유가 불러오는 중";
-  // 서버 둘째 문장(최근 큰 변화 또는 확인 못 한 자료 · 판정 §5 — 일부 결측 구분)을 버리지 않는다(검토 지적 7).
-  const flowSub = flow.phase === "success" ? (flow.data.today_lines[1] ?? null) : null;
-  const note = flow.phase === "success" ? flowBasisNote(flow.data) : null;
-  const stale = joinStale(
-    staleOf("수급 · 환율 · 유가", flow),
-    series ? staleOf("KOSPI 가격 흐름", series) : null,
-    series ? failOf("KOSPI 가격 흐름", series) : null,
-  );
-  if (market.phase === "loading" || market.phase === "idle") {
-    return { id: "market", area: "시장 흐름", tone: "muted", badge: "불러오는 중", text: flowText, sub: flowSub, note, basis: null, staleNote: stale, actions };
-  }
-  if (market.phase === "error") {
-    return {
-      id: "market",
-      area: "시장 흐름",
-      tone: "bad",
-      badge: "불러오지 못함",
-      text: `시장 판정 · KOSPI를 불러오지 못했습니다 · ${flowText}`,
-      sub: flowSub,
-      note,
-      basis: "시장 판정 · 요즘 잘 오르는 ETF 목록은 [요약 다시 읽기]로 다시 계산하지 않습니다 — 브라우저를 새로 고치면 다시 읽습니다",
-      staleNote: stale,
-      actions,
-    };
-  }
-  // KOSPI 카드 '기존 시장 판정' 줄과 같은 조건 · 같은 값(시장 배경 응답이 있으면 상태가 partial 이어도 그대로).
-  const ctx = market.data.market_context ?? null;
-  const usable = !!ctx;
-  const regime = ctx ? regimeLabelKo(ctx.regime_code, ctx.regime_label) : null;
-  const streak = ctx ? ctx.regime_streak : null;
-  // 연속 일수가 없으면 KOSPI 카드처럼 '지속일 자료 없음'(검토 지적 10)
-  const badge = !regime
-    ? "시장 판정 확인 불가"
-    : streak && streak.streak_days != null
-      ? `${regime} · ${streak.streak_days}거래일째${streak.at_least ? " 이상" : ""}`
-      : `${regime} · 지속일 자료 없음`;
-  const kv = kospiStatusView(ctx?.kospi, market.phase);
-  const kospiBasis = (!kv.loading ? kv.basisLine : null) ?? "KOSPI 기준일 확인 불가";
-  // 시장 판정 날짜 = KOSPI 카드 '기존 시장 판정' 줄과 같은 값(market_context.asof · POC5-11 'KODEX200 기준일').
-  const kodexDate = usable && ctx?.asof ? `KODEX200 기준일 ${fmtKstDate(ctx.asof)}` : null;
-  return {
-    id: "market",
-    area: "시장 흐름",
-    tone: regime ? "info" : "muted",
-    badge,
-    text: `KODEX200 기준 시장 판정 · ${flowText}`,
-    sub: flowSub,
-    note,
-    basis: [kospiBasis, kodexDate, "시장 판정은 이 화면을 처음 열 때 읽은 값(다시 읽기 제외)"].filter(Boolean).join(" · "),
-    staleNote: stale,
-    actions,
-  };
-}
+// POC6-27 — 예전 '시장 흐름' 요약 줄(marketRow)은 「시장 흐름」 구역(MarketFlowBlock)이 대신한다.
 
-// ── 보유 점검 ────────────────────────────────────────────────────────────────
-export function holdingsRow(
-  holdings: QueryState<EnrichedHoldingsResult>,
-  evidence: QueryState<HoldingsMarketEvidenceResponse>,
-): SummaryRow {
-  const actions = [
-    menu("확인 근거 보기", "holdings_evidence", true),
-    menu("보유 현황 보기", "holdings", false),
-  ];
-  const stale = joinStale(staleOf("보유", holdings), staleOf("보유 근거", evidence));
-  const risk = riskStateFromQueries(holdings, evidence);
-  if (!risk) {
-    return { id: "holdings", area: "보유 점검", tone: "muted", badge: "불러오는 중", text: "보유 · 보유 근거를 불러오는 중입니다", basis: null, staleNote: stale, actions };
-  }
-  const count =
-    holdings.phase === "success" ? new Set(holdings.data.items.map((it) => it.ticker)).size : null;
-  const ref = evidence.phase === "success" ? (evidence.data.price_basis?.reference_date ?? null) : null;
-  const d0 = risk.summary;
-  const basis = [
-    count != null ? `보유 ${count}개` : null,
-    ref ? `PC 저장 가격 기준일 ${ref}` : null,
-    risk.regime ? `시장 국면(보유 근거 기준) ${risk.regime}` : null,
-    // 보유 칸 띠의 판정 범위와 같은 문장(검토 지적 6)
-    d0 ? `구간 판정 가능 ${d0.judgeable}/${d0.total}종목${risk.combo.partial ? ` · ${PARTIAL_JUDGE_TEXT}` : ""}` : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
-  if (risk.combo.holdings === "no_holdings") {
-    return { id: "holdings", area: "보유 점검", tone: "muted", badge: risk.combo.text, text: "판정할 보유 종목이 없습니다", basis: basis || null, staleNote: stale, actions };
-  }
-  if (risk.failed) {
-    return { id: "holdings", area: "보유 점검", tone: "bad", badge: "불러오지 못함", text: FAILURE_TEXT[risk.failed], basis: basis || null, staleNote: stale, actions };
-  }
-  const d = risk.summary;
-  const text = d
-    ? `PC 최근 20저장일 하락 구간 ${d.inBand}종목 · 보유 평가 비중 ${fmtShare(d.inBandShare)}` +
-      (d.evalPartial && d.inBandShare !== null ? `(${PARTIAL_EVAL_TEXT})` : "") +
-      " · 먼저 볼 보유는 아래 「보유 · 잘 오르는 ETF 자세히」"
-    : "하락 구간 요약을 만들 수 없습니다";
-  return { id: "holdings", area: "보유 점검", tone: "info", badge: risk.combo.text, text, basis: basis || null, staleNote: stale, actions };
-}
+// POC6-27 — 예전 '보유 점검' 요약 줄(holdingsRow)은 「보유 점검」 카드(today/CheckCards)가 대신한다.
 
 // ── 잘 오르는 ETF(대시보드 고정 조건 목록 · 판정 §5 · 화면 글자에 '후보' 안 씀 = AC-7) ─────────────────────────
 const BASIS_WORD: Record<string, string> = {
@@ -214,9 +98,11 @@ const BASIS_WORD: Record<string, string> = {
   three_month: "3개월 수익률",
 };
 
+// POC6-27 판정 §4 — 응답의 실제 방향으로 적는다(오름차순 = '수익률 낮은 순' · 예전 '상위'는 방향을 보지 않았음).
 export function candidateLabel(data: MarketTopNResponse): string {
   const word = BASIS_WORD[data.basis ?? ""] ?? `수익률(기준 ${data.basis ?? "미확인"})`;
-  return `${word} 상위 ${data.candidates.length}개`;
+  const dir = data.order === "asc" ? "낮은 순" : data.order === "desc" ? "높은 순" : "방향 확인 불가";
+  return `${word} ${dir} ${data.candidates.length}개`;
 }
 
 // 종목별 실제 시작 · 끝일이 모두 같을 때만 하나의 기간(다르면 그 사실 · 판정 §5).
@@ -245,40 +131,7 @@ export function candidateConditions(data: MarketTopNResponse): string {
   return [ex.length ? `${ex.join(" · ")} 제외` : "제외 조건 없음", cap].filter(Boolean).join(" · ");
 }
 
-export function candidatesRow(market: QueryState<MarketTopNResponse>): SummaryRow {
-  const actions = [
-    menu("요즘 잘 오르는 ETF", "market_discovery", true),
-    menu("ETF 비교하기", "workbench", false),
-  ];
-  const base = { id: "candidates" as const, area: "잘 오르는 ETF", staleNote: null, actions };
-  if (market.phase === "loading" || market.phase === "idle") {
-    return { ...base, tone: "muted", badge: "불러오는 중", text: "요즘 잘 오르는 ETF 목록을 불러오는 중입니다", basis: null };
-  }
-  if (market.phase === "error") {
-    return { ...base, tone: "bad", badge: "불러오지 못함", text: "요즘 잘 오르는 ETF 목록을 불러오지 못했습니다", basis: "브라우저를 새로 고치면 다시 읽습니다" };
-  }
-  const data = market.data;
-  if (data.status !== "ok") {
-    // 원시 진단(서버 오류 원문)은 요약에 옮기지 않는다 — 아래 구역과 같은 '확인 불가'(검토 지적 8a)
-    return { ...base, tone: "muted", badge: "확인 불가", text: "요즘 잘 오르는 ETF 목록을 확인할 수 없습니다", basis: "브라우저를 새로 고치면 다시 읽습니다" };
-  }
-  const c = data.candidates;
-  const basis = `${candidatePeriod(c)} · ${candidateConditions(data)} · 「요즘 잘 오르는 ETF」에서 고른 기간 · 정렬과 다를 수 있음`;
-  if (c.length === 0) {
-    return { ...base, tone: "muted", badge: candidateLabel(data), text: "조건에 맞는 ETF가 없습니다", basis };
-  }
-  const top = c[0];
-  const ret = top.selected_return_pct;
-  return {
-    ...base,
-    tone: "info",
-    badge: candidateLabel(data),
-    text:
-      `1위 ${top.name ?? top.ticker} ${typeof ret === "number" ? fmtPct(ret) : "수익률 확인 불가"}` +
-      (c.length > 1 ? ` 외 ${c.length - 1}개 · 상위 ${Math.min(3, c.length)}개는 아래` : ""),
-    basis,
-  };
-}
+// POC6-27 — 예전 '잘 오르는 ETF' 요약 줄(candidatesRow)은 「잘 오르는 ETF」 카드가 대신한다.
 
 // ── 자료 확인(정비 항목 · 투자 위험 표시 아님) ────────────────────────────────
 // unknownSources = 정비 점검에 쓰는 원천 중 첫 조회에 실패해 정비 항목에 나타나지 않는 것(보유 · 시장 목록).
@@ -291,7 +144,8 @@ export function dataRow(
   evidence?: QueryState<HoldingsMarketEvidenceResponse>,
   unknownSources: string[] = [],
 ): SummaryRow {
-  const actions = [scroll("자료 최신화 목록 ↓", SCROLL_MAINT, false)];
+  // POC6-27 — 정비 목록은 이 줄 바로 아래 펼침(「자료 업데이트 목록」)이라 스크롤 버튼이 없다.
+  const actions: SummaryAction[] = [];
   // 정비 항목을 만든 원천 중 다시 읽기에 실패해 이전 값을 쓰는 것(그 값을 받은 시각 · 검토 지적 3)
   const stale = joinStale(
     nav ? staleOf("ETF 기준가", nav) : null,
@@ -300,7 +154,7 @@ export function dataRow(
   if (loading) {
     return { id: "data", area: "자료 확인", tone: "muted", badge: "확인 중", text: "자료 상태를 확인하는 중입니다", basis: null, staleNote: stale, actions };
   }
-  const tail = hasTasks ? " · 해야 할 작업은 맨 위 「지금 할 일」" : "";
+  const tail = hasTasks ? " · 해야 할 작업은 맨 위 「자료 최신화 필요」" : "";
   const notChecked = unknownSources.length ? `${unknownSources.join(" · ")} 자료를 불러오지 못해 확인하지 못했습니다` : null;
   if (items.length === 0 && !notChecked) {
     return { id: "data", area: "자료 확인", tone: "ok", badge: "갱신 필요 없음", text: "기존 자료 점검에서 갱신이 필요한 항목이 없습니다", basis: null, staleNote: stale, actions };
@@ -332,7 +186,7 @@ export function dataRow(
     id: "data",
     area: "자료 확인",
     tone: "warn",
-    badge: `자료 최신화 필요 ${items.length}건`,
+    badge: `확인할 자료 ${items.length}건`,
     text: head.join(" · ") + (items.length > 2 ? ` 외 ${items.length - 2}건` : "") + (notChecked ? ` · ${notChecked}` : ""),
     basis: meaning + tail,
     staleNote: stale,
@@ -425,9 +279,9 @@ export function summaryTasks(
         flowReason,
       ].filter((x): x is string => !!x),
       doText:
-        "이동 후 [최신 시장 데이터 갱신]을 눌러 주세요. 갱신해도 다른 자료 항목이 모두 해결되는 것은 아닙니다." +
+        "[최신 시장 데이터 갱신]을 눌러 주세요(맨 위 버튼과 같은 작업). 갱신해도 다른 자료 항목이 모두 해결되는 것은 아닙니다." +
         (flowReason ? " 수급은 OCI가 모은 자료를 이 버튼으로 PC에 반영합니다(자동 실행은 보관본만 받습니다)." : ""),
-      action: menu("시장 자료 갱신 화면", "market_discovery", true),
+      action: { label: "최신 시장 데이터 갱신", target: { kind: "market_refresh" }, primary: true },
     });
   }
   const priceItems = items.filter((it) => it.task === "holdings_price");
@@ -436,8 +290,8 @@ export function summaryTasks(
       id: "holdings_price",
       title: "보유 종목 현재가를 다시 받아야 합니다.",
       reasons: priceItems.map((it) => it.text),
-      doText: "아래 「자료 최신화 필요」의 [업데이트]를 눌러 주세요.",
-      action: scroll("업데이트 위치로 ↓", SCROLL_MAINT, true),
+      doText: "[보유 현재가 업데이트]를 눌러 주세요(맨 위 버튼과 같은 작업).",
+      action: { label: "보유 현재가 업데이트", target: { kind: "holdings_refresh" }, primary: true },
     });
   }
   // [요약 다시 읽기]로 다시 읽는 원천의 실패만 '다시 읽어 주세요'(검토 지적 2)

@@ -38,8 +38,12 @@ export const HOLDINGS_INVALIDATION_KEYS = [
   DASH_KEY_HOLDINGS,
   DASH_KEY_EVIDENCE,
 ];
+// POC6-27 — 「오늘의 투자 점검」은 「요즘 잘 오르는 ETF」와 같은 조건(기간 · 방향 · 제외)으로 읽으므로
+// 조건마다 키가 다르다(앞부분은 DASH_KEY_MARKET 과 같음). 무효화는 이 앞부분으로 조건 키를 모두 지운다.
+export const DASH_MARKET_KEY_PREFIX = "dashboard:market/topn/latest?";
 export const MARKET_INVALIDATION_KEYS = [
   DASH_KEY_MARKET,
+  DASH_MARKET_KEY_PREFIX,
   DASH_KEY_EVIDENCE,
   WB_KEY_CAND,
   MARKET_FLOW_KEY, // POC6-01 — 시장 갱신이 수급 · 환율 · 유가를 새로 받는다

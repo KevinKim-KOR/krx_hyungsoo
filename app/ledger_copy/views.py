@@ -162,6 +162,77 @@ def latest_alert_date(con: sqlite3.Connection) -> Optional[str]:
     return None if row is None else row[0]
 
 
+# POC6-27 — 「오늘의 투자 점검」 OCI 카드: 필수 3종의 마지막 실행(전달 상태 전부 · 건너뜀 · 실패 포함).
+LATEST_KINDS = (
+    ("market_briefing", "시장 브리핑"),
+    ("holdings_briefing", "보유 브리핑"),
+    ("holdings_risk_alert", "장중 급등락"),
+)
+_NO_SYNC = {
+    "has_copy": False,
+    "last_success_at": None,
+    "last_failure_at": None,
+    "last_failure_kind": None,
+}
+
+
+def latest_by_kind(
+    *, path: Optional[Path] = None, today: Optional[str] = None
+) -> dict[str, Any]:
+    """종류마다 마지막 FINALIZED 실행 1건 + 동기화 상태 — 사본 읽기만(mode=ro · 파일 · 표를 만들지 않음).
+
+    사본 파일이 없거나 동기화 표가 없으면 has_copy False(사본 없음). 그 밖의 읽기 오류는 그대로 올린다
+    (API 500 = '불러오지 못함' — 사본 없음과 다른 상태 · PLAN 판정 §4). 순서 = runtime_kst · started_at 내림차순.
+    """
+    p = Path(path) if path is not None else store._db_path()
+    out: dict[str, Any] = {
+        "today_kst": today or today_kst(),
+        "sync": dict(_NO_SYNC),
+        "kinds": [
+            {
+                "kind": k,
+                "label": label,
+                "time_kst": None,
+                "run_date_kst": None,
+                "delivery_status": None,
+                "run_status": None,
+            }
+            for k, label in LATEST_KINDS
+        ],
+    }
+    if not p.exists():
+        return out
+    con = sqlite3.connect(f"file:{p}?mode=ro", uri=True, timeout=store.TIMEOUT_SEC)
+    con.row_factory = sqlite3.Row
+    try:
+        tables = {
+            r[0]
+            for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        }
+        if "ledger_sync_attempt" in tables:
+            out["sync"] = store.sync_status(con)
+        if not {"evaluation_run", "delivery"} <= tables:
+            return out
+        for row in out["kinds"]:
+            r = con.execute(
+                "SELECT r.runtime_kst, r.runtime_date_kst, r.status, d.delivery_status"
+                " FROM evaluation_run r LEFT JOIN delivery d ON d.event_id = r.event_id"
+                " WHERE r.run_state = ? AND r.push_kind = ?"
+                " ORDER BY r.runtime_kst DESC, r.started_at DESC, r.event_id DESC LIMIT 1",
+                ("FINALIZED", row["kind"]),
+            ).fetchone()
+            if r is not None:
+                row.update(
+                    time_kst=r["runtime_kst"],
+                    run_date_kst=r["runtime_date_kst"],
+                    delivery_status=r["delivery_status"],
+                    run_status=r["status"],
+                )
+    finally:
+        con.close()
+    return out
+
+
 def list_alerts(
     day: Optional[str],
     kind: str = "all",

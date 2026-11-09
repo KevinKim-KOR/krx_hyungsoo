@@ -3955,3 +3955,61 @@ button.help-pop-btn[aria-expanded="true"] .help-pop-dot, button.help-pop-btn:hov
 .mf-today-main { font-size: 13.5px; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .mf-today-sub { font-size: 12.5px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 
+
+/* ═══ POC6-27 「오늘의 투자 점검」 개편 — 제목 줄 · 상단 접힘 카드 2 · 시장 흐름 · 두 칸 카드 · 확인 창 ═══ */
+.tc-title-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.tc-title-row .tc-h1 { margin-right: 8px; }
+.tc-top-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.tc-fold-card { padding: 14px 18px; }
+.tc-fold-warn { border-color: rgba(217, 119, 6, 0.55); background: rgba(217, 119, 6, 0.06); }
+.tc-fold-card-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.tc-fold-card-title { margin: 0; font-size: 17px; }
+.tc-fold-warn .tc-fold-card-title { color: #9a3412; }
+.tc-fold-card-btn { margin-left: auto; }
+.tc-fold-card-body { margin-top: 12px; display: flex; flex-direction: column; gap: 10px; }
+.tc-chip { display: inline-block; padding: 2px 10px; border-radius: 9999px; font-size: 12px; font-weight: 700; background: #eef2ff; color: #1e40af; white-space: nowrap; }
+.tc-chip-warn { background: #ffedd5; color: #9a3412; }
+.tc-fresh-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.tc-fresh-row { display: grid; grid-template-columns: minmax(96px, auto) minmax(0, 1fr); gap: 4px 12px; font-size: 14px; }
+.tc-fresh-label { font-weight: 600; }
+.tc-fresh-line { min-width: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.tc-ok { color: var(--ok); font-weight: 700; }
+.tc-up { color: var(--pnl-up); }
+.tc-down { color: var(--pnl-down); }
+.tc-oci-send { display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
+.tc-sum-wrap { display: flex; flex-direction: column; gap: 16px; }
+.tc-flow { display: flex; flex-direction: column; gap: 12px; }
+.tc-flow-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px 12px; flex-wrap: wrap; }
+.tc-flow-head .tc-h3 { margin-bottom: 4px; }
+.tc-flow-sub { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.tc-flow-close { font-variant-numeric: tabular-nums; }
+.tc-flow-big { font-size: 30px; font-weight: 600; letter-spacing: -0.01em; }
+.tc-flow-low { font-size: 15px; }
+.tc-flow-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.tc-flow-tile { background: #f3f6fb; border-radius: 10px; padding: 10px 12px; min-width: 0; }
+.tc-flow-num { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.tc-flow-chart { border-top: 1px solid var(--border-soft); padding-top: 12px; min-width: 0; }
+.tc-flow-section { border-top: 1px solid var(--border-soft); padding-top: 12px; display: flex; flex-direction: column; gap: 4px; font-size: 15px; }
+.tc-flow-section .tc-list-plain { font-size: 15px; }
+.tc-flow-row { display: flex; justify-content: space-between; gap: 8px; }
+.tc-flow-more > summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+.tc-flow-more-body { margin-top: 12px; display: flex; flex-direction: column; gap: 14px; }
+.tc-flow-more-body .tc-list-plain { font-size: 14px; }
+.tc-headline-grid-embedded { grid-template-columns: 1fr; }
+.tc-copy-fallback { width: 100%; font-size: 12px; font-family: ui-monospace, Menlo, monospace; }
+.tc-check-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: stretch; }
+.tc-check { display: flex; flex-direction: column; gap: 8px; }
+.tc-check-head { display: flex; align-items: center; gap: 8px; }
+.tc-check-head .tc-h3 { margin-bottom: 0; }
+.tc-check-badges { display: flex; flex-wrap: wrap; gap: 6px; }
+.tc-check-main { font-size: 16px; }
+.tc-detail-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.tc-data-fold { margin-top: 6px; }
+.tc-data-fold > summary { cursor: pointer; color: var(--accent); font-size: 13px; font-weight: 600; }
+.tc-dialog-backdrop { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.35); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 50; }
+.tc-dialog { background: #ffffff; border: 2px solid rgba(217, 119, 6, 0.6); border-radius: 14px; padding: 18px 20px; max-width: 560px; width: 100%; display: flex; flex-direction: column; gap: 12px; }
+.tc-dialog-title { font-weight: 700; font-size: 16px; }
+@media (max-width: 900px) {
+  .tc-top-grid, .tc-check-grid, .tc-detail-grid { grid-template-columns: 1fr; }
+  .tc-flow-tiles { grid-template-columns: 1fr; }
+}

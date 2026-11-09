@@ -23,14 +23,6 @@ import { fmtPct } from "./todayHelpers";
 import { candidateConditions, candidateLabel, candidatePeriod } from "./summaryLines";
 import { describeMismatched, windowMismatchText } from "@/lib/priceBasis";
 import { aggregateHoldingsByTicker } from "../holdings_compare/helpers";
-import { PARTIAL_EVAL_TEXT, fmtShare } from "../holdings_risk_evidence/declineSummary";
-import HelpPopover from "../holdings_risk_evidence/HelpPopover";
-import {
-  FAILURE_TEXT,
-  PARTIAL_JUDGE_TEXT,
-  riskHelpParagraphs,
-  riskStateFromQueries,
-} from "../holdings_risk_evidence/riskCombination";
 
 type TopRow = NonNullable<
   NonNullable<HoldingsMarketEvidenceResponse["judgment_summary"]>["holdings"]
@@ -163,16 +155,23 @@ function MismatchLine({ list }: { list: PriceBasisMismatch[] }) {
 }
 
 // ── §4.2 판단 큐 (오늘 내가 확인할 것) ───────────────────────────────────────
+// POC6-27 — 「보유 자세히」 | 「잘 오르는 ETF 자세히」 좌우 두 카드(설계 §1-6 · 판정 §2). 보유 위험 띠는 위
+// 「보유 점검」 카드로 옮겼다(같은 문장 반복 없음 · 설계 §7). 잘 오르는 ETF 는 위 요약과 같은 응답의 앞 3개.
 export default function JudgmentQueueSection({
   market,
   holdings,
   evidence,
   onNavigate,
+  holdingsAreaId,
+  candAreaId,
 }: {
   market: QueryState<MarketTopNResponse>;
   holdings: QueryState<EnrichedHoldingsResult>;
   evidence: QueryState<HoldingsMarketEvidenceResponse>;
   onNavigate: (key: MenuKey) => void;
+  // 위 두 카드의 [보유 자세히 ↓] · [ETF 자세히 ↓] 스크롤 목적지
+  holdingsAreaId?: string;
+  candAreaId?: string;
 }) {
   // 보유 종목 수(고유 ticker) 와 자료 확인 필요 건수 — 직접 동선 요약(§7·AC-13).
   // §6.4 조회 상태 구분: 보유 종목 수는 holdings 조회 성공만으로 확정 표시한다. evidence
@@ -209,61 +208,19 @@ export default function JudgmentQueueSection({
       if (!itemByTicker.has(it.ticker)) itemByTicker.set(it.ticker, it);
     }
   }
-  // POC5-13 · POC5-15 — 현재 상태 · 하락 구간 요약(「확인 근거」 요약과 같은 공통 판정 함수 · 받은 두 응답만).
-  // 두 조회가 끝나기 전이면 null(띠 없음) · 실패여도 띠는 상태와 실제 실패 사유를 보인다(PLAN 판정 Q1).
-  const risk = riskStateFromQueries(holdings, evidence);
-  const decline = risk?.summary ?? null;
   const candOk = market.phase === "success" && market.data.status === "ok" ? market.data : null;
   const topCands = candOk ? candOk.candidates.slice(0, 3) : [];
 
   return (
-    <section className="tc-card" aria-label="보유 · 잘 오르는 ETF 자세히">
-      <h2 className="tc-h2">보유 · 잘 오르는 ETF 자세히</h2>
-
-      {/* 요즘 잘 오르는 ETF — 대시보드 고정 조건 목록의 실제 길이 · 기간 · 조건 · 상위 3개(상세 표는 두지 않음) */}
-      <div className="tc-queue-item" data-testid="tc-cand-block">
-        <div className="tc-queue-head">
-          요즘 잘 오르는 ETF{" "}
-          {candOk ? (
-            <strong>{candidateLabel(candOk)}</strong>
-          ) : market.phase === "loading" ? (
-            <span className="tc-muted tc-small">불러오는 중...</span>
-          ) : (
-            <span className="tc-muted tc-small">확인 불가</span>
-          )}
-        </div>
-        {candOk ? (
-          <p className="tc-muted tc-small">
-            {candidatePeriod(candOk.candidates)} · {candidateConditions(candOk)} · 「요즘 잘 오르는 ETF」에서 고른
-            기간 · 정렬과 다를 수 있습니다.
-          </p>
-        ) : (
-          <p className="tc-muted tc-small">최근 시장보다 강한 흐름을 보이는 ETF를 확인합니다.</p>
-        )}
-        {topCands.length > 0 ? (
-          <ol className="tc-cand-top">
-            {topCands.map((c) => (
-              <li key={c.ticker}>
-                {c.name ?? c.ticker}{" "}
-                <strong>
-                  {typeof c.selected_return_pct === "number" ? fmtPct(c.selected_return_pct) : "수익률 확인 불가"}
-                </strong>
-              </li>
-            ))}
-          </ol>
-        ) : null}
-        <div className="tc-btn-row">
-          <button type="button" className="tc-btn" onClick={() => onNavigate("market_discovery")}>
-            요즘 잘 오르는 ETF
-          </button>
-          <button type="button" className="tc-btn tc-btn-link" onClick={() => onNavigate("workbench")}>
-            ETF 비교하기
-          </button>
-        </div>
-      </div>
-
-      {/* 내가 가진 ETF — 평가·확인 근거 직접 동선 (POC3-05 DESIGN_V2 §7·AC-13). */}
-      <div className="tc-queue-item tc-divider">
+    <div className="tc-detail-grid">
+      {/* 내가 가진 ETF — 오늘 먼저 볼 보유 최대 3개(실제 종목명 · 선정 이유) · 평가 · 확인 근거 동선. */}
+      <section
+        id={holdingsAreaId}
+        tabIndex={holdingsAreaId ? -1 : undefined}
+        className="tc-card tc-scroll-target"
+        aria-label="보유 자세히"
+      >
+        <h2 className="tc-h2">보유 자세히</h2>
         <div className="tc-queue-head">
           내가 가진 ETF{" "}
           {holdCount != null ? (
@@ -274,49 +231,9 @@ export default function JudgmentQueueSection({
             <span className="tc-muted tc-small">확인 불가</span>
           )}
           {needCheckCount != null && needCheckCount > 0 ? (
-            <span className="tc-muted tc-small">
-              {` · 자료 확인 필요 ${needCheckCount}건`}
-            </span>
+            <span className="tc-muted tc-small">{` · 자료 확인 필요 ${needCheckCount}건`}</span>
           ) : null}
         </div>
-        {risk ? (
-          // POC5-15 — 세 정보 묶음(PLAN 판정 §4): 상태 + ? / 하락 구간 종목 수 · 비중 /
-          // 작은 보조 묶음(시장 국면 · 구간 판정 가능 a/b). 실패면 상태와 사유만 · 빈 보유면 상태만.
-          <div className="tc-risk-strip" data-testid="tc-risk-strip">
-            <div className="tc-risk-head">
-              <strong className="tc-risk-headline">{risk.combo.text}</strong>
-              <HelpPopover label="현재 상태" paragraphs={riskHelpParagraphs(risk)} />
-            </div>
-            {risk.combo.holdings === "no_holdings" ? null : risk.failed ? (
-              <div className="tc-risk-sub" data-testid="tc-risk-failed">
-                {FAILURE_TEXT[risk.failed]}
-              </div>
-            ) : decline ? (
-              <>
-                <div className="tc-risk-part">
-                  PC 최근 20저장일 하락 구간{" "}
-                  <strong className="tc-risk-num">{decline.inBand}종목</strong> · 보유 평가 비중{" "}
-                  <strong className="tc-risk-num">{fmtShare(decline.inBandShare)}</strong>
-                  {decline.evalPartial && decline.inBandShare !== null ? (
-                    <span className="tc-risk-sub">({PARTIAL_EVAL_TEXT})</span>
-                  ) : null}
-                </div>
-                <div className="tc-risk-aux">
-                  <span>시장 {risk.regime ?? "확인 불가"}</span>
-                  <span>
-                    구간 판정 가능 {decline.judgeable}/{decline.total}종목
-                    {risk.combo.partial ? ` · ${PARTIAL_JUDGE_TEXT}` : ""}
-                  </span>
-                </div>
-              </>
-            ) : null}
-          </div>
-        ) : null}
-        <p className="tc-muted tc-small tc-hold-help">
-          보유 평가는 &lsquo;보유 현황&rsquo;, 보유 ETF의 수치와 확인 근거는 &lsquo;확인
-          근거&rsquo;에서 확인합니다.
-        </p>
-
         {/* POC3-06 §6.3·§7.1 — 오늘 먼저 볼 보유 ETF 최대 3건(공통 요약 · 최근 5거래일 변화 낮은 순 ·
             backend select_top_holdings). OCI 보유 브리핑은 20거래일 하락 구간과 자료 확인 불가
             (DATA_UNAVAILABLE_OR_STALE)로 고르므로(select_holdings) 기준이 다르다(POC5-UI-02 §2). */}
@@ -345,25 +262,68 @@ export default function JudgmentQueueSection({
           </p>
         ) : null}
         <MismatchLine list={mismatched} />
-
         <div className="tc-btn-row">
-          <button
-            type="button"
-            className="tc-btn"
-            onClick={() => onNavigate("holdings")}
-          >
+          <button type="button" className="tc-btn" onClick={() => onNavigate("holdings")}>
             보유 현황
           </button>
-          <button
-            type="button"
-            className="tc-btn"
-            onClick={() => onNavigate("holdings_evidence")}
-          >
+          <button type="button" className="tc-btn" onClick={() => onNavigate("holdings_evidence")}>
             확인 근거
           </button>
         </div>
-      </div>
-    </section>
+      </section>
+
+      {/* 요즘 잘 오르는 ETF — 위 요약과 같은 응답(탭 공유 조건)의 실제 길이 · 기간 · 앞 3개 · 조회 조건. */}
+      <section
+        id={candAreaId}
+        tabIndex={candAreaId ? -1 : undefined}
+        className="tc-card tc-scroll-target"
+        aria-label="잘 오르는 ETF 자세히"
+        data-testid="tc-cand-block"
+      >
+        <h2 className="tc-h2">잘 오르는 ETF 자세히</h2>
+        <div className="tc-queue-head">
+          {candOk ? (
+            <strong>{candidateLabel(candOk)}</strong>
+          ) : market.phase === "loading" ? (
+            <span className="tc-muted tc-small">불러오는 중...</span>
+          ) : (
+            <span className="tc-muted tc-small">확인 불가</span>
+          )}
+        </div>
+        {candOk ? (
+          <p className="tc-muted tc-small">
+            {candidatePeriod(candOk.candidates)}
+            {candOk.order === "asc" ? " · 수익률 낮은 순(하락 폭이 큰 순)으로 고른 목록" : ""}
+          </p>
+        ) : null}
+        {topCands.length > 0 ? (
+          <ol className="tc-cand-top">
+            {topCands.map((c) => (
+              <li key={c.ticker}>
+                {c.name ?? c.ticker}{" "}
+                <strong>
+                  {typeof c.selected_return_pct === "number" ? fmtPct(c.selected_return_pct) : "수익률 확인 불가"}
+                </strong>
+              </li>
+            ))}
+          </ol>
+        ) : null}
+        {candOk ? (
+          <details className="tc-small">
+            <summary>조회 조건</summary>
+            <p className="tc-muted">{candidateConditions(candOk)} · 「요즘 잘 오르는 ETF」와 같은 조건(이 탭)</p>
+          </details>
+        ) : null}
+        <div className="tc-btn-row">
+          <button type="button" className="tc-btn" onClick={() => onNavigate("market_discovery")}>
+            요즘 잘 오르는 ETF
+          </button>
+          <button type="button" className="tc-btn tc-btn-link" onClick={() => onNavigate("workbench")}>
+            ETF 비교하기
+          </button>
+        </div>
+      </section>
+    </div>
   );
 }
 

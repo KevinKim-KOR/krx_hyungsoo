@@ -6,6 +6,8 @@ PLAN `docs/ai_plan/POC5/POC5-03_PC_LEDGER_SYNC_AND_FEEDBACK_PLAN_V1.md` §2-4 ·
 - GET  /decision-ledger/alerts                      : 선택 날짜(없으면 최근 알림 날짜) · 종류의 sent · partial
                                                       알림 + 동기화 상태
 - GET  /decision-ledger/alerts/{event_id}           : 원문 · item · feedback 이력 · 가격 결과(평가와 무관)
+- GET  /decision-ledger/latest-by-kind              : POC6-27 필수 3종 마지막 실행(전달 상태 전부) + 동기화 상태
+                                                      (사본 mode=ro · 파일 없으면 사본 없음 · 쓰기 0)
 - POST /decision-ledger/sync                        : 사용자 버튼 — OCI 읽기 전용 export 1회 → 사본 반영
 - POST /decision-ledger/alerts/{event_id}/feedback  : append-only 피드백 1행
 - POST /decision-ledger/retrospective-evaluation    : POC5-08 사후평가 1회(사본 읽기 → 연구 산출물 · 동기)
@@ -150,6 +152,27 @@ class FeedbackResponse(FeedbackRow):
 class RetroRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     end_date: Optional[str] = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
+
+
+class LatestKindRow(BaseModel):
+    kind: str
+    label: str
+    time_kst: Optional[str] = None
+    run_date_kst: Optional[str] = None
+    delivery_status: Optional[str] = None
+    run_status: Optional[str] = None
+
+
+class LatestByKindResponse(BaseModel):
+    today_kst: str
+    sync: SyncStatus
+    kinds: list[LatestKindRow]
+
+
+@router.get("/latest-by-kind", response_model=LatestByKindResponse)
+def get_latest_by_kind() -> LatestByKindResponse:
+    """POC6-27 — PC 원장 사본 전용 읽기(SSH 0 · 쓰기 0). 사본 없음 = sync.has_copy False."""
+    return LatestByKindResponse(**views.latest_by_kind())
 
 
 @router.get("/alerts", response_model=AlertListResponse)

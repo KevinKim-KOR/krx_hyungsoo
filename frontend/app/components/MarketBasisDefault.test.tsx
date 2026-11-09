@@ -6,6 +6,7 @@ import { render, screen, act, fireEvent, within } from "@testing-library/react";
 import { __resetQueryCache } from "@/lib/api/queryCache";
 import type { MarketBasis, MarketOrder } from "@/lib/api";
 import { MARKET_BASIS_PREF_KEY } from "@/lib/marketBasisPreference";
+import { __resetMarketCondition, getMarketCondition } from "@/lib/marketConditionStore";
 import { loadAISessionsDraft } from "@/lib/aiSessionsDraft";
 
 const fetchMarketTopnLatest = vi.fn();
@@ -368,7 +369,9 @@ describe("명시 저장 · 임시 변경 (POC5-26 설계 §2 · §3 · 판정 §
     expect(saveButton()).toBeDisabled();
   });
 
-  it("같은 칸을 다시 눌러 방향만 바꿔도 기본은 그대로 · 저장해도 방향은 남기지 않음", async () => {
+  // POC6-27 판정 §4 — 같은 탭에서 메뉴를 다시 열면 마지막 조건(방향 포함)을 쓰고, 새로 고침이면 저장 기본 기간 ·
+  // 기본 방향으로 시작한다(POC5-26 '메뉴 재진입 = 저장 기본'을 바꾼 계약). 저장은 여전히 기간만 남긴다.
+  it("같은 칸을 다시 눌러 방향만 바꿔도 기본은 그대로 · 저장해도 방향은 남기지 않음(새로 고침 뒤 기본 방향)", async () => {
     window.localStorage.setItem(MARKET_BASIS_PREF_KEY, "three_month");
     const view = await openView();
     await toTable();
@@ -386,22 +389,40 @@ describe("명시 저장 · 임시 변경 (POC5-26 설계 §2 · §3 · 판정 §
     await flush();
     expect(stored()).toBe("one_month");
     view.unmount();
+    __resetMarketCondition(); // 새로 고침
     fetchMarketTopnLatest.mockClear();
     await openView();
     expect(topnOpts()).toHaveLength(1);
     expect(topnOpts()[0]).toMatchObject({ basis: "one_month", order: "desc" });
   });
 
-  it("화면을 새로 올리면(메뉴 재진입) 저장 기본으로 첫 조회 · 임시 선택은 남지 않음", async () => {
+  it("같은 탭 메뉴 재진입은 마지막 조건(기간 · 방향)으로 첫 조회 · 새로 고침이면 저장 기본(POC6-27)", async () => {
     window.localStorage.setItem(MARKET_BASIS_PREF_KEY, "three_month");
     const view = await openView();
     await toTable();
     await clickHeader("일간");
-    expect(basisCalls()).toEqual(["three_month", "daily"]);
+    await clickHeader("일간"); // 일간 오름차순
+    expect(basisCalls()).toEqual(["three_month", "daily", "daily"]);
     view.unmount();
     fetchMarketTopnLatest.mockClear();
+    const again = await openView();
+    expect(topnOpts()).toHaveLength(1);
+    expect(topnOpts()[0]).toMatchObject({ basis: "daily", order: "asc" });
+    again.unmount();
+    __resetMarketCondition(); // 새로 고침
+    fetchMarketTopnLatest.mockClear();
     await openView();
-    expect(basisCalls()).toEqual(["three_month"]);
+    expect(topnOpts()).toHaveLength(1);
+    expect(topnOpts()[0]).toMatchObject({ basis: "three_month", order: "desc" });
+  });
+
+  it("고른 조건(기간 · 방향 · 제외)은 같은 탭의 공유 조건에 쓴다(「오늘의 투자 점검」이 같은 조건으로 읽음 · POC6-27)", async () => {
+    await openView();
+    await toTable();
+    await clickHeader("3개월");
+    await clickHeader("3개월"); // 3개월 낮은 순
+    expect(getMarketCondition()).toMatchObject({ basis: "three_month", order: "asc" });
+    expect(getMarketCondition().filters.exclude_inverse).toBe(true);
   });
 
   it("방금 저장한 기본으로 다음 화면이 시작한다", async () => {

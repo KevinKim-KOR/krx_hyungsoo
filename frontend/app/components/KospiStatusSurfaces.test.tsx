@@ -242,9 +242,8 @@ describe("설계자 RESULT STEP 4-1 · 4-2 — 시장 배경 카드 제목 · �
 
 describe("설계자 RESULT STEP 4-2 · 4-3 — 「오늘의 투자 점검」 KOSPI 카드", () => {
   it("마지막 자료 기준일 = KOSPI 기준일(KODEX200 날짜 아님) · 출처는 카드 전체에 한 줄", async () => {
+    // POC6-27 — 차트는 「시장 흐름」 안으로 옮겼다(사용자 결정 ①) · 이 부품은 나머지 지표만(차트 없음).
     render(<KospiHeadline market={todayMarket(STALE_T2)} />);
-    // 차트까지 그려진 뒤(차트에는 출처 줄을 따로 달지 않는다).
-    await screen.findByText(/최근 2개 저장일/);
     const card = screen.getByLabelText("KOSPI 현재 위치");
     const foot = within(card).getByText(/마지막 자료 기준일/);
     expect(foot.textContent).toBe(`마지막 자료 기준일 2026-09-28 · ${KRX_SOURCE}`);
@@ -268,7 +267,6 @@ describe("설계자 RESULT STEP 4-2 · 4-3 — 「오늘의 투자 점검」 KOS
         market={todayMarket({ status: "unavailable", as_of_date: null, display_state: "no_result" })}
       />,
     );
-    await screen.findByText(/최근 2개 저장일/);
     const card = screen.getByLabelText("KOSPI 현재 위치");
     // UI-03 — '없다' 확인은 접힌 칸을 편 뒤에도 본다(판정 §3).
     for (const step of ["접힘", "펼침"]) {
@@ -328,6 +326,7 @@ describe("설계자 RESULT STEP 4 · PLAN STEP 7-4 — 정비 큐 KOSPI 항목(V
         kind: "heavy",
         target: "market_discovery",
         actionLabel: "시장 자료 업데이트로",
+        source: "kospi",
         reason: STALE_TEXT,
       },
     ]);

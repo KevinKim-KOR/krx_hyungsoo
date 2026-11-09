@@ -16,6 +16,13 @@ export interface OciJobStatus {
   detail: string;
 }
 
+// POC6-27 — 필수 알림 3종의 예약 상태(기동 때 읽은 예약 목록 · 확인 실패 = unknown · 누락으로 세지 않음)
+export interface OciScheduleRow {
+  kind: string;
+  label: string;
+  state: "registered" | "missing" | "unknown";
+}
+
 export interface OciStartupStatus {
   checked_at: string | null;
   reachable: boolean;
@@ -24,6 +31,7 @@ export interface OciStartupStatus {
   crontab_active: boolean | null;
   jobs: OciJobStatus[];
   note: string;
+  schedule?: OciScheduleRow[];
 }
 
 export async function fetchOciStartupStatus(): Promise<OciStartupStatus> {

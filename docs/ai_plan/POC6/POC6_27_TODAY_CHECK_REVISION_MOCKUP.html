@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>POC6-27 오늘의 투자 점검 목업</title>
+<style>
+:root {
+  --bg: #f5f7fa; --fg: #1a1d23; --muted: #6b7280; --card: #ffffff; --border: #d1d5db; --soft: #e8ebf0; --tile: #f3f6fb;
+  --accent: #2563eb; --ok: #15803d; --warn-bg: #fff7ed; --warn-bd: #fdba74; --warn-fg: #9a3412; --info-bg: #eaf1fe;
+  --up: #d92d20; --down: #1570ef;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); line-height: 1.5;
+  font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", Roboto, sans-serif; font-size: 14px; }
+main { max-width: 860px; margin: 0 auto; padding: 24px 16px 48px; display: grid; gap: 14px; }
+.note-top { font-size: 12px; color: var(--muted); border: 1px dashed var(--border); border-radius: 8px; padding: 8px 12px; background: #fff; }
+h1 { font-size: 24px; margin: 0; }
+h2 { font-size: 17px; margin: 0; }
+.head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.head h1 { margin-right: 8px; }
+button { font: inherit; border-radius: 8px; min-height: 40px; padding: 0 12px; cursor: pointer; }
+.primary { background: var(--accent); color: #fff; border: none; font-weight: 600; }
+.ghost { background: #fff; color: var(--fg); border: 1px solid var(--border); font-weight: 600; }
+.link { background: none; border: none; color: var(--accent); font-weight: 600; padding: 0; min-height: 0; }
+.link + .link { margin-left: 14px; }
+.small { font-size: 12px; }
+.muted { color: var(--muted); }
+.card { background: var(--card); border: 1px solid var(--soft); border-radius: 12px; padding: 16px; display: grid; gap: 10px; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 640px) { .two { grid-template-columns: 1fr; } }
+.warn { background: var(--warn-bg); border-color: var(--warn-bd); }
+.warn h2 { color: var(--warn-fg); }
+.chip { display: inline-block; font-size: 12px; font-weight: 600; border-radius: 999px; padding: 2px 10px; background: var(--info-bg); color: #1e40af; }
+.chip.w { background: #ffedd5; color: var(--warn-fg); }
+.row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.row .v { font-weight: 600; text-align: right; }
+.ok { color: var(--ok); font-weight: 700; }
+.down { color: var(--down); } .up { color: var(--up); }
+.big { font-size: 30px; font-weight: 600; letter-spacing: -0.5px; }
+.tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+@media (max-width: 520px) { .tiles { grid-template-columns: 1fr; } }
+.tile { background: var(--tile); border-radius: 8px; padding: 10px 12px; }
+.tile .n { font-size: 20px; font-weight: 700; }
+hr { border: none; border-top: 1px solid var(--soft); margin: 2px 0; }
+.chart { width: 100%; height: auto; display: block; }
+.list .row { padding: 6px 0; border-bottom: 1px solid var(--soft); }
+.list .row:last-child { border-bottom: none; }
+details > summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+.mark { font-size: 11px; color: #7c3aed; font-weight: 600; }
+.demo { border-style: dashed; }
+.dialog { border: 2px solid var(--warn-bd); }
+pre { white-space: pre-wrap; background: #0f172a; color: #e2e8f0; border-radius: 8px; padding: 12px; font-size: 12px; overflow-x: auto; }
+.sum-row { display: grid; grid-template-columns: 72px 1fr; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--soft); }
+.sum-row:last-child { border-bottom: none; }
+details.fold { padding: 12px 16px; align-self: start; }
+details.fold > summary { list-style: none; color: var(--fg); display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+details.fold > summary::-webkit-details-marker { display: none; }
+details.fold .fold-title { font-size: 16px; font-weight: 700; }
+details.warn .fold-title { color: var(--warn-fg); }
+details.fold .fold-btn { margin-left: auto; font-size: 13px; font-weight: 600; color: var(--accent); border: 1px solid var(--border); background: #fff; border-radius: 8px; padding: 4px 10px; }
+details.fold[open] .fold-btn { font-size: 0; }
+details.fold[open] .fold-btn::after { content: "접기"; font-size: 13px; }
+details.fold[open] > summary { margin-bottom: 8px; }
+.chip.ok-chip { background: #dcfce7; color: var(--ok); }
+</style>
+</head>
+<body>
+<main>
+
+<div class="note-top">POC6-27 개발 PLAN 목업 · 2026-11-09 저장 자료 기준 실제 값 · 보유 종목명 · 금액은 가림 · 보라색 <span class="mark">[Q…]</span> 표시는 PLAN 질문의 권장안을 적용한 자리</div>
+
+<!-- 1. 제목 · 버튼 -->
+<section class="head">
+  <h1>오늘의 투자 점검</h1>
+  <button class="primary">요약 다시 읽기</button>
+  <button class="ghost" title="저장된 값만 다시 읽습니다. 시장 판정과 요즘 잘 오르는 ETF 목록은 이 버튼으로 다시 계산하지 않습니다.">?</button>
+  <button class="ghost">보유 현재가 업데이트</button>
+  <button class="ghost">최신 시장 데이터 갱신</button>
+</section>
+<div class="small muted" style="margin-top:-8px">이 화면이 값을 읽은 시각 (예시) 11/9 10:05 · 자료 기준일은 줄마다 따로 표시합니다 <span class="mark">[Q8 (a)]</span></div>
+
+<!-- 2 · 3. 자료 최신화 | OCI — 사용자 결정(2026-11-09): 둘 다 기본 접힘 · 필요할 때 펼침(화면 안 상태만 · 저장 없음) -->
+<section class="two">
+  <details class="card warn fold">
+    <summary><span class="fold-title">자료 최신화 필요</span> <span class="chip w">2건 · 1거래일 늦음</span> <span class="fold-btn">펼치기</span></summary>
+    <div class="row"><span>외국인 수급</span><span class="v">11/5까지 · 기대 11/6</span></div>
+    <div class="row"><span>원/달러 <span class="mark">[Q4 (a)]</span></span><span class="v">11/5까지 · 기대 11/6</span></div>
+    <div class="small muted">기대 기준일 = 국내 직전 거래일(11/9 월 → 11/6 금) · 지연 원인 확인 전</div>
+    <div><button class="ghost">최신 시장 데이터 갱신</button></div>
+  </details>
+  <details class="card fold">
+    <summary><span class="fold-title">OCI 운영 스케줄 확인</span> <span class="chip ok-chip">예약 3/3 확인</span> <span class="small muted">발송 확인 불가</span> <span class="fold-btn">펼치기</span></summary>
+    <div class="row"><span class="small muted">기동 확인 11/8 09:44</span></div>
+    <div class="row"><span>시장 브리핑</span><span class="ok">예약 확인</span></div>
+    <div class="row"><span>보유 브리핑</span><span class="ok">예약 확인</span></div>
+    <div class="row"><span>장중 급등락</span><span class="ok">예약 확인</span></div>
+    <hr>
+    <div class="row"><span>최근 PUSH 발송 <span class="mark">[Q6 (a)]</span></span><span class="v muted">확인 불가 · 사본 10/23 14:27</span></div>
+    <div class="small muted">10/23 기록 · 시장 브리핑 08:30 보냄 · 보유 브리핑 12:30 보냄 · 장중 급등락 13:30 건너뜀</div>
+    <div class="row"><button class="link">받은 알림 기록 →</button><button class="link">OCI 운영·적용 →</button></div>
+  </details>
+</section>
+
+<!-- 4. 지금 확인할 내용 -->
+<h2 style="font-size:19px">지금 확인할 내용</h2>
+<section class="card">
+  <div class="row">
+    <div><h2>시장 흐름</h2><div style="margin-top:4px"><span class="chip">하락장 · 21거래일째</span> <span class="small muted">KODEX 200 · 11/6 기준</span></div></div>
+    <div><button class="ghost">AI용 시장 정보 복사</button></div>
+  </div>
+  <div><span class="muted">11/6 코스피 종가</span> <span class="big">5,059.69</span> <span class="down" style="font-weight:600">−324.11pt (−6.02%)</span></div>
+  <div>전날의 최근 저점 <b>5,383.80</b>(11/5 · 직전 20개 저장 종가 최저)을 밑돌았습니다. <button class="link small">근거 보기</button></div>
+  <div class="tiles">
+    <div class="tile"><div class="small muted">20거래일</div><div class="n down">−23.64%</div><div class="small muted">11/6 기준</div></div>
+    <div class="tile"><div class="small muted">60거래일</div><div class="n down">−19.16%</div><div class="small muted">11/6 기준</div></div>
+    <div class="tile"><div class="small muted">6개월 <span class="chip">하락</span></div><div class="n down">−22.39%</div><div class="small muted">5/4~11/5 · 수급과 같은 기간</div></div>
+  </div>
+  <hr>
+  <div class="row"><b>KOSPI 가격 흐름</b><span class="small muted">최근 120개 저장일 <span class="mark">[Q9 (a)]</span></span></div>
+  <svg class="chart" viewBox="0 0 640 200" role="img" aria-label="코스피 최근 120개 저장일 종가">
+    <g stroke="#e8ebf0" stroke-width="1">
+      <line x1="52" y1="30.2" x2="628" y2="30.2"/><line x1="52" y1="66.7" x2="628" y2="66.7"/>
+      <line x1="52" y1="103.1" x2="628" y2="103.1"/><line x1="52" y1="139.6" x2="628" y2="139.6"/>
+      <line x1="52" y1="176.0" x2="628" y2="176.0"/>
+    </g>
+    <g fill="#6b7280" font-size="11" text-anchor="end">
+      <text x="46" y="34">9,000</text><text x="46" y="70">8,000</text><text x="46" y="107">7,000</text>
+      <text x="46" y="143">6,000</text><text x="46" y="180">5,000</text>
+    </g>
+    <polyline fill="none" stroke="#2563eb" stroke-width="2" points="52.0,72.4 56.8,67.3 61.7,85.1 66.5,84.3 71.4,93.2 76.2,95.5 81.0,73.4 85.9,72.2 90.7,64.9 95.6,58.3 100.4,59.9 105.2,49.3 110.1,37.9 114.9,37.5 119.8,43.4 124.6,60.8 129.4,85.5 134.3,63.1 139.1,76.5 144.0,75.3 148.8,62.2 153.6,46.8 158.5,40.2 163.3,35.2 168.2,27.9 173.0,28.3 177.8,26.0 182.7,59.2 187.5,49.5 192.4,32.8 197.2,51.7 202.1,52.3 206.9,49.3 211.7,55.6 216.6,79.5 221.4,63.4 226.3,64.8 231.1,79.2 235.9,94.1 240.8,92.5 245.6,85.8 250.5,110.1 255.3,108.3 260.1,92.7 265.0,109.6 269.8,120.7 274.7,112.3 279.5,110.5 284.3,99.6 289.2,114.4 294.0,112.0 298.9,138.7 303.7,151.8 308.5,154.4 313.4,117.9 318.2,130.2 323.1,126.5 327.9,117.8 332.7,128.8 337.6,130.1 342.4,128.6 347.3,127.0 352.1,118.5 356.9,109.9 361.8,103.9 366.6,107.9 371.5,122.4 376.3,108.5 381.1,106.3 386.0,114.2 390.8,112.5 395.7,110.1 400.5,106.3 405.3,110.8 410.2,109.7 415.0,109.1 419.9,119.0 424.7,118.4 429.5,114.5 434.4,103.3 439.2,104.8 444.1,101.2 448.9,101.9 453.7,106.4 458.6,114.6 463.4,116.7 468.3,113.4 473.1,113.5 477.9,107.0 482.8,102.8 487.6,102.5 492.5,100.2 497.3,107.1 502.2,107.8 507.0,109.0 511.8,104.2 516.7,103.0 521.5,105.2 526.4,110.3 531.2,116.7 536.0,125.6 540.9,138.3 545.7,139.2 550.6,155.8 555.4,151.7 560.2,148.0 565.1,155.9 569.9,149.2 574.8,156.5 579.6,155.9 584.4,158.9 589.3,152.7 594.1,139.1 599.0,141.8 603.8,149.4 608.6,144.7 613.5,152.4 618.3,151.1 623.2,162.0 628.0,173.8"/>
+    <circle cx="623.2" cy="162.0" r="3.5" fill="#2563eb"/><circle cx="628.0" cy="173.8" r="3.5" fill="#2563eb"/>
+    <g fill="#6b7280" font-size="11"><text x="52" y="196">5/13</text></g>
+  </svg>
+  <div class="small muted">코스피 2026-05-13 ~ 2026-11-06 · 최근 120개 저장일 · 끝 두 점 = 11/5 5,383.80 → 11/6 5,059.69 · 최종 5,059.69pt · 출처 한국거래소(KRX)</div>
+  <hr>
+  <div class="row"><b>외국인 수급</b><span class="small muted">11/5까지</span></div>
+  <div>6개월 누적 <b>164.3조원 순매도</b> <span class="small muted">(124/124일)</span></div>
+  <div>하루 평균 순매도액이 <b>1.2조원 → 1.1조원</b>으로 줄었습니다.</div>
+  <div class="small muted">직전 20거래일 → 최근 20거래일 · 가격은 11/6까지, 수급과 함께 보는 비교는 11/5까지입니다</div>
+  <hr>
+  <div class="row"><b>최근 큰 변화</b><span class="small muted">최근 2건 · 위 저점 문장과 같은 1건 제외 · 외 4건</span></div>
+  <div class="list">
+    <div class="row"><span>11/5 코스피 5,383.80</span><span class="v" style="font-weight:400">직전 20개 저점 5,469.47(10/26) 아래</span></div>
+    <div class="row"><span>11/4 WTI −7.97달러</span><span class="v" style="font-weight:400">평소 변화의 3.4배</span></div>
+  </div>
+  <details>
+    <summary>시장 근거와 다른 변화 보기 <span class="mark">[Q1 (a)]</span></summary>
+    <div class="list" style="margin-top:8px">
+      <div class="row"><span>코스피 일간 변화</span><span class="v down">−6.02% · 11/6</span></div>
+      <div class="row"><span>KODEX200 기준선 대비(MA20 · MA60)</span><span class="v down">−12.08% · −22.33% · 11/6</span></div>
+      <div class="row"><span>코스피 1개월 · 3개월 · 1년 · 최근 1년 고점 대비</span><span class="v">−23.64% · −19.16% · <span class="up">+25.66%</span> · −44.49%</span></div>
+      <div class="row"><span>원/달러</span><span class="v">1,340.07원 · 11/5</span></div>
+      <div class="row"><span>WTI</span><span class="v">90.83달러(+0.34%) · 11/6</span></div>
+      <div class="row"><span>최근 큰 변화 전체(7건)</span><span class="v" style="font-weight:400;text-align:left">11/6 코스피 5,059.69 · 직전 20개 저점 5,383.80(11/5) 아래 / 11/5 코스피 5,383.80 · 저점 5,469.47(10/26) 아래 / 11/4 WTI −7.97달러(3.4배) / 11/4 WTI 88.28달러(10/7) 범위 아래 / 11/3 원/달러 +19.29원(4.6배) / 11/3 원/달러 1,343.75원(10/6) 범위 위 / 11/2 WTI −7.66달러(3.8배)</span></div>
+    </div>
+  </details>
+</section>
+
+<section class="two">
+  <div class="card">
+    <h2>보유 점검</h2>
+    <div><span class="chip">시장 약세</span> <span class="chip">보유 약세</span></div>
+    <div style="font-size:16px"><b>29종목 중 26종목 하락 구간</b></div>
+    <div class="small muted">최근 20일 저장 종가 기준 · 해당 보유 비중 90.3%(현금 제외 · 같은 종목 계좌 합산)</div>
+    <div><button class="link">보유 자세히 ↓</button> <button class="link">확인 근거 보기 →</button></div>
+  </div>
+  <div class="card">
+    <h2>잘 오르는 ETF</h2>
+    <div><span class="chip">1개월 수익률 · 높은 순</span></div>
+    <div style="font-size:16px"><b>조회한 ETF 10개</b></div>
+    <div class="small muted">10/7~11/6 · 인버스 · 레버리지 · 합성 · 선물 제외 · 같은 목록의 앞 3개를 아래에 표시 · 「요즘 잘 오르는 ETF」와 같은 조건(이 탭)</div>
+    <div><button class="link">ETF 자세히 ↓</button> <button class="link">요즘 잘 오르는 ETF →</button></div>
+  </div>
+</section>
+
+<!-- 5. 자료 확인 · 연구 -->
+<section class="card">
+  <div class="sum-row"><b>자료 확인</b><span>구성종목 자료 없음 25건 · 기준가 비교 자료 없음 3건 <span class="small muted">(투자 판단 신호 아님)</span> <span class="mark">[Q2 (a)]</span>
+    <details style="margin-top:4px"><summary class="small">자료 업데이트 목록</summary><div class="small muted" style="margin-top:4px">ETF가 담고 있는 종목 자료가 없습니다(25건) · [구성종목 업데이트로] / ETF 기준가 비교 자료가 없습니다(3건) · [구성종목 업데이트로] — 기존 정비 항목 · 문구 · 이동 그대로</div></details></span></div>
+  <div class="sum-row"><b>연구</b><span>예측과 결과 비교 · 아직 비교할 결과가 없습니다 · 예측 216건 · 결과 0건 <span class="small muted">(연구용 · 운영에 쓰지 않음)</span></span></div>
+</section>
+
+<!-- 6. 자세히 좌우 -->
+<section class="two">
+  <div class="card list">
+    <h2>보유 자세히</h2>
+    <div class="small muted">최근 5거래일 변화 낮은 순 · 최대 3개 · PC 저장 가격 기준일 11/6 · (목업은 종목명 가림 · 실제 화면은 종목명)</div>
+    <div class="row"><span>보유 ETF A</span><span class="v down">−37.74%</span></div>
+    <div class="row"><span>보유 ETF B</span><span class="v down">−24.10%</span></div>
+    <div class="row"><span>보유 ETF C</span><span class="v down">−22.43%</span></div>
+    <details><summary class="small">하락 구간 구성</summary><div class="small muted" style="margin-top:4px">10% 이상 23종목 · 5~8% 3종목 · 판정 가능 29/29</div></details>
+  </div>
+  <div class="card list">
+    <h2>잘 오르는 ETF 자세히</h2>
+    <div class="small muted">1개월 수익률 높은 순 · 10/7~11/6</div>
+    <div class="row"><span>1 KODEX 미국ETF산업Top10 Indxx</span><span class="v up">+17.02%</span></div>
+    <div class="row"><span>2 TIGER 국고채30년스트립액티브</span><span class="v up">+16.23%</span></div>
+    <div class="row"><span>3 RISE 글로벌비만산업TOP2+</span><span class="v up">+14.20%</span></div>
+    <details><summary class="small">조회 조건</summary><div class="small muted" style="margin-top:4px">기간 1개월 · 높은 순 · 10개 · 인버스 · 레버리지 · 합성 · 선물 제외</div></details>
+  </div>
+</section>
+
+<section class="card"><details><summary>현재 제공 범위와 남은 기능</summary><div class="small muted" style="margin-top:6px">(기존 내용 그대로)</div></details></section>
+
+<!-- 동작 예시 -->
+<h2 style="font-size:19px;margin-top:12px">동작 예시(화면에 늘 보이는 것 아님)</h2>
+<section class="card dialog">
+  <b>[요약 다시 읽기]를 눌렀을 때 · 다시 읽은 값에 늦은 자료가 있으면 <span class="mark">[Q3 (a)]</span></b>
+  <div>최신 상태를 확인해야 할 자료가 있습니다. 현재 저장된 자료로 계속할까요?</div>
+  <div class="list">
+    <div class="row"><span>외국인 수급</span><span class="v">마지막 11/5 · 기대 11/6 · 1거래일 늦음</span></div>
+    <div class="row"><span>원/달러</span><span class="v">마지막 11/5 · 기대 11/6 · 1거래일 늦음</span></div>
+  </div>
+  <div class="head"><button class="primary">이 자료로 계속</button><button class="ghost">취소</button></div>
+  <div class="small muted">계속 → 새 값 반영 + 해당 줄에 기준일 · '늦음' 표시 / 취소 → 받아 둔 값 버리고 이전 화면 유지 · 상단 두 최신화 버튼 사용 가능</div>
+</section>
+<section class="card demo">
+  <b>[최신 시장 데이터 갱신] 끝난 뒤(예시 형식)</b>
+  <div class="small">갱신 완료 11/9 10:20 · 코스피 11/6 → 11/6(그대로) · 외국인 수급 11/5 → 11/6 · 원/달러 11/5 → 11/6 · WTI 11/6 그대로 · VIX 11/6 그대로</div>
+  <div class="small muted">화면을 옮겨 다녀와도 진행 중이면 이어서 표시 <span class="mark">[Q7 (a)]</span> · 실행 중 · 쿨다운 · VIX 다시 받기 중에는 버튼 막힘 · 일부 실패 · 실패는 서버 문구로</div>
+</section>
+<section class="card demo">
+  <details><summary>[AI용 시장 정보 복사]로 복사되는 글(고정 프롬프트 + 근거)</summary>
+<pre>아래 시장 자료를 읽고, 한국 ETF를 검토하기 전에 내가 무엇을 알아야 하는지 쉬운 한국어로 설명해 주세요.
+
+1. 시장 상태를 한 문장으로 써 주세요. KODEX 200 시장 판정과 코스피 가격 관측의 기준을 각각 밝혀 주세요.
+2. 코스피의 최근 가격 움직임과 20거래일·60거래일·6개월 흐름을 줄을 나눠 써 주세요. 주어진 값과 실제 비교 기간을 사용해 주세요.
+3. 외국인 누적 순매도와 최근 매도 속도 변화를 구분해 주세요. 가격과 수급이 다른 방향을 보이면 그 차이를 설명해 주세요.
+4. 원/달러·WTI나 최근 사건 중 위 내용을 이해하는 데 도움이 되는 관측이 있으면 별도 줄에 추가해 주세요.
+5. 마지막에 다음에 확인할 점을 한 줄 써 주세요.
+
+붙인 자료의 범위에서 관측과 해석을 구분해 주세요. 각 값의 기준일을 사용하고 빠진 값은 확인 불가로 써 주세요. 추세·원인·향후 방향에 대한 해석은 근거와 한계를 밝혀 주세요. 매매 판단에 사용할 수 있는 확인 사항까지 제시해 주세요.
+
+[아래에 복사한 시장 자료]
+[시장 판정] KODEX 200 하락장 · 21거래일째 · 2026-11-06
+[코스피 최신 종가] 5,059.69 · 2026-11-06 · 전일 대비 −324.11pt(−6.02%)
+[코스피 기간 수익률] 20거래일 −23.64% · 60거래일 −19.16%(둘 다 11/6 기준)
+[코스피 6개월] −22.39% · 5/4 6,936.99 → 11/5 5,383.80 · 가격과 수급의 공통 비교 종료일 11/5
+[외국인 6개월] 누적 순매도 164.3조원 · 11/5까지 124/124일
+[외국인 매도 속도] 직전 20거래일 24.0조원 순매도(일평균 1.2조원) → 최근 20거래일 22.1조원 순매도(일평균 1.1조원) · 11/5까지
+[60거래일 수급] 외국인 −53.1조원 · 개인 −11.8조원 · 기관계 +9.7조원 · 11/5까지
+[최근 저점] 11/6 종가 5,059.69는 앞선 20개 저장 종가 최저치인 11/5의 5,383.80을 밑돎
+[이전 최근 저점] 11/5 종가 5,383.80은 당시 앞선 20개 저장 종가 최저치인 10/26의 5,469.47을 밑돎
+[원/달러] 1,340.07원 · 11/5
+[WTI] 90.83달러(+0.34%) · 11/6
+[다른 관측 1] WTI 11/4 변화 −7.97달러(평소 변화의 3.4배)
+[다른 관측 2] WTI 11/4 직전 범위 아래 · 비교 기준값 88.28달러(10/7)
+[다른 관측 3] 원/달러 11/3 변화 +19.29원(평소 변화의 4.6배)
+[다른 관측 4] 원/달러 11/3 직전 범위 위 · 비교 기준값 1,343.75원(10/6)
+[다른 관측 5] WTI 11/2 변화 −7.66달러(평소 변화의 3.8배)
+[자료 상태] 11/9 확인 시 기대 기준일 11/6 · 외국인 수급과 원/달러의 마지막 자료일 11/5 · 지연 원인 미확인</pre>
+  </details>
+  <div class="small muted">복사 실패 시: '복사하지 못했습니다 — 아래 글을 직접 선택해 복사하세요.' + 위 글 상자를 펼침(성공처럼 보이지 않음)</div>
+</section>
+
+</main>
+</body>
+</html>
