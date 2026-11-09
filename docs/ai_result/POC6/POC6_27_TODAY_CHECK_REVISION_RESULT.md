@@ -3,8 +3,8 @@
 작성 2026-11-09 · 작성자: 개발자(VSCode Claude) · 수신: 사용자(첫 화면 확인) → 검증자(Codex) → 설계자
 
 ```text
-STATUS   = IMPLEMENTED(2026-11-09 · 격리 작업 사본) · 사용자 첫 화면 확인 완료(④ ⑤ 포함) → 검증자 r1 REJECTED(F1 · F2, §10) → 개발자 정정(§11) → 검증자 r2 VERIFIED(§12)
-           → 설계자 RESULT PASS_WITH_CLOSING_CORRECTIONS(§13) → 마감 보완 완료(§13-2) → 검증자 마감 보완 VERIFIED(§14) → 사용자 승인 → 본 저장소 반영 · PC 백엔드 재기동(2026-11-09 23:53 · §15) · 형수님 실화면 확인 대기 → 커밋 · push 별도 승인
+STATUS   = IMPLEMENTED_VERIFIED_CLOSED(2026-11-10 · 구현 커밋 589f3773 · push 완료 · §16) — IMPLEMENTED(2026-11-09 · 격리 작업 사본) · 사용자 첫 화면 확인 완료(④ ⑤ 포함) → 검증자 r1 REJECTED(F1 · F2, §10) → 개발자 정정(§11) → 검증자 r2 VERIFIED(§12)
+           → 설계자 RESULT PASS_WITH_CLOSING_CORRECTIONS(§13) → 마감 보완 완료(§13-2) → 검증자 마감 보완 VERIFIED(§14) → 사용자 승인 → 본 저장소 반영 · PC 백엔드 재기동(2026-11-09 23:53 · §15) → 사용자 커밋 · push 지시(2026-11-10) → 구현 커밋 589f3773 push(§16)
            설계 기준서 V2(DESIGN) → 개발 PLAN V1 → 설계자 PLAN 판정 PASS_WITH_REQUIRED_CORRECTIONS(2026-11-09 · Q1 ~ Q11 · 필수 보완)
            → PLAN 반영 → 격리 작업 사본 구현 · 시험 → 격리 서버(8001 · 3001)로 실제 저장 자료 화면
            → 형수님 첫 화면 의견 2건 = 사용자 결정 ④ ⑤(2026-11-09 · 아래) 반영 · 시험
@@ -503,3 +503,10 @@ KS-10: 컴포넌트 최대 `MarketDiscoveryView.tsx` 739(< 850) · 백엔드 최
 - 형수님 실화면 확인(판정 §4-2): 차트 · 두 카드 함께 펼치기 · [보유 현황 보기] → 「자금 기준」 이동 · 예약과 과거 발송 기록 표시.
 - 커밋 · push = 별도 사용자 승인(사용자 handoff · 개인 자료 제외) → `IMPLEMENTED_VERIFIED_CLOSED`.
 - 작업 트리 폴더(`krx_hyungsoo_wt_poc6_27`)는 커밋 뒤 정리(삭제는 사용자 승인).
+
+## 16. 종료 기록(2026-11-10)
+
+- 사용자 지시(2026-11-10): '커밋 및 푸쉬 정리까지 해주세요' — §15 실화면 확인 요청 뒤의 지시다. 실화면 항목별(차트 · 두 카드 · 자금 기준 이동 · 예약 · 발송 표시) 회신은 따로 받지 않았다.
+- 구현 커밋 `589f3773` — `feat(poc6-27): 「오늘의 투자 점검」 개편 …` · 65개 파일(작업 트리 검증 변경 58 + 본 저장소 문서 7) · `git push origin main` = `97991d18..589f3773` · 원격 일치(`HEAD` = `origin/main`). 제외 = 사용자 handoff(`docs/handoff/INVESTMENT_MODEL_V2_MASTER_HANDOFF_2026-07-26.md` · 미추적 그대로) · 개인 자료 · 화면 캡처.
+- 상태: **IMPLEMENTED_VERIFIED_CLOSED** — 설계자 RESULT 판정 §4-3 의 실제 PC 반영(§15) · 승인된 커밋 · push 기록.
+- 남긴 것(이번 범위 밖 · 자동 후속 없음): 미사용 파일 2개(`TodayFlowLines.tsx` · `OciStatusOneLine.tsx` · `flowBasisNote`) 삭제는 별도 사용자 승인 · `crontab` 주석 줄 판독 한계(활성 예약 구분이 필요한 운영 작업 때) · PC 원장 사본 마지막 동기화 2026-10-23(「받은 알림 기록」 [원장 새로고침]은 사용자 버튼) · 격리 작업 트리 폴더 `/Users/hyungsookim/projects/krx_hyungsoo_wt_poc6_27`(브랜치 `poc6-27-today-check` · 커밋 없음) 정리는 삭제 승인 뒤.
