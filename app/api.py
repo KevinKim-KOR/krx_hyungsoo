@@ -50,6 +50,7 @@ from app import (
 )
 from app.api_decision_draft_preview import router as decision_draft_preview_router
 from app.api_decision_ledger import router as decision_ledger_router
+from app.api_etf_compare import router as etf_compare_router  # POC6-28
 from app.api_decision_sessions import router as decision_sessions_router
 from app.api_etf_constituents import router as etf_constituents_router
 from app.api_holdings import CapitalViewResponse, router as holdings_router
@@ -119,6 +120,7 @@ app.add_middleware(
 # KS-10 근접 해소 + 1개 책임 1개 파일.
 app.include_router(universe_router)
 app.include_router(market_topn_router)
+app.include_router(etf_compare_router)  # POC6-28 「ETF 비교하기」 요약(PC · 읽기 전용)
 app.include_router(decision_sessions_router)
 app.include_router(decision_ledger_router)  # POC5-03 받은 알림 기록
 app.include_router(etf_constituents_router)

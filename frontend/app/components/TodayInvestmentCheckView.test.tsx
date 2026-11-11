@@ -687,6 +687,8 @@ describe("TodayInvestmentCheckView", () => {
   // 2026-08-02 POC3-05 DESIGN_V2: "확인 근거" 가 설계서 §4.1·§4.4 가 명시한 사용자 화면
   //   메뉴 라벨이 되어 "근거" 는 금지어에서 제외한다(V2 AC-2·AC-7). V2 AC-19 사용자 금지어
   //   (저위험/고위험/안전/매도/손절/BUY/SELL)에는 "근거" 가 없다. "후보" 는 계속 금지.
+  // 2026-11-11 POC6-28(설계자 PLAN 판정 Q1 · 사용자 결정): 「ETF 비교하기」 폴더 아래 하위 메뉴 이름 「후보」(workbench)
+  //   한 곳만 허용한다. 다른 메뉴 이름 · 모든 설명(hint)에는 여전히 "후보" 를 쓰지 않는다.
   const FORBIDDEN_TERMS = [
     "Workbench",
     "Market Discovery",
@@ -706,8 +708,10 @@ describe("TodayInvestmentCheckView", () => {
     render(<LeftSidebar active="today_check" onSelect={() => {}} />);
     const text = document.body.textContent ?? "";
     for (const term of FORBIDDEN_TERMS) {
+      if (term === "후보") continue;
       expect(text).not.toContain(term);
     }
+    expect(text.split("후보").length - 1).toBe(1); // 「ETF 비교하기 › 후보」 한 곳
     // 사용자 언어 라벨이 실제로 있는지도 확인.
     expect(text).toContain("요즘 잘 오르는 ETF");
     expect(text).toContain("보유 현황");
@@ -717,7 +721,9 @@ describe("TodayInvestmentCheckView", () => {
   it("AC-7 보강: MENU_ITEMS 의 label·hint 모두 금지 용어가 없다", () => {
     for (const item of MENU_ITEMS) {
       for (const term of FORBIDDEN_TERMS) {
-        expect(item.label).not.toContain(term);
+        if (!(term === "후보" && item.key === "workbench" && item.label === "후보")) {
+          expect(item.label).not.toContain(term);
+        }
         expect(item.hint ?? "").not.toContain(term);
       }
     }

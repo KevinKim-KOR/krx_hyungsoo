@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>POC6-28 ETF 비교하기 목업</title>
+<style>
+:root {
+  --bg: #f5f7fa; --fg: #1a1d23; --muted: #6b7280; --card: #ffffff; --border: #d1d5db; --soft: #e8ebf0; --tile: #f3f6fb;
+  --accent: #2563eb; --warn-bg: #fff7ed; --warn-bd: #fdba74; --warn-fg: #9a3412; --info-bg: #eaf1fe; --info-fg: #1e40af;
+  --expo-bg: #eef2ff; --expo-fg: #4338ca; --up: #d92d20; --down: #1570ef; --q: #a21caf;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); line-height: 1.5; font-size: 14px;
+  font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", Roboto, sans-serif; }
+.shell { display: grid; grid-template-columns: 230px minmax(0, 1fr); min-height: 100vh; }
+@media (max-width: 760px) { .shell { grid-template-columns: 1fr; } }
+aside { background: #fff; border-right: 1px solid var(--soft); padding: 16px 12px; display: grid; align-content: start; gap: 4px; }
+aside .grp { font-size: 12px; color: var(--muted); font-weight: 700; margin: 12px 8px 4px; }
+aside .m { padding: 7px 10px; border-radius: 8px; color: var(--fg); cursor: default; }
+aside .folder { font-weight: 700; padding: 7px 10px; }
+aside .child { padding: 7px 10px 7px 26px; border-radius: 8px; cursor: pointer; }
+aside .child.on { background: var(--info-bg); color: var(--info-fg); font-weight: 700; }
+main { padding: 20px 20px 60px; display: grid; gap: 14px; max-width: 980px; }
+.note-top { font-size: 12px; color: var(--muted); border: 1px dashed var(--border); border-radius: 8px; padding: 8px 12px; background: #fff; }
+.q { display: inline-block; font-size: 11px; font-weight: 700; color: var(--q); border: 1px solid #f0abfc; border-radius: 6px; padding: 0 5px; margin-left: 4px; vertical-align: 1px; }
+h1 { font-size: 22px; margin: 0; }
+h2 { font-size: 16px; margin: 0; }
+h3 { font-size: 14px; margin: 0; }
+.head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.head h1 { margin-right: auto; }
+button { font: inherit; border-radius: 8px; min-height: 40px; padding: 0 12px; cursor: pointer; }
+.ghost { background: #fff; color: var(--fg); border: 1px solid var(--border); font-weight: 600; }
+.primary { background: var(--accent); color: #fff; border: none; font-weight: 600; }
+.link { background: none; border: none; color: var(--accent); font-weight: 600; padding: 0; min-height: 0; }
+.small { font-size: 12px; } .muted { color: var(--muted); }
+.basis { font-size: 13px; color: var(--muted); background: #fff; border: 1px solid var(--soft); border-radius: 10px; padding: 8px 12px; display: grid; gap: 2px; }
+.regime { background: var(--warn-bg); border: 1px solid var(--warn-bd); border-radius: 10px; padding: 8px 12px; font-size: 13px; }
+.regime b { color: var(--warn-fg); }
+.card { background: var(--card); border: 1px solid var(--soft); border-radius: 12px; padding: 14px 16px; display: grid; gap: 10px; }
+.card > .sub { font-size: 12px; color: var(--muted); margin-top: -6px; }
+.mix { font-size: 12px; background: var(--tile); border-radius: 8px; padding: 6px 10px; }
+.grp-row { border: 1px solid var(--soft); border-radius: 10px; padding: 10px 12px; display: grid; gap: 6px; }
+.grp-row summary { cursor: pointer; list-style: none; display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: baseline; }
+.grp-row summary::-webkit-details-marker { display: none; }
+.grp-row summary::before { content: "▸"; color: var(--muted); }
+.grp-row[open] summary::before { content: "▾"; }
+.gname { font-weight: 700; }
+.kind { font-size: 11px; font-weight: 700; border-radius: 999px; padding: 1px 8px; background: var(--info-bg); color: var(--info-fg); }
+.kind.idx { background: #f1f5f9; color: #334155; }
+.kind.unk { background: #f3f4f6; color: var(--muted); }
+.chip { display: inline-block; font-size: 11px; font-weight: 700; border-radius: 999px; padding: 1px 8px; }
+.chip.dec { background: #ffedd5; color: var(--warn-fg); }
+.chip.expo { background: var(--expo-bg); color: var(--expo-fg); }
+.chip.lack { background: #f3f4f6; color: #374151; }
+.chip.both { background: #fae8ff; color: #86198f; }
+.down { color: var(--down); font-weight: 600; } .up { color: var(--up); font-weight: 600; }
+.etf { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; padding: 6px 8px; border-radius: 8px; cursor: pointer; }
+.etf:hover { background: var(--tile); }
+.etf.sel { background: var(--info-bg); }
+.etf .nm { min-width: 0; }
+.detail { border-left: 3px solid var(--accent); background: #fbfcff; border-radius: 0 10px 10px 0; padding: 10px 14px; display: grid; gap: 6px; margin: 2px 0 6px 8px; font-size: 13px; }
+.chart { height: 120px; border: 1px solid var(--soft); border-radius: 8px; background: linear-gradient(180deg, #fff, #f7f9fc); position: relative; overflow: hidden; }
+.chart svg { width: 100%; height: 100%; display: block; }
+.kv { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 4px 12px; }
+@media (max-width: 560px) { .kv { grid-template-columns: 1fr; } }
+.kv .k { color: var(--muted); }
+.common { font-size: 12px; background: var(--tile); border-radius: 8px; padding: 8px 10px; display: grid; gap: 4px; }
+.panel { background: #fff; border: 2px solid var(--accent); border-radius: 12px; padding: 14px 16px; display: grid; gap: 10px; }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.seg span { padding: 6px 12px; font-size: 13px; border-right: 1px solid var(--border); }
+.seg span:last-child { border-right: none; }
+.seg .on { background: var(--accent); color: #fff; font-weight: 700; }
+.checks { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; }
+.filters { display: flex; flex-wrap: wrap; gap: 6px; }
+.filters span { border: 1px solid var(--border); border-radius: 999px; padding: 4px 12px; font-size: 13px; background: #fff; }
+.filters .on { background: var(--fg); color: #fff; border-color: var(--fg); }
+.hrow { border: 1px solid var(--soft); border-radius: 10px; padding: 10px 12px; display: grid; gap: 6px; background: #fff; }
+.hrow .top { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; }
+.hrow .top .nm { font-weight: 700; margin-right: auto; }
+.reason { font-size: 13px; background: var(--warn-bg); border-radius: 8px; padding: 4px 10px; color: var(--warn-fg); }
+.mask { color: var(--muted); font-style: italic; }
+.tabs { display: inline-flex; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.tabs button { border: none; border-radius: 0; background: #fff; font-weight: 600; min-height: 40px; }
+.tabs button.on { background: var(--fg); color: #fff; }
+.sortbar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.sortbar button { min-height: 36px; border: 1px solid var(--border); background: #fff; font-weight: 600; font-size: 13px; }
+.sortbar button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+.rk-wrap { overflow-x: auto; background: #fff; border: 1px solid var(--soft); border-radius: 12px; }
+table.rk { border-collapse: collapse; width: 100%; min-width: 640px; font-size: 13px; font-variant-numeric: tabular-nums; }
+table.rk th { text-align: right; font-size: 12px; color: var(--muted); font-weight: 600; padding: 8px 10px; border-bottom: 1px solid var(--soft); }
+table.rk th:nth-child(-n+2) { text-align: left; }
+table.rk td { text-align: right; padding: 7px 10px; border-bottom: 1px solid var(--soft); }
+table.rk td:nth-child(-n+2) { text-align: left; }
+table.rk tr.r { cursor: pointer; } table.rk tr.r:hover { background: var(--tile); }
+table.rk tr.d td { text-align: left; background: #fbfcff; border-left: 3px solid var(--accent); font-size: 12px; }
+.tg { font-size: 11px; color: var(--muted); margin-left: 6px; }
+.na { color: var(--muted); font-size: 12px; }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="shell">
+<aside aria-label="좌측 메뉴(목업)">
+  <div class="grp">오늘 확인</div>
+  <div class="m">오늘의 투자 점검</div>
+  <div class="grp">비교·판단</div>
+  <div class="folder">ETF 비교하기 ▾</div>
+  <div class="child on" data-go="cand">후보</div>
+  <div class="child" data-go="hold">보유</div>
+  <div class="m">요즘 잘 오르는 ETF</div>
+  <div class="m">ETF 구성종목</div>
+  <div class="m">AI 투자 세션</div>
+  <div class="grp">보유·자료 관리</div>
+  <div class="m">보유 현황</div>
+  <div class="m">종목 관리</div>
+  <div class="m">확인 근거</div>
+</aside>
+
+<main>
+<div class="note-top">
+  목업 · POC6-28 PLAN V1 <b>판정(11/11) 반영본</b> · 후보 값은 <b>11/9 저장 가격으로 계산한 실제 값</b>(모집단 · 상·하위 · 묶음 · 시장 판정 · 구성종목 범위)이고, 보유 화면 가격 근거는 11/10 보유 근거 응답의 실제 값입니다(기준일이 다른 두 근거를 나눠 보이는 예).
+  보유 종목명 · 비중 · 매입 대비 손익 · 금액과 보유 종목별 순위 · 수익률(공개 목록으로 종목이 드러남)은 ●로 가렸습니다. 실화면은 실제 값입니다.
+  왼쪽 「후보」 · 「보유」, 「후보」 위 [섹터 요약] · [ETF 순위]로 화면을 바꾸고, [ETF 순위]의 정렬 버튼과 행은 실제로 눌러 볼 수 있습니다. 차트 선은 자리 표시용입니다.
+</div>
+
+<!-- ───────────────────────── 후보 ───────────────────────── -->
+<section class="screen" id="cand">
+<div style="display:grid; gap:14px">
+  <div class="head">
+    <h1>ETF 비교하기 · 후보</h1>
+    <span class="tabs" role="tablist"><button type="button" class="on" data-tab="sum">섹터 요약</button><button type="button" data-tab="rank">ETF 순위</button></span>
+    <button class="ghost" type="button">조회 기준</button>
+    <button class="ghost" type="button">다시 불러오기</button>
+  </div>
+
+  <div class="basis">
+    <div><b style="color:var(--fg)">1개월 · 10/12 → 11/9</b> · 인버스 · 레버리지 · 합성 · 선물 제외 · 비교한 ETF 961개 · 기간이 달라 뺀 17개 · 상·하위 각 30개 표시</div>
+    <div class="small">11/9 가격 = 마감 뒤 저장(11/10 13:18 저장) · 끝일이 장중에 저장된 날이면 '11/10 가격 = 장중 저장값 포함 · 잠정(1,187개 · 11/10 13:17 ~ 13:21 저장)'</div>
+  </div>
+
+  <div id="cand-sum" style="display:grid; gap:14px">
+  <div class="regime">시장 판정 · 국내시장 기준(KODEX 200 · 11/9 · 마감 뒤 저장): <b>하락장</b>(22거래일째) — 내 보유와 겹친 항목 · 하위권부터 보여 줍니다 <span class="small muted">(장중 저장값 기준이면 '잠정')</span></div>
+
+  <!-- 조회 기준 패널(열린 모습 예시) -->
+  <details class="panel">
+    <summary style="cursor:pointer; font-weight:700">후보 조회 기준(열린 모습 예시 · [조회 기준]으로 엽니다)</summary>
+    <div class="small muted">지금 적용: 1개월 · 4종 제외 · 상·하위 각 최대 30개</div>
+    <div><span class="muted small">기간</span><br><span class="seg"><span>1일</span><span class="on">1개월</span><span>3개월</span></span></div>
+    <div><span class="muted small">제외 조건</span>
+      <div class="checks"><label>☑ 인버스</label><label>☑ 레버리지</label><label>☑ 합성</label><label>☑ 선물</label></div></div>
+    <div class="small"><span class="muted">표시 수</span> 상·하위 각 최대 30개(고정) · <span class="muted">정렬</span> 방향은 여기서 고르지 않음([ETF 순위] 정렬 줄)</div>
+    <div class="small"><span class="muted">적용되는 목록</span> 「후보」 섹터 요약 · ETF 순위 · 「보유」 약세 묶음 접점 — 같은 탭의 「ETF 비교하기」 안에서만 공유 · 새로 고치면 1개월 · 4종 제외로 시작 · 「오늘의 투자 점검」 · 「요즘 잘 오르는 ETF」 조건과는 따로</div>
+    <div class="head" style="gap:8px"><button class="primary" type="button">적용</button><button class="ghost" type="button">닫기</button></div>
+  </details>
+
+  <!-- ① 내 보유와 직접 겹친 항목 -->
+  <div class="card">
+    <h2>① 내 보유와 겹친 항목</h2>
+    <div class="sub">이번 상·하위 30개 기준 · 직접 보유 1건 · 구성종목 겹침(노출 확인) 7종목</div>
+    <div class="grp-row">
+      <div style="display:flex; flex-wrap:wrap; gap:6px 12px; align-items:baseline">
+        <span class="gname">보유 A</span><span class="kind idx">지수 묶음 · 해외</span>
+        <span>하위 <span class="mask">●●</span>위 · 1개월 <span class="mask">−●●.●%</span></span>
+        <span class="chip dec">PC 20저장일 하락 10% 이상</span>
+        <button class="link small" type="button" style="margin-left:auto">보유에서 보기 →</button>
+      </div>
+    </div>
+    <div class="grp-row">
+      <div style="display:flex; flex-wrap:wrap; gap:6px 12px; align-items:baseline">
+        <span class="chip expo">노출 확인</span>
+        <span>보유 ETF 5개 · 개별 주식 2종목이 하위권 ETF 구성 상위 10과 겹침 · 겹친 종목 17개</span>
+        <button class="link small" type="button" style="margin-left:auto">보유에서 보기 →</button>
+      </div>
+      <div class="small muted">비교 범위: 하위 30개 중 구성 자료 있는 ETF 9개(6/22 ~ 10/2) × 보유 ETF 중 구성 자료 있는 6개(6/19 ~ 6/22) · 각 비중 상위 10종목. 구성 자료 없는 보유 ETF 22개는 비교하지 못했습니다.</div>
+    </div>
+  </div>
+
+  <!-- ② 하위권 -->
+  <div class="card">
+    <h2>② 하위권에 모인 섹터 · 테마</h2>
+    <div class="sub">1개월 하위 30개 · −44.9% ~ −35.9%</div>
+    <div class="mix">공식 분류: 국내 주식 21 · 해외 주식 8 · 국내&amp;해외 주식 1</div>
+    <div class="mix">사업군 분류 21/30 · 반복된 업종 먼저</div>
+
+    <details class="grp-row" open>
+      <summary><span class="gname">반도체</span><span class="kind">업종</span>
+        <span>ETF 16개 · 서로 다른 지수 15종</span><span class="down">−44.9% ~ −35.9%</span>
+        <span class="small muted">국내 14 · 해외 1 · 국내&amp;해외 1 · 전략형 2</span></summary>
+      <div class="etf sel"><div class="nm">SOL 반도체전공정</div><div class="down">−44.9%</div></div>
+      <div class="detail">
+        <div class="chart" aria-label="가격 차트(기존 차트 자리)"><svg viewBox="0 0 400 120" preserveAspectRatio="none"><polyline fill="none" stroke="#2563eb" stroke-width="2" points="0,20 40,18 80,14 120,22 160,30 200,46 240,60 280,72 320,88 360,96 400,102"/></svg></div>
+        <div class="small muted">표시 기간 8/11 ~ 11/9 · 3개월(기존 기간 버튼) — 저장 건수 · 전체 저장 기간 줄은 이 화면에서 뺍니다</div>
+        <div class="kv">
+          <span class="k">1개월</span><span><span class="down">−44.9%</span> · 10/12 → 11/9</span>
+          <span class="k">3개월</span><span><span class="down">−29.2%</span> · 8/11 → 11/9</span>
+          <span class="k">같은 기간 KODEX 200 대비</span><span>10/12 → 11/9 · 이 ETF −44.9% · KODEX 200 −22.6% · 차이 <span class="down">−22.3%p</span></span>
+          <span class="k">20저장일 종가 고점 대비</span><span><span class="down">−45.7%</span> · 고점 10/13</span>
+          <span class="k">기초지수</span><span>FnGuide 반도체 전공정 지수(PR) · 국내 주식</span>
+          <span class="k">분류 근거</span><span>지수명의 '반도체' 낱말 → 반도체(기존 사업군 사전)</span>
+          <span class="k">보유</span><span>보유하지 않음</span>
+        </div>
+      </div>
+      <div class="etf"><div class="nm">HANARO 반도체핵심공정주도주</div><div class="down">−44.7%</div></div>
+      <div class="etf"><div class="nm">TIGER AI반도체핵심공정</div><div class="down">−44.3%</div></div>
+      <div class="etf"><div class="nm">SOL 반도체후공정</div><div class="down">−43.0%</div></div>
+      <div class="etf"><div class="nm">KODEX AI반도체핵심장비</div><div class="down">−42.6%</div></div>
+      <button class="link small" type="button">나머지 11개 보기</button>
+      <div class="common">
+        <div><b>공통 구성종목</b> 주성엔지니어링 3 · 원익IPS 3 · HPSP 3 · 한미반도체 3 · 피에스케이 2 · 유진테크 2 · 이수페타시스 2 · 대덕전자 2 · 심텍 2 · 리노공업 2</div>
+        <div class="muted">구성 자료 있는 ETF 4/16 · 각 비중 상위 10종목 · 구성 기준일 10/2 · 숫자 = 그 종목이 나온 ETF 수</div>
+      </div>
+    </details>
+
+    <details class="grp-row">
+      <summary><span class="gname">전력인프라</span><span class="kind">업종</span><span>ETF 3개 · 지수 3종</span><span class="down">−36.7% ~ −36.3%</span><span class="small muted">국내 3</span></summary>
+    </details>
+    <details class="grp-row">
+      <summary><span class="gname">네트워크</span><span class="kind">업종</span><span>ETF 1개</span><span class="down">−44.1%</span><span class="small muted">해외 1</span></summary>
+    </details>
+    <details class="grp-row">
+      <summary><span class="gname">정보기술</span><span class="kind">업종</span><span>ETF 1개</span><span class="down">−38.2%</span><span class="small muted">국내 1</span></summary>
+    </details>
+    <details class="grp-row">
+      <summary><span class="gname">기초지수별 묶음 9개 · 미분류 0개</span><span class="kind idx">지수별 1개씩</span><span class="down">−44.5% ~ −36.4%</span></summary>
+      <div class="etf"><div class="nm">HANARO 미국AI광통신TOP10 <span class="small muted">· 해외</span></div><div class="down">−44.5%</div></div>
+      <div class="etf"><div class="nm">RISE 미국AI클라우드인프라 <span class="small muted">· 해외</span></div><div class="down">−40.7%</div></div>
+      <div class="etf"><div class="nm">TIME 코스닥액티브</div><div class="down">−38.9%</div></div>
+      <div class="etf"><div class="nm">보유 A <span class="small muted">· 해외 · 주식 · 보유</span></div><div class="mask">−●●.●%</div></div>
+      <button class="link small" type="button">나머지 5개 보기</button>
+      <div class="small muted">사업군 사전으로 묶이지 않아 기초지수별로 보입니다. 지역 · 자산 · 운용 전략은 줄마다 따로 적습니다.</div>
+    </details>
+  <div class="small"><button class="link" type="button">이 목록 전체를 AI 질문용으로 복사</button> <span class="muted">· 하위 30개 · ETF명 · 기초지수 · 지역 · 자산 · 전략형 · 업종 · 수익률과 날짜 · 확인된 구성종목과 비중 · 구성 자료 없음 21개 · 질문 = 반복된 근거 / 이름에서 유추한 가설(추정) / 부족한 자료 · 클립보드 복사만 · AI 답은 추정입니다</span></div>
+  </div>
+
+  <!-- ③ 상위권 -->
+  <div class="card">
+    <h2>③ 상위권에 모인 섹터 · 테마</h2>
+    <div class="sub">1개월 상위 30개 · +15.7% ~ +8.4%</div>
+    <div class="mix">공식 분류: 해외 주식 26 · 국내 주식 2 · 국내 채권 2</div>
+    <div class="mix">사업군 분류 1/30 · 공통 업종 확인 어려움</div>
+    <details class="grp-row">
+      <summary><span class="gname">Nifty 50 Index</span><span class="kind idx">지수 묶음</span><span>ETF 2개 · 같은 지수</span><span class="up">+15.7% ~ +14.8%</span><span class="small muted">해외 2</span></summary>
+    </details>
+    <details class="grp-row">
+      <summary><span class="gname">바이오</span><span class="kind">업종</span><span>ETF 1개</span><span class="up">+12.4%</span><span class="small muted">국내 1</span></summary>
+    </details>
+    <details class="grp-row" open>
+      <summary><span class="gname">기초지수별 묶음 27개 · 미분류 0개</span><span class="kind idx">지수별 1개씩</span><span class="up">+15.0% ~ +8.4%</span></summary>
+      <div class="etf"><div class="nm">KODEX 인도타타그룹 <span class="small muted">· 해외</span></div><div class="up">+15.0%</div></div>
+      <div class="etf"><div class="nm">TIGER 인도빌리언컨슈머 <span class="small muted">· 해외</span></div><div class="up">+14.2%</div></div>
+      <div class="etf"><div class="nm">KODEX 미국ETF산업Top10 Indxx <span class="small muted">· 해외</span></div><div class="up">+13.9%</div></div>
+      <div class="etf"><div class="nm">ACE 인도시장대표BIG5그룹액티브 <span class="small muted">· 해외</span></div><div class="up">+13.3%</div></div>
+      <div class="etf"><div class="nm">KIWOOM 의료AI</div><div class="up">+13.0%</div></div>
+      <div class="etf"><div class="nm">TIGER 국고채30년스트립액티브 <span class="small muted">· 채권</span></div><div class="up">+12.8%</div></div>
+      <button class="link small" type="button">나머지 21개 보기</button>
+      <div class="common">
+        <div>사업군 사전으로 묶이지 않아 기초지수별로 보입니다(해외 영문 지수명 · 채권 지수명은 사전 낱말에 없음). 지역 · 자산 · 운용 전략은 줄마다 따로 적습니다.</div>
+        <div class="muted">구성 자료 있는 ETF 2/27(7/3) · 2개 안 겹침: 노보 노디스크 ADR · 일라이 릴리 · 암젠</div>
+      </div>
+    </details>
+    <div class="small"><button class="link" type="button">이 목록 전체를 AI 질문용으로 복사</button> <span class="muted">· 상위 30개 · ETF명 · 기초지수 · 지역 · 자산 · 전략형 · 업종 · 수익률과 날짜 · 확인된 구성종목과 비중 · 구성 자료 없음 28개 · 질문 = 반복된 근거 / 이름에서 유추한 가설(추정) / 부족한 자료 · 클립보드 복사만 · AI 답은 추정입니다</span></div>
+  </div>
+  </div>
+  <div id="cand-rank" style="display:grid; gap:10px" hidden>
+    <div class="head" style="gap:8px">
+      <span class="tabs"><button type="button" class="on" data-side="top">상위 30</button><button type="button" data-side="bottom">하위 30</button></span>
+      <span class="small muted">섹터 요약과 같은 목록 · 정렬은 이 목록 안의 표시 순서만 바꿉니다</span>
+    </div>
+    <div class="sortbar"><span class="small muted">정렬</span>
+      <button type="button" data-key="sel">선정 순서</button>
+      <button type="button" data-key="r1">1개월 수익률</button>
+      <button type="button" data-key="r3">3개월 수익률</button>
+      <button type="button" data-key="same">1개월 KODEX 200 대비</button>
+      <button type="button" data-key="dd">최근 고점 대비(20저장일)</button>
+      <span class="small muted">같은 항목을 다시 누르면 높은 순 ↔ 낮은 순</span></div>
+    <div class="basis" id="rk-line"></div>
+    <div class="rk-wrap"><table class="rk"><thead><tr><th>순서</th><th>ETF</th><th>선정</th><th id="rk-valh">값</th></tr></thead><tbody id="rk-body"></tbody></table></div>
+    <div class="small muted">실화면은 보유 종목에 '보유'를 표시합니다(공개 문서라 목업에서 가림). 행을 누르면 그 행 아래에 기존 차트와 비교 날짜 · 기준값이 열립니다.</div>
+  </div>
+</div>
+</section>
+
+<!-- ───────────────────────── 보유 ───────────────────────── -->
+<section class="screen" id="hold" hidden>
+<div style="display:grid; gap:14px">
+  <div class="head">
+    <h1>ETF 비교하기 · 보유</h1>
+    <button class="ghost" type="button">조회 기준</button>
+    <button class="ghost" type="button">다시 불러오기</button>
+    <button class="ghost" type="button">보유 현황 보기</button>
+  </div>
+  <div class="basis">
+    <div><b style="color:var(--fg)">후보 조회 기준</b> 1개월 10/12 → 11/9 · 4종 제외(「ETF 비교하기」 조건) · <b style="color:var(--fg)">보유 근거</b> 5거래일 11/3 → 11/10 · 20거래일 10/13 → 11/10 · 보유 29종목(계좌 합산)</div>
+    <div class="small">후보 11/9 가격 = 마감 뒤 저장 · 보유 근거 11/10 가격 = 장중 저장값 · 11/10 13:18 저장 · 기준일이 달라 두 근거를 날짜와 함께 따로 보입니다</div>
+  </div>
+  <div class="regime">시장 판정 · 국내시장 기준(KODEX 200 · 11/9): <b>하락장</b> — 최근 하락한 보유부터 보여 줍니다 · PC 20저장일 하락 10% 이상 20종목 · 보유 비중 <span class="mask">가림</span></div>
+
+  <div class="filters"><span class="on">전체 29</span><span>최근 하락 25</span><span>약세 묶음 접점 8</span><span>비교 자료 부족 20</span></div>
+  <div class="small muted">비교 자료 부족 20 = 구성 자료 없는 ETF 20(가격 비교 문제 0 · 기간 다름 0) · 개별 주식 3은 조치 목록에서 뺌(해당 없음)</div>
+
+  <div class="hrow">
+    <div class="top"><span class="nm">보유 A</span>
+      <span class="small">비중 <span class="mask">가림</span></span><span class="small">매입 대비 손익 <span class="mask">가림</span></span>
+      <span class="chip dec">PC 20저장일 하락 10% 이상 · 장중</span></div>
+    <div class="reason">점검 사유: 후보 하위 ●●위 · 1개월 −●●.●%(10/12 → 11/9) · 조회 기간 수익률 음수</div>
+    <div class="detail">
+      <div class="kv">
+        <span class="k">최근 가격 변화</span><span>5거래일 11/3 → 11/10 <span class="mask">−●●.●%</span> · 20거래일 10/13 → 11/10 <span class="mask">−●●.●%</span></span>
+        <span class="k">같은 기간 KODEX 200 대비</span><span>10/13 → 11/10 · 이 종목 −●●.●% · KODEX 200 −14.5% · 차이 <span class="mask">−●●.●%p</span></span>
+        <span class="k">약세 묶음 접점</span><span><b>직접</b> — 후보 하위 ●●위 · 지수 묶음(해외) · 다른 하위 ETF와 겹친 구성종목 없음(이 ETF 구성 기준일 6/22 · 비교한 하위 ETF 8개)</span>
+        <span class="k">후보 조회 기간</span><span><span class="mask">−●●.●%</span> · 1개월 10/12 → 11/9 · 하위 ●●위 · 11/9 마감 뒤 저장</span>
+        <span class="k">월간 수익률(보유 근거)</span><span class="muted">확인값 없음(보유 근거가 이 종목의 1개월 값을 받지 않음)</span>
+        <span class="k">현재가 · 평가액</span><span class="mask">가림(실화면은 값 · 차트 · [보유 현황 보기])</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="hrow">
+    <div class="top"><span class="nm">보유 B</span>
+      <span class="small">비중 <span class="mask">가림</span></span><span class="small">매입 대비 손익 <span class="mask">가림</span></span>
+      <span class="chip dec">PC 20저장일 하락 10% 이상</span><span class="chip expo">노출 확인</span></div>
+    <div class="small muted">20거래일 −●●.●% · 후보 조회 기간 −●●.●% · 상·하위 30 밖 → 점검 사유 줄 없음 · 구성종목 ●개가 하위 ETF ●개와 겹침(보유 구성 6/22 · 하위 구성 6/22 ~ 10/2)</div>
+  </div>
+
+  <div class="hrow">
+    <div class="top"><span class="nm">보유 C <span class="small muted">· 개별 주식</span></span>
+      <span class="small">비중 <span class="mask">가림</span></span><span class="small">매입 대비 손익 <span class="mask">가림</span></span>
+      <span class="chip dec">PC 20저장일 하락 10% 이상</span><span class="chip expo">노출 확인</span></div>
+    <div class="small muted">20거래일 −●●.●% · 하위 ETF ●개의 구성 상위 10에 이 종목이 있음 · 개별 주식 — NAV · ETF 구성종목 해당 없음 · 조치 목록에서 뺌</div>
+  </div>
+
+  <div class="hrow">
+    <div class="top"><span class="nm">보유 D</span>
+      <span class="small">비중 <span class="mask">가림</span></span><span class="small">매입 대비 손익 <span class="mask">가림</span></span>
+      <span class="chip lack">구성종목 자료 없음</span></div>
+    <div class="small muted">20거래일 −●.●% · 하락 판정 구간 밖 · 비교 자료 부족: 구성 자료 없음(노출 비교 불가) · 가격 근거는 그대로 보임 · <button class="link small" type="button">ETF 구성종목에서 확인 →</button></div>
+  </div>
+
+  <div class="small muted">… 나머지 25종목. 하락장이라 기존 하락 판정이 있는 종목부터 보입니다(상승장 · 보합장 · 판정 확인 필요 = 비중 순).</div>
+</div>
+</section>
+</main>
+</div>
+<script>
+  document.querySelectorAll('[data-go]').forEach(function (el) {
+    el.addEventListener('click', function () {
+      document.querySelectorAll('[data-go]').forEach(function (x) { x.classList.toggle('on', x === el); });
+      document.getElementById('cand').hidden = el.dataset.go !== 'cand';
+      document.getElementById('hold').hidden = el.dataset.go !== 'hold';
+    });
+  });
+</script>
+<script>
+  var RK = {"top": [{"rank": 1, "name": "KODEX 인도Nifty50", "tags": ["해외"], "r1": 15.74, "r3": -1.31, "s3": "2026-08-11", "same": 38.38, "dd": 0.0, "peak": "2026-11-09"}, {"rank": 2, "name": "KODEX 인도타타그룹", "tags": ["해외"], "r1": 14.99, "r3": -3.87, "s3": "2026-08-11", "same": 37.63, "dd": 0.0, "peak": "2026-11-09"}, {"rank": 3, "name": "TIGER 인도니프티50", "tags": ["해외"], "r1": 14.81, "r3": -2.08, "s3": "2026-08-11", "same": 37.45, "dd": 0.0, "peak": "2026-11-09"}, {"rank": 4, "name": "TIGER 인도빌리언컨슈머", "tags": ["해외"], "r1": 14.16, "r3": -4.47, "s3": "2026-08-11", "same": 36.8, "dd": 0.0, "peak": "2026-11-09"}, {"rank": 5, "name": "KODEX 미국ETF산업Top10 Indxx", "tags": ["해외"], "r1": 13.93, "r3": 9.16, "s3": "2026-08-11", "same": 36.57, "dd": -1.86, "peak": "2026-11-05"}, {"rank": 6, "name": "ACE 인도시장대표BIG5그룹액티브", "tags": ["해외"], "r1": 13.32, "r3": -5.66, "s3": "2026-08-11", "same": 35.96, "dd": 0.0, "peak": "2026-11-09"}, {"rank": 7, "name": "KIWOOM 의료AI", "tags": [], "r1": 13.04, "r3": -6.2, "s3": "2026-08-11", "same": 35.68, "dd": -2.01, "peak": "2026-11-05"}, {"rank": 8, "name": "TIGER 국고채30년스트립액티브", "tags": ["채권"], "r1": 12.83, "r3": 22.9, "s3": "2026-08-11", "same": 35.47, "dd": -0.16, "peak": "2026-11-06"}, {"rank": 9, "name": "TIGER 글로벌비만치료제TOP2Plus", "tags": ["해외"], "r1": 12.5, "r3": 0.26, "s3": "2026-08-11", "same": 35.14, "dd": -2.53, "peak": "2026-11-05"}, {"rank": 10, "name": "TIGER 200 헬스케어", "tags": [], "r1": 12.41, "r3": -5.01, "s3": "2026-08-11", "same": 35.05, "dd": -1.88, "peak": "2026-11-05"}, {"rank": 11, "name": "ACE 일라이릴리밸류체인", "tags": ["해외"], "r1": 12.3, "r3": 3.83, "s3": "2026-08-11", "same": 34.94, "dd": -2.66, "peak": "2026-11-05"}, {"rank": 12, "name": "KODEX 글로벌비만치료제TOP2 Plus", "tags": ["해외"], "r1": 11.46, "r3": -6.42, "s3": "2026-08-11", "same": 34.1, "dd": -3.05, "peak": "2026-11-05"}, {"rank": 13, "name": "RISE 글로벌비만산업TOP2+", "tags": ["해외"], "r1": 11.38, "r3": -4.13, "s3": "2026-08-11", "same": 34.02, "dd": -3.06, "peak": "2026-11-05"}, {"rank": 14, "name": "RISE 인도디지털성장", "tags": ["해외"], "r1": 11.1, "r3": -3.98, "s3": "2026-08-11", "same": 33.74, "dd": 0.0, "peak": "2026-11-09"}, {"rank": 15, "name": "ACE 인도컨슈머파워액티브", "tags": ["해외"], "r1": 11.09, "r3": -6.54, "s3": "2026-08-11", "same": 33.73, "dd": 0.0, "peak": "2026-11-09"}, {"rank": 16, "name": "TIGER 미국S&P500배당귀족", "tags": ["해외"], "r1": 10.38, "r3": -1.39, "s3": "2026-08-11", "same": 33.02, "dd": -1.61, "peak": "2026-11-05"}, {"rank": 17, "name": "RISE 미국S&P배당킹", "tags": ["해외"], "r1": 10.24, "r3": -1.86, "s3": "2026-08-11", "same": 32.88, "dd": -1.27, "peak": "2026-11-05"}, {"rank": 18, "name": "ACE 글로벌빅파마", "tags": ["해외"], "r1": 9.95, "r3": 2.92, "s3": "2026-08-11", "same": 32.59, "dd": -2.48, "peak": "2026-11-05"}, {"rank": 19, "name": "KODEX 미국S&P500헬스케어", "tags": ["해외"], "r1": 9.81, "r3": 5.54, "s3": "2026-08-11", "same": 32.45, "dd": -2.48, "peak": "2026-11-05"}, {"rank": 20, "name": "RISE KIS국고채30년Enhanced", "tags": ["채권"], "r1": 9.53, "r3": 17.0, "s3": "2026-08-11", "same": 32.17, "dd": -0.19, "peak": "2026-11-06"}, {"rank": 21, "name": "KODEX 차이나휴머노이드로봇", "tags": ["해외"], "r1": 9.52, "r3": -18.27, "s3": "2026-08-11", "same": 32.16, "dd": 0.0, "peak": "2026-11-09"}, {"rank": 22, "name": "RISE 미국고배당다우존스TOP10", "tags": ["해외"], "r1": 9.43, "r3": 0.63, "s3": "2026-08-11", "same": 32.07, "dd": -2.07, "peak": "2026-11-05"}, {"rank": 23, "name": "KODEX 미국S&P500필수소비재", "tags": ["해외"], "r1": 9.38, "r3": 2.08, "s3": "2026-08-11", "same": 32.02, "dd": -2.09, "peak": "2026-11-05"}, {"rank": 24, "name": "KODEX 미국배당다우존스타겟커버드콜", "tags": ["해외", "전략형"], "r1": 9.07, "r3": 0.61, "s3": "2026-08-11", "same": 31.71, "dd": -1.53, "peak": "2026-11-05"}, {"rank": 25, "name": "TIGER 미국배당다우존스타겟커버드콜2호", "tags": ["해외", "전략형"], "r1": 9.02, "r3": 0.57, "s3": "2026-08-11", "same": 31.66, "dd": -1.39, "peak": "2026-11-05"}, {"rank": 26, "name": "TIGER 차이나휴머노이드로봇", "tags": ["해외"], "r1": 9.01, "r3": -16.74, "s3": "2026-08-11", "same": 31.65, "dd": 0.0, "peak": "2026-11-09"}, {"rank": 27, "name": "KIWOOM 미국방어배당성장나스닥", "tags": ["해외"], "r1": 8.92, "r3": -1.43, "s3": "2026-08-11", "same": 31.56, "dd": -1.86, "peak": "2026-11-05"}, {"rank": 28, "name": "TIGER 미국배당다우존스타겟커버드콜1호", "tags": ["해외", "전략형"], "r1": 8.5, "r3": -0.16, "s3": "2026-08-11", "same": 31.14, "dd": -1.69, "peak": "2026-11-05"}, {"rank": 29, "name": "KIWOOM 미국블록버스터바이오테크의약품+", "tags": ["해외"], "r1": 8.46, "r3": 2.06, "s3": "2026-08-11", "same": 31.1, "dd": -2.36, "peak": "2026-11-05"}, {"rank": 30, "name": "TIGER 미국배당다우존스타겟데일리커버드콜", "tags": ["해외", "전략형"], "r1": 8.42, "r3": -0.52, "s3": "2026-08-11", "same": 31.06, "dd": -1.49, "peak": "2026-11-05"}], "bottom": [{"rank": 1, "name": "SOL 반도체전공정", "tags": [], "r1": -44.92, "r3": -29.21, "s3": "2026-08-11", "same": -22.28, "dd": -45.68, "peak": "2026-10-13"}, {"rank": 2, "name": "HANARO 반도체핵심공정주도주", "tags": [], "r1": -44.72, "r3": -35.07, "s3": "2026-08-11", "same": -22.08, "dd": -45.2, "peak": "2026-10-13"}, {"rank": 3, "name": "HANARO 미국AI광통신TOP10", "tags": ["해외"], "r1": -44.46, "r3": -42.38, "s3": "2026-08-11", "same": -21.82, "dd": -39.36, "peak": "2026-10-13"}, {"rank": 4, "name": "TIGER AI반도체핵심공정", "tags": [], "r1": -44.29, "r3": -32.62, "s3": "2026-08-11", "same": -21.65, "dd": -43.01, "peak": "2026-10-13"}, {"rank": 5, "name": "KODEX 미국AI광통신네트워크", "tags": ["해외"], "r1": -44.11, "r3": -41.27, "s3": "2026-08-11", "same": -21.47, "dd": -38.47, "peak": "2026-10-13"}, {"rank": 6, "name": "SOL 반도체후공정", "tags": [], "r1": -42.97, "r3": -26.93, "s3": "2026-08-11", "same": -20.33, "dd": -42.37, "peak": "2026-10-13"}, {"rank": 7, "name": "KODEX AI반도체핵심장비", "tags": [], "r1": -42.55, "r3": -23.33, "s3": "2026-08-11", "same": -19.91, "dd": -41.91, "peak": "2026-10-13"}, {"rank": 8, "name": "SOL AI반도체소부장", "tags": [], "r1": -42.41, "r3": -25.68, "s3": "2026-08-11", "same": -19.77, "dd": -42.22, "peak": "2026-10-13"}, {"rank": 9, "name": "RISE 미국AI클라우드인프라", "tags": ["해외"], "r1": -40.73, "r3": -41.39, "s3": "2026-08-11", "same": -18.09, "dd": -37.13, "peak": "2026-10-13"}, {"rank": 10, "name": "RISE 비메모리반도체액티브", "tags": [], "r1": -39.84, "r3": -29.42, "s3": "2026-08-11", "same": -17.2, "dd": -38.31, "peak": "2026-10-13"}, {"rank": 11, "name": "TIME 코스닥액티브", "tags": [], "r1": -38.94, "r3": -36.04, "s3": "2026-08-11", "same": -16.3, "dd": -38.75, "peak": "2026-10-13"}, {"rank": 12, "name": "RISE 코스닥커버드콜액티브", "tags": ["전략형"], "r1": -38.59, "r3": -32.19, "s3": "2026-08-11", "same": -15.95, "dd": -38.92, "peak": "2026-10-13"}, {"rank": 13, "name": "KODEX 미국AI메모리TOP2플러스", "tags": ["해외"], "r1": -38.2, "r3": null, "s3": "2026-09-15", "same": -15.56, "dd": -34.73, "peak": "2026-10-14"}, {"rank": 14, "name": "TIGER 코스닥150IT", "tags": [], "r1": -38.15, "r3": -25.15, "s3": "2026-08-11", "same": -15.51, "dd": -38.27, "peak": "2026-10-13"}, {"rank": 15, "name": "KODEX 아시아AI반도체exChina액티브", "tags": ["해외"], "r1": -38.1, "r3": -33.21, "s3": "2026-08-11", "same": -15.46, "dd": -34.44, "peak": "2026-10-13"}, {"rank": 16, "name": "TIGER 미국AI데이터센터TOP4Plus", "tags": ["해외"], "r1": -37.51, "r3": -38.86, "s3": "2026-08-11", "same": -14.87, "dd": -33.72, "peak": "2026-10-14"}, {"rank": 17, "name": "TIGER 반도체", "tags": [], "r1": -37.48, "r3": -23.87, "s3": "2026-08-11", "same": -14.84, "dd": -34.66, "peak": "2026-10-13"}, {"rank": 18, "name": "FOCUS AI반도체위클리고정커버드콜", "tags": ["전략형"], "r1": -37.37, "r3": -22.83, "s3": "2026-08-11", "same": -14.73, "dd": -35.2, "peak": "2026-10-13"}, {"rank": 19, "name": "KODEX 반도체", "tags": [], "r1": -37.36, "r3": -23.81, "s3": "2026-08-11", "same": -14.72, "dd": -34.77, "peak": "2026-10-13"}, {"rank": 20, "name": "PLUS AI반도체소부장액티브", "tags": [], "r1": -37.34, "r3": null, "s3": "2026-09-15", "same": -14.7, "dd": -38.3, "peak": "2026-10-13"}, {"rank": 21, "name": "RISE 글로벌AI낸드메모리반도체", "tags": ["국내&해외"], "r1": -36.89, "r3": null, "s3": "2026-09-01", "same": -14.25, "dd": -32.51, "peak": "2026-10-14"}, {"rank": 22, "name": "TIGER 일본반도체FACTSET", "tags": ["해외"], "r1": -36.8, "r3": -33.59, "s3": "2026-08-11", "same": -14.16, "dd": -33.86, "peak": "2026-10-13"}, {"rank": 23, "name": "KODEX 반도체타겟위클리커버드콜", "tags": ["전략형"], "r1": -36.78, "r3": -23.65, "s3": "2026-08-11", "same": -14.14, "dd": -34.21, "peak": "2026-10-13"}, {"rank": 24, "name": "TIGER 코리아AI전력기기TOP3플러스", "tags": [], "r1": -36.72, "r3": -43.11, "s3": "2026-08-11", "same": -14.08, "dd": -35.41, "peak": "2026-10-13"}, {"rank": 25, "name": "PLUS 코리아HBM반도체", "tags": [], "r1": -36.62, "r3": null, "s3": "2026-09-15", "same": -13.98, "dd": -34.44, "peak": "2026-10-13"}, {"rank": 26, "name": "KODEX AI전력핵심설비", "tags": [], "r1": -36.55, "r3": -43.51, "s3": "2026-08-11", "same": -13.91, "dd": -35.12, "peak": "2026-10-13"}, {"rank": 27, "name": "HANARO 미국AI메모리반도체TOP4+", "tags": ["해외"], "r1": -36.41, "r3": -37.15, "s3": "2026-08-11", "same": -13.77, "dd": -32.38, "peak": "2026-10-13"}, {"rank": 28, "name": "UNICORN SK하이닉스밸류체인액티브", "tags": [], "r1": -36.37, "r3": -26.18, "s3": "2026-08-11", "same": -13.73, "dd": -32.56, "peak": "2026-10-13"}, {"rank": 29, "name": "HANARO 전력설비투자", "tags": [], "r1": -36.34, "r3": -42.98, "s3": "2026-08-11", "same": -13.7, "dd": -34.64, "peak": "2026-10-13"}, {"rank": 30, "name": "RISE AI반도체TOP10", "tags": [], "r1": -35.86, "r3": -23.71, "s3": "2026-08-11", "same": -13.22, "dd": -31.99, "peak": "2026-10-13"}]};
+  var KLABEL = { sel: '선정 순서', r1: '1개월 수익률', r3: '3개월 수익률', same: '1개월 KODEX 200 대비', dd: '최근 고점 대비(20저장일)' };
+  var st = { side: 'top', key: 'sel', dir: 'desc', open: -1 };
+  function md(d) { var p = d.split('-'); return (+p[1]) + '/' + (+p[2]); }
+  function pct(v, u) { if (v === null || v === undefined) return null; return (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(2) + (u || '%'); }
+  function cell(v, u) { var t = pct(v, u); return '<span class="' + (v > 0 ? 'up' : v < 0 ? 'down' : '') + '">' + t + '</span>'; }
+  function val(r, k) { return k === 'sel' ? r.r1 : r[k]; }
+  function why(r, k) { if (k === 'r3' && r.s3 && r.s3 !== '2026-08-11') return '기간 다름 · ' + md(r.s3) + ' → 11/9'; return '값 없음'; }
+  function render() {
+    var rows = RK[st.side].slice();
+    var k = st.key, dir = st.dir;
+    if (k === 'sel') rows.sort(function (a, b) { return a.rank - b.rank; });
+    else rows.sort(function (a, b) {
+      var na = val(a, k) === null, nb = val(b, k) === null;
+      if (na || nb) return na === nb ? a.rank - b.rank : (na ? 1 : -1);
+      var c = val(a, k) - val(b, k); if (c === 0) return a.rank - b.rank;
+      return dir === 'asc' ? c : -c;
+    });
+    var miss = rows.filter(function (r) { return val(r, k) === null; }).length;
+    var period = { sel: '10/12 → 11/9', r1: '10/12 → 11/9', r3: '8/11 → 11/9', same: '10/12 → 11/9', dd: '20저장일 10/13 ~ 11/9' }[k];
+    var side = st.side === 'top' ? '1개월 상위 30' : '1개월 하위 30';
+    var sortTxt = k === 'sel' ? '선정 순서(1개월 ' + (st.side === 'top' ? '높은 순)' : '낮은 순)') : KLABEL[k] + ' ' + (dir === 'desc' ? '높은 순' : '낮은 순');
+    var line = '<div><b style="color:var(--fg)">' + side + '</b> · 정렬 <b style="color:var(--fg)">' + sortTxt + '</b> · ' + period +
+      (k === 'sel' ? '' : ' · 비교 가능 ' + (rows.length - miss) + (miss ? ' · 기간 다름 · 값 없음 ' + miss + '(뒤)' : '')) + ' · 11/9 가격 = 마감 뒤 저장</div>';
+    if (k === 'same') line += '<div class="small">같은 1개월 구간(10/12 → 11/9) KODEX 200 −22.64% · 비교 가능한 행에서는 1개월과 순서가 같습니다</div>';
+    document.getElementById('rk-line').innerHTML = line;
+    document.getElementById('rk-valh').textContent = KLABEL[k === 'sel' ? 'r1' : k];
+    var h = '';
+    rows.forEach(function (r, i) {
+      var tg = r.tags.length ? '<span class="tg">' + r.tags.join(' · ') + '</span>' : '';
+      var v = val(r, k);
+      var vtxt = v === null ? '<span class="na">' + why(r, k) + '</span>' : cell(v, k === 'same' ? '%p' : '%');
+      h += '<tr class="r" data-i="' + i + '"><td>' + (i + 1) + '</td><td>' + r.name + tg + '</td><td><span class="small muted">' + (st.side === 'top' ? '상위 ' : '하위 ') + r.rank + '위</span></td><td>' + vtxt + '</td></tr>';
+      if (st.open === i) {
+        var down = (r.r1 || 0) < 0;
+        var pts = down ? '0,18 40,16 80,14 120,22 160,30 200,44 240,58 280,70 320,84 360,94 400,100' : '0,96 40,92 80,84 120,80 160,72 200,60 240,52 280,40 320,30 360,22 400,16';
+        var r3txt = r.r3 === null ? '기간 다름 · 실제 구간 ' + md(r.s3) + ' → 11/9(상장 뒤 구간)' : '8/11 → 11/9 · ' + pct(r.r3);
+        h += '<tr class="d"><td colspan="4"><div class="detail" style="margin:0">' +
+          '<div class="sortbar"><span class="small muted">기간</span><button type="button" class="on">3개월</button><button type="button">6개월</button><button type="button">1년</button><button type="button">전체</button></div>' +
+          '<div class="chart" aria-label="가격 차트(기존 차트 자리)"><svg viewBox="0 0 400 120" preserveAspectRatio="none"><polyline fill="none" stroke="#2563eb" stroke-width="2" points="' + pts + '"/></svg></div>' +
+          '<div class="small muted">기존 차트 그대로(기간 버튼 · 날짜 눈금 · 고른 날 가격 줄 · 가격 이름 = 저장 가격) · 저장 건수 · 전체 저장 기간 줄은 뺍니다</div>' +
+          '<div class="kv">' +
+          '<span class="k">조회 기간</span><span>1개월 10/12 → 11/9 · ' + (st.side === 'top' ? '상위 ' : '하위 ') + r.rank + '위 · 11/9 가격 = 마감 뒤 저장</span>' +
+          '<span class="k">1개월 KODEX 200 대비</span><span>10/12 → 11/9 · 이 ETF ' + pct(r.r1) + ' · KODEX 200 −22.64% · 차이 ' + pct(r.same, '%p') + '</span>' +
+          '<span class="k">최근 고점 대비</span><span>20저장일 10/13 ~ 11/9 · 고점 ' + md(r.peak) + ' · ' + pct(r.dd) + (r.dd === 0 ? '(마지막 날이 고점 · 유효값)' : '') + '</span>' +
+          '<span class="k">3개월</span><span>' + r3txt + '</span>' +
+          '<span class="k">기초지수 · 분류</span><span class="muted">지역 · 자산 · 운용 전략 · 업종을 따로 적음(목업 생략)</span>' +
+          '</div></div></td></tr>';
+      }
+    });
+    document.getElementById('rk-body').innerHTML = h;
+    document.querySelectorAll('[data-key]').forEach(function (b) {
+      var on = b.dataset.key === k; b.classList.toggle('on', on);
+      b.textContent = KLABEL[b.dataset.key] + (on && k !== 'sel' ? (dir === 'desc' ? ' ▼' : ' ▲') : '');
+    });
+  }
+  document.querySelectorAll('[data-key]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      if (b.dataset.key === 'sel') { st.key = 'sel'; }
+      else if (st.key === b.dataset.key) st.dir = st.dir === 'desc' ? 'asc' : 'desc';
+      else { st.key = b.dataset.key; st.dir = st.side === 'top' ? 'desc' : 'asc'; }
+      st.open = -1; render();
+    });
+  });
+  document.querySelectorAll('[data-side]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      st.side = b.dataset.side; st.key = 'sel'; st.dir = st.side === 'top' ? 'desc' : 'asc'; st.open = -1;
+      document.querySelectorAll('[data-side]').forEach(function (x) { x.classList.toggle('on', x === b); });
+      render();
+    });
+  });
+  document.getElementById('rk-body').addEventListener('click', function (e) {
+    var tr = e.target.closest('tr.r'); if (!tr) return; var i = +tr.dataset.i; st.open = st.open === i ? -1 : i; render();
+  });
+  document.querySelectorAll('[data-tab]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.querySelectorAll('[data-tab]').forEach(function (x) { x.classList.toggle('on', x === b); });
+      document.getElementById('cand-sum').hidden = b.dataset.tab !== 'sum';
+      document.getElementById('cand-rank').hidden = b.dataset.tab !== 'rank';
+    });
+  });
+  render();
+</script>
+</body>
+</html>

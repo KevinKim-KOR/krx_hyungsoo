@@ -26,6 +26,7 @@ import { useEffect, useState } from "react";
 export type MenuKey =
   | "today_check"
   | "workbench"
+  | "workbench_holdings"
   | "market_discovery"
   | "etf_exposure"
   | "ai_sessions"
@@ -83,7 +84,16 @@ export const MENU_GROUPS: MenuGroup[] = [
     id: "compare",
     title: "비교·판단",
     items: [
-      { key: "workbench", label: "ETF 비교하기", hint: "관심·보유 ETF 한 화면 비교" },
+      // 2026-11-11 POC6-28(설계자 PLAN 판정 Q1 (a)): 「ETF 비교하기」 → 폴더 · 「후보」(기존 `workbench` key) · 「보유」.
+      //   다른 화면의 [ETF 비교하기] 이동은 「후보」(`workbench`)로 간다.
+      {
+        id: "etf_compare",
+        title: "ETF 비교하기",
+        items: [
+          { key: "workbench", label: "후보", hint: "같은 조건 상·하위 ETF · 섹터 요약 · 순위" },
+          { key: "workbench_holdings", label: "보유", hint: "내 보유의 최근 가격 · 시장 대비 · 약세 묶음 접점" },
+        ],
+      },
       { key: "market_discovery", label: "요즘 잘 오르는 ETF", hint: "강한 흐름 ETF 찾기" },
       { key: "etf_exposure", label: "ETF 구성종목", hint: "담고 있는 종목 / 중복" },
       { key: "ai_sessions", label: "AI 투자 세션", hint: "AI 질문/답변 기록" },
@@ -153,6 +163,7 @@ export const MENU_ITEMS: MenuItem[] = MENU_GROUPS.flatMap(groupMenuItems);
 const ALL_MENU_KEYS: MenuKey[] = [
   "today_check",
   "workbench",
+  "workbench_holdings",
   "market_discovery",
   "etf_exposure",
   "ai_sessions",

@@ -4013,3 +4013,73 @@ button.help-pop-btn[aria-expanded="true"] .help-pop-dot, button.help-pop-btn:hov
   .tc-top-grid, .tc-check-grid, .tc-detail-grid { grid-template-columns: 1fr; }
   .tc-flow-tiles { grid-template-columns: 1fr; }
 }
+
+/* ── POC6-28 「ETF 비교하기」 후보 · 보유(ec-*) ───────────────────────────── */
+.ec-root { display: grid; gap: 12px; }
+.ec-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.ec-head h1 { margin: 0 auto 0 0; }
+.ec-tabs button { min-height: 40px; }
+.ec-small { font-size: 12px; color: var(--muted); }
+.ec-strong { font-weight: 700; color: var(--fg); }
+.ec-basis { background: var(--card); border: 1px solid var(--border-soft); border-radius: 10px; padding: 8px 12px; display: grid; gap: 2px; font-size: 13px; color: var(--muted); }
+.ec-basis-main { color: var(--fg); font-weight: 600; }
+.ec-regime { background: #fff7ed; border: 1px solid #fdba74; border-radius: 10px; padding: 8px 12px; font-size: 13px; color: #9a3412; }
+.ec-regime.check { background: var(--card); border-color: var(--border); color: var(--muted); }
+.ec-panel { background: var(--card); border: 2px solid var(--accent); border-radius: 12px; padding: 12px 14px; display: grid; gap: 8px; }
+.ec-panel-title { font-weight: 700; }
+.ec-panel-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; font-size: 13px; }
+.ec-panel-k { color: var(--muted); min-width: 64px; }
+.ec-check { display: inline-flex; align-items: center; gap: 4px; }
+.ec-btn-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.ec-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.ec-cards { display: grid; gap: 12px; }
+.ec-card { display: grid; gap: 8px; }
+.ec-card.strong { border-color: #fdba74; }
+.ec-card h2 { margin: 0; font-size: 16px; }
+.ec-mix { font-size: 12px; background: #f3f6fb; border-radius: 8px; padding: 5px 10px; }
+.ec-group { border: 1px solid var(--border-soft); border-radius: 10px; padding: 8px 12px; }
+.ec-group > summary { cursor: pointer; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.ec-group-name { font-weight: 700; }
+.ec-kind { font-size: 11px; font-weight: 700; border-radius: 999px; padding: 1px 8px; background: #eaf1fe; color: #1e40af; }
+.ec-kind.index { background: #f1f5f9; color: #334155; }
+.ec-kind.unclassified { background: #f3f4f6; color: var(--muted); }
+.ec-chip { font-size: 11px; font-weight: 700; border-radius: 999px; padding: 1px 8px; }
+.ec-chip.both { background: #fae8ff; color: #86198f; }
+.ec-chip.expo { background: #eef2ff; color: #4338ca; }
+.ec-chip.decline { background: #ffedd5; color: #9a3412; }
+.ec-chip.lack { background: #f3f4f6; color: #374151; }
+.ec-etf { display: flex; justify-content: space-between; gap: 12px; padding: 6px 8px; border-radius: 8px; cursor: pointer; font-size: 14px; }
+.ec-etf:hover, .ec-etf.sel { background: #f3f6fb; }
+.ec-etf-name { min-width: 0; font-weight: 600; display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 4px 6px; }
+.ec-etf-val { font-variant-numeric: tabular-nums; font-weight: 600; }
+.ec-tag { font-size: 11px; color: var(--muted); font-weight: 400; }
+.ec-more { margin: 4px 0; background: none; border: none; color: var(--accent); font-weight: 600; min-height: 32px; padding: 0 4px; cursor: pointer; }
+.ec-more:hover { text-decoration: underline; }
+.ec-others { display: grid; gap: 6px; justify-items: stretch; }
+.ec-others > .ec-more { justify-self: start; }
+.ec-common { font-size: 12px; background: #f8fafc; border-radius: 8px; padding: 6px 10px; display: grid; gap: 2px; margin-top: 4px; }
+.ec-copy { display: grid; gap: 4px; justify-items: start; }
+.ec-fallback { width: 100%; font-size: 12px; margin-top: 4px; }
+.ec-hold-line { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; font-size: 13px; }
+.ec-detail { border-left: 3px solid var(--accent); background: #fbfcff; border-radius: 0 10px 10px 0; padding: 10px 14px; margin: 2px 0 8px 8px; display: grid; gap: 8px; }
+.ec-lines { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 4px 12px; margin: 0; font-size: 13px; }
+.ec-lines dt { color: var(--muted); }
+.ec-lines dd { margin: 0; min-width: 0; }
+.ec-inline { margin-left: 8px; min-height: 32px; }
+.ec-rank { display: grid; gap: 8px; }
+.ec-rank-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.ec-rank-list { background: var(--card); border: 1px solid var(--border-soft); border-radius: 12px; }
+.ec-rank-row { display: grid; grid-template-columns: 36px minmax(0, 1fr) 80px 170px; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--border-soft); cursor: pointer; font-size: 13px; }
+.ec-rank-row:hover, .ec-rank-row.sel { background: #f3f6fb; }
+.ec-rank-pos { color: var(--muted); font-variant-numeric: tabular-nums; }
+.ec-rank-val { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+.ec-hrow { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; align-items: start; padding: 8px 12px; }
+.ec-hrow-top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; }
+.ec-hrow-top .ec-etf-name { margin-right: auto; }
+.ec-badges { display: flex; flex-wrap: wrap; gap: 6px; }
+.ec-reason { font-size: 13px; background: #fff7ed; color: #9a3412; border-radius: 8px; padding: 3px 10px; }
+@media (max-width: 760px) {
+  .ec-lines { grid-template-columns: 1fr; }
+  .ec-rank-row { grid-template-columns: 28px minmax(0, 1fr); }
+  .ec-rank-row .ec-rank-val { grid-column: 2; text-align: left; }
+}

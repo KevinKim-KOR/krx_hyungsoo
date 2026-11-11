@@ -20,6 +20,7 @@ import MLView from "./MLView";
 import DataStatusView from "./DataStatusView";
 import TodayInvestmentCheckView from "./TodayInvestmentCheckView";
 import JudgmentWorkbenchView from "./JudgmentWorkbenchView";
+import WorkbenchHoldingsView from "./WorkbenchHoldingsView";
 import ETFExposureView from "./ETFExposureView";
 import HoldingsView from "./HoldingsView";
 import HoldingsManageView from "./HoldingsManageView";
@@ -44,6 +45,9 @@ export default function MainPanel() {
       break;
     case "workbench":
       view = <JudgmentWorkbenchView onNavigate={setActive} />;
+      break;
+    case "workbench_holdings":
+      view = <WorkbenchHoldingsView onNavigate={setActive} />;
       break;
     case "market_discovery":
       // 2026-05-21 — "AI Sessions로 넘기기" 클릭 시 ai_sessions 화면 전환.

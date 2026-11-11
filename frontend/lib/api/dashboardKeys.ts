@@ -34,9 +34,16 @@ export const WB_KEY_NAV = DASH_KEY_NAV;
 // - Holdings 변경 → 보유·Evidence 무효화 (공유 키라 Dashboard·Workbench 동시).
 // - Market 갱신 → 시장(Dashboard·Workbench 각 키) + Evidence(공유) 무효화.
 //   Evidence 는 시장 후보·국면 사용 → Market 갱신 시 함께. 보유·NAV 는 무관.
+// POC6-28 — 「ETF 비교하기」 요약(조건마다 키 · 앞부분 공통). 시장 갱신(가격 · 국면)과 보유 변경(보유 연결)이
+// 모두 이 응답을 바꾸므로 두 무효화 그룹에 넣는다.
+export const ETF_COMPARE_KEY_PREFIX = "etf-compare:summary?";
+// POC6-28(독립 검토 MEDIUM) — 종목 가격 차트(「ETF 비교하기」 · 「확인 근거」 공용 PriceChart) 조회 키 앞부분.
+// 시장 갱신이 저장 가격을 다시 받으므로 함께 지운다(요약의 가격 상태와 차트 마지막 날이 어긋나지 않게).
+export const PRICE_SERIES_KEY_PREFIX = "workbench:price-series?";
 export const HOLDINGS_INVALIDATION_KEYS = [
   DASH_KEY_HOLDINGS,
   DASH_KEY_EVIDENCE,
+  ETF_COMPARE_KEY_PREFIX,
 ];
 // POC6-27 — 「오늘의 투자 점검」은 「요즘 잘 오르는 ETF」와 같은 조건(기간 · 방향 · 제외)으로 읽으므로
 // 조건마다 키가 다르다(앞부분은 DASH_KEY_MARKET 과 같음). 무효화는 이 앞부분으로 조건 키를 모두 지운다.
@@ -47,4 +54,6 @@ export const MARKET_INVALIDATION_KEYS = [
   DASH_KEY_EVIDENCE,
   WB_KEY_CAND,
   MARKET_FLOW_KEY, // POC6-01 — 시장 갱신이 수급 · 환율 · 유가를 새로 받는다
+  ETF_COMPARE_KEY_PREFIX, // POC6-28
+  PRICE_SERIES_KEY_PREFIX, // POC6-28
 ];

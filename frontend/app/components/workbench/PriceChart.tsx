@@ -10,6 +10,7 @@
 
 import { useMemo, useState } from "react";
 import { useSharedQuery } from "@/lib/api/queryCache";
+import { PRICE_SERIES_KEY_PREFIX } from "@/lib/api/dashboardKeys";
 import { fetchPriceSeries, type PricePoint, type PriceSeriesResponse } from "@/lib/api";
 import {
   DEFAULT_PRICE_PERIOD,
@@ -21,10 +22,18 @@ import ReadableLineChart from "../charts/ReadableLineChart";
 
 // 선택 ticker 별 캐시 키 (동일 ticker 재선택·화면 왕복 시 재사용 · §9).
 export function priceSeriesKey(ticker: string): string {
-  return `workbench:price-series?ticker=${ticker}`;
+  return `${PRICE_SERIES_KEY_PREFIX}ticker=${ticker}`;
 }
 
-export default function PriceChart({ ticker }: { ticker: string }) {
+// POC6-28 — 「ETF 비교하기」만 쓰는 선택 표시(기본값 = 기존 그대로 · 「확인 근거」 무변경):
+//   valueLabel = 고른 날 가격 이름 · compact = 저장 건수 · 전체 저장 기간 줄을 빼고 표시 기간만 · lastNote = 마지막 날 가격 상태 한 줄.
+interface PriceChartView {
+  valueLabel?: string;
+  compact?: boolean;
+  lastNote?: string | null;
+}
+
+export default function PriceChart({ ticker, ...view }: { ticker: string } & PriceChartView) {
   const q = useSharedQuery<PriceSeriesResponse>(priceSeriesKey(ticker), () =>
     fetchPriceSeries(ticker),
   );
@@ -60,10 +69,16 @@ export default function PriceChart({ ticker }: { ticker: string }) {
     );
   }
 
-  return <PeriodPriceChart key={ticker} series={data.series} stale={q.stale} />;
+  return <PeriodPriceChart key={ticker} series={data.series} stale={q.stale} {...view} />;
 }
 
-function PeriodPriceChart({ series, stale }: { series: PricePoint[]; stale: boolean }) {
+function PeriodPriceChart({
+  series,
+  stale,
+  valueLabel = "종가",
+  compact = false,
+  lastNote = null,
+}: { series: PricePoint[]; stale: boolean } & PriceChartView) {
   const [period, setPeriod] = useState<PricePeriod>(DEFAULT_PRICE_PERIOD);
   const shown = useMemo(() => periodWindow(series, period), [series, period]);
   const first = shown[0];
@@ -91,19 +106,21 @@ function PeriodPriceChart({ series, stale }: { series: PricePoint[]; stale: bool
         key={period}
         points={shown}
         unit="원"
-        valueLabel="종가"
+        valueLabel={valueLabel}
         label="선택 종목 일별 가격 시계열"
         warn={stale}
         testId="price-chart"
       />
       <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }} data-testid="price-chart-period">
-        표시 기간 {first.date} ~ {last.date} · {shown.length}개 저장일
-        {period === "ALL"
+        표시 기간 {first.date} ~ {last.date}
+        {compact ? "" : ` · ${shown.length}개 저장일`}
+        {compact || period === "ALL"
           ? ""
           : shown.length < series.length
             ? ` · 전체 저장 ${series[0].date} ~ ${series[series.length - 1].date} · ${series.length}개`
             : " · 저장된 자료 전체(선택한 기간보다 짧음)"}
         {stale && <span style={{ color: "var(--warn)" }}> · ⚠ 이전 조회값 (재조회 실패)</span>}
+        {lastNote && <span data-testid="price-chart-last-note"> · {lastNote}</span>}
       </div>
     </div>
   );

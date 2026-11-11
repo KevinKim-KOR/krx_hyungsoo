@@ -14,7 +14,7 @@
 // - 2026-11-01 POC6-15: 「ML 실험」 → 「ML 연구」 폴더(한 단계 · key 없음) · 예측과 결과 비교(`ml`)
 //   · 이전 자료·실험(`ml_legacy`) → 13→14. 폴더 버튼도 aria-expanded 를 가져 그룹 제목 수 셈에서 뺀다.
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import LeftSidebar, {
   MENU_GROUPS,
   MENU_ITEMS,
@@ -26,6 +26,7 @@ import LeftSidebar, {
 const ALL_KEYS: MenuKey[] = [
   "today_check",
   "workbench",
+  "workbench_holdings",
   "market_discovery",
   "etf_exposure",
   "ai_sessions",
@@ -72,11 +73,11 @@ describe("LeftSidebar 그룹 구조 (POC3-03 · POC3-07 · 5그룹)", () => {
     expect(titles.length).toBe(GROUP_TITLES.length);
   });
 
-  it("AC-2: 14개 key 가 그룹에 정확히 1회씩 귀속(폴더 하위 포함 · 중복·누락·신규 0)", () => {
+  it("AC-2: 15개 key 가 그룹에 정확히 1회씩 귀속(폴더 하위 포함 · 중복·누락·신규 0 · POC6-28 「보유」 추가)", () => {
     const keys = MENU_GROUPS.flatMap((g) => groupMenuItems(g).map((i) => i.key));
     expect(keys.sort()).toEqual([...ALL_KEYS].sort());
-    expect(new Set(keys).size).toBe(14);
-    expect(keys.length).toBe(14);
+    expect(new Set(keys).size).toBe(15);
+    expect(keys.length).toBe(15);
     expect(MENU_ITEMS.map((i) => i.key).sort()).toEqual([...ALL_KEYS].sort());
   });
 
@@ -125,8 +126,11 @@ describe("LeftSidebar 그룹 구조 (POC3-03 · POC3-07 · 5그룹)", () => {
   it("메뉴 클릭은 onSelect(key) 를 부른다", () => {
     const onSelect = vi.fn();
     render(<LeftSidebar active="today_check" onSelect={onSelect} />);
-    fireEvent.click(screen.getByText("ETF 비교하기"));
+    // 2026-11-11 POC6-28: 「ETF 비교하기」는 폴더 — 기존 workbench key 는 그 아래 「후보」.
+    fireEvent.click(screen.getByText("후보"));
     expect(onSelect).toHaveBeenCalledWith("workbench");
+    fireEvent.click(screen.getByText("ETF 비교하기")); // 폴더 버튼은 펼침 · 접힘만
+    expect(onSelect).toHaveBeenCalledTimes(1);
   });
 
   it("AC-5/보완3: 접힌 그룹으로 active 가 바뀌면 그 그룹만 자동 펼치고 다른 접힘은 유지", () => {
@@ -287,5 +291,30 @@ describe("POC6-15 「ML 연구」 폴더", () => {
     expect(screen.queryByText("ML 연구")).toBeNull();
     rerender(<LeftSidebar active="ml" onSelect={() => {}} />);
     expect(screen.getByText("예측과 결과 비교")).toBeTruthy();
+  });
+});
+
+// --- POC6-28 「ETF 비교하기」 폴더(후보 · 보유) ----------------------------------
+
+describe("POC6-28 「ETF 비교하기」 폴더", () => {
+  it("비교·판단 첫 항목 = 폴더 · 「후보」(기존 workbench key) · 「보유」(workbench_holdings)", () => {
+    const compare = MENU_GROUPS.find((g) => g.title === "비교·판단")!;
+    const folder = compare.items[0];
+    expect(isMenuFolder(folder) && folder.title).toBe("ETF 비교하기");
+    expect(isMenuFolder(folder) && folder.items.map((i) => [i.key, i.label])).toEqual([
+      ["workbench", "후보"],
+      ["workbench_holdings", "보유"],
+    ]);
+  });
+
+  it("「보유」를 누르면 onSelect('workbench_holdings') · 선택된 하위 메뉴는 aria-current", () => {
+    const onSelect = vi.fn();
+    const { rerender } = render(<LeftSidebar active="today_check" onSelect={onSelect} />);
+    const sub = () =>
+      document.getElementById(screen.getByText("ETF 비교하기").closest("button")!.getAttribute("aria-controls")!)!;
+    fireEvent.click(within(sub()).getByText("보유"));
+    expect(onSelect).toHaveBeenCalledWith("workbench_holdings");
+    rerender(<LeftSidebar active="workbench_holdings" onSelect={onSelect} />);
+    expect(within(sub()).getByText("보유").closest("button")).toHaveAttribute("aria-current", "page");
   });
 });
