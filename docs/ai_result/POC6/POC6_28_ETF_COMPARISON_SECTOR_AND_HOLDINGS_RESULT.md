@@ -3,7 +3,7 @@
 작성 2026-11-11 · 작성자: 개발자(VSCode Claude) · 수신: 사용자(격리 화면 확인) → 검증자(Codex) → 설계자
 
 ```text
-STATUS   = IMPLEMENTED(2026-11-11 · 격리 작업 사본) · 사용자 격리 화면 확인 완료 → 검증자 r1 REJECTED(F1 · F2 P2, F3 P3 · §10) → 개발자 정정(§11) → 검증자 r2 REJECTED(F1~F3 해소 · F4 P2 · §12) → 개발자 F4 정정(§13) → 검증자 r3 REJECTED(F4 해소 · 실패 안내 F5 P3 · §14) → 개발자 F5 정정(§15) → 검증자 r4 VERIFIED(F5 해소 · §16) → 설계자 RESULT PASS_WITH_CLOSING_CORRECTIONS(§17) → 마감 대조 · 첨부 화면 차이 재현 · 정정(§17) → 검증자 마감 변경분 REJECTED(F6 P2 · 미판정을 0으로 집계 · §18) → 개발자 F6 정정(§19) → 검증자 F6 변경분 VERIFIED(F6 해소 · §20) → 사용자 승인 · main 반영 · PC 반영(2026-11-11 16:04 · §21) · 구현 커밋 → push 승인 대기
+STATUS   = IMPLEMENTED(2026-11-11 · 격리 작업 사본) · 사용자 격리 화면 확인 완료 → 검증자 r1 REJECTED(F1 · F2 P2, F3 P3 · §10) → 개발자 정정(§11) → 검증자 r2 REJECTED(F1~F3 해소 · F4 P2 · §12) → 개발자 F4 정정(§13) → 검증자 r3 REJECTED(F4 해소 · 실패 안내 F5 P3 · §14) → 개발자 F5 정정(§15) → 검증자 r4 VERIFIED(F5 해소 · §16) → 설계자 RESULT PASS_WITH_CLOSING_CORRECTIONS(§17) → 마감 대조 · 첨부 화면 차이 재현 · 정정(§17) → 검증자 마감 변경분 REJECTED(F6 P2 · 미판정을 0으로 집계 · §18) → 개발자 F6 정정(§19) → 검증자 F6 변경분 VERIFIED(F6 해소 · §20) → 사용자 승인 · main 반영 · PC 반영(2026-11-11 16:04 · §21) · 구현 커밋 49326b5b · push 완료 → IMPLEMENTED_VERIFIED_CLOSED(2026-11-11)
            설계 V1(수정본) → 개발 PLAN V1(11-10 · 11-11 개정) → 설계자 PLAN 판정 PASS_WITH_REQUIRED_CORRECTIONS(2026-11-11)
            → PLAN · 목업 · ASSUMPTIONS Q4 반영 → 격리 작업 사본 구현 · 시험 → 격리 서버(8001 · 3001)로 실제 저장 자료 화면
 DESIGN   = docs/ai_design/POC6/POC6_28_ETF_COMPARISON_SECTOR_AND_HOLDINGS_DESIGN_V1.md
@@ -11,7 +11,7 @@ DECISION = docs/ai_design/POC6/POC6_28_ETF_COMPARISON_SECTOR_AND_HOLDINGS_PLAN_D
 PLAN     = docs/ai_plan/POC6/POC6_28_ETF_COMPARISON_SECTOR_AND_HOLDINGS_PLAN_V1.md
 MOCKUP   = docs/ai_plan/POC6/POC6_28_ETF_COMPARISON_MOCKUP.html
 VERIFIER = Codex r1 REJECTED(2026-11-11 · §10 보존) → 개발자 정정(§11) → Codex r2 REJECTED(§12 보존) → 개발자 F4 정정(§13) → Codex r3 REJECTED(2026-11-11 · §14 · 제품 코드/시험 수정 없음) → 개발자 F5 정정(§15) → Codex r4 VERIFIED(2026-11-11 · §16 · 제품 코드/시험 수정 없음) → 설계자 RESULT 마감 정정(§17) → Codex 마감 변경분 REJECTED(2026-11-11 · F6 P2 · §18 · 제품 코드/시험 수정 없음) → 개발자 F6 정정(§19) → Codex F6 변경분 VERIFIED(2026-11-11 · §20 · 제품 코드/시험 수정 없음)
-코드     = 작업 트리 /Users/hyungsookim/projects/krx_hyungsoo_wt_poc6_28 · 브랜치 poc6-28-etf-compare · 기준 커밋 15d784eb · stage 31파일을 main 에 그대로 옮겨 구현 커밋(§21 · 커밋 번호는 `git log` 로 확인)
+코드     = 작업 트리 /Users/hyungsookim/projects/krx_hyungsoo_wt_poc6_28 · 브랜치 poc6-28-etf-compare · 기준 커밋 15d784eb · stage 31파일을 main 에 그대로 옮겨 구현 커밋 49326b5b(§21 · push 완료)
 사용자 결정 = 왼쪽 메뉴 하위 이름 「후보」 그대로(2026-11-11 · POC3-05 AC-7 메뉴 금지어 '후보'와 충돌 → 사용자 선택 · §4 · §6)
 금액     = 이 문서 · 시험에 실제 금액 · 계좌 · 보유 종목명 없음(시험 = 가상 행) · 시장 수치(ETF 수익률 · 분류)만 공개 자료
 ```
@@ -818,4 +818,6 @@ ASSUMPTIONS Q4에 이번 화면 한정 예외가 있고 자동 판별 OPEN을 �
 - `WB_KEY_CAND` 상수(§4)
 - 작업 트리 폴더 · 브랜치: 정리(삭제)는 사용자 승인 뒤에 한다.
 
-**다음**: push(사용자 승인) → 종료 기록.
+**구현 커밋 · push**: 구현 커밋 49326b5b(40파일 = 코드 31 · 문서 9 · 사용자 handoff 제외). 커밋 전에 공개 저장소 확인을 했다: 실제 보유 종목명 · 금액 · 계좌 없음, 목업 순위 자료 60항목 보유 표시 0, 시험의 종목명은 가상 ETF 구성종목 예시. 사용자 승인 뒤 `git push origin main`(15d784eb..49326b5b · 원격 일치).
+
+**종료**: IMPLEMENTED_VERIFIED_CLOSED(2026-11-11).
