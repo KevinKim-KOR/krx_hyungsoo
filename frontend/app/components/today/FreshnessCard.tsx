@@ -8,13 +8,14 @@
 // - 펼치면 자료별 마지막 날짜 · 기대일과 기준 · 사유, 할 일의 사유 · 안내, 그리고 이 화면의 같은 작업 버튼
 //   (최신 시장 데이터 갱신 · 보유 현재가 업데이트 · 요약 다시 읽기). 갱신 · 계산은 버튼을 누를 때만.
 // - 사용자 결정 ⑤(2026-11-09): 옆 「OCI 운영 스케줄 확인」과 함께 펼치고 접는다 — 부모가 open · onToggle 을 주면 그 상태를 쓴다.
+// - POC6-29(판정 Q7): 시장 자료 · 보유 현재가 갱신은 [최신 자료 갱신] 한 버튼(같은 묶음 작업)으로 합쳤다.
 import { useState } from "react";
 import { freshnessLine, freshnessSummary, type FreshAction, type FreshRow } from "@/lib/todayFreshness";
 import type { SummaryAction, SummaryTask } from "./summaryLines";
 
 const ACTION_LABEL: Record<Exclude<FreshAction, null>, string> = {
-  market: "최신 시장 데이터 갱신",
-  holdings: "보유 현재가 업데이트",
+  market: "최신 자료 갱신",
+  holdings: "최신 자료 갱신",
   reload: "요약 다시 읽기",
 };
 
@@ -41,11 +42,11 @@ export default function FreshnessCard({
     .join(" · ");
   // 이 카드의 버튼은 작업 종류마다 한 번(할 일 · 자료 줄이 같은 작업을 가리켜도 한 버튼 · 상단 버튼과 같은 작업).
   const kinds = new Set<Exclude<FreshAction, null>>();
-  for (const r of rows) if (r.action) kinds.add(r.action);
+  // 보유 현재가 · 시장 자료는 같은 [최신 자료 갱신] 한 버튼(POC6-29).
+  for (const r of rows) if (r.action) kinds.add(r.action === "holdings" ? "market" : r.action);
   for (const t of tasks) {
     const k = t.action?.target.kind;
-    if (k === "market_refresh") kinds.add("market");
-    else if (k === "holdings_refresh") kinds.add("holdings");
+    if (k === "market_refresh" || k === "holdings_refresh") kinds.add("market");
     else if (k === "reload") kinds.add("reload");
   }
   const order: Exclude<FreshAction, null>[] = ["market", "holdings", "reload"];

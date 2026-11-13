@@ -1,6 +1,8 @@
 "use client";
 
 // 「비교·판단 › ETF 비교하기 › 보유」(POC6-28 · PLAN §2-6 · 판정 §4 · Q6).
+// POC6-29 → 「ETF보유 및 후보 선정 › 보유」(PLAN §2-3 · 판정 Q1 · Q2 · Q4 · Q10): 이 화면의 조건(약세 묶음 접점에 쓰는
+//   하위 목록 기간) · 기본 저장 · 행 상세 수치 · 판단 근거 미리보기 · [확인 근거 보기 →].
 //
 // 읽는 것: 보유(공유 키) · 보유 근거(공유 키) · 「ETF 비교하기」 요약(같은 조건 · 「후보」와 같은 응답).
 // 기본 행 = 종목명 · 보유 내 비중 · 매입 대비 손익. 행을 누르면 그 행 바로 아래 상세.
@@ -14,10 +16,11 @@ import {
   type HoldingsMarketEvidenceResponse,
 } from "@/lib/api";
 import { invalidateQueries, useSharedQuery } from "@/lib/api/queryCache";
-import { PRICE_SERIES_KEY_PREFIX, WB_KEY_EVID, WB_KEY_HOLD } from "@/lib/api/dashboardKeys";
+import { ETF_DETAIL_KEY_PREFIX, PRICE_SERIES_KEY_PREFIX, WB_KEY_EVID, WB_KEY_HOLD } from "@/lib/api/dashboardKeys";
 import { regimeView, weightText } from "@/lib/etfCompare";
 import type { MenuKey } from "./LeftSidebar";
 import {
+  BasisSaveRow,
   CompareLines,
   ConditionPanel,
   SummaryStatus,
@@ -61,7 +64,7 @@ export function declineWeightLine(declineRows: AggHolding[] | null, unjudged = 0
 }
 
 export default function WorkbenchHoldingsView({ onNavigate }: Props) {
-  const { cond, q } = useEtfCompareSummary();
+  const { cond, q } = useEtfCompareSummary("holdings");
   const hold = useSharedQuery<EnrichedHoldingsResult>(WB_KEY_HOLD, () => fetchEnrichedHoldings());
   const evid = useSharedQuery<HoldingsMarketEvidenceResponse>(WB_KEY_EVID, () => fetchHoldingsMarketEvidence());
   const [panel, setPanel] = useState(false);
@@ -108,6 +111,7 @@ export default function WorkbenchHoldingsView({ onNavigate }: Props) {
     // 열린 행을 닫고 차트 캐시를 지운다 — 다음에 열 때 새 저장 가격을 읽는다(공유 조회는 지운 키를 스스로 다시 읽지 않음).
     setSelected(null);
     invalidateQueries(PRICE_SERIES_KEY_PREFIX);
+    invalidateQueries(ETF_DETAIL_KEY_PREFIX);
     q.reload();
     hold.reload();
     evid.reload();
@@ -116,7 +120,7 @@ export default function WorkbenchHoldingsView({ onNavigate }: Props) {
   return (
     <section aria-labelledby="wbh-h" className="wb-root ec-root">
       <div className="ec-head">
-        <h1 id="wbh-h">ETF 비교하기 · 보유</h1>
+        <h1 id="wbh-h">보유</h1>
         <button type="button" className="wb-btn btn-md" aria-expanded={panel} onClick={() => setPanel(!panel)}>
           조회 기준
         </button>
@@ -126,8 +130,19 @@ export default function WorkbenchHoldingsView({ onNavigate }: Props) {
         <button type="button" className="wb-btn btn-md" onClick={() => onNavigate("holdings")}>
           보유 현황 보기 →
         </button>
+        <button type="button" className="wb-btn btn-md" onClick={() => onNavigate("holdings_evidence")}>
+          확인 근거 보기 →
+        </button>
       </div>
-      {panel && <ConditionPanel cond={cond} onClose={() => setPanel(false)} />}
+      {panel && (
+        <ConditionPanel
+          screen="holdings"
+          cond={cond}
+          onClose={() => setPanel(false)}
+          applies="「보유」 약세 묶음 접점(하위 목록 직접 포함 · 구성종목 겹침) · 후보 조회 기간"
+        />
+      )}
+      <BasisSaveRow screen="holdings" basis={cond.basis} />
 
       <SummaryStatus q={q} />
       {s && <CompareLines s={s} stale={q.phase === "success" && q.stale} showRegime={false} />}

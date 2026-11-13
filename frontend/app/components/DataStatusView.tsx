@@ -136,7 +136,7 @@ export default function DataStatusView() {
         <strong>[보조 화면 — 데이터 조회]</strong> Naver ETF universe 1회 호출 결과로 SQLite{" "}
         <code>etf_nav_daily</code> 에 저장된 전체 ETF NAV / 시장가 / 괴리율을 한곳에서
         검색·정렬합니다. 본 화면은 데이터 조회 영역이며 매수·매도·교체 판단이 아닙니다.
-        값 갱신은 Market Discovery 화면의 &lsquo;최신 시장 데이터 갱신&rsquo; 버튼을 사용합니다.
+        값 갱신은 「오늘의 투자 점검」의 [최신 자료 갱신] 버튼을 사용합니다.
       </div>
 
       <NavDiscountControls
@@ -171,7 +171,7 @@ export default function DataStatusView() {
         <div className="card placeholder-card">
           <h2>저장된 NAV 데이터가 없습니다</h2>
           <p>
-            Market Discovery 화면에서 &lsquo;최신 시장 데이터 갱신&rsquo; 버튼을 한 번
+            「오늘의 투자 점검」에서 [최신 자료 갱신] 버튼을 한 번
             실행하면 Naver ETF universe NAV 가 적재됩니다.
           </p>
         </div>

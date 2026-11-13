@@ -26,7 +26,9 @@ import HoldingsView from "./HoldingsView";
 import HoldingsManageView from "./HoldingsManageView";
 import HoldingsEvidenceView from "./HoldingsEvidenceView";
 import LeftSidebar, { type MenuKey } from "./LeftSidebar";
-import MarketDiscoveryView from "./MarketDiscoveryView";
+import SectorSummaryView from "./SectorSummaryView";
+import HoldingCandidateCompareView from "./HoldingCandidateCompareView";
+import UnusedFeatureView from "./UnusedFeatureView";
 import type { Run } from "@/lib/api";
 
 export default function MainPanel() {
@@ -49,9 +51,13 @@ export default function MainPanel() {
     case "workbench_holdings":
       view = <WorkbenchHoldingsView onNavigate={setActive} />;
       break;
-    case "market_discovery":
-      // 2026-05-21 — "AI Sessions로 넘기기" 클릭 시 ai_sessions 화면 전환.
-      view = <MarketDiscoveryView onNavigate={setActive} />;
+    case "etf_sector":
+      // 2026-11-12 POC6-29 — 「섹터요약」(POC6-28 「후보」 [섹터 요약] 탭을 독립 메뉴로 · 자기 조건).
+      view = <SectorSummaryView onNavigate={setActive} />;
+      break;
+    case "holding_candidate_compare":
+      // 2026-11-12 POC6-29 — 「보유와 후보 비교」(C 「요즘 잘 오르는 ETF › 보유와 비교」를 옮김).
+      view = <HoldingCandidateCompareView onNavigate={setActive} />;
       break;
     case "etf_exposure":
       // 2026-05-27 — ETF Constituents & Overlap 1차. "AI Sessions 로 넘기기"
@@ -102,6 +108,10 @@ export default function MainPanel() {
     case "data_status":
       // 2026-08-16 — POC3-07 이 diagnostics 로 흡수했던 것을 정상 업무 조회로 복원.
       view = <DataStatusView />;
+      break;
+    case "unused_universe_watch":
+      // 2026-11-12 POC6-29 보완(Q-R5) — 「진단·상태 › 미사용 기능 › 신규 ETF 관찰 점검」(기능마다 같은 틀 · 열 때 요청 0).
+      view = <UnusedFeatureView key="unused-universe-watch" feature="universe_watch" onNavigate={setActive} />;
       break;
   }
 

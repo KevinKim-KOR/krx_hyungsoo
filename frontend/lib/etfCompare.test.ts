@@ -1,5 +1,5 @@
 // POC6-28 — 「ETF 비교하기」 문장 · 정렬 · 순서 순수 함수(판정 2026-11-11 §3 ~ §5 · PLAN §3-6 · §3-7 · §5).
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import {
   aiCopyText,
   basisLine,
@@ -22,10 +22,15 @@ import {
 import { BOTTOM, TOP, link, row, summaryOk } from "./etfCompareTestFixtures";
 import {
   __resetEtfCompareCondition,
-  getEtfCompareCondition,
-  setEtfCompareCondition,
+  getSavedBasis,
+  getScreenCondition,
+  LEGACY_TODAY_BASIS_KEY,
+  readSavedBasis,
+  saveScreenBasis,
+  SCREEN_IDS,
+  setScreenCondition,
+  storageKeyOf,
 } from "./etfCompareCondition";
-import { __resetMarketCondition, getMarketCondition, setMarketCondition } from "./marketConditionStore";
 import {
   ETF_COMPARE_KEY_PREFIX,
   HOLDINGS_INVALIDATION_KEYS,
@@ -73,7 +78,7 @@ describe("[ETF 순위] 정렬 — 비교 가능 먼저 · 기간 다름 · 값 �
   it("기준 한 줄 — 목록을 고른 기준과 정렬 기준을 나눠 적는다", () => {
     const s = summaryOk();
     expect(sortLine(s, "bottom", "three_month", "asc", s.bottom)).toBe(
-      "1개월 하위 3 · 정렬 3개월 수익률 낮은 순 · 8/11 → 11/9 · 비교 가능 2 · 기간 다름 · 값 없음 1(뒤)",
+      "1개월 하위 3 · 정렬 1개월 선정 · 3개월 수익률 표시 순서(낮은 순) · 8/11 → 11/9 · 비교 가능 2 · 기간 다름 · 값 없음 1(뒤)",
     );
     expect(sortLine(s, "top", "sel", "desc", s.top)).toBe("1개월 상위 3 · 정렬 선정 순서(1개월 높은 순) · 10/12 → 11/9");
     expect(kodexSameNote(s)).toBe(
@@ -205,7 +210,7 @@ describe("섹터 요약 문장(판정 §3)", () => {
 
   it("AI 복사 = 목록 전체 · 구성 자료 없는 범위 · 세 갈래 질문 · 금액 없음", () => {
     const text = aiCopyText(s, "bottom");
-    expect(text.split("\n")[0]).toBe("[ETF 비교하기 · 1개월 하위 3개 · 10/12 → 11/9]");
+    expect(text.split("\n")[0]).toBe("[같은 기간 ETF 목록 · 1개월 하위 3개 · 10/12 → 11/9]");
     for (const r of BOTTOM) expect(text).toContain(`${r.rank}. ${r.name}(${r.ticker})`);
     expect(text).toContain("구성(10/2 · 비중 상위 2): 주성엔지니어링 8.1%, 마이크론 6.0%");
     expect(text).toContain("구성 자료 없음 1개: 늦은 상장");
@@ -247,24 +252,140 @@ describe("독립 검토 정정", () => {
   });
 });
 
-describe("조회 기준 — 「ETF 비교하기」 안에서만 공유 · 새로 고치면 기본값(판정 Q4 (b))", () => {
+// POC6-29(판정 Q1 · Q2 · Q11 · Q13) — 다섯 화면이 조건 · 저장된 기본 기간을 따로 쓴다.
+describe("화면별 조회 기준 · 기본 기간 저장", () => {
   beforeEach(() => {
     __resetEtfCompareCondition();
-    __resetMarketCondition();
+    window.localStorage.clear();
   });
 
-  it("기본 = 1개월 · 4종 제외 · 바꾸면 같은 값을 읽는다", () => {
-    expect(getEtfCompareCondition().basis).toBe("one_month");
-    setEtfCompareCondition({ ...getEtfCompareCondition(), basis: "three_month" });
-    expect(getEtfCompareCondition().basis).toBe("three_month");
+  it("기본 = 1개월 · 4종 제외 · 바꾸면 그 화면만 · 새로 고치면(저장 안 했으면) 기본값", () => {
+    for (const id of SCREEN_IDS) expect(getScreenCondition(id).basis).toBe("one_month");
+    setScreenCondition("candidates", { ...getScreenCondition("candidates"), basis: "three_month" });
+    setScreenCondition("sector", { basis: "daily", filters: { ...getScreenCondition("sector").filters, exclude_futures: false } });
+    expect(getScreenCondition("candidates").basis).toBe("three_month");
+    expect(getScreenCondition("sector")).toEqual({
+      basis: "daily",
+      filters: { exclude_inverse: true, exclude_leveraged: true, exclude_synthetic: true, exclude_futures: false },
+    });
+    for (const id of ["today", "holdings", "compare"] as const) expect(getScreenCondition(id).basis).toBe("one_month");
     __resetEtfCompareCondition();
-    expect(getEtfCompareCondition().basis).toBe("one_month");
+    expect(getScreenCondition("candidates").basis).toBe("one_month");
+    expect(getScreenCondition("sector").filters.exclude_futures).toBe(true);
   });
 
-  it("오늘 점검 · 요즘 잘 오르는 ETF 조건과 서로 영향이 없다", () => {
-    setEtfCompareCondition({ ...getEtfCompareCondition(), basis: "daily" });
-    expect(getMarketCondition().basis).not.toBe("daily");
-    setMarketCondition({ ...getMarketCondition(), basis: "three_month" });
-    expect(getEtfCompareCondition().basis).toBe("daily");
+  it("오늘 점검(today)은 제외 4종 고정 — 기간만 바뀐다", () => {
+    setScreenCondition("today", { basis: "three_month", filters: { exclude_inverse: false, exclude_leveraged: false, exclude_synthetic: false, exclude_futures: false } });
+    expect(getScreenCondition("today")).toEqual({
+      basis: "three_month",
+      filters: { exclude_inverse: true, exclude_leveraged: true, exclude_synthetic: true, exclude_futures: true },
+    });
+  });
+
+  it("[이 기준을 기본으로] = 그 화면 키에만 저장 · 다시 열면 그 기간 · 제외 조건은 저장 안 함", () => {
+    setScreenCondition("candidates", { basis: "three_month", filters: { ...getScreenCondition("candidates").filters, exclude_inverse: false } });
+    expect(saveScreenBasis("candidates")).toBe(true);
+    expect(window.localStorage.getItem(storageKeyOf("candidates"))).toBe("three_month");
+    for (const id of ["today", "holdings", "sector", "compare"] as const) expect(window.localStorage.getItem(storageKeyOf(id))).toBeNull();
+    __resetEtfCompareCondition();
+    expect(getScreenCondition("candidates")).toEqual({
+      basis: "three_month",
+      filters: { exclude_inverse: true, exclude_leveraged: true, exclude_synthetic: true, exclude_futures: true },
+    });
+    expect(getSavedBasis("candidates")).toBe("three_month");
+    expect(getScreenCondition("sector").basis).toBe("one_month");
+  });
+
+  it("판정 Q13 — 예전 「요즘 잘 오르는 ETF」 저장 기간은 today 만 한 번 이어받는다", () => {
+    window.localStorage.setItem(LEGACY_TODAY_BASIS_KEY, "three_month");
+    expect(getScreenCondition("today").basis).toBe("three_month");
+    expect(window.localStorage.getItem(storageKeyOf("today"))).toBe("three_month"); // 옮겨 둠
+    for (const id of ["holdings", "sector", "candidates", "compare"] as const) expect(getScreenCondition(id).basis).toBe("one_month");
+    // 이어받은 뒤에는 today 자기 저장값이 우선(예전 값이 바뀌어도 따라가지 않음).
+    window.localStorage.setItem(LEGACY_TODAY_BASIS_KEY, "daily");
+    __resetEtfCompareCondition();
+    expect(getScreenCondition("today").basis).toBe("three_month");
+  });
+
+  it("예전 저장값이 알 수 없는 값이면 이어받지 않는다 · 저장소를 못 쓰면 저장 실패(조회는 그대로)", () => {
+    window.localStorage.setItem(LEGACY_TODAY_BASIS_KEY, "weekly");
+    expect(getScreenCondition("today").basis).toBe("one_month");
+    expect(window.localStorage.getItem(storageKeyOf("today"))).toBeNull();
+    const orig = Storage.prototype.setItem;
+    Storage.prototype.setItem = () => {
+      throw new Error("blocked");
+    };
+    try {
+      setScreenCondition("holdings", { ...getScreenCondition("holdings"), basis: "daily" });
+      expect(saveScreenBasis("holdings")).toBe(false);
+      expect(getScreenCondition("holdings").basis).toBe("daily");
+      expect(getSavedBasis("holdings")).toBeNull();
+    } finally {
+      Storage.prototype.setItem = orig;
+    }
+  });
+});
+
+describe("저장 기간 상태 넷 — 저장됨 · 없음 · 허용 밖 · 읽기 실패(검증자 r1 F2 · 예전 C 판정 · PLAN §3-1)", () => {
+  const blocked = () => {
+    throw new DOMException("blocked", "SecurityError");
+  };
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    __resetEtfCompareCondition();
+    window.localStorage.clear();
+  });
+
+  it("읽기 예외 = read_failed(없음과 구분) · 지금 조회는 1개월 · 저장 기간 null", () => {
+    window.localStorage.setItem(storageKeyOf("sector"), "three_month");
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(blocked);
+    expect(readSavedBasis("sector")).toEqual({ basis: null, status: "read_failed" });
+    expect(readSavedBasis("today")).toEqual({ basis: null, status: "read_failed" });
+    expect(getScreenCondition("sector").basis).toBe("one_month");
+    expect(getSavedBasis("sector")).toBeNull();
+  });
+
+  it("today — 자기 칸은 비었고 예전 칸 읽기만 예외여도 read_failed", () => {
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation((k: string) => {
+      if (k === LEGACY_TODAY_BASIS_KEY) blocked();
+      return null;
+    });
+    expect(readSavedBasis("today")).toEqual({ basis: null, status: "read_failed" });
+  });
+
+  it("자기 칸이 허용 밖 값 = invalid · 읽으면서 고치지 않음 · today 도 이때는 예전 값을 이어받지 않음", () => {
+    window.localStorage.setItem(storageKeyOf("today"), "weekly");
+    window.localStorage.setItem(LEGACY_TODAY_BASIS_KEY, "three_month");
+    window.localStorage.setItem(storageKeyOf("holdings"), "");
+    expect(readSavedBasis("today")).toEqual({ basis: null, status: "invalid" });
+    expect(window.localStorage.getItem(storageKeyOf("today"))).toBe("weekly");
+    expect(getScreenCondition("today").basis).toBe("one_month");
+    expect(readSavedBasis("holdings")).toEqual({ basis: null, status: "invalid" });
+    expect(readSavedBasis("compare")).toEqual({ basis: null, status: "none" });
+  });
+
+  it("today 예전 값 옮겨 적기만 실패 = 읽은 예전 값을 저장됨으로 씀 · 다음 읽기 때 다시 옮김", () => {
+    window.localStorage.setItem(LEGACY_TODAY_BASIS_KEY, "three_month");
+    const set = vi.spyOn(Storage.prototype, "setItem").mockImplementation(blocked);
+    expect(readSavedBasis("today")).toEqual({ basis: "three_month", status: "saved" });
+    expect(window.localStorage.getItem(storageKeyOf("today"))).toBeNull();
+    set.mockRestore();
+    expect(readSavedBasis("today")).toEqual({ basis: "three_month", status: "saved" });
+    expect(window.localStorage.getItem(storageKeyOf("today"))).toBe("three_month");
+  });
+
+  it("저장 = 다시 읽어 같은 값일 때만 성공(조용히 버려지면 실패) · 읽기 실패였던 화면도 저장에 성공하면 저장됨", () => {
+    const set = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => undefined);
+    setScreenCondition("candidates", { ...getScreenCondition("candidates"), basis: "daily" });
+    expect(saveScreenBasis("candidates")).toBe(false);
+    expect(getSavedBasis("candidates")).toBeNull();
+    set.mockRestore();
+    const get = vi.spyOn(Storage.prototype, "getItem").mockImplementation(blocked);
+    expect(getScreenCondition("sector").basis).toBe("one_month"); // 읽기 실패로 시작
+    get.mockRestore();
+    setScreenCondition("sector", { ...getScreenCondition("sector"), basis: "three_month" });
+    expect(saveScreenBasis("sector")).toBe(true);
+    expect(getSavedBasis("sector")).toBe("three_month");
   });
 });

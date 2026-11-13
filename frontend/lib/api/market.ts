@@ -335,7 +335,8 @@ export type MarketRefreshStartStatus =
   | "skipped_cooldown"
   | "failed_to_start"
   | "not_needed" // POC5-12 scope=vix — 다시 받을 VIX 실패 기록 없음(실행 0)
-  | "vix_retry_running"; // POC5-12 — 'VIX 다시 받기'가 도는 중이라 거절(refresh_id = 그 재시도 id)
+  | "vix_retry_running" // POC5-12 — 'VIX 다시 받기'가 도는 중이라 거절(refresh_id = 그 재시도 id)
+  | "prevday_running"; // POC6-29 보완 2차 — ③ 전일 자료 보충이 도는 중이라 거절(refresh_id 없음)
 
 export interface MarketRefreshStartResponse {
   status: MarketRefreshStartStatus;

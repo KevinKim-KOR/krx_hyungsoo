@@ -4,7 +4,7 @@
 // 카드: 내 보유와 겹친 항목 · 하위권 · 상위권(+ 보합장이면 상·하위에 함께 나온 업종).
 // 첫 두 줄 = 공식 기초시장 · 자산 구성 · 사업군 분류 n/30. 반복된 업종 먼저 · 기초지수별 묶음은 접어 둔다.
 
-import { useState } from "react";
+import { createContext, useContext, useState } from "react";
 import type { CompareGroup, CompareRow, CompareSummaryOk } from "@/lib/api/etfCompare";
 import {
   BASIS_LABEL,
@@ -25,6 +25,9 @@ import type { MenuKey } from "../LeftSidebar";
 
 const SHOW_FIRST = 5;
 
+// POC6-29 — 행 상세의 [AI 세션에서 검토]가 메뉴를 옮길 수 있게(묶음 · 카드를 거치지 않고 ETF 줄까지).
+const NavContext = createContext<((k: MenuKey) => void) | undefined>(undefined);
+
 function EtfLine({
   row,
   s,
@@ -38,6 +41,7 @@ function EtfLine({
   open: boolean;
   onToggle: () => void;
 }) {
+  const nav = useContext(NavContext);
   const c = row.classification;
   const tags = [c.market === "국내" ? null : c.market, c.asset === "주식" ? null : c.asset, c.strategy ? "전략형" : null]
     .filter(Boolean)
@@ -67,7 +71,7 @@ function EtfLine({
           {pct(row.basis_return.value)}
         </span>
       </div>
-      {open && <EtfRowDetail row={row} s={s} side={side} />}
+      {open && <EtfRowDetail row={row} s={s} side={side} screen="sector_summary" onNavigate={nav} />}
     </>
   );
 }
@@ -327,8 +331,10 @@ export default function SectorSummary({
     );
   };
   return (
-    <div className="ec-cards" data-testid="ec-sector-summary" data-order={rv.order.join(",")}>
-      {rv.order.map(card)}
-    </div>
+    <NavContext.Provider value={onNavigate}>
+      <div className="ec-cards" data-testid="ec-sector-summary" data-order={rv.order.join(",")}>
+        {rv.order.map(card)}
+      </div>
+    </NavContext.Provider>
   );
 }

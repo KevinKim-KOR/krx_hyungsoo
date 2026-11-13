@@ -248,17 +248,20 @@ def build_market_flow_context(
     return out
 
 
-def _trend(a: dict, b: dict) -> tuple[str, str]:
-    """최근 20 · 직전 20 거래일 외국인 순매수 비교(문장 · 짧은 문장). 같으면 '같음' · 0 이면 증감을 말하지 않음."""
+def _trend(a: dict, b: dict, n: int = 20) -> tuple[str, str]:
+    """최근 n · 직전 n 거래일 순매수 비교(문장 · 짧은 문장 · 기본 20 = 외국인 창). 같으면 '같음' · 0 이면 증감을 말하지 않음.
+
+    POC6-29 보완 2차 — 5거래일 수급(`app/pc_short_flows.py`)도 같은 규칙을 n=5 로 쓴다.
+    """
     sa, sb = a["sum"], b["sum"]
     for sign, word in ((-1, "매도"), (1, "매수")):
         if sa * sign > 0 and sb * sign > 0:
             x, y = abs(a["avg"]), abs(b["avg"])
             how = "같음" if x == y else ("감소" if x < y else "증가")
             full = (
-                f"직전 20거래일{'과' if how == '같음' else '보다'} 일평균 {word} {how}"
+                f"직전 {n}거래일{'과' if how == '같음' else '보다'} 일평균 {word} {how}"
             )
-            return full, f"일평균 {word} {how} (직전 20거래일 대비)"
+            return full, f"일평균 {word} {how} (직전 {n}거래일 대비)"
     if sa > 0 > sb:
         return "순매도 → 순매수 전환", "순매도 → 순매수 전환"
     if sa < 0 < sb:

@@ -21,7 +21,8 @@ import { loadAISessionsDraft } from "@/lib/aiSessionsDraft";
 import { buildMarketDiscoveryCopyText } from "@/lib/marketDiscoveryCopyText";
 import { __resetMarketFlowPeriod, getMarketFlowPeriod, setMarketFlowPeriod } from "@/lib/marketFlowPeriod";
 import { MARKET_FLOW_TEXT_UNAVAILABLE, marketFlowCopySection } from "@/lib/marketFlowText";
-import TransferToAISessionsCard from "../TransferToAISessionsCard";
+import { summaryOk } from "@/lib/etfCompareTestFixtures";
+import ListTransfer from "../workbench/ListTransfer";
 
 import MarketFlowCard from "./MarketFlowCard";
 import TodayFlowLines from "./TodayFlowLines";
@@ -403,21 +404,31 @@ describe("복사문 · 무효화", () => {
     expect(MARKET_INVALIDATION_KEYS).toContain(MARKET_FLOW_KEY);
   });
 
-  it("AI 세션 전달 초안 질문 = 카드에서 고른 기간의 서버 글", async () => {
-    serve(ctx());
+  // POC6-29 — 「요즘 잘 오르는 ETF」 넘기기 카드는 보관. 「후보리스트」 목록 넘기기는 6개월 서버 글(기간 · 날짜가 붙은 글)을
+  //   넣는다(판정 Q5) — 이 카드에서 고른 기간을 따라가지 않는다.
+  it("「후보리스트」 목록 넘기기 초안 = 6개월 서버 글(카드에서 고른 기간과 무관)", async () => {
+    vi.stubEnv("NEXT_PUBLIC_API_BASE", "http://api.test");
     const CTX = { status: "ok", regime_label: "하락장", kodex200: { status: "ok" }, kospi: { status: "unavailable" }, warnings: [] } as unknown as MarketContext;
-    const cand = [{ rank: 1, ticker: "0005D0", name: "후보", tags: [], returns: {} }] as unknown as MarketCandidate[];
+    const stub = vi.fn(async (url: string) => {
+      const body = String(url) === "http://api.test/market/flow-context" ? ctx() : { status: "ok", candidates: [], market_context: CTX };
+      return { ok: true, status: 200, text: async () => JSON.stringify(body) };
+    });
+    vi.stubGlobal("fetch", stub);
     render(
       <>
         <MarketFlowCard />
-        <TransferToAISessionsCard asof={D} filters={{ exclude_inverse: true, exclude_leveraged: true, exclude_synthetic: true, exclude_futures: true }} candidates={cand} linkedMarketRefreshId={null} marketContext={CTX} compact />
+        <ListTransfer s={summaryOk()} side="top" />
       </>,
     );
     await screen.findByText("6개월 요약 줄(6M)");
     fireEvent.click(screen.getByRole("button", { name: "3개월" }));
-    fireEvent.click(screen.getByRole("button", { name: "AI Sessions로 넘기기" }));
-    await waitFor(() => expect(loadAISessionsDraft()?.question_text).toContain("[시장 흐름 글 3M]"));
-    expect(loadAISessionsDraft()?.question_text).not.toContain("[시장 흐름 글 6M]");
+    fireEvent.click(screen.getByRole("button", { name: "이 목록을 AI 투자 세션으로 넘기기" }));
+    await waitFor(() => expect(loadAISessionsDraft()?.question_text).toContain("[시장 흐름 글 6M]"));
+    expect(loadAISessionsDraft()?.question_text).not.toContain("[시장 흐름 글 3M]");
+    // 시장 판정도 누를 때 읽어 [시스템 시장 판정] 다음에 시장 흐름 글.
+    const q = loadAISessionsDraft()?.question_text ?? "";
+    expect(q.indexOf("- 시장 국면: 하락장")).toBeGreaterThan(-1);
+    expect(q.indexOf("[시장 흐름 글 6M]")).toBeGreaterThan(q.indexOf("- 시장 국면: 하락장"));
     setMarketFlowPeriod("6M");
   });
 });
@@ -444,7 +455,7 @@ describe("기간 비교 기준일 · 수급 연결(POC6-17)", () => {
     expect(screen.getByTestId("mf-end-basis")).toHaveClass("tc-warn");
     expect(screen.getByTestId("mf-flow-link")).toHaveTextContent("수급 연결: 아직 OCI 수급을 반영한 기록 없음");
     expect(screen.getByTestId("mf-flow-link")).toHaveClass("tc-warn");
-    expect(screen.getByTestId("mf-flow-press")).toHaveTextContent("[최신 시장 데이터 갱신]");
+    expect(screen.getByTestId("mf-flow-press")).toHaveTextContent("[최신 자료 갱신]");
   });
 
   it("옛 직접 조회 실패면 기간 제한이 없어도 버튼 위치 안내(검토 지적 5)", async () => {

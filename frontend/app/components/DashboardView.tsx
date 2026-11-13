@@ -112,8 +112,8 @@ function collectExceptions(
     if (market.data.status !== "ok") {
       list.push({
         text: `시장 데이터 확인 불가 (${market.data.status})`,
-        action: "market_discovery",
-        actionLabel: "Market Discovery 확인",
+        action: "today_check",
+        actionLabel: "오늘의 투자 점검에서 시장 자료 확인",
       });
       anyUnavailable = true;
     }
@@ -143,8 +143,8 @@ function collectExceptions(
     )) {
       list.push({
         text: `시장 국면: ${w}`,
-        action: "market_discovery",
-        actionLabel: "Market Discovery 확인",
+        action: "today_check",
+        actionLabel: "오늘의 투자 점검에서 시장 자료 확인",
       });
     }
   }
@@ -207,8 +207,8 @@ function collectExceptions(
   if (market.phase === "error") {
     list.push({
       text: "시장 상태 조회 실패",
-      action: "market_discovery",
-      actionLabel: "Market Discovery 확인",
+      action: "today_check",
+      actionLabel: "오늘의 투자 점검에서 시장 자료 확인",
     });
     anyUnavailable = true;
   }
@@ -307,9 +307,9 @@ function MarketCard({
         <button
           type="button"
           className="dashboard-flow-btn"
-          onClick={() => onNavigate("market_discovery")}
+          onClick={() => onNavigate("workbench")}
         >
-          Market Discovery 열기 →
+          후보리스트 열기 →
         </button>
       </div>
     </div>
@@ -664,8 +664,8 @@ function AsOfPanel({
 
 // ── 사용 흐름 도움말 (STEP 1~5 접힘) ───────────────────────────────────────
 const HELP_STEPS: { title: string; desc: string }[] = [
-  { title: "시장 데이터 갱신", desc: "Market Discovery 화면에서 '최신 시장 데이터 갱신'을 실행합니다." },
-  { title: "시장 후보 확인 + ETF 구성종목 분석", desc: "Market Discovery TOP N 후보 확인, ETF Exposure 구성종목 중복률 점검." },
+  { title: "시장 데이터 갱신", desc: "「오늘의 투자 점검」에서 [최신 자료 갱신]을 실행합니다." },
+  { title: "시장 후보 확인 + ETF 구성종목 분석", desc: "「후보리스트」 목록 확인, ETF Exposure 구성종목 중복률 점검." },
   { title: "보유 종목 입력 · 확인 근거", desc: "'종목 관리'에서 보유 ETF 입력·저장, '보유 현황'·'확인 근거'에서 평가와 수치 근거 확인." },
   { title: "판단 초안 생성", desc: "'OCI 적용·알림 > 미리보기·수동 전달 점검'에서 '저장된 보유 종목으로 초안 만들기'를 실행합니다." },
   { title: "승인 / Telegram 발송", desc: "Approval / Telegram 화면에서 초안을 검토·승인합니다." },

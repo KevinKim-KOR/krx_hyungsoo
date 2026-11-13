@@ -1,4 +1,5 @@
 // POC6-28 — 「ETF 비교하기」 시험용 요약 응답(GET /market/etf-compare/summary 모양 · 실제 값과 무관한 고정 자료).
+// POC6-29 — 종목 상세 수치 응답(GET /market/etf-detail)도 같은 고정 자료로.
 import type {
   CompareGroup,
   CompareRow,
@@ -6,6 +7,7 @@ import type {
   HoldingLink,
   PriceFlow,
 } from "@/lib/api/etfCompare";
+import type { DetailPeriod, EtfDetailItem, EtfDetailResponse } from "@/lib/api/etfDetail";
 
 const START = "2026-10-12";
 const END = "2026-11-09";
@@ -343,6 +345,62 @@ export function summaryOk(over: Partial<CompareSummaryOk> = {}): CompareSummaryO
       official_csv: { status: "ok", name: "krx_etf_basic_20260927.csv", csv_asof: "2026-09-27" },
       dictionary: { status: "ok", sector_count: 28 },
     },
+    ...over,
+  };
+}
+
+// POC6-29 — GET /market/etf-detail 시험 응답(행 상세 · [표] · 「보유와 후보 비교」 공통 · 고정 자료).
+
+export function period(
+  value: number | null,
+  start: string | null = START,
+  end: string | null = END,
+  status: DetailPeriod["status"] = "ok",
+  reason: string | null = null,
+): DetailPeriod {
+  return { status, value, start, end, start_close: value == null ? null : 10000, end_close: value == null ? null : 10000, reason };
+}
+
+export function detailItem(ticker: string, over: Partial<EtfDetailItem> = {}): EtfDetailItem {
+  return {
+    ticker,
+    name: `ETF ${ticker}`,
+    is_etf: true,
+    last_date: END,
+    end_price: AFTER,
+    daily: period(0.5, "2026-11-06", END),
+    w5: period(-1.2, "2026-11-02", END),
+    w20: period(-8.4, "2026-10-13", END),
+    m1: period(-10.25, START, END),
+    m3: period(-5.5, "2026-08-11", END),
+    m6: period(12.3, "2026-05-12", END),
+    m12: period(30.1, "2025-11-10", END),
+    excess20: {
+      status: "ok",
+      value_pctp: 6.1,
+      etf_return_pct: -8.4,
+      kodex200_return_pct: -14.5,
+      start: "2026-10-13",
+      end: END,
+      reason: null,
+    },
+    same_kodex: {
+      one_month: { status: "ok", value: 12.39, etf_return_pct: -10.25, kodex200_return_pct: -22.64, start: START, end: END, reason: null },
+      three_month: { status: "ok", value: 10.2, etf_return_pct: -5.5, kodex200_return_pct: -15.7, start: "2026-08-11", end: END, reason: null },
+    },
+    drawdown: { status: "ok", value: -3.0, start: "2026-10-13", end: END, peak_date: "2026-10-20", peak_close: 10300, close: 9991, reason: null },
+    nav: { status: "ok", nav: 10010, market_price: 10000, discount_rate_pct: -0.1, flag: null, asof: END },
+    ...over,
+  };
+}
+
+export function detailResponse(tickers: string[], over: Partial<EtfDetailResponse> = {}): EtfDetailResponse {
+  return {
+    status: "ok",
+    message: null,
+    end_date: END,
+    kodex200: { window20: period(-14.5, "2026-10-13", END) },
+    items: tickers.map((t) => detailItem(t)),
     ...over,
   };
 }

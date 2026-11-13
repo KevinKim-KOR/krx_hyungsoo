@@ -42,6 +42,9 @@ interface Props {
   screenFilters?: DecisionFilters;
   rank?: number | null;
   onNavigate?: (key: MenuKey) => void;
+  // POC6-29(판정 Q8) — 시장 흐름 묶음 기간을 화면이 정해 넘긴다(「ETF보유 및 후보 선정」 화면 = 6개월 고정 ·
+  //   「오늘의 투자 점검」 시장 근거에서 고른 기간과 무관). 없으면 예전처럼 시장 흐름 카드에서 고른 기간.
+  flowPeriod?: string;
 }
 
 // POC5-24 — 지금 보이는 응답 그대로 AI 세션 초안(재생성 · 재계산 없음 · 질문 = 원문).
@@ -117,6 +120,7 @@ export default function DecisionDraftPreviewCard({
   screenFilters,
   rank,
   onNavigate,
+  flowPeriod,
 }: Props) {
   // POC5-24 — 저장 안 한 기존 초안이 있으면 바꾸기 전에 묻는다(Q2 (a)).
   const [pendingReplace, setPendingReplace] = useState<string | null>(null);
@@ -129,8 +133,9 @@ export default function DecisionDraftPreviewCard({
   // 요청 시작 시점의 대상 식별자 — 늦게 도착한 응답이 새 대상에 표시되지 않도록.
   const currentReqIdRef = useRef<number>(0);
   const queryKey = useMemo(
-    () => (targetKind === "candidate" ? JSON.stringify(listQuery ?? null) : ""),
-    [targetKind, listQuery],
+    // POC6-29 — 보유도 B 화면 조건(기간 · 제외)이 바뀌면 이전 결과를 버린다.
+    () => JSON.stringify(listQuery ?? null),
+    [listQuery],
   );
 
   const targetKey = `${targetKind}|${ticker}|${queryKey}`;
@@ -154,7 +159,7 @@ export default function DecisionDraftPreviewCard({
     setCopyState("idle");
     setPendingReplace(null);
     try {
-      const res = await postDecisionDraftPreview(targetKind, ticker, listQuery, getMarketFlowPeriod());
+      const res = await postDecisionDraftPreview(targetKind, ticker, listQuery, flowPeriod ?? getMarketFlowPeriod());
       if (reqId !== currentReqIdRef.current) return;
       if (res.status !== "ok" || !res.preview_text) {
         // 서버 사유(예: 현재 목록 조건에 없음)가 있으면 그대로 · 없으면 기본 문구.
@@ -172,7 +177,7 @@ export default function DecisionDraftPreviewCard({
     } finally {
       if (reqId === currentReqIdRef.current) setLoading(false);
     }
-  }, [loading, targetKind, ticker, listQuery, targetKey]);
+  }, [loading, targetKind, ticker, listQuery, targetKey, flowPeriod]);
 
   const handleCopy = useCallback(() => {
     const text = result?.preview_text;

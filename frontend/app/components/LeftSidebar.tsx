@@ -20,6 +20,13 @@
 // 2026-11-01 POC6-15: 그룹 안에 폴더 하나를 둘 수 있다(한 단계만 · 범용 트리 아님).
 //   폴더 = 펼침·접힘만(화면 전환 없음 · key 없음). 접힘 상태는 그룹과 같이 useState 만.
 //   active 가 폴더 안이면 그 폴더를 자동으로 펴고, 접어 두면 폴더 줄에 현재 위치를 보인다.
+// 2026-11-12 POC6-29(설계 §3 · PLAN 판정 Q3 · Q17): 「비교·판단」 → 「ETF보유 및 후보 선정」 · 「ETF 비교하기」 폴더를 없애고
+//   보유 · 섹터요약 · 후보리스트 · 보유와 후보 비교를 바로 둔다(+ ETF 구성종목 · AI 투자 세션). 「요즘 잘 오르는 ETF」
+//   (`market_discovery`)는 기능을 「오늘의 투자 점검」 · 이 그룹으로 옮기고 메뉴에서 뺐다. 메뉴의 '후보'는 이 그룹 이름 ·
+//   「후보리스트」 · 「보유와 후보 비교」 세 곳뿐이다(힌트에는 쓰지 않음).
+// 2026-11-12 POC6-29 보완(보완 PLAN 판정 Q-R5 · RESULT 판정 §4 · 목업 R4): 「진단·상태」 끝(「개발·실험용」 다음)에 폴더
+//   「미사용 기능」(「ML 연구」와 같은 폴더)을 두고 기능마다 하위 메뉴 하나를 둔다. 첫 하위 메뉴 = 「신규 ETF 관찰 점검」
+//   (`unused_universe_watch` · 메뉴 key 16 → 17).
 
 import { useEffect, useState } from "react";
 
@@ -27,7 +34,8 @@ export type MenuKey =
   | "today_check"
   | "workbench"
   | "workbench_holdings"
-  | "market_discovery"
+  | "etf_sector"
+  | "holding_candidate_compare"
   | "etf_exposure"
   | "ai_sessions"
   | "holdings"
@@ -38,7 +46,8 @@ export type MenuKey =
   | "ml"
   | "ml_legacy"
   | "alert_records"
-  | "data_status";
+  | "data_status"
+  | "unused_universe_watch";
 
 export interface MenuItem {
   key: MenuKey;
@@ -82,19 +91,13 @@ export const MENU_GROUPS: MenuGroup[] = [
   },
   {
     id: "compare",
-    title: "비교·판단",
+    title: "ETF보유 및 후보 선정",
     items: [
-      // 2026-11-11 POC6-28(설계자 PLAN 판정 Q1 (a)): 「ETF 비교하기」 → 폴더 · 「후보」(기존 `workbench` key) · 「보유」.
-      //   다른 화면의 [ETF 비교하기] 이동은 「후보」(`workbench`)로 간다.
-      {
-        id: "etf_compare",
-        title: "ETF 비교하기",
-        items: [
-          { key: "workbench", label: "후보", hint: "같은 조건 상·하위 ETF · 섹터 요약 · 순위" },
-          { key: "workbench_holdings", label: "보유", hint: "내 보유의 최근 가격 · 시장 대비 · 약세 묶음 접점" },
-        ],
-      },
-      { key: "market_discovery", label: "요즘 잘 오르는 ETF", hint: "강한 흐름 ETF 찾기" },
+      // 2026-11-12 POC6-29: 「후보리스트」는 기존 `workbench` key 를 그대로 쓴다(다른 화면의 이동이 모두 이 key).
+      { key: "workbench_holdings", label: "보유", hint: "내 보유의 비중 · 하락 · 약세 묶음 접점 · 판단 근거" },
+      { key: "etf_sector", label: "섹터요약", hint: "같은 기간 상·하위 ETF의 업종 · 테마" },
+      { key: "workbench", label: "후보리스트", hint: "같은 기간 상·하위 ETF 순위 · 표 · 목록 넘기기" },
+      { key: "holding_candidate_compare", label: "보유와 후보 비교", hint: "보유 하나와 ETF 하나를 같은 항목으로 나란히" },
       { key: "etf_exposure", label: "ETF 구성종목", hint: "담고 있는 종목 / 중복" },
       { key: "ai_sessions", label: "AI 투자 세션", hint: "AI 질문/답변 기록" },
     ],
@@ -129,7 +132,7 @@ export const MENU_GROUPS: MenuGroup[] = [
     id: "diagnostics",
     title: "진단·상태",
     // 2026-08-16 사용자 직접 지시 — 진단 서랍에 정상 업무가 섞여 있어 분리했다.
-    //   순서: 정상 업무(데이터 상태) → ML 실험 → 개발·실험용.
+    //   순서: 정상 업무(데이터 상태) → ML 실험 → 개발·실험용 → (2026-11-12 POC6-29 보완) 미사용 기능 폴더.
     // 2026-11-01 POC6-15(설계자 PLAN 판정 Q2): 「ML 실험」 → 「ML 연구」 폴더 · 두 화면.
     //   예측과 결과 비교 = 기존 `ml` key(06 전향 비교 · 카드 1) · 이전 자료·실험 = `ml_legacy`(카드 5).
     //   data_status 는 POC3-07 이 "placeholder" 로 보고 흡수했으나, 실제로는
@@ -149,6 +152,19 @@ export const MENU_GROUPS: MenuGroup[] = [
       //   매일 보는 「오늘 확인」이 아니라 사후 ML 검토용이라 ML 실험 바로 아래에 둔다(지금 = ML 연구 폴더 아래).
       { key: "alert_records", label: "받은 알림 기록", hint: "받은 알림 · 당시 근거 · 이후 결과" },
       { key: "diagnostics", label: "개발·실험용", hint: "미리보기 · 샘플 · 개발 호환 · LEGACY" },
+      // 2026-11-12 POC6-29 보완(Q-R5 · RESULT 판정 §4): 일상 메뉴에서 뺀 기능을 기능마다 하위 메뉴 하나로 둔다.
+      //   힌트에 '후보'를 쓰지 않는다(판정 Q17 — 메뉴의 '후보'는 세 이름에만).
+      {
+        id: "unused_features",
+        title: "미사용 기능",
+        items: [
+          {
+            key: "unused_universe_watch",
+            label: "신규 ETF 관찰 점검",
+            hint: "1개월 수익률 1위 ETF 수동 확인 · 실험용 초안",
+          },
+        ],
+      },
     ],
   },
 ];
@@ -164,7 +180,8 @@ const ALL_MENU_KEYS: MenuKey[] = [
   "today_check",
   "workbench",
   "workbench_holdings",
-  "market_discovery",
+  "etf_sector",
+  "holding_candidate_compare",
   "etf_exposure",
   "ai_sessions",
   "holdings",
@@ -176,6 +193,7 @@ const ALL_MENU_KEYS: MenuKey[] = [
   "ml_legacy",
   "alert_records",
   "data_status",
+  "unused_universe_watch",
 ];
 
 function assertMenuGroupsCover(): void {

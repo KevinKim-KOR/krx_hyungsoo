@@ -60,8 +60,8 @@ describe("정비 큐 VIX 항목 (POC5-12)", () => {
     expect(got[0]).toMatchObject({
       text: "VIX 자료 업데이트 확인 필요(기준일 2026-10-09)",
       kind: "heavy",
-      target: "market_discovery",
-      actionLabel: "시장 자료 업데이트로",
+      target: "today_check",
+      actionLabel: "최신 자료 갱신",
     });
     expect(got[0].reason).not.toMatch(/시장 기준일|보다 이전/);
   });

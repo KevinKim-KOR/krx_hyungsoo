@@ -6,7 +6,7 @@
 - pytest 가 같은 디렉터리(또는 상위) 의 conftest.py 를 자동 인식 — import 불필요.
 
 내용:
-- _isolated_store (autouse): runs / handoff / holdings / market_cache 경로 격리
+- _isolated_store (autouse): runs / handoff / holdings / market_cache(빠른 시세 파일 포함) 경로 격리
 - _stub_oci_calls (autouse): deliver / fetch_outbox_result 를 무동작 stub
 - client: FastAPI TestClient
 - _isolated_universe: Step5C universe seed / artifact 경로 격리
@@ -35,6 +35,8 @@ from app import (  # noqa: E402
     delivery,
     holdings as holdings_module,
     market_cache,
+    pc_prevday_fill,
+    pc_quick_quotes,
     store,
 )
 
@@ -188,6 +190,18 @@ def _isolated_store(tmp_path, monkeypatch):
         Path(tmp_path) / "market_cache" / "market_latest.json",
     )
     market_cache.reset_for_test()
+    # POC6-29 보완: 빠른 시세 저장 파일도 격리(같은 market_cache 폴더 · 라이브 파일 읽기 · 쓰기 없음)
+    monkeypatch.setattr(
+        pc_quick_quotes,
+        "STORE_FILE",
+        Path(tmp_path) / "market_cache" / "quick_quotes_latest.json",
+    )
+    # POC6-29 보완 2차: ③ 전일 자료 보충 결과 파일도 격리
+    monkeypatch.setattr(
+        pc_prevday_fill,
+        "PREVDAY_FILE",
+        Path(tmp_path) / "market_cache" / "prevday_fill_latest.json",
+    )
     yield
     market_cache.reset_for_test()
 

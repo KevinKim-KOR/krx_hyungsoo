@@ -236,13 +236,18 @@ def candidate_flow_lines(cand: dict[str, Any]) -> list[str]:
     return lines
 
 
-def same_period_lines(sp: Optional[dict[str, Any]], holding: bool) -> list[str]:
+def same_period_lines(
+    sp: Optional[dict[str, Any]], holding: bool, scoped: bool = False
+) -> list[str]:
+    """`scoped` = B 화면 보유 미리보기(종목 상세 수치 · POC6-29) — 예전 '상위 10 후보에 든 보유만' 안내 없음 ·
+    값 줄의 머리는 '이 종목'."""
     if not sp:
-        if holding:
+        if holding and not scoped:
             return [
                 "1개월 · 3개월: 값 없음 — 동일 기간 비교는 현재 1개월 상위 10 후보에 든 보유 종목만 제공합니다."
             ]
         return ["1개월 · 3개월: 값 없음"]
+    who = "이 종목" if scoped else "후보"
     lines: list[str] = []
     any_ok = False
     for key, label in (("one_month", "1개월"), ("three_month", "3개월")):
@@ -253,7 +258,7 @@ def same_period_lines(sp: Optional[dict[str, Any]], holding: bool) -> list[str]:
             any_ok = True
             lines.append(
                 f"{label} {fmt_pct(it.get('diff_pctp'), '%p')} "
-                f"(후보 {fmt_pct(it.get('candidate_return_pct'))} · "
+                f"({who} {fmt_pct(it.get('candidate_return_pct'))} · "
                 f"KODEX200 {fmt_pct(it.get('kodex200_return_pct'))} · "
                 f"사용 종가 {it.get('start_date')} → {it.get('end_date')})"
             )

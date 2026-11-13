@@ -7,11 +7,17 @@
 // - KODEX200: 기준일 / 종가 / 전일 대비.
 // - VIX: 기준일 / 종가 / 전일 대비 / 5거래일 변화.
 // - 기준일이 다르면 안내 문구 표시 (숨기지 않음).
-// - 상세 펼치기: KODEX200 / VIX 최근 20거래일 미니 추이 (두 시계열은 별도).
+// - 상세 펼치기: KODEX200 / VIX 최근 20거래일 추이 (두 시계열은 별도).
+// - POC6-29(형수님 의견 2026-11-13 '이런 그래프는 크게') — 200×40 미니 선 대신 코스피 차트와 같은 공용 차트
+//   (ReadableLineChart · 날짜 · 값 눈금 · 고른 날 값 줄)로 그린다. 「오늘의 투자 점검」 근거 접기 안에서는
+//   펼친 채 시작(startOpen · 판정 Q-S1 '한 번 열면 바로 보임'). 값 · 기간은 응답 그대로(새 계산 없음).
 //
 // 지시문 §9 준수: 판단 라벨 / 위험 점수 / 시장 국면 라벨 추가 없음.
 
 import { useState } from "react";
+
+import ReadableLineChart from "./charts/ReadableLineChart";
+import type { ChartUnit } from "@/lib/chartScale";
 
 import type {
   MarketRiskKodex200,
@@ -33,38 +39,29 @@ function fmtPct(value: number | null | undefined): string {
   return `${sign}${value.toFixed(2)}%`;
 }
 
-// 미니 sparkline — 외부 차트 라이브러리 없이 SVG polyline 만 사용.
-function MiniSeries({ points }: { points: MarketRiskRecentPoint[] }) {
+// 최근 20거래일 추이 — 공용 차트(코스피 차트와 같은 틀 · 날짜 · 값 눈금).
+function RecentSeries({
+  points,
+  unit,
+  valueLabel,
+  testId,
+}: {
+  points: MarketRiskRecentPoint[];
+  unit: ChartUnit;
+  valueLabel: string;
+  testId: string;
+}) {
   if (!points.length) return <div className="helper">최근 관측값이 없습니다.</div>;
-  const values = points.map((p) => p.close);
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const range = max - min || 1;
-  const width = 200;
-  const height = 40;
-  const step = points.length > 1 ? width / (points.length - 1) : 0;
-  const coords = points
-    .map((p, i) => {
-      const x = i * step;
-      const y = height - ((p.close - min) / range) * height;
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    })
-    .join(" ");
   return (
-    <div className="market-risk-mini">
-      <svg
-        width={width}
-        height={height}
-        role="img"
-        aria-label="최근 20거래일 종가 미니 추이"
-      >
-        <polyline
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={1.5}
-          points={coords}
-        />
-      </svg>
+    <div className="market-risk-chart">
+      <ReadableLineChart
+        points={points.map((p) => ({ date: p.date, price: p.close }))}
+        unit={unit}
+        valueLabel={valueLabel}
+        label={`${valueLabel} 최근 20거래일 종가 추이`}
+        height={180}
+        testId={testId}
+      />
       <div className="helper" style={{ fontSize: "0.75rem" }}>
         {points[0].date} ~ {points[points.length - 1].date}
       </div>
@@ -131,10 +128,12 @@ function VixPanel({ card }: { card: MarketRiskVix }) {
 
 interface Props {
   reference: MarketRiskReference | null | undefined;
+  // 처음부터 상세(20거래일 추이)를 펼친다(근거 접기 안 · 안쪽 접기 없음)
+  startOpen?: boolean;
 }
 
-export default function MarketRiskReferenceCard({ reference }: Props) {
-  const [expanded, setExpanded] = useState(false);
+export default function MarketRiskReferenceCard({ reference, startOpen = false }: Props) {
+  const [expanded, setExpanded] = useState(startOpen);
   if (!reference) {
     return (
       <div className="card market-risk-reference-card">
@@ -175,7 +174,12 @@ export default function MarketRiskReferenceCard({ reference }: Props) {
             <div className="market-risk-panel-title">
               KODEX200 최근 20거래일 추이
             </div>
-            <MiniSeries points={kodex200.recent_20d_series ?? []} />
+            <RecentSeries
+              points={kodex200.recent_20d_series ?? []}
+              unit="원"
+              valueLabel="KODEX 200"
+              testId="risk-kodex-chart"
+            />
             <div className="helper" style={{ fontSize: "0.75rem" }}>
               전체 관측 범위: {kodex200.series_first_date ?? DASH} ~{" "}
               {kodex200.series_last_date ?? DASH}
@@ -185,7 +189,12 @@ export default function MarketRiskReferenceCard({ reference }: Props) {
             <div className="market-risk-panel-title">
               VIX 최근 20거래일 추이
             </div>
-            <MiniSeries points={vix.recent_20d_series ?? []} />
+            <RecentSeries
+              points={vix.recent_20d_series ?? []}
+              unit="pt"
+              valueLabel="VIX"
+              testId="risk-vix-chart"
+            />
             <div className="helper" style={{ fontSize: "0.75rem" }}>
               전체 관측 범위: {vix.series_first_date ?? DASH} ~{" "}
               {vix.series_last_date ?? DASH}

@@ -44,6 +44,20 @@ export default function NavDiscountPlaceholderCard({ candidates = [] }: Props) {
     )
     .slice(0, 5);
 
+  // POC6-29 — 「후보리스트」에서 넘긴 목록에는 NAV · 괴리율 칸을 담지 않는다. '데이터 없음 · 갱신하면 재수집'이 아니라
+  // 볼 수 있는 곳을 알린다(검토 지적 — 갱신해도 이 카드는 바뀌지 않음).
+  if (candidates.length > 0 && candidates.every((c) => !c.data_quality)) {
+    return (
+      <div className="card" data-testid="nav-not-carried">
+        <h2>NAV / 괴리율 상태</h2>
+        <p className="helper">
+          넘겨받은 목록에는 NAV · 괴리율을 담지 않았습니다. 「후보리스트」 [표] 또는 행 상세의 &lsquo;시장가 · 기준가(NAV) ·
+          괴리율&rsquo;에서 확인하세요.
+        </p>
+      </div>
+    );
+  }
+
   if (candidates.length === 0 || stats.ok === 0) {
     return (
       <div className="card">
@@ -54,7 +68,7 @@ export default function NavDiscountPlaceholderCard({ candidates = [] }: Props) {
           {candidates.length > 0 && stats.unavailable > 0 && (
             <>
               후보 {stats.total}개 중 NAV ok {stats.ok}건 / unavailable{" "}
-              {stats.unavailable}건. Market Discovery 갱신을 다시 실행하면 Naver
+              {stats.unavailable}건. 「오늘의 투자 점검」 [최신 자료 갱신]을 다시 실행하면 Naver
               universe NAV 가 재수집됩니다.
             </>
           )}
@@ -73,7 +87,7 @@ export default function NavDiscountPlaceholderCard({ candidates = [] }: Props) {
     <div className="card">
       <h2>NAV / 괴리율 상태</h2>
       <p className="helper" style={{ marginBottom: 8 }}>
-        Naver ETF universe (`etfItemList.nhn`) 1회 호출 결과 — Market Discovery
+        Naver ETF universe (`etfItemList.nhn`) 1회 호출 결과 — 시장 자료
         갱신 시점에 등록된 NAV / 시장가 / 괴리율. 후보 {stats.total}개 중 NAV ok{" "}
         <strong>{stats.ok}</strong>건 / 미수집{" "}
         <strong>{stats.unavailable}</strong>건. 매수/매도 판단 아님.

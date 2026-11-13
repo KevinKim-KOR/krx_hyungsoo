@@ -36,6 +36,8 @@ export interface ETFExposureDraft {
   market_candidates: MarketCandidate[];
   // POC6-01 — 넘길 때의 시장 흐름 글(서버 공통 글 · 고른 기간). 예전 draft 에는 없다(없으면 구간 없음).
   market_flow_text?: string;
+  // POC6-29 판정 Q5 — 「후보리스트」 목록을 넘긴 범위(기간 · 실제 날짜 · 제외 · 상하위 · 건수). 예전 draft 에는 없다.
+  list_scope?: string;
   // 본 draft 가 생성된 시각 (디버깅 + "언제 넘긴 후보냐" 안내).
   draft_created_at: string;
 }
@@ -91,6 +93,7 @@ export function buildETFExposureDraftFromMarketDiscovery({
   marketContext,
   marketContextSnapshot,
   marketFlowText,
+  listScope,
 }: {
   asof: string;
   filters: DecisionFilters;
@@ -98,6 +101,7 @@ export function buildETFExposureDraftFromMarketDiscovery({
   marketContext: MarketContext | null;
   marketContextSnapshot: Record<string, unknown> | null;
   marketFlowText?: string;
+  listScope?: string;
 }): ETFExposureDraft {
   return {
     asof,
@@ -117,6 +121,7 @@ export function buildETFExposureDraftFromMarketDiscovery({
     market_context_full: marketContext,
     market_candidates: candidates,
     market_flow_text: marketFlowText,
+    ...(listScope ? { list_scope: listScope } : {}),
     draft_created_at: new Date().toISOString(),
   };
 }

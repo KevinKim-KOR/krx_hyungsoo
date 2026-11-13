@@ -15,6 +15,10 @@ POC5-23(2026-10-18) — 자료는 화면이 쓰는 두 PC API 응답에서 꺼�
 
 POC6-24 — [보유 · 자금 기준] 줄은 `_load_capital_lines`(보유 · 후보 공통 · 화면 `/holdings/enriched` 와 같은
 계산 · 서버 저장값만 · 자금 읽기 실패여도 미리보기는 그대로).
+
+POC6-29(판정 Q4-2) — 후보 요청에 `list_source = "common_period"` 가 오면 그 화면의 공통 기간 목록에서 찾고
+화면이 본 쪽 · 선정 순위 · 실제 날짜 · 끝일 가격 시점을 대조한다(`app/decision_preview_common_period.py`).
+다르면 미리보기 없이 다시 읽기 안내. 새 필드가 없으면 기존 동작 그대로.
 """
 
 from __future__ import annotations
@@ -29,6 +33,16 @@ from app.decision_draft_preview_service import (
     TARGET_KIND_CANDIDATE,
     TARGET_KIND_HOLDING,
     build_preview_text,
+)
+from app.decision_preview_common_period import (
+    FILTER_KEYS,
+    LIST_CHANGED_MESSAGE,
+    LIST_SOURCE_COMMON,
+    SCREEN_LABEL,
+    CommonPeriodPick,
+    ListChanged,
+    holding_list_context,
+    load_common_period_bundle,
 )
 from app.decision_preview_sources import (
     CandidateListQuery,
@@ -61,6 +75,17 @@ class PreviewRequest(BaseModel):
     exclude_futures: Optional[bool] = None
     # POC6-01 — 시장 흐름 묶음 기간(화면 선택 · 없으면 6개월). 허용 밖 = 실패 응답.
     flow_period: Optional[str] = None
+    # POC6-29 판정 Q4-2 — 후보만 · 공통 기간 목록(`common_period`)에서 찾기 + 화면이 본 그 행의 값.
+    list_source: Optional[str] = None
+    # candidate_list / sector_summary / holding_candidate_compare / holdings
+    screen: Optional[str] = None
+    side: Optional[str] = None  # top / bottom
+    rank: Optional[int] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    end_price_state: Optional[str] = None  # intraday / after_close / unknown
+    # 화면이 본 선정 기간 수익률(가격만 바뀐 같은 날 재저장도 '목록이 바뀜' · 없으면 대조 안 함).
+    basis_value: Optional[float] = None
 
 
 FLOW_PERIODS = ("1M", "3M", "6M", "YTD")
@@ -308,6 +333,21 @@ def _list_query(req: PreviewRequest) -> CandidateListQuery:
     )
 
 
+def _common_pick(req: PreviewRequest, query: CandidateListQuery) -> CommonPeriodPick:
+    """POC6-29 — 공통 기간 목록 요청의 조건 · 화면이 본 행(기간 · 제외는 기존 필드 · 없으면 기본 조건)."""
+    return CommonPeriodPick(
+        screen=req.screen or "",
+        basis=query.basis,
+        filters={k: getattr(query, k) for k in FILTER_KEYS},
+        side=req.side or "",
+        rank=req.rank if req.rank is not None else 0,
+        start_date=req.start_date or "",
+        end_date=req.end_date or "",
+        end_price_state=req.end_price_state or "",
+        basis_value=req.basis_value,
+    )
+
+
 @router.post("/decision-draft/preview", response_model=PreviewResponse)
 def post_decision_draft_preview(req: PreviewRequest) -> PreviewResponse:
     """저장 없는 판단 근거 미리보기 생성.
@@ -334,14 +374,46 @@ def post_decision_draft_preview(req: PreviewRequest) -> PreviewResponse:
     flow_period = req.flow_period or "6M"
     if flow_period not in FLOW_PERIODS:
         return PreviewResponse(status="error", message=_FAILURE_MESSAGE)
+    # POC6-29 — 후보 + 목록 출처가 오면 공통 기간 목록 경로.
+    pick: Optional[CommonPeriodPick] = None
+    if req.target_kind != TARGET_KIND_HOLDING and req.list_source is not None:
+        pick = _common_pick(req, query)
+        if req.list_source != LIST_SOURCE_COMMON or not pick.is_valid():
+            return PreviewResponse(status="error", message=_FAILURE_MESSAGE)
+    # 판정 Q4-2 둘째 항목 — B 화면 보유 미리보기는 후보 목록과의 관계를 그 화면 조건 목록으로 확인한 것만.
+    holding_scope = None
+    if req.target_kind == TARGET_KIND_HOLDING and req.list_source is not None:
+        if (
+            req.list_source != LIST_SOURCE_COMMON
+            or (req.screen or "") not in SCREEN_LABEL
+            or not query.is_valid()
+        ):
+            return PreviewResponse(status="error", message=_FAILURE_MESSAGE)
+        holding_scope = {
+            "screen": req.screen or "",
+            "basis": query.basis,
+            "filters": {k: getattr(query, k) for k in FILTER_KEYS},
+        }
     try:
         if req.target_kind == TARGET_KIND_HOLDING:
             target_evidence = _load_holdings_evidence(ticker)
+            if target_evidence is not None and holding_scope is not None:
+                target_evidence["list_context"] = holding_list_context(
+                    ticker, db_path=DEFAULT_DB_PATH, **holding_scope
+                )
+        elif pick is not None:
+            target_evidence = load_common_period_bundle(
+                ticker, pick, db_path=DEFAULT_DB_PATH
+            )
         else:
             target_evidence = _load_candidate_evidence(ticker, query)
             if target_evidence is None:
                 return PreviewResponse(status="error", message=_NOT_IN_LIST_MESSAGE)
         capital_lines = _load_capital_lines(ticker, req.target_kind)
+    except ListChanged as exc:
+        # 화면이 본 목록(쪽 · 순위 · 날짜 · 가격 시점)과 지금 목록이 다름 — 미리보기 없이 다시 읽기 안내.
+        _preview_logger.info("decision-draft/preview: common list changed (%s)", exc)
+        return PreviewResponse(status="error", message=LIST_CHANGED_MESSAGE)
     except CandidateListUnavailable as exc:
         # 시장 목록 자료 자체가 없음 · 손상 — '목록에 없음'으로 바꾸지 않고 일반 실패.
         _preview_logger.warning(

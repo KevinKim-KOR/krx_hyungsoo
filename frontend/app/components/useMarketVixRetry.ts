@@ -1,13 +1,15 @@
 "use client";
 
-// POC5-12 — 「요즘 잘 오르는 ETF」 갱신 버튼의 'VIX 다시 받기'(설계 §3 · PLAN §2 · 판정 Q2 · §3).
+// POC5-12 — 갱신 버튼의 'VIX 다시 받기'(설계 §3 · PLAN §2 · 판정 Q2 · §3).
+// POC6-29 — 「요즘 잘 오르는 ETF」에서 「오늘의 투자 점검」 [시장 근거와 다른 변화 보기] ①로 옮김. 다른 경로(시장 갱신
+//   상태 확인)가 '다시 받기 진행 중' 상태를 받아도 그 id 로 결과까지 따라간다(진행 표시 = `running`).
 //
 // - 전체 갱신 6시간 대기 중이고, 가장 최근 전체 갱신에서 VIX 만 실패한 표식(`vix_retry.needed`)이
 //   있으면 같은 버튼의 글자를 'VIX 다시 받기'로 바꾸고 `POST /market/refresh?scope=vix` 를 보낸다.
 // - 결과는 POST 가 준 재시도 id 와 상태 응답의 `vix_retry.refresh_id` 가 같고 끝난 상태인지로
 //   읽는다(첫 상태 조회 전에 끝나도 결과가 보인다).
 // - 성공해도 '갱신 완료'(전체)로 부르지 않는다. 자동 반복 · 횟수 제한 없음.
-// 화면 컴포넌트(MarketDiscoveryView)가 900줄 기준을 넘지 않도록 따로 둔다.
+// 화면 컴포넌트가 900줄 기준을 넘지 않도록 따로 둔다.
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -96,14 +98,6 @@ export function useMarketVixRetry({
     const seq = ++reqSeqRef.current;
     return { s: await fetchMarketRefreshStatus(), seq };
   }, []);
-  // 화면(전체 갱신 상태 확인)이 받은 상태 — 받은 순간을 순번으로 쓴다(그 사이 다시 받기 확인은 없음).
-  const absorbStatus = useCallback(
-    (s: MarketRefreshStatusResponse) => {
-      applyStatusAt(s, ++reqSeqRef.current);
-    },
-    [applyStatusAt],
-  );
-
   const settle = useCallback(
     (r: MarketRefreshVixRetry) => {
       stop();
@@ -117,9 +111,11 @@ export function useMarketVixRetry({
     [stop],
   );
 
+  const followIdRef = useRef<string | null>(null);
   const follow = useCallback(
     (retryId: string) => {
       stop();
+      followIdRef.current = retryId;
       const gen = genRef.current;
       setUi({ kind: "running" });
       let ticks = 0;
@@ -152,6 +148,19 @@ export function useMarketVixRetry({
       timerRef.current = setInterval(tick, POLL_INTERVAL_MS);
     },
     [stop, settle, readStatus, applyStatusAt],
+  );
+
+  // 화면(전체 갱신 상태 확인)이 받은 상태 — 받은 순간을 순번으로 쓴다. 그 상태에 도는 '다시 받기'가 있고 아직
+  // 따라가지 않으면 그 id 로 따라간다(이 hook 의 첫 상태 읽기가 순번에 밀려 버려진 경우 포함 · 검토 지적).
+  const absorbStatus = useCallback(
+    (s: MarketRefreshStatusResponse) => {
+      if (!aliveRef.current) return;
+      applyStatusAt(s, ++reqSeqRef.current);
+      const r = s.vix_retry;
+      const following = timerRef.current !== null && followIdRef.current === r?.refresh_id;
+      if (r?.status === "running" && r.refresh_id && !following) follow(r.refresh_id);
+    },
+    [applyStatusAt, follow],
   );
 
   // 화면을 열 때 상태 1회(대기 시간 · 표식). 진행 중인 다시 받기가 있으면 이어서 본다.

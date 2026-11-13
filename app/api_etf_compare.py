@@ -1,6 +1,7 @@
 """POC6-28 — 「ETF 비교하기」 요약 API(PC · 읽기 전용).
 
 - GET /market/etf-compare/summary : 같은 모집단의 상·하위 최대 30 · 묶음 · 네 기준 · 가격 시점 · 국면 · 보유 연결
+- GET /market/etf-detail?tickers=… : POC6-29 행 상세 수치(종목 최대 30 · `pc_etf_row_detail`)
 
 계산은 `app/pc_etf_compare_summary.build_summary` 가 한다. 이 파일은 자료 위치를 정하고 읽기 실패를
 응답 상태로 바꾼다. 시장 DB 는 `mode=ro` · 외부 호출 · 쓰기 0. 보유는 ticker 만 넘긴다(금액 · 계좌 없음).
@@ -8,10 +9,11 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any, Literal, Optional
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query
 
 from app import holdings as holdings_module
 from app.holdings import HoldingsValidationError
@@ -23,6 +25,7 @@ from app.intraday_config.selector import (
 from app.market_briefing.official_csv import resolve_official_csv
 from app.market_data_store import DEFAULT_DB_PATH
 from app.pc_etf_compare_summary import build_summary
+from app.pc_etf_row_detail import MAX_TICKERS, build_etf_detail
 
 MARKET_DB_PATH: Path = DEFAULT_DB_PATH
 META_DIR = Path("state/market_meta")
@@ -98,3 +101,26 @@ def get_etf_compare_summary(
         held_tickers=held,
         holdings_status=holdings_status,
     )
+
+
+_TICKER = re.compile(r"^[0-9A-Za-z]{1,12}$")
+
+
+@router.get("/market/etf-detail")
+def get_etf_detail(tickers: str = Query(...)) -> dict[str, Any]:
+    """POC6-29 행 상세 수치 — 쉼표로 나눈 종목(중복 제거 뒤 1 ~ 30개 · 그 밖 = 422 · 읽기 전용)."""
+    picked: list[str] = []
+    for raw in tickers.split(","):
+        t = raw.strip()
+        if t and t not in picked:
+            picked.append(t)
+    if (
+        not picked
+        or len(picked) > MAX_TICKERS
+        or not all(_TICKER.match(t) for t in picked)
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail=f"tickers 는 종목 코드 1 ~ {MAX_TICKERS}개(쉼표로 구분)입니다.",
+        )
+    return build_etf_detail(MARKET_DB_PATH, picked)

@@ -15,6 +15,12 @@
 //
 // 남은 것은 미리보기·샘플(PREVIEW/TEST) · 개발 호환 점검 · LEGACY 대시보드뿐이다.
 // 이 화면 지시로 OCI job·Telegram·SCP 를 자동 실행하지 않는다(side effect 없는 조회만).
+//
+// 2026-11-12 POC6-29(설계 §3 Q6 · PLAN 판정 Q6 · Q12): 「요즘 잘 오르는 ETF」에 있던 [신규 ETF 관찰 후보 갱신]을
+//   처음엔 이 화면 맨 아래 「미사용 기능」 구역(맨 위 [미사용 기능] 버튼)으로 옮겼다.
+//   → 같은 날 보완(보완 PLAN 판정 Q-R5 · RESULT 판정 §4): 사이드바 「진단·상태 › 미사용 기능 › 신규 ETF 관찰 점검」
+//   (`unused_universe_watch` · UnusedFeatureView)으로 다시 옮겼다. 이 화면에는 옮긴 곳 한 줄과 이동 버튼만 남는다.
+//   그 결과는 계속 아래 미리보기의 [저장된 보유 종목으로 초안 만들기] · PUSH-3 급등락 관찰 신호 초안이 읽는다.
 
 import ManualPreviewSection from "./approval/ManualPreviewSection";
 import DevCompatSection from "./approval/DevCompatSection";
@@ -37,6 +43,17 @@ export default function DiagnosticsView({ run, setRun, onNavigate }: Props) {
         참고용 이전 화면(LEGACY)을 이곳에서 관리합니다. 데이터 상태·ML 연구는 각각
         별도 메뉴로, OCI 운영 상태는 「OCI 운영·적용」으로 옮겼습니다.
       </p>
+      {/* POC6-29 보완(Q-R5): 미사용 기능은 사이드바 폴더로 옮겼다 — 옮긴 곳 한 줄 + 이동 버튼. */}
+      <div className="message info" data-testid="diag-unused-moved">
+        미사용 기능은 「진단·상태 › 미사용 기능」으로 옮겼습니다.
+        <button
+          type="button"
+          className="wb-btn btn-md ec-inline"
+          onClick={() => onNavigate("unused_universe_watch")}
+        >
+          「신규 ETF 관찰 점검」으로
+        </button>
+      </div>
 
       {/* A. 미리보기·샘플 (approval 에서 이동, PREVIEW/TEST 성격) */}
       <div className="diagnostics-preview">

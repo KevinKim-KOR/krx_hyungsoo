@@ -328,9 +328,9 @@ export const REVIEW: ReentryReviewResponse = {
   },
   "navigation": [
     {
-      "menu": "market_discovery",
-      "label": "요즘 잘 오르는 ETF — [최신 시장 데이터 갱신]",
-      "note": "전체 ETF(약 1,200종목)의 최근 120일을 받습니다 · 약 1.5 ~ 2.5분 · 6시간 간격"
+      "menu": "today_check",
+      "label": "오늘의 투자 점검 — [최신 자료 갱신]",
+      "note": "보유 현재가를 받은 뒤 전체 ETF(약 1,200종목)의 최근 120일을 받습니다 · 약 1.5 ~ 2.5분 · 시장 자료는 6시간 간격"
     },
     {
       "menu": "alert_records",

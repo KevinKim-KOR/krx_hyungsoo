@@ -72,15 +72,3 @@ export function regimeLabelKo(
       return "판정불가";
   }
 }
-
-// MA 기준선 대비 거리 문구 — "KODEX200 MA20 대비 +x.x%" (단일 "전환까지 거리" 금지).
-// 값 결측은 "-" 가 아니라 "자료 없음" 으로 정직 표시 (B-1: 0/정상 위장 금지).
-export function maDistanceText(
-  which: "MA20" | "MA60",
-  distancePct: number | null | undefined,
-  position: "above" | "below" | null | undefined,
-): string {
-  if (distancePct == null) return `KODEX200 ${which} 대비 자료 없음`;
-  const dir = position === "above" ? "위" : position === "below" ? "아래" : "";
-  return `KODEX200 ${which} 대비 ${fmtPct(distancePct)}${dir ? ` (${dir})` : ""}`;
-}

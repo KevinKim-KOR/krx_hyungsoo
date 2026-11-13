@@ -153,10 +153,10 @@ describe("자료 최신화 필요 카드", () => {
     fireEvent.click(screen.getByRole("button", { name: "자료 최신화 필요 펼치기" }));
     const body = screen.getByTestId("tc-fresh-body");
     expect(body.querySelector('[data-fresh="usdkrw"]')?.textContent).toContain("1거래일 늦음");
-    const btns = within(body).getAllByRole("button", { name: "최신 시장 데이터 갱신" });
+    const btns = within(body).getAllByRole("button", { name: "최신 자료 갱신" });
     expect(btns).toHaveLength(1);
     fireEvent.click(btns[0]);
-    expect(onAction).toHaveBeenCalledWith({ label: "최신 시장 데이터 갱신", target: { kind: "market_refresh" }, primary: false });
+    expect(onAction).toHaveBeenCalledWith({ label: "최신 자료 갱신", target: { kind: "market_refresh" }, primary: false });
     unmount();
     render(<FreshnessCard rows={ROWS} tasks={[]} onAction={onAction} busy={BUSY} />);
     expect(screen.queryByTestId("tc-fresh-body")).toBeNull();
@@ -165,6 +165,6 @@ describe("자료 최신화 필요 카드", () => {
   it("진행 중인 작업 버튼은 막는다(중복 실행 없음)", () => {
     render(<FreshnessCard rows={ROWS} tasks={[]} onAction={vi.fn()} busy={{ ...BUSY, market: true }} />);
     fireEvent.click(screen.getByRole("button", { name: "자료 최신화 필요 펼치기" }));
-    expect(screen.getByRole("button", { name: "최신 시장 데이터 갱신" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "최신 자료 갱신" })).toBeDisabled();
   });
 });

@@ -42,9 +42,9 @@ from app import (
     holdings as holdings_module,
     holdings_capital,
     holdings_enrich,
+    holdings_quote_refresh,
     market_cache,
     market_data_store,
-    market_naver,
     oci_startup_status,
     store,
 )
@@ -72,6 +72,10 @@ from app.api_price_series import router as price_series_router
 from app.api_intraday_config import router as intraday_config_router
 from app.api_three_push_param import router as three_push_param_router
 from app.api_universe import router as universe_router
+from app.pc_refresh_all import router as refresh_all_router  # POC6-29
+from app.pc_quick_quotes import router as quick_quotes_router  # POC6-29 보완
+from app.pc_morning_basis import router as morning_basis_router  # POC6-29 보완 2차
+from app.pc_short_flows import router as short_flows_router  # POC6-29 보완 2차
 from app.holdings import HoldingsValidationError
 from app.models import Run
 from app.state import InvalidTransition, validate_transition
@@ -176,6 +180,12 @@ app.include_router(oci_startup_status_router)
 app.include_router(holdings_oci_apply_router)
 # POC6-01 — 시장 흐름(수급 · 환율 · 유가) 읽기 전용 조회.
 app.include_router(market_flow_router)
+# POC6-29 — [최신 자료 갱신] 묶음 작업(빠른 시세 → 보유 현재가 → 기존 시장 갱신 시작) · 상태 읽기.
+app.include_router(refresh_all_router)
+# POC6-29 보완 — 빠른 시세(네이버 코스피 · 코스닥 · KODEX 200) 저장값 읽기 · 외부 조회 없음(받는 때 = 위 묶음 작업 ⓪).
+app.include_router(quick_quotes_router)
+app.include_router(morning_basis_router)
+app.include_router(short_flows_router)
 # POC2 3-PUSH Message Contract 정렬 (2026-06-12, FIX r2 — 설계자 수용):
 # 신규 PUSH endpoint 신설 금지선 (§3 / §11) 준수.
 # PUSH-1 / PUSH-3 은 기존 POST /runs/generate 의 input_data.push_kind 분기로 통합.
@@ -358,43 +368,27 @@ def post_market_refresh() -> MarketRefreshResponse:
     로 이동. 이유: Market Discovery SQLite Direct Refresh STEP 의 새 endpoint 가
     ETF universe 전체 갱신용 `/market/refresh` 를 사용. 본 endpoint 는 holdings 시세
     갱신이라 의미 namespace 가 `/holdings/*` 가 맞다 (backward compatibility alias 없음).
+
+    POC6-29 — 본문은 `app/holdings_quote_refresh.py`(한 번에 하나 · 겹친 호출은 같은 결과). 경로 · 응답 그대로.
     """
     try:
-        loaded = holdings_module.load()
-    except HoldingsValidationError as e:
-        raise HTTPException(status_code=500, detail=f"holdings 저장 파일 손상: {e}")
-    if not loaded:
-        raise HTTPException(
-            status_code=422,
-            detail="holdings 가 비어 있습니다. 먼저 보유 종목을 입력 후 저장해 주세요.",
-        )
-
-    tickers = [h.ticker for h in loaded]
-    results = market_naver.fetch_many(tickers)
-
-    successes = [r for r in results if r.quote is not None]
-    failures = [r for r in results if r.quote is None]
-
-    if successes:
-        market_cache.upsert_many([r.quote for r in successes])  # type: ignore[misc]
-
+        result = holdings_quote_refresh.refresh_holdings_quotes()
+    except holdings_quote_refresh.HoldingsRefreshRejected as e:
+        raise HTTPException(status_code=e.status_code, detail=e.detail)
     return MarketRefreshResponse(
-        ok_count=len(successes),
-        fail_count=len(failures),
+        ok_count=result.ok_count,
+        fail_count=result.fail_count,
         items=[
             MarketQuoteResponse(
-                ticker=r.quote.ticker,
-                name=r.quote.name,
-                current_price=r.quote.current_price,
-                price_asof=r.quote.price_asof,
-                price_source=r.quote.price_source,
+                ticker=q.ticker,
+                name=q.name,
+                current_price=q.current_price,
+                price_asof=q.price_asof,
+                price_source=q.price_source,
             )
-            for r in successes
-            if r.quote is not None
+            for q in result.quotes
         ],
-        failures=[
-            {"ticker": r.ticker, "reason": r.reason or "unknown"} for r in failures
-        ],
+        failures=result.failures,
     )
 
 

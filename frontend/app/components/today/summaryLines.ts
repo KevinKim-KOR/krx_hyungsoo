@@ -113,7 +113,7 @@ export function candidatePeriod(cands: MarketCandidate[]): string {
   const same = cands.every(
     (c) => (c.selected_basis_start_date ?? null) === s && (c.selected_basis_end_date ?? null) === e,
   );
-  if (!same) return "종목별 계산 기간 다름(「요즘 잘 오르는 ETF」에서 확인)";
+  if (!same) return "종목별 계산 기간 다름";
   return s && e ? `${s} ~ ${e}` : "계산 기간 확인 불가";
 }
 
@@ -279,9 +279,9 @@ export function summaryTasks(
         flowReason,
       ].filter((x): x is string => !!x),
       doText:
-        "[최신 시장 데이터 갱신]을 눌러 주세요(맨 위 버튼과 같은 작업). 갱신해도 다른 자료 항목이 모두 해결되는 것은 아닙니다." +
+        "[최신 자료 갱신]을 눌러 주세요(맨 위 버튼과 같은 작업 · 보유 현재가 → 시장 자료). 갱신해도 다른 자료 항목이 모두 해결되는 것은 아닙니다." +
         (flowReason ? " 수급은 OCI가 모은 자료를 이 버튼으로 PC에 반영합니다(자동 실행은 보관본만 받습니다)." : ""),
-      action: { label: "최신 시장 데이터 갱신", target: { kind: "market_refresh" }, primary: true },
+      action: { label: "최신 자료 갱신", target: { kind: "market_refresh" }, primary: true },
     });
   }
   const priceItems = items.filter((it) => it.task === "holdings_price");
@@ -290,8 +290,8 @@ export function summaryTasks(
       id: "holdings_price",
       title: "보유 종목 현재가를 다시 받아야 합니다.",
       reasons: priceItems.map((it) => it.text),
-      doText: "[보유 현재가 업데이트]를 눌러 주세요(맨 위 버튼과 같은 작업).",
-      action: { label: "보유 현재가 업데이트", target: { kind: "holdings_refresh" }, primary: true },
+      doText: "[최신 자료 갱신]을 눌러 주세요(맨 위 버튼과 같은 작업 · 보유 현재가부터 받습니다).",
+      action: { label: "최신 자료 갱신", target: { kind: "holdings_refresh" }, primary: true },
     });
   }
   // [요약 다시 읽기]로 다시 읽는 원천의 실패만 '다시 읽어 주세요'(검토 지적 2)
@@ -310,13 +310,13 @@ export function summaryTasks(
       action: { label: "요약 다시 읽기", target: { kind: "reload" }, primary: false },
     });
   }
-  // 시장 판정 · 요즘 잘 오르는 ETF 목록은 다시 읽기 대상이 아니다(판정 §2) — 버튼 없이 새로 고침 안내
+  // 시장 판정은 다시 읽기 대상이 아니다(판정 §2) — 버튼 없이 새로 고침 안내(POC6-29: 잘 오르는 ETF 목록은 다시 읽기 대상)
   const marketUnknown = items.filter((it) => it.task === "market_unknown").map((it) => it.text);
-  if (market.phase === "error") marketUnknown.unshift("시장 판정 · 요즘 잘 오르는 ETF 목록을 불러오지 못했습니다");
+  if (market.phase === "error") marketUnknown.unshift("시장 판정을 불러오지 못했습니다");
   if (marketUnknown.length > 0) {
     tasks.push({
       id: "market_unknown",
-      title: "시장 판정 · 요즘 잘 오르는 ETF 목록을 확인하지 못했습니다.",
+      title: "시장 판정을 확인하지 못했습니다.",
       reasons: marketUnknown,
       doText: "브라우저를 새로 고치면 다시 읽습니다([요약 다시 읽기]는 이 목록을 다시 읽지 않습니다). 오래됐다는 뜻은 아닙니다.",
       action: null,

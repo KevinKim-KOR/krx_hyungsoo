@@ -434,22 +434,43 @@ def refresh_flows_from_oci(
     root: Path = store.EVIDENCE_ROOT,
     pull: Optional[Callable[[], PullOutcome]] = None,
     clock: Callable[[], datetime] = store.utc_now,
+    skip_pull: bool = False,
 ) -> list[str]:
-    """PC 시장 갱신의 수급 단계. 가져오기 · 반영 기록을 따로 1행씩 남기고, 완료 문구용 문제 목록을 돌려준다."""
+    """PC 시장 갱신의 수급 단계. 가져오기 · 반영 기록을 따로 1행씩 남기고, 완료 문구용 문제 목록을 돌려준다.
+
+    POC6-29 보완 2차 — `skip_pull` = 기준일을 채운 미반영 묶음이 이미 이 PC 보관소에 있어(③ 전일 자료 보충이
+    먼저 확인) 가져오기를 부르지 않는다. 가져오기 기록은 '시도 0 · 실패 0' 으로 남겨 수급 연결 상태가
+    '가져오기 실패' 로 읽히지 않게 하고, 반영은 같은 함수 · 같은 검사로 한다.
+    """
     t0 = time.perf_counter()
-    po = (pull or (lambda: run_pull(root=root)))()
-    pulled = po.state == "ok"
-    _log(
-        db_path,
-        refresh_id,
-        "flowpull",
-        FLOW_PULL_LOG_SOURCE,
-        asof,
-        pulled,
-        1 if pulled else 0,
-        time.perf_counter() - t0,
-        po.reason,
-    )
+    if skip_pull:
+        po, pulled = PullOutcome("ok"), True
+        _log(
+            db_path,
+            refresh_id,
+            "flowpull",
+            FLOW_PULL_LOG_SOURCE,
+            asof,
+            True,
+            0,
+            0.0,
+            None,
+            attempted=0,
+        )
+    else:
+        po = (pull or (lambda: run_pull(root=root)))()
+        pulled = po.state == "ok"
+        _log(
+            db_path,
+            refresh_id,
+            "flowpull",
+            FLOW_PULL_LOG_SOURCE,
+            asof,
+            pulled,
+            1 if pulled else 0,
+            time.perf_counter() - t0,
+            po.reason,
+        )
     t1 = time.perf_counter()
     if po.state not in APPLY_AFTER_PULL:
         res = (

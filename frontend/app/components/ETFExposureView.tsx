@@ -205,6 +205,8 @@ export default function ETFExposureView({ onNavigate }: Props) {
         constituentsAnalysis: analysis,
         // POC6-01 — 넘길 때의 시장 흐름 글(예전 draft 면 구간 없음).
         marketFlowText: draft.market_flow_text,
+        // POC6-29 — 「후보리스트」에서 넘긴 목록의 범위(예전 draft 면 없음).
+        listScope: draft.list_scope,
       }),
       linked_market_refresh_id: null,
       draft_created_at: new Date().toISOString(),
@@ -229,8 +231,8 @@ export default function ETFExposureView({ onNavigate }: Props) {
     <div className="role-banner">
       <strong>[판단 흐름 STEP 2]</strong> ETF Exposure는 후보 ETF들이 실제로 어떤
       종목을 담고 있는지, 서로 얼마나 겹치는지, 그리고 ML / 위험 감지에 필요한
-      데이터가 현재 어디까지 준비됐는지 확인하는 화면입니다. Market Discovery에서
-      &lsquo;ETF Exposure로 넘기기&rsquo;를 먼저 실행해야 후보 목록이 이 화면에
+      데이터가 현재 어디까지 준비됐는지 확인하는 화면입니다. 「후보리스트」에서
+      [이 목록을 ETF 구성종목에서 보기]를 먼저 실행해야 후보 목록이 이 화면에
       연결됩니다.
     </div>
   );
@@ -270,9 +272,8 @@ export default function ETFExposureView({ onNavigate }: Props) {
         {roleBanner}
         <div className="card">
           <div className="message info">
-            Market Discovery 에서 후보를 조회한 뒤 &ldquo;ETF Exposure 로
-            넘기기&rdquo; 를 먼저 실행하세요. 구성종목 / 중복률 분석은 후보 ETF
-            목록이 필요합니다.
+            「후보리스트」에서 목록을 고른 뒤 [이 목록을 ETF 구성종목에서 보기]를
+            먼저 실행하세요. 구성종목 / 중복률 분석은 후보 ETF 목록이 필요합니다.
           </div>
         </div>
       </section>
@@ -283,8 +284,8 @@ export default function ETFExposureView({ onNavigate }: Props) {
     <section aria-labelledby="etf-exposure-h">
       <h1 id="etf-exposure-h">ETF Exposure</h1>
       <p className="subtitle">
-        Market Discovery 후보 {tickerCount}개 ETF 의 구성종목과 중복 노출을
-        분석합니다. asof {draft.asof}.
+        {draft.list_scope ? `넘겨받은 목록: ${draft.list_scope} · ` : `넘겨받은 후보 ${tickerCount}개 · `}
+        ETF 의 구성종목과 중복 노출을 분석합니다. asof {draft.asof}.
       </p>
       {roleBanner}
 

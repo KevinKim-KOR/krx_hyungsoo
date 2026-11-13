@@ -30,3 +30,5 @@ export * from "./holdingsHistory";
 export * from "./reentryReview";
 export * from "./decisionLedger";
 export * from "./mlForwardComparison";
+export * from "./etfDetail";
+export * from "./refreshAll";

@@ -63,16 +63,17 @@ export function isSelectedPreviewRecord(
 }
 
 // 지금 남아 있는 초안이 어디서 왔는지 한 줄(덮어쓰기 확인용 · 판단 없음) + 넘긴 시각(KST · 없으면 생략).
-// 「ETF 구성종목」 초안은 구성종목 · 중복 칸을 늘 넣는다(분석 전이면 null) · 「요즘 잘 오르는 ETF」 초안에는 그 칸이 없다.
+// 「ETF 구성종목」 초안은 구성종목 · 중복 칸을 늘 넣는다(분석 전이면 null) · 목록 넘기기 초안(「후보리스트」 · 예전
+// 「요즘 잘 오르는 ETF」)에는 그 칸이 없다.
 export function describeDraftOrigin(d: AISessionsDraft): string {
   let origin: string;
   if (isSelectedPreviewRecord(d.source_screen, d.candidate_snapshot)) {
     const c = d.candidate_snapshot[0];
-    origin = `「보유와 비교」 판단 근거 미리보기 · ${c?.name ?? c?.ticker ?? "-"}`;
+    origin = `판단 근거 미리보기 · ${c?.name ?? c?.ticker ?? "-"}`;
   } else if ("constituent_snapshot" in d || "overlap_snapshot" in d) {
     origin = `「ETF 구성종목」 · 후보 ${d.candidate_snapshot.length}개`;
   } else {
-    origin = `「요즘 잘 오르는 ETF」 · 후보 ${d.candidate_snapshot.length}개`;
+    origin = `「후보리스트」 · 목록 ${d.candidate_snapshot.length}개`;
   }
   const at = typeof d.draft_created_at === "string" && d.draft_created_at.trim();
   return at ? `${origin} · ${kstDateTimeLabel(d.draft_created_at)}` : origin;

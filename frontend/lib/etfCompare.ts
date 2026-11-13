@@ -275,10 +275,11 @@ export function sortLine(
   rows: CompareRow[],
 ): string {
   const list = `${BASIS_LABEL[s.basis]} ${side === "top" ? "상위" : "하위"} ${rows.length}`;
+  // POC6-29(설계 §4) — 다른 기준으로 정렬하면 '선정 기간 · 표시 순서'를 함께 적는다(예: 1개월 선정 · 3개월 수익률 표시 순서).
   const sortTxt =
     key === "sel"
       ? `선정 순서(${BASIS_LABEL[s.basis]} ${side === "top" ? "높은 순" : "낮은 순"})`
-      : `${SORT_LABEL[key]} ${dir === "desc" ? "높은 순" : "낮은 순"}`;
+      : `${BASIS_LABEL[s.basis]} 선정 · ${SORT_LABEL[key]} 표시 순서(${dir === "desc" ? "높은 순" : "낮은 순"})`;
   const parts = [list, `정렬 ${sortTxt}`, criterionPeriod(s, key)];
   if (key !== "sel") {
     const ok = rows.filter((r) => comparable(criterionOf(r, key))).length;
@@ -343,7 +344,7 @@ export function aiCopyText(s: CompareSummaryOk, side: "top" | "bottom"): string 
   const label = `${BASIS_LABEL[s.basis]} ${side === "top" ? "상위" : "하위"} ${rows.length}개`;
   const noCons = rows.filter((r) => !r.constituents);
   const lines = [
-    `[ETF 비교하기 · ${label} · ${md(s.period.start)} → ${md(s.period.end)}]`,
+    `[같은 기간 ETF 목록 · ${label} · ${md(s.period.start)} → ${md(s.period.end)}]`,
     `조건: ${filtersText(s.filters)} · 비교한 ETF ${s.counts.population}개 중 · 기간이 달라 뺀 ${s.counts.period_differs}개`,
     `가격 상태: ${priceStateLine(s.price_state)}`,
     "",

@@ -157,7 +157,7 @@ export default function AISessionsCreateTab({ draft, onSaved }: Props) {
   const handleSave = useCallback(async () => {
     if (!draft) {
       setErrorMessage(
-        "Market Discovery 에서 후보를 조회한 뒤 'AI Sessions로 넘기기'를 먼저 실행하세요.",
+        "「후보리스트」에서 목록을 고른 뒤 [이 목록을 AI 투자 세션으로 넘기기]를 먼저 실행하세요.",
       );
       return;
     }
@@ -268,8 +268,8 @@ export default function AISessionsCreateTab({ draft, onSaved }: Props) {
       <div className="card decision-card">
         <h2>새 기록 저장</h2>
         <div className="message info">
-          Market Discovery 에서 후보를 조회한 뒤 &ldquo;AI Sessions로
-          넘기기&rdquo;를 실행하세요. 저장에는 후보 스냅샷이 필수입니다.
+          「후보리스트」에서 목록을 고른 뒤 [이 목록을 AI 투자 세션으로 넘기기]를
+          실행하세요(한 종목은 행 상세의 [AI 세션에서 검토]). 저장에는 후보 스냅샷이 필수입니다.
         </div>
       </div>
     );
@@ -280,8 +280,8 @@ export default function AISessionsCreateTab({ draft, onSaved }: Props) {
       <h2>새 기록 저장</h2>
       <p className="helper" style={{ marginBottom: 8 }}>
         {selectedMode
-          ? "「보유와 비교」 판단 근거 미리보기에서 넘어온 선택 종목"
-          : "Market Discovery 에서 넘어온 후보"}
+          ? "판단 근거 미리보기에서 넘어온 선택 종목"
+          : "「후보리스트」 · 「ETF 구성종목」에서 넘어온 목록"}
         를 기반으로 외부 AI(GPT / Gemini / Claude) 답변과 사용자 메모 / 1차
         판정을 저장합니다. AI 를 직접 호출하지 않습니다.
       </p>

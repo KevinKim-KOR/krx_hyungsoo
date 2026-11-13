@@ -1,24 +1,31 @@
 // 「ETF 비교하기 › 보유」 화면 계약(POC6-28 · 판정 2026-11-11 §4 · Q6).
 // 요약 · 보유 · 보유 근거 · 가격 시계열을 가짜로 바꿔 응답을 통제한다. 실제 네트워크 · 운영 자료 미의존.
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { render, screen, fireEvent, within } from "@testing-library/react";
+import { render, screen, fireEvent, within, waitFor } from "@testing-library/react";
 import { __resetQueryCache } from "@/lib/api/queryCache";
 import { __resetEtfCompareCondition } from "@/lib/etfCompareCondition";
-import { summaryOk } from "@/lib/etfCompareTestFixtures";
+import { detailResponse, summaryOk } from "@/lib/etfCompareTestFixtures";
 
 const fetchEtfCompareSummary = vi.fn();
 const fetchEnrichedHoldings = vi.fn();
 const fetchHoldingsMarketEvidence = vi.fn();
 const fetchPriceSeries = vi.fn();
+const fetchEtfDetail = vi.fn();
+const postDecisionDraftPreview = vi.fn();
 
 vi.mock("@/lib/api/etfCompare", async (orig) => ({
   ...(await orig<typeof import("@/lib/api/etfCompare")>()),
   fetchEtfCompareSummary: (...a: unknown[]) => fetchEtfCompareSummary(...a),
 }));
+vi.mock("@/lib/api/etfDetail", async (orig) => ({
+  ...(await orig<typeof import("@/lib/api/etfDetail")>()),
+  fetchEtfDetail: (...a: unknown[]) => fetchEtfDetail(...a),
+}));
 vi.mock("@/lib/api", () => ({
   fetchEnrichedHoldings: (...a: unknown[]) => fetchEnrichedHoldings(...a),
   fetchHoldingsMarketEvidence: (...a: unknown[]) => fetchHoldingsMarketEvidence(...a),
   fetchPriceSeries: (...a: unknown[]) => fetchPriceSeries(...a),
+  postDecisionDraftPreview: (...a: unknown[]) => postDecisionDraftPreview(...a),
 }));
 
 import WorkbenchHoldingsView, { declineWeightLine } from "./WorkbenchHoldingsView";
@@ -152,7 +159,8 @@ const nav = vi.fn();
 beforeEach(() => {
   __resetQueryCache();
   __resetEtfCompareCondition();
-  for (const f of [fetchEtfCompareSummary, fetchEnrichedHoldings, fetchHoldingsMarketEvidence, fetchPriceSeries, nav]) f.mockReset();
+  for (const f of [fetchEtfCompareSummary, fetchEnrichedHoldings, fetchHoldingsMarketEvidence, fetchPriceSeries, fetchEtfDetail, nav]) f.mockReset();
+  fetchEtfDetail.mockImplementation(async (tickers: string[]) => detailResponse(tickers));
   fetchEtfCompareSummary.mockResolvedValue(summary());
   fetchEnrichedHoldings.mockResolvedValue(holdings());
   fetchHoldingsMarketEvidence.mockResolvedValue(evidence());
@@ -274,14 +282,34 @@ describe("「보유」 행 상세 — 이름을 나눈 근거(판정 §4)", () =
     expect(nav).toHaveBeenCalledWith("etf_exposure");
   });
 
-  it("월간 수익률은 3개월이 없는 부분 응답에서도 확인된 1개월 값을 보인다(보유 근거)", async () => {
+  // POC6-29(판정 Q4-1) — 예전 '월간 수익률(보유 근거)' 줄 대신 종목 상세 수치(후보 화면과 같은 응답 · 같은 정의).
+  it("월간 수익률 = 종목 상세 수치(그 종목만 읽음) · 보유 근거 월간 값은 보이지 않는다", async () => {
     const e = evidence();
     e.holdings[0].returns = { status: "partial", one_month_return_pct: -12.34, three_month_return_pct: null };
     fetchHoldingsMarketEvidence.mockResolvedValue(e);
     render(<WorkbenchHoldingsView onNavigate={nav} />);
     await screen.findAllByTestId("ec-hold-row");
     fireEvent.click(rowOf("반도체 전공정"));
-    expect(await screen.findByTestId("ec-hold-detail")).toHaveTextContent("월간 수익률(보유 근거)-12.34%");
+    const d = await screen.findByTestId("ec-hold-detail");
+    expect(await within(d).findByTestId("dn-months")).toHaveTextContent("1개월");
+    expect(fetchEtfDetail).toHaveBeenCalledWith(["B00001"]);
+    expect(d).not.toHaveTextContent("월간 수익률(보유 근거)");
+    expect(d).not.toHaveTextContent("-12.34%");
+    expect(within(d).queryByTestId("dn-windows")).toBeNull(); // 5 · 20거래일은 위 '최근 가격 변화' 줄(겹쳐 쓰지 않음)
+  });
+
+  it("보유 판단 근거 = 이 화면 조건(기간 · 제외)을 함께 보낸다 — 후보 관계는 그 조건 목록으로만(판정 Q4-2 · 검토 지적)", async () => {
+    postDecisionDraftPreview.mockReset().mockResolvedValue({ status: "error", message: "x" });
+    render(<WorkbenchHoldingsView onNavigate={nav} />);
+    await screen.findAllByTestId("ec-hold-row");
+    fireEvent.click(rowOf("반도체 전공정"));
+    const d = await screen.findByTestId("ec-hold-detail");
+    fireEvent.click(within(d).getByRole("button", { name: "판단 근거 미리보기 생성" }));
+    await waitFor(() => expect(postDecisionDraftPreview).toHaveBeenCalledTimes(1));
+    const [kind, ticker, q] = postDecisionDraftPreview.mock.calls[0];
+    expect(kind).toBe("holding");
+    expect(ticker).toBe("B00001");
+    expect(q).toMatchObject({ list_source: "common_period", screen: "holdings", basis: "one_month", exclude_futures: true });
   });
 
   it("[검증자 r2 F4] 요약이 있으면 하락 판정 · 순서 · 흐름 숫자는 요약 같은 응답만 — 다른 시점 보유 근거 값과 섞지 않음", async () => {
@@ -371,8 +399,9 @@ describe("「보유」 행 상세 — 이름을 나눈 근거(판정 §4)", () =
     expect(screen.queryByTestId("ec-ev-notice")).toBeNull();
   });
 
-  it("보유 근거 조회가 실패해도 보유 목록은 남는다", async () => {
+  it("보유 근거 조회가 실패해도 보유 목록은 남는다(요약 없으면 그 실패를 알림)", async () => {
     fetchHoldingsMarketEvidence.mockRejectedValue(new Error("down"));
+    fetchEtfCompareSummary.mockRejectedValue(new Error("down"));
     render(<WorkbenchHoldingsView onNavigate={nav} />);
     expect(await screen.findAllByTestId("ec-hold-row")).toHaveLength(3);
     expect(await screen.findByText(/보유 근거 조회 실패/)).toBeInTheDocument();
@@ -380,22 +409,18 @@ describe("「보유」 행 상세 — 이름을 나눈 근거(판정 §4)", () =
 });
 
 describe("[검증자 r3 F5] 실패 · 이전 조회값 안내 = 실제로 화면에 쓰인 출처", () => {
-  const notice = () => screen.getByTestId("ec-ev-notice");
-
-  it("요약 있음 + 보유 근거 실패 = 월간 수익률만 못 보임 · 가격 변화 · 하락 판정은 요약 값으로 보임", async () => {
+  // POC6-29 — 월간 수익률이 종목 상세 수치로 옮겨, 보유 근거는 가격 흐름 대체에만 쓴다. 모든 보유가 요약 가격 흐름으로
+  //   보이면 보유 근거 실패는 화면 값에 영향이 없어 안내하지 않는다(보이는 값을 '못 보인다'고 하지 않음).
+  it("요약 있음 + 보유 근거 실패 = 화면 값 영향 없음(안내 없음) · 가격 변화 · 하락 판정은 요약 값으로 보임", async () => {
     fetchHoldingsMarketEvidence.mockRejectedValue(new Error("down"));
     render(<WorkbenchHoldingsView onNavigate={nav} />);
     await screen.findAllByTestId("ec-hold-row");
-    await screen.findByTestId("ec-ev-notice");
-    expect(notice()).toHaveTextContent(
-      "보유 근거 조회 실패 — 월간 수익률(보유 근거)을 보이지 못합니다. 가격 변화 · 하락 판정은 비교 요약 값으로 보입니다.",
-    );
-    expect(notice()).not.toHaveTextContent("가격 변화 · 하락 판정을 보이지 못합니다");
+    await waitFor(() => expect(fetchHoldingsMarketEvidence).toHaveBeenCalled());
+    expect(screen.queryByTestId("ec-ev-notice")).toBeNull();
     // 실제로 요약 값이 보인다(검증자 재현 그대로).
     expect(rowOf("반도체 전공정")).toHaveTextContent("PC 20저장일 하락 10% 이상");
     fireEvent.click(rowOf("반도체 전공정"));
     expect(await screen.findByTestId("ec-hold-recent")).toHaveTextContent("20거래일 10/13 → 11/9 -27.02%");
-    expect(screen.getByTestId("ec-hold-month")).toHaveTextContent("확인값 없음(보유 근거 조회 실패)");
   });
 
   it("요약 없음 + 보유 근거 실패 = 가격 변화 · 하락 판정도 못 보임", async () => {
@@ -404,7 +429,7 @@ describe("[검증자 r3 F5] 실패 · 이전 조회값 안내 = 실제로 화면
     render(<WorkbenchHoldingsView onNavigate={nav} />);
     await screen.findAllByTestId("ec-hold-row");
     expect(await screen.findByTestId("ec-ev-notice")).toHaveTextContent(
-      "보유 근거 조회 실패 — 월간 수익률(보유 근거)과 가격 변화 · 하락 판정(비교 요약 없음)을 보이지 못합니다.",
+      "보유 근거 조회 실패 — 가격 변화 · 하락 판정(비교 요약 없음)을 보이지 못합니다.",
     );
     fireEvent.click(rowOf("반도체 전공정"));
     expect(await screen.findByTestId("ec-hold-recent")).toHaveTextContent(
@@ -425,7 +450,7 @@ describe("[검증자 r3 F5] 실패 · 이전 조회값 안내 = 실제로 화면
     render(<WorkbenchHoldingsView onNavigate={nav} />);
     await screen.findAllByTestId("ec-hold-row");
     expect(await screen.findByTestId("ec-ev-notice")).toHaveTextContent(
-      "보유 근거 조회 실패 — 월간 수익률(보유 근거)과 비교 요약에 가격 흐름이 없는 보유 1종목의 가격 변화 · 하락 판정을 보이지 못합니다.",
+      "보유 근거 조회 실패 — 비교 요약에 가격 흐름이 없는 보유 1종목의 가격 변화 · 하락 판정을 보이지 못합니다.",
     );
     expect(screen.getByTestId("ec-hold-regime")).toHaveTextContent(
       "기존 하락 판정 1종목 · 보유 비중 20.00% · 하락 판정을 못 한 보유 1종목은 세지 않음",
@@ -441,20 +466,20 @@ describe("[검증자 r3 F5] 실패 · 이전 조회값 안내 = 실제로 화면
     );
   });
 
-  it("보유 근거 다시 조회 실패(이전 값 남음) = 이전 조회값이라고 적는다 · 요약 값은 그대로", async () => {
-    const e = evidence();
-    e.holdings[0].returns = { status: "partial", one_month_return_pct: -12.34, three_month_return_pct: null };
-    fetchHoldingsMarketEvidence.mockResolvedValue(e);
+  it("보유 근거 다시 조회 실패(이전 값 남음) · 요약에 없는 보유가 있으면 그 종목 가격 흐름이 이전 조회값이라고 적는다", async () => {
+    const s = summary();
+    fetchEtfCompareSummary.mockResolvedValue({
+      ...s,
+      holdings: { ...s.holdings, items: s.holdings.items.filter((h) => h.ticker !== "B00001") },
+    });
     render(<WorkbenchHoldingsView onNavigate={nav} />);
     await screen.findAllByTestId("ec-hold-row");
     expect(screen.queryByTestId("ec-ev-notice")).toBeNull();
     fetchHoldingsMarketEvidence.mockRejectedValue(new Error("down"));
     fireEvent.click(screen.getByRole("button", { name: "다시 불러오기" }));
     expect(await screen.findByTestId("ec-ev-notice")).toHaveTextContent(
-      "보유 근거 다시 조회 실패 — 월간 수익률(보유 근거)은 이전 조회값입니다(최신 아님). 가격 변화 · 하락 판정은 비교 요약 값입니다.",
+      "보유 근거 다시 조회 실패 — 비교 요약에 가격 흐름이 없는 보유 1종목의 가격 변화 · 하락 판정은 이전 조회값입니다(최신 아님).",
     );
-    fireEvent.click(rowOf("반도체 전공정"));
-    expect(await screen.findByTestId("ec-hold-month")).toHaveTextContent("-12.34% · 이전 조회값(다시 조회 실패)");
   });
 
   it("요약 없음 + 보유 근거 다시 조회 실패 = 가격 변화 · 하락 판정도 이전 조회값", async () => {
@@ -465,7 +490,7 @@ describe("[검증자 r3 F5] 실패 · 이전 조회값 안내 = 실제로 화면
     fetchHoldingsMarketEvidence.mockRejectedValue(new Error("down"));
     fireEvent.click(screen.getByRole("button", { name: "다시 불러오기" }));
     expect(await screen.findByTestId("ec-ev-notice")).toHaveTextContent(
-      "보유 근거 다시 조회 실패 — 월간 수익률(보유 근거)과 가격 변화 · 하락 판정(비교 요약 없음)은 이전 조회값입니다(최신 아님).",
+      "보유 근거 다시 조회 실패 — 가격 변화 · 하락 판정(비교 요약 없음)은 이전 조회값입니다(최신 아님).",
     );
     fireEvent.click(rowOf("분산 ETF"));
     expect(await screen.findByTestId("ec-hold-recent")).toHaveTextContent("(보유 근거 이전 조회값 · 저장 상태 확인 불가)");
@@ -490,15 +515,18 @@ describe("[검증자 r3 F5] 실패 · 이전 조회값 안내 = 실제로 화면
     expect(evidenceNotice("ok", "ok", 0, true)).toBeNull();
     expect(evidenceNotice("loading", "none", 0, true)).toBeNull();
     expect(evidenceNotice("error", "ok", 2, true)).toBe(
-      "보유 근거 조회 실패 — 월간 수익률(보유 근거)과 비교 요약에 가격 흐름이 없는 보유 2종목의 가격 변화 · 하락 판정을 보이지 못합니다.",
+      "보유 근거 조회 실패 — 비교 요약에 가격 흐름이 없는 보유 2종목의 가격 변화 · 하락 판정을 보이지 못합니다.",
     );
     expect(evidenceNotice("stale", "ok", 1, true)).toBe(
-      "보유 근거 다시 조회 실패 — 월간 수익률(보유 근거)과 비교 요약에 가격 흐름이 없는 보유 1종목의 가격 변화 · 하락 판정은 이전 조회값입니다(최신 아님).",
+      "보유 근거 다시 조회 실패 — 비교 요약에 가격 흐름이 없는 보유 1종목의 가격 변화 · 하락 판정은 이전 조회값입니다(최신 아님).",
     );
     expect(evidenceNotice("error", "unread", 0, true)).toBe(
-      "보유 근거 조회 실패 — 월간 수익률(보유 근거)과 가격 변화 · 하락 판정(비교 요약이 보유를 읽지 못함)을 보이지 못합니다.",
+      "보유 근거 조회 실패 — 가격 변화 · 하락 판정(비교 요약이 보유를 읽지 못함)을 보이지 못합니다.",
     );
     expect(evidenceNotice("error", "ok", 0, false)).toBe("보유 근거 조회 실패");
+    // POC6-29 — 요약이 모든 보유의 가격 흐름을 주면 보유 근거 실패 · 이전 값은 화면에 영향 없음(안내 없음).
+    expect(evidenceNotice("error", "ok", 0, true)).toBeNull();
+    expect(evidenceNotice("stale", "ok", 0, true)).toBeNull();
     expect(evidenceNotice("stale", "ok", 0, false)).toBeNull();
   });
 });
@@ -551,7 +579,7 @@ describe("[설계자 RESULT 판정 §3] 요약 응답에 가격 흐름 칸이 �
     expect(screen.getByTestId("ec-hold-regime")).toHaveTextContent("하락 판정 수와 비중을 셀 수 없습니다");
     expect(screen.getByTestId("ec-hold-regime")).not.toHaveTextContent("0종목");
     expect(screen.getByTestId("ec-ev-notice")).toHaveTextContent(
-      "보유 근거 조회 실패 — 월간 수익률(보유 근거)과 비교 요약에 가격 흐름이 없는 보유 3종목의 가격 변화 · 하락 판정을 보이지 못합니다.",
+      "보유 근거 조회 실패 — 비교 요약에 가격 흐름이 없는 보유 3종목의 가격 변화 · 하락 판정을 보이지 못합니다.",
     );
   });
 });
@@ -611,7 +639,9 @@ describe("[검증자 F6] 하락 숫자는 실제로 판정한(judgeable) 보유�
     fetchHoldingsMarketEvidence.mockRejectedValue(new Error("down"));
     render(<WorkbenchHoldingsView onNavigate={nav} />);
     await screen.findAllByTestId("ec-hold-row");
-    await screen.findByTestId("ec-ev-notice");
+    await waitFor(() => expect(fetchHoldingsMarketEvidence).toHaveBeenCalled());
+    // POC6-29 — 요약에 가격 흐름 칸이 있으면 보유 근거를 쓰지 않으므로 그 실패 안내도 없다(값은 여전히 '—').
+    expect(screen.queryByTestId("ec-ev-notice")).toBeNull();
     expectUncountable();
   });
 
@@ -620,7 +650,9 @@ describe("[검증자 F6] 하락 숫자는 실제로 판정한(judgeable) 보유�
     fetchHoldingsMarketEvidence.mockRejectedValue(new Error("down"));
     render(<WorkbenchHoldingsView onNavigate={nav} />);
     await screen.findAllByTestId("ec-hold-row");
-    await screen.findByTestId("ec-ev-notice");
+    await waitFor(() => expect(fetchHoldingsMarketEvidence).toHaveBeenCalled());
+    // POC6-29 — 요약에 가격 흐름 칸이 있으면 보유 근거를 쓰지 않으므로 그 실패 안내도 없다(값은 여전히 '—').
+    expect(screen.queryByTestId("ec-ev-notice")).toBeNull();
     expectUncountable();
     fireEvent.click(rowOf("반도체 전공정"));
     expect(await screen.findByTestId("ec-hold-recent")).toHaveTextContent("가격 변화 없음(저장 가격 없음)");
@@ -711,7 +743,7 @@ describe("[독립 검토 · F5 옆칸] '모름'을 '아님'으로 세지 않음 
     await screen.findByTestId("ec-ev-notice");
     expect(btn("최근 하락 —")).toBeInTheDocument();
     expect(screen.getByTestId("ec-ev-notice")).toHaveTextContent(
-      "보유 근거 조회 실패 — 월간 수익률(보유 근거)과 가격 변화 · 하락 판정(비교 요약이 보유를 읽지 못함)을 보이지 못합니다.",
+      "보유 근거 조회 실패 — 가격 변화 · 하락 판정(비교 요약이 보유를 읽지 못함)을 보이지 못합니다.",
     );
   });
 });

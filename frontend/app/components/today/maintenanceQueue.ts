@@ -19,7 +19,8 @@ import type { MenuKey } from "../LeftSidebar";
 // kind (§4.3): "light" = 대시보드에서 바로 "지금 다시 불러오기" 로 해소 가능(저장값
 // 재조회). "heavy" = 전체 수집·재계산이 필요해 상세 화면에서 실행해야 함(Q8).
 // POC6-16 판정 §3-1 — 「지금 할 일」 안내용 분류(기존 항목 · 문구 · 버튼 · 이동은 그대로).
-//   market_refresh = 이 항목의 기존 이동이 시장 자료 갱신 화면(「요즘 잘 오르는 ETF」 [최신 시장 데이터 갱신])
+//   market_refresh = 시장 자료 갱신으로 해소(POC6-29: 예전 시장 화면 이동 대신 이 화면 [최신 자료 갱신]을
+//                    바로 실행 · target = today_check 이면 이동 대신 갱신)
 //   holdings_price = 이 화면 [업데이트](POST /holdings/market/refresh)로 다시 받는 보유 현재가
 //   read_failed    = 조회 실패 · 응답 손상으로 자료 상태 자체를 모름(미갱신으로 단정하지 않음)
 //   market_unknown = 시장 목록 응답이 정상이 아니거나 시장 배경이 없어 KOSPI 상태를 모름(다시 읽기 대상 아님 · 새로 고침)
@@ -81,8 +82,8 @@ export function collectMaintenance(
         task: "market_refresh",
         text: vixNotice.text,
         kind: "heavy",
-        target: "market_discovery",
-        actionLabel: "시장 자료 업데이트로",
+        target: "today_check",
+        actionLabel: "최신 자료 갱신",
         reason: vixNotice.reason,
       });
     }
@@ -91,8 +92,8 @@ export function collectMaintenance(
         task: "market_refresh",
         text: "시장 불안 지표 자료가 없습니다",
         kind: "heavy",
-        target: "market_discovery",
-        actionLabel: "시장 자료 업데이트로",
+        target: "today_check",
+        actionLabel: "최신 자료 갱신",
         reason: "시장 불안 지표(VIX) 자료가 아직 수집되지 않았습니다.",
       });
     }
@@ -108,8 +109,8 @@ export function collectMaintenance(
           market.data.status !== "ok" || !market.data.market_context ? "market_unknown" : "market_refresh",
         text: kospi.basisLine ? `${head} (${kospi.basisLine})` : head,
         kind: "heavy",
-        target: "market_discovery",
-        actionLabel: "시장 자료 업데이트로",
+        target: "today_check",
+        actionLabel: "최신 자료 갱신",
         reason: kospiStatusText(market.data.market_context?.kospi),
         source: "kospi",
       });
@@ -138,10 +139,10 @@ export function collectMaintenance(
         task: "market_refresh",
         text: `내가 가진 ETF와 시장 비교 자료가 오래되었습니다 (${s.evidence_unavailable_count}건)`,
         kind: "heavy",
-        target: "market_discovery",
-        actionLabel: "시장 자료 업데이트로",
+        target: "today_check",
+        actionLabel: "최신 자료 갱신",
         reason:
-          "보유 ETF가 현재 시장에서 어떤 위치인지(요즘 잘 오르는 ETF 목록에 드는지·KODEX200 대비 초과수익·단기 흐름) 비교한 자료가 최신 시장 기준으로 재계산되지 않았습니다.",
+          "보유 ETF가 현재 시장에서 어떤 위치인지(1개월 상위 10에 드는지·KODEX200 대비 초과수익·단기 흐름) 비교한 자료가 최신 시장 기준으로 재계산되지 않았습니다.",
       });
     }
     if (s.nav_discount_unavailable_count > 0) {
@@ -160,8 +161,8 @@ export function collectMaintenance(
       task: "read_failed",
       text: "보유 ETF 비교 자료를 불러오지 못했습니다",
       kind: "heavy",
-      target: "market_discovery",
-      actionLabel: "시장 자료 업데이트로",
+      target: "today_check",
+      actionLabel: "최신 자료 갱신",
       reason: "보유 ETF의 시장 비교 자료를 조회하지 못했습니다.",
     });
   }

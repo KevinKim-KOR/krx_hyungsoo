@@ -4,9 +4,12 @@
 // 목록 = 섹터 요약과 같은 응답의 상위 · 하위 최대 30. 정렬 버튼은 그 목록 안의 표시 순서만 바꾼다.
 // 비교 가능 행을 값 순(동률 = 선정 순위)으로, 기간 다름 · 값 없음은 방향과 관계없이 그 뒤에 선정 순위로.
 // 행 = 표시 순서 · ETF명 · 표시(보유 · 해외 · 전략형) · 선정 순위 · 선택 기준값(또는 사유).
+// POC6-29(PLAN §2-5 · 판정 Q5 · Q9 · Q11) — 「후보리스트」: 이 화면 조건의 목록 · [목록 | 표] · 행 상세(수치 · 판단 근거) ·
+//   「이 목록으로 할 일」(지금 고른 쪽 최대 30개를 선정 순서로 넘김).
 
 import { useState } from "react";
 import type { CompareSummaryOk } from "@/lib/api/etfCompare";
+import type { MenuKey } from "../LeftSidebar";
 import {
   SORT_LABEL,
   comparable,
@@ -21,11 +24,14 @@ import {
 } from "@/lib/etfCompare";
 import { directionColor } from "./helpers";
 import EtfRowDetail from "./EtfRowDetail";
+import ListTransfer from "./ListTransfer";
+import RankingTable from "./RankingTable";
 
 const KEYS: SortKey[] = ["sel", "one_month", "three_month", "same", "drawdown"];
 
-export default function RankingList({ s }: { s: CompareSummaryOk }) {
+export default function RankingList({ s, onNavigate }: { s: CompareSummaryOk; onNavigate?: (key: MenuKey) => void }) {
   const [side, setSide] = useState<"top" | "bottom">("top");
+  const [view, setView] = useState<"list" | "table">("list");
   const [key, setKey] = useState<SortKey>("sel");
   const [dir, setDir] = useState<SortDir>("desc");
   const [open, setOpen] = useState<string | null>(null);
@@ -59,7 +65,23 @@ export default function RankingList({ s }: { s: CompareSummaryOk }) {
             </button>
           ))}
         </span>
-        <span className="ec-small">섹터 요약과 같은 목록 · 정렬은 이 목록 안의 표시 순서만 바꿉니다</span>
+        <span className="holdings-sort-seg" role="group" aria-label="보기">
+          {(["list", "table"] as const).map((v) => (
+            <button
+              key={v}
+              type="button"
+              className={view === v ? "on" : undefined}
+              aria-pressed={view === v}
+              onClick={() => {
+                setView(v);
+                setOpen(null);
+              }}
+            >
+              {v === "list" ? "목록" : "표"}
+            </button>
+          ))}
+        </span>
+        <span className="ec-small">이 화면 조건의 공통 기간 목록 · 정렬은 이 목록 안의 표시 순서만 바꿉니다</span>
       </div>
       <div className="holdings-sortbar">
         <span className="holdings-sortbar-label">정렬</span>
@@ -81,6 +103,9 @@ export default function RankingList({ s }: { s: CompareSummaryOk }) {
           </div>
         )}
       </div>
+      {view === "table" ? (
+        <RankingTable s={s} side={side} rows={rows} onNavigate={onNavigate} />
+      ) : (
       <div className="ec-rank-list" data-testid="ec-rank-list">
         {rows.map((r, i) => {
           const v = criterionOf(r, key);
@@ -117,13 +142,13 @@ export default function RankingList({ s }: { s: CompareSummaryOk }) {
                   {ok ? pct(v.value, v.unit) : reasonText(v)}
                 </span>
               </div>
-              {isOpen && (
-                <EtfRowDetail row={r} s={s} side={side} rowValueKey={key === "three_month" ? "three_month" : null} />
-              )}
+              {isOpen && <EtfRowDetail row={r} s={s} side={side} screen="candidate_list" onNavigate={onNavigate} />}
             </div>
           );
         })}
       </div>
+      )}
+      <ListTransfer s={s} side={side} onNavigate={onNavigate} />
     </div>
   );
 }

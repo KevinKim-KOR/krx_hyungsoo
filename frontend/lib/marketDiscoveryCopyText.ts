@@ -102,6 +102,9 @@ export interface BuildCopyTextInput {
   // POC6-01 — 시장 흐름(수급 · 환율 · 유가) 구간 = 서버 공통 글 그대로(`marketFlowCopySection`).
   // 넘기지 않으면(undefined) 구간 없음 · 넘기면 그 글(자료 없음 문구 포함)을 [시스템 시장 판정] 다음에.
   marketFlowText?: string;
+  // POC6-29 판정 Q5 — 「후보리스트」에서 넘긴 목록이면 그 범위(기간 · 날짜 · 제외 · 상하위 · 건수)를 맨 앞에 적고
+  // '후보' · '상승' 전제 문구 대신 목록 문구를 쓴다(하위 목록이 잘 오른 후보처럼 읽히지 않게).
+  listScope?: string;
 }
 
 function appendConstituentsSection(
@@ -174,7 +177,8 @@ function appendConstituentsSection(
   }
 }
 
-function appendMarketContextSection(
+// POC6-29 — 「후보리스트」 목록 넘기기(ListTransfer)도 같은 [시스템 시장 판정] 글을 쓴다.
+export function appendMarketContextSection(
   lines: string[],
   ctx: MarketContext | null | undefined,
 ): void {
@@ -335,7 +339,11 @@ export function buildMarketDiscoveryCopyText(input: BuildCopyTextInput): string 
   }
   const asof = input.asof;
   const lines: string[] = [];
-  lines.push("아래는 한국 상장 ETF Market Discovery 결과입니다.");
+  if (input.listScope) {
+    lines.push(`아래는 한국 상장 ETF 목록입니다 — ${input.listScope}.`);
+  } else {
+    lines.push("아래는 한국 상장 ETF Market Discovery 결과입니다.");
+  }
   lines.push("");
   lines.push("[데이터 기준]");
   lines.push(`- 시장 저장 최신일: ${asof} (저장된 전체 종목 가격 중 가장 늦은 저장일 — 후보별 수익률 계산 기간은 각 값 뒤 괄호)`);
@@ -369,7 +377,7 @@ export function buildMarketDiscoveryCopyText(input: BuildCopyTextInput): string 
     );
   }
   lines.push("");
-  lines.push("[후보 ETF]");
+  lines.push(input.listScope ? "[목록 ETF — 선정 순서]" : "[후보 ETF]");
   if (input.candidates.length === 0) {
     lines.push("(후보 없음)");
   } else {
@@ -437,7 +445,9 @@ export function buildMarketDiscoveryCopyText(input: BuildCopyTextInput): string 
       "단기 흐름 (5/10/20거래일) 과 데이터 품질 체크 (일간 급등/급락 / 괴리율) 를 바탕으로",
     );
     lines.push(
-      "이 후보들이 시장 전체 상승에 따라간 것인지, 같은 핵심 종목 반복 노출인지,",
+      input.listScope
+        ? "이 목록의 ETF 들이 시장 전체 흐름을 따라간 것인지, 같은 핵심 종목 반복 노출인지,"
+        : "이 후보들이 시장 전체 상승에 따라간 것인지, 같은 핵심 종목 반복 노출인지,",
     );
     lines.push(
       "최근 급등이 지속 흐름인지 단기 반응인지,",

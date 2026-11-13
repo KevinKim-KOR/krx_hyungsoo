@@ -148,22 +148,34 @@ def _holding_sections(ev: dict[str, Any], db_path: Path) -> Sections:
             {"target": None, "kodex200": k_asof, "vix": v_asof},
             None,
         )
+    # POC6-29 판정 Q4-2 — B 화면에서 열면 후보 목록과의 관계는 그 화면 조건의 공통 기간 목록으로 확인한 것만
+    # (예전 '현재 1개월 상위 10 후보' 겹침 · 동일 기간 줄 대신 · `holding_list_context`).
+    lc = ev.get("list_context")
+    relation = list(lc["relation_lines"]) if lc else None
     if cls == "etf":
         status_lines = [
-            *holding_overlap_lines(item, bundle.get("constituents_asof")),
+            *(relation or holding_overlap_lines(item, bundle.get("constituents_asof"))),
             nav_line(item.get("nav_discount")),
         ]
     elif cls == "stock":
-        status_lines = ["구성종목 겹침 · NAV 괴리율: 대상 아님(개별 종목)"]
+        status_lines = (
+            [*relation, "NAV 괴리율: 대상 아님(개별 종목)"]
+            if relation
+            else ["구성종목 겹침 · NAV 괴리율: 대상 아님(개별 종목)"]
+        )
     else:
-        status_lines = [f"구성종목 겹침 · NAV 괴리율: 확인 불가({ETF_UNKNOWN_REASON})"]
+        status_lines = [
+            *(relation or []),
+            f"구성종목 겹침 · NAV 괴리율: 확인 불가({ETF_UNKNOWN_REASON})",
+        ]
     ma = bundle.get("moving_average")
+    same = lc["same_period_kodex200"] if lc else item.get("same_period_kodex200")
     return (
         [
             target,
             market,
             _with_moving_average(holding_flow_lines(item, ref), ma),
-            same_period_lines(item.get("same_period_kodex200"), True),
+            same_period_lines(same, True, scoped=lc is not None),
             volume_lines(item.get("stored_volume"), ref),
             volatility_lines(item.get("price_volatility"), ref),
             status_lines,
@@ -195,9 +207,16 @@ def _candidate_sections(ev: dict[str, Any], db_path: Path) -> Sections:
     rank = cand.get("rank")
     # 낮은 순(asc = 하위 N) 목록이면 순위가 '잘 오른 순'으로 읽히지 않게 적는다.
     order = " · 낮은 순" if ev.get("order") == "asc" else ""
+    # POC6-29 판정 Q4-2 — 공통 기간 목록에서 찾은 후보는 그 화면 · 상하위 · 선정 순위 · 공통 기간을 적는다.
+    listed = ev.get("list_label")
+    place = (
+        f" · {one_line(listed)}"
+        if listed
+        else (f" · 현재 목록 {rank}위({basis} 기준{order})" if rank is not None else "")
+    )
     target = [
         f"{one_line(cand.get('name') or cand.get('ticker'))} ({cand.get('ticker')}) · 후보 ETF"
-        + (f" · 현재 목록 {rank}위({basis} 기준{order})" if rank is not None else "")
+        + place
     ]
     dq = cand.get("data_quality") or {}
     status_lines = candidate_overlap_lines(ev.get("direct_holding"), ev.get("overlap"))

@@ -6,7 +6,7 @@
 // 「오늘의 투자 점검」 KOSPI 카드 '마지막 자료 기준일' = KOSPI 기준일 · 정비 큐 KOSPI 항목.
 // 외부 호출 0 — `@/lib/api` 는 대역.
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, within } from "@testing-library/react";
+import { render, screen, fireEvent, within, waitFor } from "@testing-library/react";
 import type {
   MarketCandidate,
   MarketContext,
@@ -20,11 +20,23 @@ const fetchBenchmarkSeries = vi.fn();
 vi.mock("@/lib/api", () => ({
   fetchBenchmarkSeries: (...a: unknown[]) => fetchBenchmarkSeries(...a),
 }));
+// POC6-29 — 목록 넘기기(ListTransfer)가 누를 때 읽는 시장 판정 · 시장 흐름.
+const fetchMarketTopnLatest = vi.fn();
+const fetchMarketFlowContext = vi.fn();
+vi.mock("@/lib/api/market", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  fetchMarketTopnLatest: (...a: unknown[]) => fetchMarketTopnLatest(...a),
+}));
+vi.mock("@/lib/api/marketFlow", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  fetchMarketFlowContext: (...a: unknown[]) => fetchMarketFlowContext(...a),
+}));
 
 import KospiChart from "./today/KospiChart";
 import KospiHeadline from "./today/KospiHeadline";
 import MarketContextCard from "./MarketContextCard";
-import TransferToAISessionsCard from "./TransferToAISessionsCard";
+import ListTransfer from "./workbench/ListTransfer";
+import { summaryOk } from "@/lib/etfCompareTestFixtures";
 import { collectMaintenance } from "./today/maintenanceQueue";
 import { kospiStatusText } from "@/lib/kospiStatus";
 import { buildMarketDiscoveryCopyText } from "@/lib/marketDiscoveryCopyText";
@@ -193,22 +205,33 @@ describe("AI 복사 텍스트 · AI 세션 스냅샷 — 'N/A' 대신 같은 상
     });
   });
 
-  it("AI Sessions 로 넘기기: 저장 draft 의 스냅샷 · 질문 문구가 같은 문장", () => {
-    render(
-      <TransferToAISessionsCard
-        asof="2026-09-29"
-        filters={FILTERS}
-        candidates={CANDIDATES}
-        linkedMarketRefreshId={null}
-        marketContext={ctxWith(STALE_T2)}
-      />,
-    );
-    fireEvent.click(screen.getByText("AI Sessions로 넘기기"));
+  // POC6-29 — 「요즘 잘 오르는 ETF」 넘기기 카드는 보관 · 같은 계약을 「후보리스트」 목록 넘기기(ListTransfer)에서 본다.
+  it("AI 투자 세션으로 넘기기(「후보리스트」 목록): 저장 draft 의 스냅샷 · 질문 문구가 같은 문장", async () => {
+    fetchMarketTopnLatest.mockResolvedValue({ status: "ok", market_context: ctxWith(STALE_T2) });
+    fetchMarketFlowContext.mockRejectedValue(new Error("x"));
+    render(<ListTransfer s={summaryOk()} side="top" />);
+    fireEvent.click(screen.getByRole("button", { name: "이 목록을 AI 투자 세션으로 넘기기" }));
+    await waitFor(() => expect(loadAISessionsDraft()).not.toBeNull());
     const draft = loadAISessionsDraft();
-    const kospi = (draft?.market_context_snapshot as { kospi: Record<string, unknown> }).kospi;
-    expect(kospi.state_text).toBe(STALE_TEXT);
-    expect(kospi.display_state).toBe("stale");
+    const snap = draft?.market_context_snapshot as { regime_label: string; kospi: Record<string, unknown>; candidate_excess_returns: unknown[] };
+    expect(snap.regime_label).toBe("보합장");
+    expect(snap.kospi.state_text).toBe(STALE_TEXT);
+    expect(snap.kospi.display_state).toBe("stale");
+    expect(snap.candidate_excess_returns).toHaveLength(summaryOk().top.length);
+    expect(draft?.question_text).toContain("[시스템 시장 판정]");
     expect(draft?.question_text).toContain(`- KOSPI 보조 기준: ${STALE_TEXT}`);
+  });
+
+  it("넘길 때 시장 판정을 못 읽으면 글에 그 사실 · 스냅샷은 비움(다른 값으로 채우지 않음)", async () => {
+    fetchMarketTopnLatest.mockRejectedValue(new Error("x"));
+    fetchMarketFlowContext.mockRejectedValue(new Error("x"));
+    render(<ListTransfer s={summaryOk()} side="top" />);
+    fireEvent.click(screen.getByRole("button", { name: "이 목록을 AI 투자 세션으로 넘기기" }));
+    await waitFor(() => expect(loadAISessionsDraft()).not.toBeNull());
+    const draft = loadAISessionsDraft();
+    expect(draft?.market_context_snapshot).toBeNull();
+    expect(draft?.question_text).toContain("- 시장 판정을 불러오지 못했습니다(넘길 때 읽기 실패 · 이 글에는 싣지 않음)");
+    expect(draft?.question_text).not.toContain("KOSPI 보조 기준");
   });
 });
 
@@ -249,13 +272,11 @@ describe("설계자 RESULT STEP 4-2 · 4-3 — 「오늘의 투자 점검」 KOS
     expect(foot.textContent).toBe(`마지막 자료 기준일 2026-09-28 · ${KRX_SOURCE}`);
     expect(card.textContent).not.toContain("마지막 자료 기준일 2026-09-21");
     expect(within(card).getAllByText(new RegExp(KRX_SOURCE.replace(/[()]/g, "\\$&")))).toHaveLength(1);
-    // POC5-11 판정 Q1 — 시장 판정 줄(펼친 칸)의 날짜 = `KODEX200 기준일 D`(market_context.asof ·
-    // PC 화면 API 는 KODEX200 이력 끝 날짜). 이 날짜는 판정 줄에만 있고 '마지막 자료 기준일'로 쓰지 않는다.
+    // 설계자 RESULT 재판정 V3 D4(2026-11-13) — 펼친 칸의 '기존 시장 판정 참고'(KODEX200 기준일 D)는 뺐다(당일 판정 ·
+    // 판정 표와 중복). 이 카드에는 KODEX200 날짜가 없고 '마지막 자료 기준일'은 KOSPI 날짜 그대로.
     fireEvent.click(within(card).getByRole("button", { name: "시장 수치와 거래량 펼치기" }));
-    expect(
-      within(card).getByText("· KODEX200 기준일 2026-09-21", { exact: false }),
-    ).toBeInTheDocument();
-    expect(within(card).getAllByText(/2026-09-21/)).toHaveLength(1);
+    expect(card.textContent).not.toContain("KODEX200 기준일");
+    expect(card.textContent).not.toContain("2026-09-21");
     // 펼친 뒤에도 출처 줄은 카드 전체에 한 줄 · 마지막 자료 기준일은 KOSPI 날짜 그대로.
     expect(within(card).getAllByText(new RegExp(KRX_SOURCE.replace(/[()]/g, "\\$&")))).toHaveLength(1);
     expect(card.textContent).not.toContain("마지막 자료 기준일 2026-09-21");
@@ -324,8 +345,8 @@ describe("설계자 RESULT STEP 4 · PLAN STEP 7-4 — 정비 큐 KOSPI 항목(V
         task: "market_refresh",
         text: "KOSPI 원자료가 최근 거래일까지 갱신되지 않았습니다 (KOSPI 기준일 2026-09-28 · 1거래일 지연)",
         kind: "heavy",
-        target: "market_discovery",
-        actionLabel: "시장 자료 업데이트로",
+        target: "today_check",
+        actionLabel: "최신 자료 갱신",
         source: "kospi",
         reason: STALE_TEXT,
       },

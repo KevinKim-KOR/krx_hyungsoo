@@ -161,6 +161,13 @@ def start_vix_retry_job(
                 message="VIX 다시 받기가 진행 중입니다.",
                 cooldown_remaining_seconds=cd,
             )
+        if svc._service.prevday_running:  # POC6-29 보완 2차 — ③ 이 VIX 도 받는 중
+            return svc.StartResult(
+                status="prevday_running",
+                refresh_id=None,
+                message=svc.PREVDAY_RUNNING_TEXT,
+                cooldown_remaining_seconds=cd,
+            )
         if row is None or row.last_attempt_status not in VIX_RETRY_NEEDED_STATUSES:
             return svc.StartResult(
                 status="not_needed",

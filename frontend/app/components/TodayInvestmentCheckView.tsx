@@ -7,16 +7,20 @@
 // 이번 Step 범위가 아니다. 코스피 가격과 KODEX200 판정은 하나로 묶지 않는다(§3.1).
 //
 // 2026-11-09 POC6-27(설계 · PLAN 판정 PASS_WITH_REQUIRED_CORRECTIONS · 사용자 결정 ① ② ③) — 위에서 아래로:
-//   1 제목 · [요약 다시 읽기] [?] [보유 현재가 업데이트] [최신 시장 데이터 갱신] · 읽은 시각 · 결과 줄
+//   1 제목 · [요약 다시 읽기] [?] … · 읽은 시각 · 결과 줄
 //   2 「자료 최신화 필요」(대상 있을 때만) | 3 「OCI 운영 스케줄 확인」 — 기본 접힘 · 함께 펼치고 접음(사용자 결정 ⑤)
-//   4 「지금 확인할 내용」: 시장 흐름(코스피 수치 → 차트 → 외국인 수급 → 최근 큰 변화) → 보유 점검 | 잘 오르는 ETF
-//   5 보유 자세히 | 잘 오르는 ETF 자세히 · 6 자료 · 연구 상태(사용자 결정 ④ · 2026-11-09 순서 바꿈) · 7 현재 제공 범위와 남은 기능(접힘).
-// 조회: 기존 8개(시장 판정 · 목록은 「요즘 잘 오르는 ETF」와 같은 탭 공유 조건 · 보유 · 보유 근거 · NAV ·
-//   KOSPI 시계열 · 시장 흐름 · 연구 · OCI 기동 상태) + PC 원장 사본 종류별 마지막 실행(읽기 전용).
-// [요약 다시 읽기] = 저장 자료 6개를 받아 둔 뒤 최신성을 대조하고, 늦거나 확인이 필요하면 고르게 한다
-//   ([취소] = 화면 · 공유 캐시 · 성공 시각 그대로 · 판정 Q3). 시장 판정 · 목록 · OCI 는 다시 읽지 않는다.
+//   4 「지금 확인할 내용」: 시장 흐름 → 보유 점검 | 잘 오르는 ETF → 자료 · 연구 상태 · 7 현재 제공 범위와 남은 기능(접힘).
+// 2026-11-12 POC6-29(설계 §2 · §5 · PLAN §2-2 · §3-2 · §3-6 · 판정 Q1 · Q2 · Q7 · Q8 · Q10):
+//   - 머리 버튼 = [요약 다시 읽기] [최신 자료 갱신](PC 서버 묶음 작업 한 번 · 보유 현재가 → 시장 자료 · useTodayRefresh).
+//   - 시장 흐름 카드에 시장 판정(KODEX 200) · VIX 한 줄. 보유 점검 · 잘 오르는 ETF 는 각 한 카드(자세히 구역 없음).
+//   - 잘 오르는 ETF = 이 화면 자체 기간(기본 저장)으로 읽은 「ETF 비교하기」 요약의 선정 1 ~ 3위(공통 기간 목록).
+//   - 보유 점검 = 같은 요약 응답의 price_flow · 「보유」와 같은 판정 · 종목 단위.
+//   - [시장 근거와 다른 변화 보기] = 「자료 · 연구 상태」 바로 위 · 처음엔 접힘(KODEX 200 · VIX · 시장 흐름 상세).
+//   - 시장 판정 · VIX · KODEX 200 거래량은 지금처럼 GET /market/topn/latest(기본 조건 · 시장 칸만 씀)에서 읽는다.
+// [요약 다시 읽기] = 저장 자료 7개를 받아 둔 뒤 최신성을 대조하고, 늦거나 확인이 필요하면 고르게 한다
+//   ([취소] = 화면 · 공유 캐시 · 성공 시각 그대로 · 판정 Q3). 시장 판정 · OCI 는 다시 읽지 않는다.
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   fetchBenchmarkSeries,
   type PriceSeriesResponse,
@@ -28,21 +32,29 @@ import {
   type HoldingsMarketEvidenceResponse,
   fetchNavDiscountLatest,
   type NavDiscountLatestResponse,
-  refreshMarket,
-  type MarketRefreshStatusResponse,
 } from "@/lib/api";
-import { commitQuery, markQueryFailed, useSharedQuery, type QueryState } from "@/lib/api/queryCache";
+import type { RefreshAllHoldingsStep } from "@/lib/api/refreshAll";
+import { etfDetailKey, fetchEtfDetail, type EtfDetailResponse } from "@/lib/api/etfDetail";
+import { fetchQuickQuotes, QUICK_QUOTES_KEY, type QuickQuotesResponse } from "@/lib/api/quickQuotes";
+import { fetchMorningBasis, MORNING_BASIS_KEY, type MorningBasisResponse } from "@/lib/api/morningBasis";
+import { fetchShortFlows, SHORT_FLOWS_KEY, type ShortFlowsResponse } from "@/lib/api/shortFlows";
+import { endLine, prevdayLine, todayBasis } from "@/lib/morningText";
+import { quickResultLine } from "@/lib/marketNowText";
+import { compareSnapshots, snapshotOf, snapshotText } from "@/lib/refreshCompare";
+import { commitQuery, invalidateQueries, markQueryFailed, useSharedQuery, type QueryState } from "@/lib/api/queryCache";
 import {
   DASH_KEY_HOLDINGS,
   DASH_KEY_EVIDENCE,
+  DASH_KEY_MARKET,
   DASH_KEY_NAV,
   DASH_KEY_FORWARD,
   MARKET_FLOW_KEY,
+  MARKET_INVALIDATION_KEYS,
 } from "@/lib/api/dashboardKeys";
+import { etfCompareKey, fetchEtfCompareSummary } from "@/lib/api/etfCompare";
 // 연구 줄 · 시장 흐름 조회는 개별 모듈에서(대시보드 시험이 `@/lib/api` 를 통째로 가짜로 바꾸는 방식과 겹치지 않게).
 import { fetchForwardComparison, type ForwardComparisonResponse } from "@/lib/api/mlForwardComparison";
 import { fetchMarketFlowContext, type MarketFlowContext } from "@/lib/api/marketFlow";
-import { todayMarketKey, useMarketCondition } from "@/lib/marketConditionStore";
 import {
   freshnessRows,
   kstDate,
@@ -52,24 +64,24 @@ import {
   type FreshSources,
 } from "@/lib/todayFreshness";
 import { buildTodayMarketCopyText } from "@/lib/todayMarketCopyText";
-import { md } from "@/lib/todayMarketLines";
 import type { MenuKey } from "./LeftSidebar";
 import HelpPopover from "./holdings_risk_evidence/HelpPopover";
 import KospiDetailSection from "./today/KospiDetailSection";
-import JudgmentQueueSection from "./today/JudgmentQueueSection";
 import MaintenanceQueueSection from "./today/MaintenanceQueueSection";
 import InDevelopmentSection from "./today/InDevelopmentSection";
 import MarketFlowBlock from "./today/MarketFlowBlock";
+import MarketEvidenceFold from "./today/MarketEvidenceFold";
 import FreshnessCard from "./today/FreshnessCard";
 import OciScheduleCard, { mdHm } from "./today/OciScheduleCard";
 import StaleConfirmDialog, { type FailedSource } from "./today/StaleConfirmDialog";
-import { CandidatesCheckCard, HoldingsCheckCard } from "./today/CheckCards";
+import { CandidatesCheckCard, HoldingsCheckCard, SUMMARY_SOURCE_LABEL } from "./today/CheckCards";
 import { collectMaintenance } from "./today/maintenanceQueue";
 import { useLightRefreshState } from "./today/useLightRefreshState";
+import { useTodayRefresh } from "./today/useTodayRefresh";
 import { KOSPI_SERIES_KEY } from "./today/KospiChart";
 import { useMarketFlowContext } from "./marketflow/useMarketFlowContext";
 import SummarySection from "./today/SummarySection";
-import { useMarketRefresh } from "./useMarketRefresh";
+import { useEtfCompareSummary } from "./workbench/CompareHead";
 import {
   dataRow,
   readRangeText,
@@ -95,12 +107,9 @@ type Confirm = {
   onContinue: () => void;
 };
 
-// 설계 §2 — [?]에 먼저 보일 문장.
+// 설계 §2 · §5 — [?]에 먼저 보일 문장.
 export const RELOAD_NOTE =
-  "저장된 값만 다시 읽습니다. 시장 판정과 요즘 잘 오르는 ETF 목록은 이 버튼으로 다시 계산하지 않습니다.";
-
-const AREA_HOLD_DETAIL = "tc-hold-detail";
-const AREA_CAND_DETAIL = "tc-cand-detail";
+  "PC 에 저장된 값만 다시 읽습니다(새로 받지 않음). 시장 판정은 이 버튼으로 다시 계산하지 않습니다. 새 자료를 받으려면 [최신 자료 갱신]을 누르세요.";
 
 function scrollToArea(id: string) {
   const el = document.getElementById(id);
@@ -142,23 +151,39 @@ function ScopeSection({ market }: { market: QueryState<MarketTopNResponse> }) {
   );
 }
 
+// 보유 현재가 단계가 받지 못한 이유(서버 사유 코드 → 화면 글 · 서버 원문은 영어 낱말이 섞여 쓰지 않음).
+const HOLD_REASON_TEXT: Record<string, string> = {
+  holdings_empty: "저장된 보유 종목이 없어 받지 않았습니다(「종목 관리」에서 입력 · 저장)",
+  holdings_invalid: "보유 저장 파일을 읽지 못해 받지 않았습니다",
+  error: "받는 중 오류가 났습니다",
+  all_failed: "받지 못했습니다",
+};
+
+// 보유 현재가 단계 결과 한 줄(묶음 작업의 holdings 단계).
+function holdingsLine(step: RefreshAllHoldingsStep, range: string | null): { text: string; warn: boolean } {
+  const ok = typeof step.ok_count === "number" ? step.ok_count : null;
+  const fail = typeof step.fail_count === "number" ? step.fail_count : 0;
+  if (step.status === "failed" && fail > 0) return { text: `보유 현재가를 받지 못했습니다(실패 ${fail}건)`, warn: true };
+  if (step.status === "failed" || step.status === "skipped")
+    return { text: `보유 현재가: ${HOLD_REASON_TEXT[step.reason ?? ""] ?? "받지 못했습니다"}`, warn: true };
+  if (ok === 0 && fail > 0) return { text: `보유 현재가를 받지 못했습니다(실패 ${fail}건)`, warn: true };
+  if (fail > 0)
+    return { text: `보유 현재가 일부 실패 ${fail}건 · 받은 ${ok ?? "확인 불가"}건${range ? ` · 시세 시각 ${range}` : ""}`, warn: true };
+  return { text: `보유 현재가 업데이트 완료${ok != null ? ` ${ok}건` : ""}${range ? ` · 시세 시각 ${range}` : ""}`, warn: false };
+}
+
 interface Props {
   onNavigate: (key: MenuKey) => void;
 }
 
+// 시장 판정 기준 가격(KODEX 200)의 저장 시각 · 가격 시점 — 흐름 문장의 기준 · 갱신 전후 대조(POC6-29 보완 R1 · R2).
+const KODEX_TICKERS = ["069500"];
+
 export default function TodayInvestmentCheckView({ onNavigate }: Props) {
-  // POC6-27 — 목록은 「요즘 잘 오르는 ETF」와 같은 탭 공유 조건(기본 조건이면 기존 DASH_KEY_MARKET 과 같은 키).
-  const cond = useMarketCondition();
-  const market = useSharedQuery<MarketTopNResponse>(todayMarketKey(cond), () =>
-    fetchMarketTopnLatest(10, {
-      basis: cond.basis,
-      order: cond.order,
-      excludeInverse: cond.filters.exclude_inverse,
-      excludeLeveraged: cond.filters.exclude_leveraged,
-      excludeSynthetic: cond.filters.exclude_synthetic,
-      excludeFutures: cond.filters.exclude_futures,
-    }),
-  );
+  // POC6-29 — 시장 판정 · VIX · 거래량만 쓰므로 기본 조건 한 키(목록 조건과 무관 · DASH_KEY_MARKET).
+  const market = useSharedQuery<MarketTopNResponse>(DASH_KEY_MARKET, () => fetchMarketTopnLatest(10));
+  // POC6-29 — 잘 오르는 ETF · 보유 점검 = 이 화면 조건(자체 기간 · 4종 제외 고정)의 공통 기간 요약.
+  const { cond: todayCond, q: summary } = useEtfCompareSummary("today");
   const holdings = useSharedQuery<EnrichedHoldingsResult>(DASH_KEY_HOLDINGS, () => fetchEnrichedHoldings());
   const evidence = useSharedQuery<HoldingsMarketEvidenceResponse>(DASH_KEY_EVIDENCE, () =>
     fetchHoldingsMarketEvidence(),
@@ -167,11 +192,20 @@ export default function TodayInvestmentCheckView({ onNavigate }: Props) {
   const series = useSharedQuery<PriceSeriesResponse>(KOSPI_SERIES_KEY, () => fetchBenchmarkSeries("KOSPI"));
   const flow = useMarketFlowContext();
   const forward = useSharedQuery<ForwardComparisonResponse>(DASH_KEY_FORWARD, () => fetchForwardComparison());
+  // POC6-29 보완 — 빠른 시세 저장값(외부 조회 없음 · [최신 자료 갱신] ⓪ 이 받음) · KODEX 200 상세(저장 시각)
+  const quick = useSharedQuery<QuickQuotesResponse>(QUICK_QUOTES_KEY, () => fetchQuickQuotes());
+  const kodex = useSharedQuery<EtfDetailResponse>(etfDetailKey(KODEX_TICKERS), () => fetchEtfDetail(KODEX_TICKERS));
+  // POC6-29 보완 2차 — 아침 요약 기준(준비 상태 · 아침 판정) · 수급 5거래일(저장값만)
+  const morning = useSharedQuery<MorningBasisResponse>(MORNING_BASIS_KEY, () => fetchMorningBasis());
+  const short = useSharedQuery<ShortFlowsResponse>(SHORT_FLOWS_KEY, () => fetchShortFlows());
 
   const refreshing = useLightRefreshState();
   const [reload, setReload] = useState<ReloadState>({ phase: "idle" });
   const [confirm, setConfirm] = useState<Confirm | null>(null);
   const [holdResult, setHoldResult] = useState<{ text: string; warn: boolean } | null>(null);
+  const [quickResult, setQuickResult] = useState<{ text: string; warn: boolean } | null>(null);
+  // 갱신 끝 줄 — 다시 읽은 아침 기준 그대로(현재 쓸 수 있는 기준일 · 남은 예외 · 판정서 V2 §3)
+  const [basisResult, setBasisResult] = useState<{ text: string; warn: boolean } | null>(null);
   // F1 — 시장 갱신이 끝나 자료를 새로 읽으면 올라간다. 그 전에 받아 둔 [요약 다시 읽기] 결과는 반영하지 않는다(새 값을 옛 값으로 덮지 않음).
   const dataGenRef = useRef(0);
   // 시장 갱신 결과(설계자 2026-11-10) — 기준일 대조 · 갱신 뒤에도 기대일보다 늦은 자료 · ETF 가격 실패 · 그 밖의 확인 필요를 줄을 나눠 보인다.
@@ -181,9 +215,6 @@ export default function TodayInvestmentCheckView({ onNavigate }: Props) {
     etf: string | null;
     other: string | null;
   } | null>(null);
-  const lastRefreshStatusRef = useRef<MarketRefreshStatusResponse | null>(null);
-  // 'VIX 다시 받기'(「요즘 잘 오르는 ETF」에서 시작)가 도는 중이면 전체 갱신은 서버가 시작하지 않는다 — 실패가 아니라 진행 중으로 보이고 버튼을 막는다.
-  const [vixRetryRunning, setVixRetryRunning] = useState(false);
   // 사용자 결정 ⑤(2026-11-09) — 맨 위 두 카드(자료 최신화 필요 · OCI 운영 스케줄 확인)는 함께 펼치고 접는다(화면 안 상태 · 다시 들어오면 접힘).
   const [topOpen, setTopOpen] = useState(false);
   const toggleTop = useCallback(() => setTopOpen((v) => !v), []);
@@ -201,43 +232,110 @@ export default function TodayInvestmentCheckView({ onNavigate }: Props) {
     evidenceFailed: evidence.phase === "error",
   });
 
-  // ── [최신 시장 데이터 갱신] — 「요즘 잘 오르는 ETF」와 같은 작업 · 진행(공용 hook · 판정 Q7) ──
-  const marketRefresh = useMarketRefresh({
-    probeOnMount: true,
-    onStatus: (s) => {
-      lastRefreshStatusRef.current = s;
-      setVixRetryRunning(s.vix_retry?.status === "running");
+  const reloadBasis = (extra: Promise<unknown>[] = []) =>
+    Promise.allSettled([morning.reloadAsync(), short.reloadAsync(), ...extra]).then(([m]) =>
+      setBasisResult(
+        m.status === "fulfilled"
+          ? endLine(m.value as MorningBasisResponse)
+          : { text: "아침 요약 기준을 다시 읽지 못했습니다(표시 중인 값은 이전 기준)", warn: true },
+      ),
+    );
+
+  // ── [최신 자료 갱신] — PC 서버 묶음 작업(보유 현재가 → 시장 자료) · 시장 단계는 기존 hook 이 따라간다(판정 Q7) ──
+  const refresh = useTodayRefresh({
+    // ③ 전일 자료 보충이 끝나면(② 대기 때만 돎) 바뀐 자료를 쓰는 응답을 다시 읽는다(판정 · 지표는 서버가 기존 산식으로).
+    onPrevdayDone: (step) => {
+      if (step.status !== "done") return;
+      for (const k of MARKET_INVALIDATION_KEYS) invalidateQueries(k);
+      void reloadBasis([market.reloadAsync(), flow.reloadAsync(), series.reloadAsync(), evidence.reloadAsync()]);
     },
-    takeOver: (started) => {
-      if (started.status !== "vix_retry_running") return false;
-      setVixRetryRunning(true);
-      return true;
+    // ⓪ 빠른 시세 — 끝나는 대로 저장값을 먼저 다시 읽어 위 3칸에 반영(보완 PLAN 판정 Q-R2).
+    onQuickDone: (step) => {
+      quick
+        .reloadAsync()
+        .then((d) => setQuickResult(quickResultLine(step, (d as QuickQuotesResponse).items)))
+        .catch(() =>
+          setQuickResult({
+            text: `${quickResultLine(step, dataOf(quick)?.items ?? null).text} · 다시 읽기 실패: 빠른 시세(위 3칸 = 이전에 읽은 값)`,
+            warn: true,
+          }),
+        );
     },
-    onCompleted: () => {
+    onHoldingsDone: (step) => {
+      refreshing.setRunning();
+      Promise.allSettled([holdings.reloadAsync(), evidence.reloadAsync(), nav.reloadAsync(), summary.reloadAsync()]).then(
+        ([h, e, n, s]) => {
+          // 다시 읽기가 하나라도 실패하면 '완료'로 보이지 않는다(r5 A-1 · A-1(4) 거짓 완료 금지 · 기존 계약).
+          const reloadFailed = [
+            h.status === "rejected" ? "보유" : null,
+            e.status === "rejected" ? "보유 근거" : null,
+            n.status === "rejected" ? "ETF 기준가" : null,
+            s.status === "rejected" ? SUMMARY_SOURCE_LABEL : null,
+          ].filter(Boolean);
+          if (reloadFailed.length > 0 || h.status !== "fulfilled") {
+            refreshing.setFailed();
+            setHoldResult({ text: `보유 현재가 업데이트 실패 · 다시 읽기 실패: ${reloadFailed.join(" · ")}`, warn: true });
+            return;
+          }
+          const range = priceAsofRange(h.value);
+          const line = holdingsLine(step, range);
+          if (step.status !== "done" || (step.ok_count ?? 0) === 0) refreshing.setFailed();
+          else refreshing.setDone();
+          setHoldResult(line);
+        },
+      );
+    },
+    onVixDone: () => {
+      // 시장 자료 키를 지우면 이 화면의 같은 키 조회는 스스로 다시 읽지 않는다 — 지운 것을 모두 다시 읽는다(검토 지적).
+      for (const k of MARKET_INVALIDATION_KEYS) invalidateQueries(k);
+      void Promise.allSettled([
+        market.reloadAsync(),
+        flow.reloadAsync(),
+        series.reloadAsync(),
+        evidence.reloadAsync(),
+        summary.reloadAsync(),
+        morning.reloadAsync(),
+      ]);
+    },
+    onMarketCompleted: () => {
       dataGenRef.current += 1;
       // 끝난 상태 응답(완료 직전 onStatus)의 실패 · 그 밖의 확인 필요는 바로 · 기준일 줄은 다시 읽은 뒤.
-      const fails = refreshFailureLines(lastRefreshStatusRef.current);
+      const fails = refreshFailureLines(refresh.lastStatusRef.current);
       setMarketResult({ compare: null, behind: null, ...fails });
       // 열려 있던 확인 창의 자료는 이제 낡았다 — 닫고 알린다(받아 둔 다시 읽기 결과는 버림 · 복사는 다시 누르게).
       if (confirm?.purpose === "reload") setReload({ phase: "superseded", at: Date.now() });
       if (confirm?.purpose === "copy")
         setCopyState({ message: "시장 자료를 새로 읽어 복사를 멈췄습니다 — 다시 눌러 주세요.", fallback: null });
       if (confirm) setConfirm(null);
-      // 다시 읽기 전 기준일(이 화면이 보던 값)과 다시 읽은 뒤 기준일을 자료별로 대조한다(판정 §4).
-      const before = sourceDates(dataOf(market), dataOf(flow));
+      // 다시 읽기 전(이 화면이 보던 값)과 다시 읽은 뒤를 자료별로 대조한다(판정 §4) — 날짜 + 저장 시각 + 값
+      // (같은 거래일에 다시 받은 값을 '그대로'로 보이지 않게 · 보완 PLAN 판정 '구현에서 확인할 세 가지' 2).
+      const oldMarket = dataOf(market);
+      const oldFlow = dataOf(flow);
+      const oldKodex = dataOf(kodex);
+      const before = snapshotOf(oldMarket, oldFlow, oldKodex);
       Promise.allSettled([
         market.reloadAsync(),
         flow.reloadAsync(),
+        kodex.reloadAsync(),
         series.reloadAsync(),
         evidence.reloadAsync(),
         nav.reloadAsync(),
-      ]).then(([m, f]) => {
+        summary.reloadAsync(),
+        reloadBasis(),
+      ]).then(([m, f, k]) => {
         const newMarket = m.status === "fulfilled" ? (m.value as MarketTopNResponse) : null;
         const newFlow = f.status === "fulfilled" ? (f.value as MarketFlowContext) : null;
-        const after = sourceDates(newMarket, newFlow);
-        const failed = [m.status === "rejected" ? "시장 판정 · 목록" : null, f.status === "rejected" ? "수급 · 환율 · 유가" : null]
+        const newKodex = k.status === "fulfilled" ? (k.value as EtfDetailResponse) : null;
+        const after = snapshotOf(newMarket, newFlow, newKodex);
+        const failed = [
+          m.status === "rejected" ? "시장 판정" : null,
+          f.status === "rejected" ? "수급 · 환율 · 유가" : null,
+          k.status === "rejected" ? "KODEX 200 기준 가격" : null,
+        ]
           .filter(Boolean)
           .join(" · ");
+        // 다시 읽기에 실패한 자료는 이전 값이 남는다 — 그 기준(날짜 · 저장 시각)을 함께 적는다.
+        const shown = snapshotOf(newMarket ?? oldMarket, newFlow ?? oldFlow, newKodex ?? oldKodex);
         // 다시 읽은 자료로 같은 최신성 판정(기준일 판정 그대로) — 기대일보다 늦은 자료만 한 줄로.
         const behind = staleAfterRefreshText(
           freshnessRows(
@@ -255,44 +353,31 @@ export default function TodayInvestmentCheckView({ onNavigate }: Props) {
           ),
         );
         setMarketResult({
-          compare: `시장 데이터 갱신 완료 · ${compareDates(before, after)}` + (failed ? ` · 다시 읽기 실패: ${failed}` : ""),
+          compare:
+            `② 시장 자료 갱신 완료 · ${compareSnapshots(before, after)}` +
+            (failed ? ` · 다시 읽기 실패: ${failed}(표시 중인 값 기준: ${snapshotText(shown)})` : ""),
           behind,
           ...fails,
         });
       });
     },
   });
+  const marketRefresh = refresh.marketRefresh;
+  const vixRetryRunning = refresh.vixRetryRunning;
+  const allBusy = refresh.all.busy;
 
-  // ── [보유 현재가 업데이트] — 기존 경량 갱신(POST /holdings/market/refresh → 보유 · 보유 근거 · NAV 다시 읽기) ──
-  const onLightRefresh = useCallback(async () => {
-    if (refreshing.state === "running" || reload.phase === "running" || confirm) return;
-    refreshing.setRunning();
+  const onRefreshAll = useCallback(() => {
+    if (allBusy || marketRefresh.busy || vixRetryRunning || confirm || reload.phase === "running") return;
     setHoldResult(null);
-    try {
-      const r = await refreshMarket();
-      const [h] = await Promise.all([holdings.reloadAsync(), evidence.reloadAsync(), nav.reloadAsync()]);
-      const ok = typeof r?.ok_count === "number" ? r.ok_count : null;
-      const fail = typeof r?.fail_count === "number" ? r.fail_count : 0;
-      const range = priceAsofRange(h as EnrichedHoldingsResult);
-      // 전건 실패는 실패 표시(경고색) · 일부 실패는 완료 표시지만 경고색(F8) · 결과 줄은 기존 규칙대로 잠깐만.
-      if (ok === 0 && fail > 0) refreshing.setFailed();
-      else refreshing.setDone();
-      setHoldResult(
-        ok === 0 && fail > 0
-          ? { text: `보유 현재가를 받지 못했습니다(실패 ${fail}건)`, warn: true }
-          : fail > 0
-            ? { text: `보유 현재가 일부 실패 ${fail}건 · 받은 ${ok ?? "확인 불가"}건${range ? ` · 시세 시각 ${range}` : ""}`, warn: true }
-            : { text: `보유 현재가 업데이트 완료${ok != null ? ` ${ok}건` : ""}${range ? ` · 시세 시각 ${range}` : ""}`, warn: false },
-      );
-    } catch {
-      refreshing.setFailed();
-      setHoldResult({ text: "보유 현재가 업데이트 실패", warn: true });
-    }
-  }, [refreshing, reload.phase, confirm, holdings, evidence, nav]);
+    setQuickResult(null);
+    setMarketResult(null);
+    setBasisResult(null);
+    void refresh.startAll();
+  }, [allBusy, marketRefresh.busy, vixRetryRunning, confirm, reload.phase, refresh]);
 
   // ── [요약 다시 읽기] — 받아 두기 → 최신성 대조 → (필요하면) 고르기 → 반영 · 버림 ──
   const onSummaryReload = useCallback(async () => {
-    if (reload.phase === "running" || refreshing.state === "running" || marketRefresh.busy || confirm) return;
+    if (reload.phase === "running" || allBusy || marketRefresh.busy || confirm) return;
     setReload({ phase: "running" });
     const gen = dataGenRef.current;
     const jobs: { label: string; key: string; run: () => Promise<unknown>; q: QueryState<unknown> }[] = [
@@ -302,6 +387,18 @@ export default function TodayInvestmentCheckView({ onNavigate }: Props) {
       { label: "보유 근거", key: DASH_KEY_EVIDENCE, run: () => fetchHoldingsMarketEvidence(), q: evidence },
       { label: "ETF 기준가", key: DASH_KEY_NAV, run: () => fetchNavDiscountLatest(), q: nav },
       { label: "연구", key: DASH_KEY_FORWARD, run: () => fetchForwardComparison(), q: forward },
+      {
+        label: SUMMARY_SOURCE_LABEL,
+        key: etfCompareKey(todayCond),
+        run: () => fetchEtfCompareSummary(todayCond),
+        q: summary as QueryState<unknown>,
+      },
+      // POC6-29 보완 — 저장값만(빠른 시세 외부 조회 없음 · 보완 PLAN 판정 Q-R1)
+      { label: "빠른 시세", key: QUICK_QUOTES_KEY, run: () => fetchQuickQuotes(), q: quick },
+      { label: "KODEX 200 기준 가격", key: etfDetailKey(KODEX_TICKERS), run: () => fetchEtfDetail(KODEX_TICKERS), q: kodex },
+      // POC6-29 보완 2차 — 저장값만(아침 요약 기준 · 수급 5거래일)
+      { label: "아침 요약 기준", key: MORNING_BASIS_KEY, run: () => fetchMorningBasis(), q: morning },
+      { label: "수급 5거래일", key: SHORT_FLOWS_KEY, run: () => fetchShortFlows(), q: short },
     ];
     const results = await Promise.allSettled(jobs.map((j) => j.run()));
     const at = Date.now();
@@ -364,7 +461,25 @@ export default function TodayInvestmentCheckView({ onNavigate }: Props) {
       },
     });
     // [취소]는 아래 onCancel — 받아 둔 결과를 버린다(공유 캐시 · 성공 시각을 건드리지 않음).
-  }, [reload.phase, refreshing.state, marketRefresh.busy, confirm, market, flow, series, holdings, evidence, nav, forward]);
+  }, [
+    reload.phase,
+    allBusy,
+    marketRefresh.busy,
+    confirm,
+    market,
+    flow,
+    series,
+    holdings,
+    evidence,
+    nav,
+    forward,
+    summary,
+    todayCond,
+    quick,
+    kodex,
+    morning,
+    short,
+  ]);
 
   const onCancelConfirm = useCallback(() => {
     const purpose = confirm?.purpose;
@@ -373,11 +488,37 @@ export default function TodayInvestmentCheckView({ onNavigate }: Props) {
   }, [confirm]);
 
   // ── [AI용 시장 정보 복사] — 화면 값으로만 · 늦은 핵심 자료가 있으면 먼저 고르기 ──
+  // 검증자 F11 — 복사 글에 쓰는 원천(시장 판정 · 시장 흐름 · 아침 기준의 응답 · 상태). 확인 창을 연 뒤 이것이 바뀌면 받아 둔
+  // 글을 복사하지 않는다(창을 닫고 다시 누르게 · 시장 갱신 완료 때 닫는 기존 보호와 같은 방식).
+  const copyBase = () => ({
+    market: dataOf(market),
+    marketPhase: market.phase,
+    flow: dataOf(flow),
+    flowPhase: flow.phase,
+    morning: dataOf(morning),
+    morningPhase: morning.phase,
+    morningStale: morning.phase === "success" && morning.stale,
+  });
+  const copyBaseRef = useRef<ReturnType<typeof copyBase> | null>(null);
+  useEffect(() => {
+    if (confirm?.purpose !== "copy" || !copyBaseRef.current) return;
+    const was = copyBaseRef.current;
+    const now = copyBase();
+    const changed = (Object.keys(now) as (keyof typeof now)[]).some((k) => was[k] !== now[k]);
+    if (!changed) return;
+    copyBaseRef.current = null;
+    setConfirm(null);
+    setCopyState({ message: "복사에 쓰는 시장 자료가 바뀌어 복사를 멈췄습니다 — 다시 눌러 주세요.", fallback: null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [confirm, market, flow, morning]);
+
   const onCopy = useCallback(() => {
     if (confirm || reload.phase === "running" || market.phase === "loading" || flow.phase === "loading") return;
-    const src = sourcesNow();
+    // 설계자 V3 §3 — 시장 판정 줄 · [자료 상태]의 시장 판정 줄 · 확인 창이 화면 당일 상자 · 표와 같은 선택 결과(todayBasis)
+    const verdict = todayBasis(morning, dataOf(market)?.market_context ?? null, market.phase);
+    const src = { ...sourcesNow(), verdict };
     const all = freshnessRows(src, "copy");
-    const text = buildTodayMarketCopyText({ market: src.market, flow: src.flow, fresh: all });
+    const text = buildTodayMarketCopyText({ market: src.market, flow: src.flow, fresh: all, verdict });
     const doCopy = () => {
       const fail = () =>
         setCopyState({ message: "복사하지 못했습니다 — 아래 글을 직접 선택해 복사하세요.", fallback: text });
@@ -399,6 +540,7 @@ export default function TodayInvestmentCheckView({ onNavigate }: Props) {
       doCopy();
       return;
     }
+    copyBaseRef.current = copyBase();
     setConfirm({
       purpose: "copy",
       rows,
@@ -409,18 +551,17 @@ export default function TodayInvestmentCheckView({ onNavigate }: Props) {
       },
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [confirm, reload.phase, market, flow, holdings, evidence]);
+  }, [confirm, reload.phase, market, flow, holdings, evidence, morning]);
 
   const onAction = useCallback(
     (a: SummaryAction) => {
       const t = a.target;
       if (t.kind === "menu") onNavigate(t.key);
       else if (t.kind === "scroll") scrollToArea(t.id);
-      else if (t.kind === "market_refresh") void marketRefresh.start();
-      else if (t.kind === "holdings_refresh") void onLightRefresh();
+      else if (t.kind === "market_refresh" || t.kind === "holdings_refresh") onRefreshAll();
       else void onSummaryReload();
     },
-    [onNavigate, marketRefresh, onLightRefresh, onSummaryReload],
+    [onNavigate, onRefreshAll, onSummaryReload],
   );
 
   const maintLoading =
@@ -429,7 +570,7 @@ export default function TodayInvestmentCheckView({ onNavigate }: Props) {
   const tasks = summaryTasks(maintenance, maintLoading, market, holdings, flow, series, forward);
   const unknownSources = [
     holdings.phase === "error" ? "보유" : null,
-    market.phase === "error" ? "시장 판정 · 요즘 잘 오르는 ETF 목록" : null,
+    market.phase === "error" ? "시장 판정" : null,
   ].filter((x): x is string => !!x);
   const dataRows = [
     dataRow(maintenance, maintLoading, tasks.length > 0, nav, evidence, unknownSources),
@@ -437,28 +578,45 @@ export default function TodayInvestmentCheckView({ onNavigate }: Props) {
   ];
   const freshRows = needsAttention(freshnessRows(sourcesNow(), "reload"));
   const successAt = (q: { phase: string; successAt?: number }) => (q.phase === "success" ? q.successAt : undefined);
-  const readRange = readRangeText([market, series, flow, holdings, evidence, nav, forward].map(successAt));
-  const blocked = reload.phase === "running" || refreshing.state === "running" || confirm !== null;
+  const readRange = readRangeText([market, series, flow, holdings, evidence, nav, forward, summary].map(successAt));
+  const refreshBusy = allBusy || marketRefresh.busy || vixRetryRunning;
+  const blocked = reload.phase === "running" || allBusy || refreshing.state === "running" || confirm !== null;
   // 시장 갱신이 도는 동안은 다시 읽지 않는다(끝나면 갱신이 다시 읽음 · F1).
   const reloadBlocked = blocked || marketRefresh.busy;
   const mr = marketRefresh.refreshUi;
+  const allStatus = refresh.all.status;
+  const holdStep = allStatus?.steps.holdings ?? null;
+  const quickStep = allStatus?.steps.quick ?? null;
+  const startedAt = allStatus?.started_at ? ` · ${mdHm(allStatus.started_at)} 시작` : "";
+  const allLine =
+    refresh.all.phase === "failed"
+      ? `자료 갱신 상태를 확인하지 못했습니다: ${refresh.all.error ?? "원인 미상"}`
+      : allBusy && quickStep && (quickStep.status === "pending" || quickStep.status === "running")
+        ? `⓪ 빠른 시세(코스피 · 코스닥 · KODEX 200) 받는 중...${startedAt}(다시 누르거나 다른 탭에서 눌러도 이 갱신을 이어서 보입니다)`
+        : allBusy && (!holdStep || holdStep.status === "pending" || holdStep.status === "running")
+          ? `① 보유 현재가 받는 중...${startedAt}(다시 누르거나 다른 탭에서 눌러도 이 갱신을 이어서 보입니다)`
+          : null;
   const marketLine =
     vixRetryRunning && !marketRefresh.busy
-      ? "VIX 다시 받기가 진행 중이라 시장 데이터 갱신을 시작하지 않았습니다 · 결과는 「요즘 잘 오르는 ETF」에서 볼 수 있습니다(끝난 뒤 이 화면에 다시 들어오면 버튼을 쓸 수 있습니다)"
+      ? "VIX 다시 받기가 진행 중입니다(시장 자료 갱신은 끝난 뒤 시작할 수 있습니다) · 결과는 아래 [시장 근거와 다른 변화 보기] ①에서 볼 수 있습니다"
       : mr.kind === "starting"
-      ? "시장 데이터 갱신을 시작하는 중..."
-      : mr.kind === "running"
-        ? "시장 데이터 갱신 중입니다(약 수 분 · 다른 메뉴에 다녀와도 이어서 보입니다)"
-        : mr.kind === "failed"
-          ? `시장 데이터 갱신 실패: ${mr.message}`
-          : mr.kind === "cooldown"
-            ? `최근 시장 데이터가 이미 갱신되어 기존 자료를 표시합니다(재수집 가능까지 약 ${Math.ceil(
-                mr.cooldownRemainingSeconds / 60,
-              )}분)`
-            : mr.kind === "completed"
-              ? (marketResult?.compare ?? "시장 데이터 갱신 완료 · 자료를 다시 읽는 중...") +
-                (marketResult ? "" : mr.note ? ` · 일부 실패: ${mr.note}` : "")
-              : null;
+        ? "② 시장 자료 갱신을 시작하는 중..."
+        : mr.kind === "running"
+          ? "② 시장 자료 갱신 중입니다(약 수 분 · 다른 메뉴에 다녀와도 이어서 보입니다)"
+          : mr.kind === "failed"
+            ? `② 시장 자료 갱신 실패: ${mr.message}`
+            : mr.kind === "blocked"
+              ? `② ${mr.message} 끝난 뒤 다시 누르세요`
+            : mr.kind === "cooldown"
+              ? `② 시장 자료는 대기 중입니다(6시간 간격) — 다음 갱신 가능 ${cooldownUntil(
+                  allStatus?.steps.market?.next_available_at ?? null,
+                  mr.cooldownRemainingSeconds,
+                )} · 지금 표시 = ${snapshotText(snapshotOf(dataOf(market), dataOf(flow), dataOf(kodex)))}(빠른 시세 · 보유 현재가는 이 대기와 별개로 받습니다)`
+              : mr.kind === "completed"
+                ? (marketResult?.compare ?? "② 시장 자료 갱신 완료 · 자료를 다시 읽는 중...") +
+                  (marketResult ? "" : mr.note ? ` · 일부 실패: ${mr.note}` : "")
+                : null;
+  const pdLine = prevdayLine(allStatus?.steps.prevday);
   // 완료 뒤 줄을 나눠 보이는 것(설계자 2026-11-10): 기대일보다 늦은 자료 · ETF 가격 실패 · 그 밖의 확인 필요.
   const marketExtra =
     mr.kind === "completed" && marketResult
@@ -481,23 +639,15 @@ export default function TodayInvestmentCheckView({ onNavigate }: Props) {
           <button
             type="button"
             className="btn-md tc-fold-btn"
-            onClick={() => void onLightRefresh()}
-            disabled={blocked}
+            onClick={onRefreshAll}
+            disabled={refreshBusy || confirm !== null || reload.phase === "running"}
           >
-            {refreshing.state === "running" ? "보유 현재가 받는 중..." : "보유 현재가 업데이트"}
-          </button>
-          <button
-            type="button"
-            className="btn-md tc-fold-btn"
-            onClick={() => void marketRefresh.start()}
-            disabled={marketRefresh.busy || vixRetryRunning || confirm !== null}
-          >
-            {marketRefresh.busy ? "시장 데이터 갱신 중..." : "최신 시장 데이터 갱신"}
+            {refreshBusy ? "자료 갱신 중..." : "최신 자료 갱신"}
           </button>
         </div>
         <div className="tc-readline">
           <span className="tc-muted tc-small" data-testid="tc-read-range">
-            이 화면이 값을 읽은 시각 <b>{readRange}</b> · 자료 기준일은 줄마다 따로 표시합니다
+            이 화면이 값을 읽은 시각 <b>{readRange}</b> · 자료 기준일은 줄마다 따로 표시합니다 · [요약 다시 읽기] = PC 저장값만 다시 읽기
           </span>
           {reload.phase === "done" || reload.phase === "partial" || reload.phase === "cancelled" || reload.phase === "superseded" ? (
             <span className={reload.phase === "partial" ? "tc-warn tc-small" : "tc-muted tc-small"} data-testid="tc-reload-state">
@@ -506,15 +656,25 @@ export default function TodayInvestmentCheckView({ onNavigate }: Props) {
                 : reload.phase === "partial"
                   ? `다시 읽기 일부 실패(${reload.failed.join(" · ")}) · 줄마다 상태를 표시합니다 · ${readTimeText(reload.at)}`
                   : reload.phase === "superseded"
-                    ? `시장 데이터 갱신으로 자료를 새로 읽어, 앞서 받아 둔 다시 읽기 결과는 반영하지 않았습니다 · ${readTimeText(reload.at)}`
+                    ? `시장 자료 갱신으로 자료를 새로 읽어, 앞서 받아 둔 다시 읽기 결과는 반영하지 않았습니다 · ${readTimeText(reload.at)}`
                     : `다시 읽기 취소 · 화면 값은 그대로입니다 · ${readTimeText(reload.at)}`}
             </span>
           ) : null}
         </div>
-        {/* 경량 갱신 결과는 잠깐만 보인다(useLightRefreshState · 2026-07-31 정정 '완료/실패 문구가 계속 남지 않게'). */}
+        {allLine ? (
+          <p className={refresh.all.phase === "failed" ? "tc-warn tc-small" : "tc-muted tc-small"} data-testid="tc-all-result">
+            {allLine}
+          </p>
+        ) : null}
+        {quickResult ? (
+          <p className={quickResult.warn ? "tc-warn tc-small" : "tc-muted tc-small"} data-testid="tc-quick-result">
+            {quickResult.text}
+          </p>
+        ) : null}
+        {/* 보유 현재가 결과는 잠깐만 보인다(useLightRefreshState · 2026-07-31 정정 '완료/실패 문구가 계속 남지 않게'). */}
         {holdResult && (refreshing.state === "done" || refreshing.state === "failed") ? (
           <p className={holdResult.warn ? "tc-warn tc-small" : "tc-muted tc-small"} data-testid="tc-hold-result">
-            {holdResult.text}
+            ① {holdResult.text}
           </p>
         ) : null}
         {marketLine ? (
@@ -526,6 +686,16 @@ export default function TodayInvestmentCheckView({ onNavigate }: Props) {
               </p>
             ))}
           </div>
+        ) : null}
+        {pdLine ? (
+          <p className={pdLine.warn ? "tc-warn tc-small" : "tc-muted tc-small"} data-testid="tc-prevday-result">
+            {pdLine.text}
+          </p>
+        ) : null}
+        {basisResult ? (
+          <p className={basisResult.warn ? "tc-warn tc-small" : "tc-small"} data-testid="tc-basis-result">
+            {basisResult.text}
+          </p>
         ) : null}
       </header>
 
@@ -544,7 +714,7 @@ export default function TodayInvestmentCheckView({ onNavigate }: Props) {
           rows={freshRows}
           tasks={tasks}
           onAction={onAction}
-          busy={{ market: marketRefresh.busy || vixRetryRunning, holdings: blocked, reload: reloadBlocked }}
+          busy={{ market: refreshBusy, holdings: refreshBusy || blocked, reload: reloadBlocked }}
           open={topOpen}
           onToggle={toggleTop}
         />
@@ -557,42 +727,38 @@ export default function TodayInvestmentCheckView({ onNavigate }: Props) {
             market={market}
             flow={flow}
             series={series}
+            quick={quick}
+            morning={morning}
+            short={short}
             onCopy={onCopy}
             copyDisabled={confirm !== null || reload.phase === "running" || market.phase === "loading" || flow.phase === "loading"}
             copyMessage={copyState?.message ?? null}
             copyFallback={copyState?.fallback ?? null}
-            onNavigate={onNavigate}
           />
         }
-        holdingsCard={
-          <HoldingsCheckCard
-            market={market}
-            holdings={holdings}
-            evidence={evidence}
-            onNavigate={onNavigate}
-            onDetail={() => scrollToArea(AREA_HOLD_DETAIL)}
-          />
-        }
-        candidatesCard={
-          <CandidatesCheckCard
-            market={market}
-            condition={cond}
-            onNavigate={onNavigate}
-            onDetail={() => scrollToArea(AREA_CAND_DETAIL)}
-          />
-        }
+        holdingsCard={<HoldingsCheckCard market={market} summary={summary} holdings={holdings} onNavigate={onNavigate} />}
+        candidatesCard={<CandidatesCheckCard summary={summary} basis={todayCond.basis} onNavigate={onNavigate} />}
         detailBlock={
-          <JudgmentQueueSection
+          <MarketEvidenceFold
             market={market}
-            holdings={holdings}
-            evidence={evidence}
-            onNavigate={onNavigate}
-            holdingsAreaId={AREA_HOLD_DETAIL}
-            candAreaId={AREA_CAND_DETAIL}
+            flow={flow}
+            morning={morning}
+            short={short}
+            vix={refresh.vixRetry.button}
+            onVixRetry={() => void refresh.vixRetry.start()}
+            vixDisabled={refresh.vixRetry.running || marketRefresh.busy || allBusy}
           />
         }
         dataRows={dataRows}
-        dataFold={<MaintenanceQueueSection items={maintenance} loading={maintLoading} onNavigate={onNavigate} />}
+        dataFold={
+          <MaintenanceQueueSection
+            items={maintenance}
+            loading={maintLoading}
+            onNavigate={onNavigate}
+            onRefresh={onRefreshAll}
+            refreshBusy={refreshBusy}
+          />
+        }
         onAction={onAction}
       />
 
@@ -601,36 +767,11 @@ export default function TodayInvestmentCheckView({ onNavigate }: Props) {
   );
 }
 
-// 시장 갱신 전후 대조에 쓰는 자료별 기준일(실제 응답의 날짜 칸 그대로).
-type Dates = Record<string, string | null>;
-const DATE_LABELS: [string, string][] = [
-  ["kospi", "코스피"],
-  ["flows", "외국인 수급"],
-  ["usdkrw", "원/달러"],
-  ["wti", "WTI"],
-  ["vix", "VIX"],
-  ["etf", "ETF 가격"],
-];
-
-function sourceDates(m: MarketTopNResponse | null, f: MarketFlowContext | null): Dates {
-  const st = (k: string) => f?.status?.find((s) => s.key === k)?.E ?? null;
-  return {
-    kospi: m?.market_context?.kospi?.as_of_date ?? null,
-    flows: st("flows"),
-    usdkrw: st("usdkrw"),
-    wti: st("wti"),
-    vix: m?.market_risk_reference?.vix?.as_of_date ?? null,
-    etf: m?.asof ?? null,
-  };
-}
-
-function compareDates(before: Dates, after: Dates): string {
-  return DATE_LABELS.map(([k, label]) => {
-    const a = before[k];
-    const b = after[k];
-    if (!b) return `${label} 확인 불가`;
-    return a === b ? `${label} ${md(b)} 그대로` : `${label} ${a ? md(a) : "없음"} → ${md(b)}`;
-  }).join(" · ");
+// 다음 갱신 가능 시각(판정 Q7) — 서버가 준 시각이 있으면 그것 · 없으면 남은 초로 계산(약 N분 뒤를 함께).
+function cooldownUntil(nextAt: string | null, remainSec: number): string {
+  const mins = Math.ceil(remainSec / 60);
+  const at = nextAt ?? new Date(Date.now() + remainSec * 1000).toISOString();
+  return `${mdHm(at)}(약 ${mins}분 뒤)`;
 }
 
 // 보유 현재가 시세 시각(네이버 체결 시각) 범위 — 'M/D HH:MM' · 같으면 하나.

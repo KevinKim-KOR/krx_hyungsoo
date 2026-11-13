@@ -8,12 +8,20 @@
 // 읽기 · 보유 근거와 같은 기존 함수)에서만 읽는다. 다른 시점에 읽은 보유 근거 응답에 이 응답의 저장 상태를 붙이지
 // 않는다. 비교 요약을 못 받았을 때만 보유 근거 값을 '저장 상태 확인 불가'와 함께 적는다.
 // 검증자 r3 F5: 값이 없을 때는 이유를 출처별로 적는다(요약 없음 / 요약에 이 종목 없음 / 보유 근거 실패 · 확인 중 · 종목 없음).
+// POC6-29(PLAN §2-3 · §2-7 · 판정 Q4-1) — 상세 수치(1 · 3 · 6 · 12개월 · 20구간 KODEX 200 차이 · 시장가 · NAV · 괴리율 등 ·
+//   후보 화면과 같은 응답 · 같은 정의)를 넣고, 예전 '월간 수익률(보유 근거)' 줄은 뺐다(1개월이 정의가 다른 두 값으로
+//   보이지 않게 · 설계 §4). 판단 근거 미리보기(보유) · [보유와 후보 비교에서 보기 →]를 둔다.
 
 import type { HoldingsMarketEvidenceItem } from "@/lib/api";
 import type { CompareSummaryOk, HoldingLink, PriceFlow } from "@/lib/api/etfCompare";
 import { candidateLinkText, endPriceText, exposureText, md, pct, priceStateShort } from "@/lib/etfCompare";
 import { fmtAmountSummary, fmtIndex } from "./helpers";
 import PriceChart from "./PriceChart";
+import DecisionDraftPreviewCard from "../holdings_compare/DecisionDraftPreviewCard";
+import { DetailLines, detailOf, detailStateText, useEtfDetail } from "./DetailNumbers";
+import { B_FLOW_PERIOD, holdingScopeQuery } from "./EtfRowDetail";
+import { presetCompareHolding } from "./compareSelection";
+import { ETF_COMPARE_DEFAULT, getScreenCondition } from "@/lib/etfCompareCondition";
 import {
   PartialMark,
   evMissingText,
@@ -123,13 +131,8 @@ export default function HoldingRowDetail({
   s: CompareSummaryOk | null;
   onNavigate: (k: MenuKey) => void;
 }) {
-  // 확인된 1개월 값이 있으면 보인다(3개월이 없는 부분 응답 `partial` 포함 · 독립 검토 LOW) — 보유 근거 응답 값.
-  const om = ev?.returns?.one_month_return_pct ?? null;
-  const month = !ev
-    ? `확인값 없음(${evMissingText(evPhase)})`
-    : om == null
-      ? "확인값 없음(보유 근거가 이 종목의 1개월 값을 받지 않음)"
-      : `${pct(om)}${evPhase === "stale" ? " · 이전 조회값(다시 조회 실패)" : ""}`;
+  const detail = useEtfDetail([row.ticker]);
+  const item = detailOf(detail, row.ticker);
   const noLink = `후보 비교 자료 없음(${sumMissingText(sumLinksOf(s))})`;
   return (
     <div className="ec-detail" data-testid="ec-hold-detail">
@@ -140,8 +143,14 @@ export default function HoldingRowDetail({
         <dd data-testid="ec-hold-kodex">{sameKodex(link, s)}</dd>
         <dt>후보 조회 기간</dt>
         <dd data-testid="ec-hold-candidate">{s && link ? candidateLinkText(link, s) : noLink}</dd>
-        <dt>월간 수익률(보유 근거)</dt>
-        <dd data-testid="ec-hold-month">{month}</dd>
+        {item ? (
+          <DetailLines it={item} omitWindows />
+        ) : (
+          <>
+            <dt>상세 수치</dt>
+            <dd data-testid="ec-detail-state">{detailStateText(detail, row.ticker)}</dd>
+          </>
+        )}
         <dt>약세 묶음 접점</dt>
         <dd data-testid="ec-hold-exposure">
           {!link ? (
@@ -174,10 +183,29 @@ export default function HoldingRowDetail({
       </dl>
       <PriceChart ticker={row.ticker} valueLabel="저장 가격" compact />
       <div className="ec-btn-row">
+        <button
+          type="button"
+          className="wb-btn btn-md"
+          onClick={() => {
+            presetCompareHolding(row.ticker);
+            onNavigate("holding_candidate_compare");
+          }}
+        >
+          보유와 후보 비교에서 보기 →
+        </button>
         <button type="button" className="wb-btn btn-md" onClick={() => onNavigate("holdings")}>
           보유 현황 보기 →
         </button>
       </div>
+      <DecisionDraftPreviewCard
+        targetKind="holding"
+        ticker={row.ticker}
+        displayName={row.name ?? row.ticker}
+        screenFilters={s?.filters ?? ETF_COMPARE_DEFAULT.filters}
+        listQuery={holdingScopeQuery("holdings", s ? { basis: s.basis, filters: s.filters } : getScreenCondition("holdings"))}
+        onNavigate={onNavigate}
+        flowPeriod={B_FLOW_PERIOD}
+      />
     </div>
   );
 }

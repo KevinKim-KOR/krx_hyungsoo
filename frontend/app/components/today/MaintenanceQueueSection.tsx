@@ -5,6 +5,7 @@
 // 기존 정비 항목을 기존 문구 · ⓘ 사유 · 이동 버튼 그대로 보인다. 늦은 자료 · 바로 조치할 일(보유 현재가 ·
 // 다시 읽기 · 시장 자료 갱신)은 맨 위 「자료 최신화 필요」와 상단 버튼으로 옮겼다. 코스피 항목은 위 카드의
 // 코스피 줄과 같아 여기서는 뺀다(같은 항목 두 번 없음).
+// POC6-29 — 시장 자료 항목(target = today_check)의 버튼은 이동 대신 이 화면 [최신 자료 갱신]을 실행한다.
 
 import type { MenuKey } from "../LeftSidebar";
 import type { MaintenanceItem } from "./maintenanceQueue";
@@ -33,10 +34,14 @@ export default function MaintenanceQueueSection({
   items,
   loading,
   onNavigate,
+  onRefresh,
+  refreshBusy = false,
 }: {
   items: MaintenanceItem[];
   loading: boolean;
   onNavigate: (key: MenuKey) => void;
+  onRefresh?: () => void;
+  refreshBusy?: boolean;
 }) {
   const list = maintenanceListItems(items);
   if (loading) return <p className="tc-muted tc-small">자료 상태 확인 중...</p>;
@@ -49,9 +54,15 @@ export default function MaintenanceQueueSection({
             {it.text}
             <MaintInfo reason={it.reason} />
           </span>
-          <button type="button" className="tc-btn tc-btn-link" onClick={() => onNavigate(it.target)}>
-            {it.actionLabel}
-          </button>
+          {it.target === "today_check" ? (
+            <button type="button" className="tc-btn tc-btn-link" onClick={() => onRefresh?.()} disabled={refreshBusy || !onRefresh}>
+              {it.actionLabel}
+            </button>
+          ) : (
+            <button type="button" className="tc-btn tc-btn-link" onClick={() => onNavigate(it.target)}>
+              {it.actionLabel}
+            </button>
+          )}
         </li>
       ))}
     </ul>

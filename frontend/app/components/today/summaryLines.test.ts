@@ -85,7 +85,7 @@ describe("잘 오르는 ETF 이름 · 기간 · 조건(판정 §5 · POC6-27 —
   });
   it("종목별 계산 기간이 다르면 선두 종목 날짜로 덮지 않는다", () => {
     expect(candidatePeriod([cand("A", 1), cand("B", 1, "2026-09-22")] as never)).toBe(
-      "종목별 계산 기간 다름(「요즘 잘 오르는 ETF」에서 확인)",
+      "종목별 계산 기간 다름",
     );
   });
   it("화면 글자에 '후보' 낱말을 쓰지 않는다(AC-7)", () => {
@@ -99,24 +99,25 @@ const item = (task: MaintenanceItem["task"], text: string): MaintenanceItem => (
   task,
   text,
   kind: task === "holdings_price" ? "light" : "heavy",
-  target: "market_discovery",
+  target: "today_check",
   actionLabel: "x",
 });
 
 describe("지금 할 일(판정 §3-1)", () => {
   const H_OK: QueryState<EnrichedHoldingsResult> = { phase: "success", stale: false, data: { items: [] } as unknown as EnrichedHoldingsResult };
-  it("시장 자료 지연 — 실제 자료일 · 사유 · 이 화면 [최신 시장 데이터 갱신](상단 버튼과 같은 작업 · POC6-27)", () => {
+  it("시장 자료 지연 — 실제 자료일 · 사유 · 이 화면 [최신 자료 갱신](상단 버튼과 같은 작업 · POC6-29 Q7)", () => {
     const t = summaryTasks([item("market_refresh", "KOSPI 원자료가 … 6거래일 지연"), item("other", "구성종목 없음")], false, market(), H_OK, FLOW_OK);
     expect(t.map((x) => x.id)).toEqual(["market_refresh"]);
     expect(t[0].title).toBe("시장 자료 갱신이 필요합니다.");
     expect(t[0].reasons).toEqual(["지금 PC에 저장된 시장 자료: KOSPI 2026-10-22 · ETF 가격 2026-10-23", "KOSPI 원자료가 … 6거래일 지연"]);
-    expect(t[0].doText).toContain("[최신 시장 데이터 갱신]");
-    expect(t[0].action).toEqual({ label: "최신 시장 데이터 갱신", target: { kind: "market_refresh" }, primary: true });
+    expect(t[0].doText).toContain("[최신 자료 갱신]");
+    expect(t[0].action).toEqual({ label: "최신 자료 갱신", target: { kind: "market_refresh" }, primary: true });
   });
-  it("보유 현재가 결측 — 이 화면 [보유 현재가 업데이트](상단 버튼과 같은 작업 · POC6-27)", () => {
+  it("보유 현재가 결측 — 이 화면 [최신 자료 갱신](상단 버튼과 같은 작업 · 보유 현재가부터 · POC6-29 Q7)", () => {
     const t = summaryTasks([item("holdings_price", "보유 종목 현재가를 불러오지 못했습니다 (1건)")], false, market(), H_OK, FLOW_OK);
     expect(t.map((x) => [x.id, x.action?.target.kind])).toEqual([["holdings_price", "holdings_refresh"]]);
-    expect(t[0].doText).toContain("[보유 현재가 업데이트]");
+    expect(t[0].doText).toContain("[최신 자료 갱신]");
+    expect(t[0].action?.label).toBe("최신 자료 갱신");
   });
   it("첫 조회 실패 · 응답 손상 = 상태 모름(미갱신으로 단정 안 함) · 다시 읽는 원천만 [요약 다시 읽기]", () => {
     const t = summaryTasks([item("read_failed", "보유 ETF 비교 자료를 불러오지 못했습니다")], false, ERR, ERR, ERR);

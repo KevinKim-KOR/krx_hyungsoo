@@ -8,8 +8,6 @@
 import { useState } from "react";
 import type { QueryState } from "@/lib/api/queryCache";
 import type {
-  MarketContext,
-  MarketContextKodex200,
   MarketContextKospi,
   MarketTopNResponse,
   StoredVolumeEvidence,
@@ -21,8 +19,6 @@ import { KospiStatusBadges, KospiStatusLines } from "../KospiStatusNote";
 import {
   fmtKstDate,
   fmtPct,
-  maDistanceText,
-  regimeLabelKo,
 } from "./todayHelpers";
 
 // ── §4.1 코스피 대표 (헤드라인) — 첫 화면 필수 요소만 compact ────────────────
@@ -33,28 +29,34 @@ import {
 // '시장 수치와 거래량'에서 펼쳐 본다(기본 접힘 · 화면 안 상태만). 접힌 칸의 자료 없음 · 부족 ·
 // 계산 불가는 펼치기 전후 모두 버튼 옆 '확인 필요: …'로 보인다(설계 §3 · 판정 Q3).
 // POC6-27 — 차트는 「시장 흐름」 안 코스피 수치 바로 아래로 옮겼고(사용자 결정 ①) · 흐름 두 줄은 시장 흐름
-// 구역이 대신한다. 이 부품은 [시장 근거와 다른 변화 보기] 안에서 나머지 지표(일간 변화 · KODEX200 기준선 ·
-// '시장 수치와 거래량')만 문구 그대로 보인다(판정 Q1 (a)). embedded 는 그 자리 표시(카드 테두리 · 제목 없음).
+// 구역이 대신한다. 이 부품은 코스피 공식 종가 덩어리(POC6-29 · 형수님 결정 2026-11-13 · 「오늘 시장 변화」 당일 판정 아래 ·
+// KospiCloseBlock) 안에서 나머지 지표(일간 변화 · KODEX200 기준선 · '시장 수치와 거래량')만 문구 그대로 보인다(판정 Q1 (a)).
+// embedded 는 그 자리 표시(카드 테두리 · 제목 없음).
+// 설계자 RESULT 재판정 V3(2026-11-13): D3 — 'KODEX200 기준선 대비 위치'(MA20 · MA60 거리 · ⓘ 이 값의 한계)는 판정 표의
+//   '20일선 87,415원 · 3.63% 아래'와 겹쳐 뺐다(한계 문장은 판정 표 제목 옆 [?]). D4 — 「시장 수치와 거래량」 안
+//   '기존 시장 판정 참고'(국면 · 지속일 · KODEX200 기준일)는 당일 판정 · 판정 표와 겹쳐 뺐다. 그 둘에 딸린 접힌 칸 안내
+//   ('시장 판정 확인 불가' · '기존 시장 판정 지속일 자료 없음')도 함께 뺐다.
 export default function KospiHeadline({
   market,
+  startOpen = false,
 }: {
   market: QueryState<MarketTopNResponse>;
   embedded?: boolean;
+  // POC6-29 보완 2차 — 오늘 점검에서는 처음부터 펼친다(두 번째 접기 정리 · 판정서 V2 §2 · 지금 자리는 KospiCloseBlock).
+  startOpen?: boolean;
 }) {
   const ctx =
     market.phase === "success" ? market.data.market_context ?? null : null;
-  const kodex = ctx?.kodex200;
   const kospi = ctx?.kospi;
   // 설계자 RESULT STEP 4-3 — '마지막 자료 기준일' 은 KOSPI 기준일이다(KODEX200 날짜 아님).
   // KOSPI 기준일이 없으면 날짜를 내지 않는다(다른 날짜로 대신하지 않는다).
   const kospiAsOf = kospi?.as_of_date ?? null;
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(startOpen);
   // UI-03 — 일간 값은 화면 판정(정상 · 휴장)일 때만. 아니면 상태 사유 문장만 둔다
   // (배지 · 기준 줄은 같은 카드 차트 아래와 접힌 '코스피 수익률·위치'에 그대로 있다).
   const kv = kospiStatusView(kospi, market.phase);
   const vol = market.phase === "success" ? market.data.kodex200_stored_volume ?? null : null;
-  const kodexDateText = kodex200BaseDate(market, kodex);
-  const foldNotes = foldedMarketNotes(market, ctx, kospi, vol);
+  const foldNotes = foldedMarketNotes(market, kospi, vol);
 
   return (
     <section className="tc-headline tc-headline-embedded" aria-label="KOSPI 현재 위치">
@@ -71,37 +73,6 @@ export default function KospiHeadline({
             ) : (
               <div className="kospi-status-reason">{kv.reason ?? "자료 없음"}</div>
             )}
-          </div>
-
-          {/* KODEX200 기준선 대비 위치 — MA20·MA60 각각 명시 (단일 표기 금지). */}
-          <div className="tc-stat-block tc-divider">
-            <div className="tc-label">
-              KODEX200 기준선 대비 위치
-              {kodexDateText ? (
-                <span className="tc-muted tc-small" data-testid="tc-kodex200-date">
-                  {" "}
-                  · {kodexDateText}
-                </span>
-              ) : null}
-            </div>
-            {kodex && kodex.status === "ok" ? (
-              <ul className="tc-list-plain">
-                <li>{maDistanceText("MA20", kodex.ma20_distance_pct, kodex.ma20_position)}</li>
-                <li>{maDistanceText("MA60", kodex.ma60_distance_pct, kodex.ma60_position)}</li>
-              </ul>
-            ) : (
-              <span className="tc-muted">기준선 자료 확인 불가</span>
-            )}
-            {/* AC-11: 한계 설명은 hover 툴팁(ⓘ). 항상 노출 문단 아님. */}
-            <span
-              className="tc-info"
-              tabIndex={0}
-              role="note"
-              aria-label="현재 시장 판정에 쓰는 이동평균 기준선까지의 거리입니다. 급격한 하락이나 반등에는 늦게 반응할 수 있으며, 미래의 추세 전환을 예측하는 값은 아닙니다."
-              title="현재 시장 판정에 쓰는 이동평균 기준선까지의 거리입니다. 급격한 하락이나 반등에는 늦게 반응할 수 있으며, 미래의 추세 전환을 예측하는 값은 아닙니다."
-            >
-              ⓘ 이 값의 한계
-            </span>
           </div>
 
           {/* 설계자 RESULT STEP 4-2 — 공식 자료원 표시(KRX 약관 제10조③). 차트 · 수익률을
@@ -159,46 +130,6 @@ export default function KospiHeadline({
             <KospiStatusLines kospi={kospi} phase={market.phase} />
           </div>
 
-          {/* 기존 시장 판정 — KODEX200 지표로 계산. 코스피와 합치지 않음(§3.1).
-              POC5-11 판정 Q1 — 이 줄의 날짜(market_context.asof)는 PC 화면 API 에서 판정 · 지속일 ·
-              기준선과 같은 읽기의 069500 유효 이력 마지막 날짜다('KODEX200 기준일' · 계약 ⑤).
-              (UI-03 에서 잠시 '저장 가격 최신일'로 부름 — 그때 값은 저장된 전체 종목 표 최신일.) */}
-          <div className="tc-stat-block">
-            <div className="tc-label">
-              기존 시장 판정 참고{" "}
-              <span className="tc-muted tc-small">· KODEX200 기준</span>
-            </div>
-            {ctx ? (
-              <div>
-                <span className="tc-regime">
-                  {regimeLabelKo(ctx.regime_code, ctx.regime_label)}
-                </span>
-                {/* POC3-06 §6.2 — 현재 국면 지속 거래일 수(실제값, 개발 중 제거). */}
-                {ctx.regime_streak && ctx.regime_streak.streak_days != null ? (
-                  <span className="tc-muted tc-small">
-                    {" "}
-                    · {ctx.regime_streak.streak_days}거래일째
-                    {ctx.regime_streak.at_least ? " 이상" : ""}
-                  </span>
-                ) : (
-                  <span className="tc-muted tc-small"> · 지속일 자료 없음</span>
-                )}
-                {ctx.asof && (
-                  <span className="tc-muted tc-small" data-testid="tc-regime-date">
-                    {" "}
-                    · KODEX200 기준일 {fmtKstDate(ctx.asof)}
-                  </span>
-                )}
-                <p className="tc-muted tc-small" style={{ marginTop: 4 }}>
-                  코스피 가격 흐름과 별개로, 시스템의 기존 시장 판정은 KODEX200
-                  지표로 계산됩니다.
-                </p>
-              </div>
-            ) : (
-              <span className="tc-muted">시장 판정 확인 불가</span>
-            )}
-          </div>
-
           {/* POC5-09 — KODEX200 한 종목의 저장 거래량(KOSPI 지수 거래량 아님 · 자기 기준일). */}
           {market.phase === "success" ? (
             <div className="tc-stat-block">
@@ -217,33 +148,14 @@ export default function KospiHeadline({
   );
 }
 
-// UI-03 판정 Q1 — 기준선 옆 날짜 = market_risk_reference.kodex200.as_of_date(069500 유효 가격 최신 행 ·
-// 기준선 계산과 같은 행 조건). 기준선 값이 있을 때만(0 도 값). 날짜가 없으면 '기준일 확인 불가' —
-// market_context.asof · KOSPI 날짜로 대신하지 않는다.
-function kodex200BaseDate(
-  market: QueryState<MarketTopNResponse>,
-  kodex: MarketContextKodex200 | null | undefined,
-): string | null {
-  if (market.phase !== "success" || !kodex || kodex.status !== "ok") return null;
-  if (kodex.ma20_distance_pct == null && kodex.ma60_distance_pct == null) return null;
-  const ref = market.data.market_risk_reference?.kodex200;
-  return ref?.availability === "available" && ref.as_of_date
-    ? `기준일 ${ref.as_of_date}`
-    : "기준일 확인 불가";
-}
-
 // UI-03 설계 §3 · 판정 Q3 — 접힌 칸 안의 자료 없음 · 부족 · 계산 불가 · 확인 불가를 기존 문구로 모은다.
 // 서로 다른 사유는 따로 둔다. 값이 비어 있다는 것만으로 위험 · 하락 신호를 만들지 않는다.
 function foldedMarketNotes(
   market: QueryState<MarketTopNResponse>,
-  ctx: MarketContext | null,
   kospi: MarketContextKospi | null | undefined,
   vol: StoredVolumeEvidence | null,
 ): string[] {
   const notes: string[] = [];
-  if (market.phase === "error" || (market.phase === "success" && !ctx)) {
-    notes.push("시장 판정 확인 불가");
-  }
   if (market.phase !== "success") return notes;
   // 코스피 수익률 칸은 값을 보일 때(운영 판정 ok)만 빈 값을 센다 — 아니면 상태 사유가 이미 보인다.
   if (kospi && kospi.status === "ok") {
@@ -255,9 +167,6 @@ function foldedMarketNotes(
     for (const [label, v] of kospiCells) {
       if (v == null) notes.push(`코스피 ${label} 자료 없음`);
     }
-  }
-  if (ctx && !(ctx.regime_streak && ctx.regime_streak.streak_days != null)) {
-    notes.push("기존 시장 판정 지속일 자료 없음");
   }
   if (!vol || vol.status === "no_price_data") {
     notes.push(`KODEX200 ${NO_VOLUME_TEXT}`);

@@ -334,6 +334,7 @@ class MarketTopNResponse(BaseModel):
 class MarketRefreshResponse(BaseModel):
     # accepted / running / skipped_cooldown / failed_to_start / not_needed(POC5-12 scope=vix 대상 없음)
     # / vix_retry_running(POC5-12 'VIX 다시 받기' 실행 중이라 거절 · refresh_id = 그 재시도 id)
+    # / prevday_running(POC6-29 보완 2차 ③ 전일 자료 보충 실행 중이라 거절 · refresh_id 없음)
     status: str
     refresh_id: Optional[str] = None
     message: str

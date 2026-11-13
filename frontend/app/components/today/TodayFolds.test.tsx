@@ -5,13 +5,9 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, within, act, fireEvent } from "@testing-library/react";
 import { __resetQueryCache, type QueryState } from "@/lib/api/queryCache";
 import type {
-  EnrichedHoldingsResult,
-  HoldingsMarketEvidenceItem,
-  HoldingsMarketEvidenceResponse,
   MarketContext,
   MarketContextKospi,
   MarketTopNResponse,
-  PriceBasisMismatch,
   StoredVolumeEvidence,
 } from "@/lib/api";
 
@@ -25,7 +21,6 @@ vi.mock("@/lib/api", async (importOriginal) => {
 });
 
 import KospiHeadline from "./KospiHeadline";
-import JudgmentQueueSection from "./JudgmentQueueSection";
 
 // ── fixture ──────────────────────────────────────────────────────────────────
 const KOSPI_OK: MarketContextKospi = {
@@ -132,15 +127,15 @@ beforeEach(() => {
 
 // ── KOSPI 카드 ───────────────────────────────────────────────────────────────
 describe("KOSPI 카드 — 기본 화면 · 시장 수치와 거래량 펼치기 (설계 §2)", () => {
-  it("기본 = 일간 변화 · MA20 · MA60 만, 나머지는 접힘 · 펼치면 같은 응답 값 · 다시 접힘", async () => {
+  it("기본 = 일간 변화만(기준선 대비 위치는 판정 표 · 설계자 V3 D3), 나머지는 접힘 · 펼치면 같은 응답 값 · 다시 접힘", async () => {
     await renderHeadline(market());
     const c = card();
     const btn = marketToggle();
     expect(btn).toHaveAttribute("aria-expanded", "false");
     expect(btn).toHaveClass("btn-md", "tc-fold-btn");
     expect(within(c).getByTestId("tc-kospi-daily").textContent).toContain("-3.65%");
-    expect(c.textContent).toContain("KODEX200 MA20 대비 -11.97%");
-    expect(c.textContent).toContain("KODEX200 MA60 대비 -10.32%");
+    expect(c.textContent).not.toContain("KODEX200 MA20 대비");
+    expect(c.textContent).not.toContain("기준선 대비 위치");
     // 접힌 칸은 그리지 않는다.
     expect(within(c).queryByTestId("tc-market-detail")).toBeNull();
     expect(c.textContent).not.toContain("1개월");
@@ -155,59 +150,29 @@ describe("KOSPI 카드 — 기본 화면 · 시장 수치와 거래량 펼치기
     for (const t of ["1개월 -8.20%", "3개월 -14.60%", "1년 +76.82%", "최근 1년 고점 대비 -29.96%"]) {
       expect(d.textContent).toContain(t);
     }
-    expect(d.textContent).toContain("하락장");
-    expect(d.textContent).toContain("3거래일째");
+    // 설계자 V3 D4 — '기존 시장 판정 참고'(국면 · 지속일 · KODEX200 기준일)는 뺐다(당일 판정 · 판정 표와 중복)
+    expect(d.textContent).not.toContain("하락장");
+    expect(d.textContent).not.toContain("기존 시장 판정 참고");
+    expect(d.textContent).not.toContain("KODEX200 기준일");
     expect(within(d).getByTestId("stored-volume").textContent).toContain("40,337,658주");
 
     fireEvent.click(marketToggle());
     expect(within(c).queryByTestId("tc-market-detail")).toBeNull();
   });
 
-  it("세 날짜가 다르면 각자 실제 필드 — 기준선 옆 · 판정 줄 · KOSPI 기준일 (UI-03 · POC5-11 판정 Q1)", async () => {
+  // 설계자 RESULT 재판정 V3 D3 · D4(2026-11-13) — 기준선 옆 날짜(market_risk_reference) · 판정 줄 날짜(market_context.asof)를
+  // 보이던 두 칸이 빠져, 이 카드의 날짜는 KOSPI 기준일 하나만(KODEX200 날짜로 대신하지 않음 · 판정 날짜는 판정 표).
+  it("날짜 = 'KOSPI 기준일'만 · KODEX200 기준선 · 판정 날짜는 이 카드에 없다(펼친 뒤에도 · 거래량은 자기 기준일)", async () => {
     await renderHeadline(market());
     const c = card();
-    expect(within(c).getByTestId("tc-kodex200-date").textContent).toBe(" · 기준일 2026-10-13");
     expect(c.textContent).toContain("마지막 자료 기준일 2026-10-12");
-    expect(c.textContent).not.toContain("2026-10-14");
+    expect(within(c).queryByTestId("tc-kodex200-date")).toBeNull();
+    for (const d of ["2026-10-13", "2026-10-14"]) expect(c.textContent).not.toContain(d);
+    expect(c.textContent).not.toContain("기준선 자료 확인 불가");
     fireEvent.click(marketToggle());
-    // 판정 줄 = market_context.asof 그대로(POC5-11 부터 PC 화면 API 가 KODEX200 이력 끝 날짜로 준다).
-    expect(within(c).getByTestId("tc-regime-date").textContent).toBe(" · KODEX200 기준일 2026-10-14");
-    expect(c.textContent).not.toContain("저장 가격 최신일");
-    // 기준선 옆 날짜는 그대로 market_risk_reference(10-13) — 판정 줄 값으로 바꾸지 않는다.
-    expect(within(c).getByTestId("tc-kodex200-date").textContent).toBe(" · 기준일 2026-10-13");
-  });
-
-  it("KODEX200 날짜가 없으면 '기준일 확인 불가' — 판정 줄 날짜 · KOSPI 날짜로 대신하지 않음", async () => {
-    for (const ref of [
-      undefined,
-      {
-        kodex200: { availability: "unavailable" as const, as_of_date: null, recent_20d_series: [] },
-        vix: { availability: "available" as const, as_of_date: "2026-09-11", recent_20d_series: [] },
-      },
-    ]) {
-      const { unmount } = await renderHeadline(market({ market_risk_reference: ref }));
-      const date = within(card()).getByTestId("tc-kodex200-date");
-      expect(date.textContent).toBe(" · 기준일 확인 불가");
-      expect(date.textContent).not.toMatch(/\d{4}-\d{2}-\d{2}/);
-      expect(card().textContent).not.toContain("2026-10-14");
-      unmount();
-    }
-  });
-
-  it("기준선 값이 0 이면 값 있음 — 날짜를 붙인다 · 기준선 값이 없으면 날짜를 붙이지 않는다", async () => {
-    const zero = ctx({
-      kodex200: {
-        status: "ok", close: 1, ma20: 1, ma60: 1, ma20_position: "above", ma60_position: "above",
-        ma20_distance_pct: 0, ma60_distance_pct: null,
-      },
-    } as Partial<MarketContext>);
-    const { unmount } = await renderHeadline(market({}, zero));
-    expect(within(card()).getByTestId("tc-kodex200-date").textContent).toBe(" · 기준일 2026-10-13");
-    unmount();
-    const none = ctx({ kodex200: { status: "unavailable" } } as Partial<MarketContext>);
-    await renderHeadline(market({}, none));
-    expect(within(card()).queryByTestId("tc-kodex200-date")).toBeNull();
-    expect(card().textContent).toContain("기준선 자료 확인 불가");
+    expect(within(c).queryByTestId("tc-regime-date")).toBeNull();
+    expect(c.textContent).not.toContain("KODEX200 기준일");
+    expect(c.textContent).not.toContain("2026-10-14"); // 판정 날짜(market_context.asof)
   });
 
   it("일간 칸은 화면 판정 기준 — 지연이면 사유 문장 · 휴장이면 값 · 운영 ok 라도 화면 지연이면 사유", async () => {
@@ -267,16 +232,19 @@ describe("접힌 시장 칸의 자료 문제는 펼치기 전후 모두 보인�
     const k = { ...KOSPI_OK, return_1y_pct: null, high_52w_gap_pct: null } as MarketContextKospi;
     await renderHeadline(market({}, ctx({ regime_streak: null } as Partial<MarketContext>, k)));
     expect(notes()).toBe(
-      "확인 필요: 코스피 1년 자료 없음 · 코스피 최근 1년 고점 대비 자료 없음 · 기존 시장 판정 지속일 자료 없음",
+      // 설계자 V3 D4 — '기존 시장 판정 지속일 자료 없음'은 그 칸을 빼며 함께 뺐다(지속일은 판정 표 · 당일 판정 상자)
+      "확인 필요: 코스피 1년 자료 없음 · 코스피 최근 1년 고점 대비 자료 없음",
     );
   });
 
-  it("시장 조회 실패 · 시장 판정 없음 → '시장 판정 확인 불가'", async () => {
+  // 설계자 V3 D4 — 접힌 칸에 시장 판정이 없으므로 '시장 판정 확인 불가'를 이 칸의 안내로 내지 않는다(판정 확인 불가는 판정 표
+  // '당일' 줄 · 당일 판정 상자가 알림). 시장 조회 실패면 코스피 칸이 자기 상태 사유를 보인다(기존).
+  it("시장 조회 실패 · 시장 판정 없음 → 접힌 칸 안내에 '시장 판정' 없음(그 칸이 빠짐)", async () => {
     const { unmount } = await renderHeadline({ phase: "error", error: new Error("x") } as QueryState<MarketTopNResponse>);
-    expect(notes()).toBe("확인 필요: 시장 판정 확인 불가");
+    expect(notes()).not.toContain("시장 판정");
     unmount();
     await renderHeadline(market({}, null));
-    expect(notes()).toContain("시장 판정 확인 불가");
+    expect(notes()).not.toContain("시장 판정");
   });
 
   it("KOSPI 가 지연이면 수익률 칸 빈 값은 세지 않는다(사유가 이미 보임) · 위험 문구를 만들지 않는다", async () => {
@@ -290,160 +258,5 @@ describe("접힌 시장 칸의 자료 문제는 펼치기 전후 모두 보인�
   });
 });
 
-// ── 오늘 내가 확인할 것 ──────────────────────────────────────────────────────
-const holdings: QueryState<EnrichedHoldingsResult> = {
-  phase: "success",
-  stale: false,
-  data: {
-    items: [
-      { ticker: "A1", name: "가", eval_amount: 600, invested_amount: 500 },
-      { ticker: "B2", name: "나", eval_amount: 300, invested_amount: 400 },
-      // 매입 금액 0 → 손익률 미산출(비중은 있음).
-      { ticker: "C3", name: "다", eval_amount: 100, invested_amount: 0 },
-    ],
-  } as unknown as EnrichedHoldingsResult,
-};
-
-function topRow(ticker: string, name: string, r5: number, r20: number | null, ex: number | null) {
-  return {
-    ticker, name, eval_amount: 0, market_weight_pct: 1, pnl_rate_pct: 1,
-    return_5d_pct: r5, return_20d_pct: r20, excess_vs_kodex200_20d_pctp: ex,
-  };
-}
-
-function item(ticker: string, comparison: string): HoldingsMarketEvidenceItem {
-  return {
-    ticker,
-    price_dates: { end_date: "2026-10-13", start_date_5d: "2026-10-01", start_date_20d: "2026-09-12", comparison },
-    // POC5-13 — 보유 칸 요약이 종목 항목을 「확인 근거」와 같은 함수로 묶는다(API 필수 필드).
-    short_term_momentum: { status: "ok", return_5d_pct: null, return_20d_pct: null, excess_vs_kodex200_20d_pctp: null },
-  } as unknown as HoldingsMarketEvidenceItem;
-}
-
-function evidence(
-  top: ReturnType<typeof topRow>[],
-  mismatch: PriceBasisMismatch[] = [],
-  items: HoldingsMarketEvidenceItem[] = [],
-): QueryState<HoldingsMarketEvidenceResponse> {
-  return {
-    phase: "success",
-    stale: false,
-    data: {
-      status: "ok",
-      asof: "2026-10-14",
-      summary: {
-        total_holdings_count: 3, matched_topn_count: 0, not_in_current_topn_count: 3,
-        evidence_unavailable_count: 0, constituents_available_count: 0,
-        constituents_unavailable_count: 0, nav_discount_unavailable_count: 0,
-      },
-      holdings: items,
-      judgment_summary: {
-        market_position: { available: true },
-        holdings: { available: true, top_holdings: top, coverage: { total: 3, need_check: 0, ok: 3 } },
-        data_status: {},
-      },
-      price_basis: {
-        reference_date: "2026-10-13",
-        reference_ticker: "069500",
-        kodex200_start_date_5d: "2026-10-06",
-        kodex200_start_date_20d: "2026-09-15",
-        date_mismatch: mismatch,
-      },
-      warnings: [],
-    } as unknown as HoldingsMarketEvidenceResponse,
-  };
-}
-
-function renderQueue(ev: QueryState<HoldingsMarketEvidenceResponse>, h = holdings) {
-  return render(
-    <JudgmentQueueSection market={market()} holdings={h} evidence={ev} onNavigate={() => undefined} />,
-  );
-}
-
-describe("최대 3개 — 이름 · 5일 · 비중 + 종목별 '수치 더보기' (설계 §2 · 판정 Q3)", () => {
-  it("기본은 5일 · 비중만 · 종목마다 따로 펼친다 · 값은 그대로", () => {
-    renderQueue(evidence([topRow("A1", "가", -3, -5, 1.5), topRow("B2", "나", -2, -4, -0.5)]));
-    const rows = screen.getAllByTestId("tc-top-row");
-    expect(rows).toHaveLength(2);
-    expect(rows[0].textContent).toContain("5일 -3.00%");
-    expect(rows[0].textContent).toContain("비중 60.0%");
-    expect(rows[0].textContent).not.toContain("20일");
-    expect(rows[0].textContent).not.toContain("손익");
-    const b0 = within(rows[0]).getByRole("button", { name: "가 수치 더보기" });
-    expect(b0).toHaveAttribute("aria-expanded", "false");
-    expect(b0).toHaveClass("btn-md", "tc-fold-btn");
-    fireEvent.click(b0);
-    expect(rows[0].textContent).toContain("20일 -5.00% · KODEX200 대비 +1.50% · 손익 +20.00%");
-    // 다른 종목은 그대로 접힘.
-    expect(rows[1].textContent).not.toContain("20일");
-    expect(within(rows[1]).getByRole("button", { name: "나 수치 더보기" })).toHaveAttribute(
-      "aria-expanded",
-      "false",
-    );
-    fireEvent.click(within(rows[0]).getByRole("button", { name: "가 접기" }));
-    expect(rows[0].textContent).not.toContain("20일");
-  });
-
-  it("접힌 값이 비면 펼치기 전후 모두 '확인 필요' — 비교 기간 불일치는 기존 날짜 사유 문구 재사용", () => {
-    renderQueue(
-      evidence(
-        [topRow("A1", "가", -3, -5, null), topRow("B2", "나", -2, null, null), topRow("C3", "다", -1, -2, 0)],
-        [],
-        [item("A1", "window_mismatch"), item("B2", "ok")],
-      ),
-    );
-    const rows = screen.getAllByTestId("tc-top-row");
-    const a = rows[0].textContent ?? "";
-    expect(a).toContain(
-      "확인 필요: KODEX200 대비 20일: 종목 비교 기간 2026-09-12 ~ 2026-10-13 / KODEX200 비교 기간 2026-09-15 ~ 2026-10-13 — 기간이 달라 비교값을 비워 두었습니다.",
-    );
-    expect(rows[1].textContent).toContain("확인 필요: 20일 자료 없음 · KODEX200 대비 자료 없음");
-    // C3: KODEX200 대비 0 은 값 · 매입 금액 0 이라 손익 미산출.
-    expect(rows[2].textContent).toContain("확인 필요: 손익 자료 없음");
-    expect(rows[2].textContent).not.toContain("KODEX200 대비 자료 없음");
-    fireEvent.click(within(rows[0]).getByRole("button", { name: "가 수치 더보기" }));
-    expect(rows[0].textContent).toContain("확인 필요: KODEX200 대비 20일: 종목 비교 기간");
-    expect(rows[0].textContent).toContain("KODEX200 대비 -");
-    expect(screen.getByLabelText("보유 자세히").textContent).not.toMatch(/위험|하락 신호|경보/);
-  });
-});
-
-describe("가격 기준일이 달라 뺀 보유 — 3종목까지 그대로 · 4종목 이상 요약 + 모두 보기 (판정 Q4)", () => {
-  const m = (ticker: string, name: string, d: string): PriceBasisMismatch => ({ ticker, name, end_date: d });
-
-  it("3종목(같은 종목 여러 계좌 포함)은 기존 한 줄", () => {
-    renderQueue(
-      evidence([], [m("1", "가", "2026-08-12"), m("2", "나", "2026-08-12"), m("2", "나", "2026-08-12"), m("3", "다", "2026-09-01")]),
-    );
-    expect(screen.getByTestId("tc-price-mismatch").textContent).toBe(
-      "가격 기준일이 달라 이 비교에서 뺀 보유: 가 · 나(저장 가격 기준일 2026-08-12) · 다(저장 가격 기준일 2026-09-01) — 자료 확인 필요",
-    );
-    expect(screen.queryByRole("button", { name: "모두 보기" })).toBeNull();
-  });
-
-  it("4종목 이상은 이유 · 전체 종목 수 · 기준일별 종목 수를 늘 보이고 이름만 펼친다", () => {
-    renderQueue(
-      evidence(
-        [],
-        [
-          m("1", "가", "2026-08-12"), m("2", "나", "2026-08-12"), m("3", "다", "2026-08-12"),
-          m("4", "라", "2026-09-01"), m("4", "라", "2026-09-01"), m("5", "마", "2026-09-01"),
-        ],
-      ),
-    );
-    const line = screen.getByTestId("tc-price-mismatch");
-    expect(line.textContent).toContain(
-      "가격 기준일이 달라 이 비교에서 뺀 보유 5종목(저장 가격 기준일 2026-08-12 3종목 · 2026-09-01 2종목) — 자료 확인 필요",
-    );
-    expect(line.textContent).not.toContain("가 · 나");
-    const btn = within(line).getByRole("button", { name: "모두 보기" });
-    expect(btn).toHaveAttribute("aria-expanded", "false");
-    fireEvent.click(btn);
-    expect(line.textContent).toContain(
-      "가 · 나 · 다(저장 가격 기준일 2026-08-12) · 라 · 마(저장 가격 기준일 2026-09-01)",
-    );
-    expect(line.textContent).toContain("5종목(저장 가격 기준일 2026-08-12 3종목 · 2026-09-01 2종목)");
-    fireEvent.click(within(line).getByRole("button", { name: "접기" }));
-    expect(line.textContent).not.toContain("가 · 나");
-  });
-});
+// POC6-29 — 「보유 자세히」(최대 3개 · 종목별 수치 더보기 · 가격 기준일이 달라 뺀 보유)는 카드 합침으로 없앴다(설계 §2 ·
+// 종목별 수치는 「보유」). 그 구역만 보던 두 묶음 시험은 지웠다.

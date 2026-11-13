@@ -120,6 +120,11 @@ class _ServiceState:
     last_success_asof_date: Optional[str] = None
     # SQLite hydrate 가 db_path 별로 1회씩만 수행되도록.
     loaded_for_db: Optional[str] = None
+    # POC6-29 보완 2차 — ③ 전일 자료 보충(`app/pc_prevday_fill.py`) 진행 중(이 프로세스 메모리 · 같은 잠금에서 읽고 씀).
+    prevday_running: bool = False
+
+
+PREVDAY_RUNNING_TEXT = "전일 자료 보충이 진행 중입니다."
 
 
 _service = _ServiceState()
@@ -262,6 +267,7 @@ def reset_state_for_testing(db_path: Path = DEFAULT_DB_PATH) -> None:
         _service.last_success_at = None
         _service.last_success_asof_date = None
         _service.loaded_for_db = str(db_path.resolve())
+        _service.prevday_running = False
     clear_state(db_path=db_path)
     clear_state(db_path=db_path, scope=VIX_RETRY_SCOPE)
 
@@ -569,6 +575,14 @@ def start_refresh_job(
                 status="vix_retry_running",
                 refresh_id=vix_row.refresh_id,
                 message="VIX 다시 받기가 진행 중입니다.",
+                cooldown_remaining_seconds=_cooldown_remaining_seconds(cooldown_hours),
+            )
+        # POC6-29 보완 2차 — ③ 전일 자료 보충이 같은 표를 쓰는 중이면 시작하지 않는다(별도 상태값 · VIX 와 같은 방식).
+        if _service.prevday_running:
+            return StartResult(
+                status="prevday_running",
+                refresh_id=None,
+                message=PREVDAY_RUNNING_TEXT,
                 cooldown_remaining_seconds=_cooldown_remaining_seconds(cooldown_hours),
             )
         cd = _cooldown_remaining_seconds(cooldown_hours)

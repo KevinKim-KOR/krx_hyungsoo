@@ -3,6 +3,7 @@
 import { describe, it, expect } from "vitest";
 import type { MarketTopNResponse } from "@/lib/api";
 import type { MarketFlowContext } from "@/lib/api/marketFlow";
+import { todayBasis } from "./morningText";
 import { buildTodayMarketCopyText, TODAY_MARKET_PROMPT } from "./todayMarketCopyText";
 import { freshnessRows } from "./todayFreshness";
 import { flowWith } from "./todayMarketTestFixtures";
@@ -77,7 +78,13 @@ function build(market: MarketTopNResponse | null, flow: MarketFlowContext | null
     { market, marketPhase: market ? "success" : "error", flow, flowFailed: !flow, holdings: null, holdingsFailed: false, evidence: null, evidenceFailed: false },
     "copy",
   );
-  return buildTodayMarketCopyText({ market, flow, fresh });
+  // 아침 기준 응답이 없으면 화면과 같이 시장 판정 응답의 판정 · 날짜만(저장 시점 확인 필요)
+  return buildTodayMarketCopyText({
+    market,
+    flow,
+    fresh,
+    verdict: todayBasis({ phase: "idle" }, market?.market_context ?? null, market ? "success" : "error"),
+  });
 }
 
 describe("[AI용 시장 정보 복사]", () => {
@@ -89,7 +96,7 @@ describe("[AI용 시장 정보 복사]", () => {
   it("11/9 사례 근거 줄 — 종가 ≠ 비교 기준값 · 기간 · 수급 · 자료 상태(늦음 · 원인 확인 전)", () => {
     const lines = build(MARKET, flow1109()).slice(DESIGN_PROMPT.length + 1).trim().split("\n");
     expect(lines).toEqual([
-      "[시장 판정] KODEX 200 하락장 · 21거래일째 · 2026-11-06",
+      "[시장 판정] KODEX 200 하락장 · 21거래일째 · 2026-11-06 · 저장 시점 확인 필요",
       "[코스피 최신 종가] 5,059.69 · 2026-11-06 · 2026-11-05 대비 -324.11pt(-6.02%)",
       "[코스피 기간 수익률] 20거래일 -23.64% · 60거래일 -19.16%(둘 다 2026-11-06 기준)",
       "[코스피 6개월] -22.39% · 5/4 6,936.99 → 11/5 5,383.80 · 가격과 수급의 공통 비교 종료일 11/5",
@@ -111,9 +118,10 @@ describe("[AI용 시장 정보 복사]", () => {
     ]);
   });
 
-  it("빠진 값은 '확인 불가'(시장 판정 · 시장 흐름 모두 없음)", () => {
+  it("빠진 값은 '확인 불가'(시장 판정 · 시장 흐름 모두 없음) · 시장 판정 줄은 화면과 같은 사유(설계자 V3 §3)", () => {
     const text = build(null, null);
-    for (const tag of ["[시장 판정]", "[코스피 최신 종가]", "[코스피 기간 수익률]", "[코스피 6개월]", "[외국인 6개월]", "[원/달러]", "[WTI]", "[최근 큰 변화]"]) {
+    expect(text).toContain("[시장 판정] 당일 판정을 불러오지 못했습니다");
+    for (const tag of ["[코스피 최신 종가]", "[코스피 기간 수익률]", "[코스피 6개월]", "[외국인 6개월]", "[원/달러]", "[WTI]", "[최근 큰 변화]"]) {
       expect(text).toContain(`${tag} 확인 불가`);
     }
     expect(text).toContain("[자료 상태]");
@@ -141,5 +149,42 @@ describe("[AI용 시장 정보 복사]", () => {
   it("KOSPI 화면 판정이 지연이면 기간 수익률을 싣지 않는다(화면과 같은 규칙)", () => {
     const stale = { ...MARKET, market_context: { ...MARKET.market_context, kospi: { status: "stale", display_state: "stale", as_of_date: "2026-11-05", trading_day_lag: 1 } } } as unknown as MarketTopNResponse;
     expect(build(stale, flow1109())).toContain("[코스피 기간 수익률] 확인 불가");
+  });
+});
+
+// 설계자 RESULT 재판정 V3 §3 — 복사의 시장 판정 줄 = 화면 당일 상자 · 표와 같은 선택 결과(같은 todayBasis).
+describe("[AI용 시장 정보 복사] 시장 판정 줄 = 화면과 같은 당일 판정 · 기준일 · 저장 상태", () => {
+  const line = (text: string) => text.split("\n").find((l) => l.startsWith("[시장 판정]"));
+  const flow = flowWith();
+  const fresh = freshnessRows(
+    { market: null, marketPhase: "error", flow, flowFailed: false, holdings: null, holdingsFailed: false, evidence: null, evidenceFailed: false },
+    "copy",
+  );
+  const ctx = {
+    status: "ok",
+    asof: "2026-11-12",
+    regime_label: "하락장",
+    regime_code: "bear",
+    regime_reasons: [],
+    regime_streak: { streak_days: 25, at_least: false },
+    kodex200: { status: "ok" },
+    kospi: { status: "unavailable" },
+    warnings: [],
+  } as unknown as NonNullable<MarketTopNResponse["market_context"]>;
+  it.each<[string, Parameters<typeof buildTodayMarketCopyText>[0]["verdict"], string]>([
+    [
+      "같은 한 번 읽기(저장 시점 확인됨)",
+      { ctx, date: "2026-11-12", row: { date: "2026-11-12", close: 84240, state: "after_close", fetched_at_kst: "2026-11-12T15:56:59+09:00" }, missing: null },
+      "[시장 판정] KODEX 200 하락장 · 25거래일째 · 2026-11-12 · KODEX 200 11/12 가격(15:56 마감 뒤 저장)",
+    ],
+    ["시장 판정 응답(대체 · 날짜만)", { ctx, date: "2026-11-12", row: null, missing: null }, "[시장 판정] KODEX 200 하락장 · 25거래일째 · 2026-11-12 · 저장 시점 확인 필요"],
+    [
+      "미확인 = 화면과 같은 사유",
+      { ctx: null, date: "2026-11-12", row: null, missing: "당일 판정 미확인 — KODEX 200 판정 근거 부족(저장 이력)" },
+      "[시장 판정] 당일 판정 미확인 — KODEX 200 판정 근거 부족(저장 이력)",
+    ],
+    ["둘 다 없음", { ctx: null, date: null, row: null, missing: null }, "[시장 판정] 확인 불가"],
+  ])("%s", (_t, verdict, want) => {
+    expect(line(buildTodayMarketCopyText({ market: null, flow, fresh, verdict }))).toBe(want);
   });
 });

@@ -1,6 +1,8 @@
 // POC5-19 개정(차트 읽기 · 2026-10-17 §3 · §5-4) — 공통 틀을 쓰는 기존 호출자: 기존 기간 · 기준 보존 · 단위 · 고른 날 줄.
 //   - 코스피(「오늘의 투자 점검」): 최근 120개 저장값 · pt.
 //   - 종목 가격(「확인 근거」 · 「ETF 비교하기」 같은 PriceChart): 받은 전체 저장 기간 · 원 · 종목을 바꾸면 그 종목의 최근 저장일.
+//   - 시장 위험 참고(「오늘의 투자 점검」 근거 접기 · POC6-29 형수님 의견 2026-11-13 '크게'): KODEX 200 원 · VIX pt ·
+//     응답의 최근 20거래일 그대로 · startOpen 이면 펼친 채.
 // 외부 호출 0 — `@/lib/api` 는 대역.
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, act } from "@testing-library/react";
@@ -13,6 +15,7 @@ vi.mock("@/lib/api", () => ({
   fetchPriceSeries: (...a: unknown[]) => fetchPriceSeries(...a),
 }));
 
+import MarketRiskReferenceCard from "../MarketRiskReferenceCard";
 import KospiChart from "../today/KospiChart";
 import PriceChart from "../workbench/PriceChart";
 
@@ -132,5 +135,37 @@ describe("종목 가격 차트(확인 근거 · ETF 비교하기) — 기간 선
     expect(btn("3개월")).toHaveAttribute("aria-pressed", "true");
     expect(cap()).toContain("표시 기간 2026-07-14 ~ 2026-10-14");
     expect(fetchPriceSeries).toHaveBeenCalledTimes(2); // 종목별 한 번(돌아올 때 다시 조회하지 않음)
+  });
+});
+
+describe("시장 위험 참고 — KODEX 200 · VIX 최근 20거래일을 공통 틀로(200×40 미니 선 아님)", () => {
+  const kodex = series(20, "2026-10-15", 0).map((p, i) => ({ date: p.date, close: 84000 + i * 100 }));
+  const vix = series(20, "2026-10-14", 0).map((p, i) => ({ date: p.date, close: 17 + i * 0.25 }));
+  const ref = {
+    kodex200: { availability: "available" as const, as_of_date: kodex[19].date, close: kodex[19].close, recent_20d_series: kodex },
+    vix: { availability: "available" as const, as_of_date: vix[19].date, close: vix[19].close, recent_20d_series: vix },
+  };
+
+  it("startOpen = 처음부터 두 차트 · 응답 20개 그대로 · 단위(원 · pt) · 고른 날 줄 · 다시 접을 수 있음", () => {
+    const { container } = render(<MarketRiskReferenceCard reference={ref} startOpen />);
+    const k = screen.getByTestId("risk-kodex-chart");
+    const v = screen.getByTestId("risk-vix-chart");
+    expect(xLabels(k)[0]).toBe(kodex[0].date);
+    expect(xLabels(v)[0]).toBe(vix[0].date);
+    expect(yLabels(k).every((t) => t.endsWith("원"))).toBe(true);
+    expect(yLabels(v).every((t) => t.endsWith("pt"))).toBe(true);
+    expect(screen.getByTestId("risk-kodex-chart-readout").textContent).toBe(`${kodex[19].date} · KODEX 200 85,900원`);
+    expect(screen.getByTestId("risk-vix-chart-readout").textContent).toBe(`${vix[19].date} · VIX 21.75pt`);
+    expect(k.querySelector(".rc-body")?.getAttribute("style")).toContain("height: 180px");
+    expect(container.querySelector(".market-risk-mini")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "상세 접기" }));
+    expect(screen.queryByTestId("risk-kodex-chart")).toBeNull();
+  });
+
+  it("startOpen 없으면 예전처럼 접힌 채 시작 · 펼치면 같은 차트", () => {
+    render(<MarketRiskReferenceCard reference={ref} />);
+    expect(screen.queryByTestId("risk-kodex-chart")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "상세 펼치기" }));
+    expect(screen.getByTestId("risk-vix-chart")).toBeInTheDocument();
   });
 });

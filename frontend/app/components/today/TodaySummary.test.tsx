@@ -6,11 +6,15 @@
 // - 판정 Q3 — 늦거나 확인이 필요한 자료가 있으면 고르기 전 반영하지 않음 · [취소] = 화면 · 공유 캐시 · 읽은 시각 그대로 ·
 //   [이 자료로 계속] = 창에 보인 같은 결과 반영.
 // - 판정 Q2 — 「지금 할 일」은 맨 위 「자료 최신화 필요」(같은 판정 · 버튼은 이 화면의 같은 작업) · 연구 대기는 할 일 아님.
-// - 같은 화면 이동은 목적 카드로 스크롤 + 포커스.
+// POC6-29 — 「보유 자세히」 · 「잘 오르는 ETF 자세히」를 두 카드로 합침(판정 Q10) · 시장 근거 접기(기본 접힘 · Q8) ·
+//   [최신 자료 갱신] 한 번(PC 서버 묶음 작업 · Q7) · 잘 오르는 ETF = 이 화면 조건의 공통 기간 요약(Q1 · Q2).
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, fireEvent, waitFor, within, act } from "@testing-library/react";
 import { __resetQueryCache } from "@/lib/api/queryCache";
 import { DATA as FWD } from "../ml_forward/testFixtures";
+import { detailResponse, summaryOk } from "@/lib/etfCompareTestFixtures";
+import { quickOk } from "@/lib/quickQuotesTestFixtures";
+import { morningOk, shortOk } from "@/lib/morningTestFixtures";
 
 const fetchMarketTopnLatest = vi.fn();
 const fetchEnrichedHoldings = vi.fn();
@@ -24,6 +28,9 @@ const fetchMarketRefreshStatus = vi.fn();
 const fetchMarketFlowContext = vi.fn();
 const fetchForwardComparison = vi.fn();
 const fetchLedgerLatestByKind = vi.fn();
+const fetchEtfCompareSummary = vi.fn();
+const postRefreshAll = vi.fn();
+const fetchRefreshAllStatus = vi.fn();
 
 vi.mock("@/lib/api", () => ({
   fetchMarketTopnLatest: (...a: unknown[]) => fetchMarketTopnLatest(...a),
@@ -48,6 +55,40 @@ vi.mock("@/lib/api/decisionLedger", async (importOriginal) => {
   const actual = await importOriginal<Record<string, unknown>>();
   return { ...actual, fetchLedgerLatestByKind: (...a: unknown[]) => fetchLedgerLatestByKind(...a) };
 });
+vi.mock("@/lib/api/etfCompare", async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+  return { ...actual, fetchEtfCompareSummary: (...a: unknown[]) => fetchEtfCompareSummary(...a) };
+});
+vi.mock("@/lib/api/refreshAll", async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+  return {
+    ...actual,
+    postRefreshAll: (...a: unknown[]) => postRefreshAll(...a),
+    fetchRefreshAllStatus: (...a: unknown[]) => fetchRefreshAllStatus(...a),
+  };
+});
+
+// POC6-29 보완 — 빠른 시세 저장값 · KODEX 200 상세(시장 판정 문장 기준 · 갱신 전후 대조)도 가짜로 둔다.
+const fetchQuickQuotes = vi.fn();
+const fetchEtfDetail = vi.fn();
+vi.mock("@/lib/api/quickQuotes", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  fetchQuickQuotes: (...a: unknown[]) => fetchQuickQuotes(...a),
+}));
+const fetchMorningBasis = vi.fn();
+const fetchShortFlows = vi.fn();
+vi.mock("@/lib/api/morningBasis", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api/morningBasis")>()),
+  fetchMorningBasis: (...a: unknown[]) => fetchMorningBasis(...a),
+}));
+vi.mock("@/lib/api/shortFlows", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api/shortFlows")>()),
+  fetchShortFlows: (...a: unknown[]) => fetchShortFlows(...a),
+}));
+vi.mock("@/lib/api/etfDetail", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  fetchEtfDetail: (...a: unknown[]) => fetchEtfDetail(...a),
+}));
 
 import TodayInvestmentCheckView from "../TodayInvestmentCheckView";
 
@@ -166,9 +207,23 @@ const READ_FNS = [
   fetchHoldingsMarketEvidence,
   fetchNavDiscountLatest,
   fetchForwardComparison,
+  fetchEtfCompareSummary,
 ];
 
+const REFRESH_IDLE = { state: "idle", job_id: null, started_at: null, finished_at: null, steps: { holdings: null, market: null } };
+const allState = (state: string, holdings: Record<string, unknown> | null, market: Record<string, unknown> | null) => ({
+  state,
+  job_id: "j1",
+  started_at: "2026-10-24T00:00:00Z",
+  finished_at: state === "done" ? "2026-10-24T00:00:05Z" : null,
+  steps: { holdings, market },
+});
+
 function prime(kospiState: "ok" | "stale" = "stale") {
+  fetchQuickQuotes.mockReset().mockResolvedValue(quickOk());
+  fetchMorningBasis.mockReset().mockResolvedValue(morningOk());
+  fetchShortFlows.mockReset().mockResolvedValue(shortOk());
+  fetchEtfDetail.mockReset().mockImplementation((ts: string[]) => Promise.resolve(detailResponse(ts)));
   fetchMarketTopnLatest.mockResolvedValue(marketOk(kospiState));
   fetchEnrichedHoldings.mockResolvedValue(HOLDINGS);
   fetchHoldingsMarketEvidence.mockResolvedValue(EVIDENCE);
@@ -181,6 +236,9 @@ function prime(kospiState: "ok" | "stale" = "stale") {
   refreshMarket.mockResolvedValue({});
   postMarketRefresh.mockResolvedValue({ status: "accepted", refresh_id: "r1", message: "", cooldown_remaining_seconds: 0 });
   fetchMarketRefreshStatus.mockResolvedValue({ status: "idle", refresh_id: null, cooldown_remaining_seconds: 0 });
+  fetchEtfCompareSummary.mockResolvedValue(summaryOk());
+  fetchRefreshAllStatus.mockResolvedValue(REFRESH_IDLE);
+  postRefreshAll.mockResolvedValue(REFRESH_IDLE);
 }
 
 beforeEach(() => {
@@ -203,13 +261,13 @@ const dialog = () => screen.queryByTestId("tc-stale-dialog");
 async function renderView(onNavigate = vi.fn()) {
   const r = render(<TodayInvestmentCheckView onNavigate={onNavigate} />);
   await waitFor(() => expect(within(row("research")).queryByText("불러오는 중")).toBeNull());
-  await waitFor(() => expect(screen.getByTestId("tc-flow-regime").textContent).not.toContain("불러오는 중"));
+  await waitFor(() => expect(screen.getByTestId("tc-now-regime")).toBeTruthy());
   await waitFor(() => expect(within(screen.getByLabelText("보유 점검")).queryByText(/불러오는 중/)).toBeNull());
   return { ...r, onNavigate };
 }
 
 describe("POC6-16 · POC6-27 지금 확인할 내용", () => {
-  it("첫 진입 = 기존 조회 8개 + 원장 사본 1개 + 시장 갱신 상태 1회 · 명령 0 · 왕복 = 캐시 재사용(자료 새 호출 0)", async () => {
+  it("첫 진입 = 저장 자료 조회 + 원장 사본 1개 + 갱신 상태 읽기만 · 명령 0 · 왕복 = 캐시 재사용(자료 새 호출 0)", async () => {
     const { unmount } = await renderView();
     expect(fetchMarketTopnLatest).toHaveBeenCalledTimes(1);
     expect(fetchOciStartupStatus).toHaveBeenCalledTimes(1);
@@ -218,7 +276,10 @@ describe("POC6-16 · POC6-27 지금 확인할 내용", () => {
     expect(fetchForwardComparison).toHaveBeenCalledWith();
     expect(refreshMarket).not.toHaveBeenCalled();
     expect(postMarketRefresh).not.toHaveBeenCalled();
-    expect(fetchMarketRefreshStatus).toHaveBeenCalledTimes(1); // 들어올 때 상태 1회(진행 중이면 이어 봄 · 시작 0 · PLAN 쟁점 5)
+    // 들어올 때 상태만 읽는다(진행 중이면 이어 봄 · 시작 0): 시장 갱신 · VIX 다시 받기(C 에서 옮김) 각 1회 + 묶음 작업 1회.
+    expect(fetchMarketRefreshStatus).toHaveBeenCalledTimes(2);
+    expect(fetchRefreshAllStatus).toHaveBeenCalledTimes(1);
+    expect(postRefreshAll).not.toHaveBeenCalled();
     unmount();
     vi.clearAllMocks();
     prime();
@@ -228,7 +289,7 @@ describe("POC6-16 · POC6-27 지금 확인할 내용", () => {
     for (const f of READ_FNS) expect(f).not.toHaveBeenCalled();
   });
 
-  it("배치: 머리말 → 자료 최신화 · OCI → 지금 확인할 내용(시장 흐름 → 보유 점검 | 잘 오르는 ETF → 자세히 좌우 → 자료 · 연구 · 사용자 결정 ④)", async () => {
+  it("배치: 머리말 → 자료 최신화 · OCI → 지금 확인할 내용(시장 흐름 → 보유 점검 | 잘 오르는 ETF → 시장 근거 접기 → 자료 · 연구)", async () => {
     await renderView();
     const seq = [
       screen.getByRole("heading", { level: 1, name: "오늘의 투자 점검" }),
@@ -237,10 +298,12 @@ describe("POC6-16 · POC6-27 지금 확인할 내용", () => {
       flowCard(),
       screen.getByLabelText("보유 점검"),
       screen.getByLabelText("잘 오르는 ETF"),
-      screen.getByLabelText("보유 자세히"),
-      screen.getByLabelText("잘 오르는 ETF 자세히"),
+      screen.getByTestId("tc-evidence-fold"),
       screen.getByRole("group", { name: "자료 · 연구 상태" }),
     ];
+    // 판정 Q10 — 두 「자세히」 칸은 카드로 합쳤다.
+    expect(screen.queryByLabelText("보유 자세히")).toBeNull();
+    expect(screen.queryByLabelText("잘 오르는 ETF 자세히")).toBeNull();
     for (let i = 1; i < seq.length; i++) {
       expect(seq[i - 1].compareDocumentPosition(seq[i]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     }
@@ -272,15 +335,19 @@ describe("POC6-16 · POC6-27 지금 확인할 내용", () => {
     expect(screen.queryByTestId("tc-oci-body")).toBeNull();
   });
 
-  it("요약 = 원래 구역 값(시장 판정 · KOSPI 상태 · 잘 오르는 ETF 수 · 연구 결론)", async () => {
+  it("요약 = 원래 구역 값(시장 판정 · KOSPI 상태 · 잘 오르는 ETF 선정 1 ~ 3위 · 연구 결론)", async () => {
     await renderView();
-    expect(screen.getByTestId("tc-flow-regime").textContent).toBe("하락장 · 11거래일째");
+    expect(screen.getByTestId("tc-now-regime").textContent).toContain("하락장(11거래일째)");
     // KOSPI 가 화면 판정상 지연이면 20 · 60거래일 값을 보이지 않고 기존 사유를 보인다(복사문과 같은 규칙).
     expect(screen.getByTestId("tc-tile-20").textContent).toContain("확인 불가");
-    const flowText = flowCard().textContent ?? "";
-    expect(flowText).toContain("KOSPI 기준일 2026-10-22 · 6거래일 지연");
-    expect(within(screen.getByLabelText("잘 오르는 ETF")).getByText("1개월 수익률 높은 순 2개")).toBeInTheDocument();
-    expect(within(screen.getByLabelText("잘 오르는 ETF 자세히")).getByText("1개월 수익률 높은 순 2개")).toBeInTheDocument();
+    // 보완 2차 — 코스피 지연 배지는 코스피 공식 종가 줄에(당일 판정 아래)(처음 화면은 아침 요약 준비 상태 줄이 같은 판단)
+    expect(screen.getByTestId("tc-kospi-close").textContent).toContain("KOSPI 기준일 2026-10-22 · 6거래일 지연");
+    const top = within(screen.getByLabelText("잘 오르는 ETF")).getByTestId("tc-cand-top");
+    expect(Array.from(top.querySelectorAll(".tc-cand-name")).map((e) => e.textContent)).toEqual(["인도 대표", "인도 대표2", "헬스케어"]);
+    // 이 화면 조건(1개월 · 4종 제외 고정)으로 요약을 읽는다.
+    expect(fetchEtfCompareSummary).toHaveBeenCalledWith(
+      expect.objectContaining({ basis: "one_month", filters: expect.objectContaining({ exclude_inverse: true, exclude_futures: true }) }),
+    );
     expect(within(row("research")).getByText("아직 비교할 결과가 없습니다")).toBeInTheDocument();
   });
 
@@ -292,7 +359,7 @@ describe("POC6-16 · POC6-27 지금 확인할 내용", () => {
     expect(screen.getByTestId("tc-tile-60").textContent).toContain("-7.25%");
   });
 
-  it("[요약 다시 읽기] = 저장 자료 6개만 원천별 1번 · 시장 판정 · 목록 · OCI · 명령 0 · 중복 클릭 막음 · 완료 표시", async () => {
+  it("[요약 다시 읽기] = 저장 자료 7개만 원천별 1번 · 시장 판정 · OCI · 명령 0 · 중복 클릭 막음 · 완료 표시", async () => {
     prime("ok");
     await renderView();
     vi.clearAllMocks();
@@ -303,9 +370,9 @@ describe("POC6-16 · POC6-27 지금 확인할 내용", () => {
     const running = await screen.findByRole("button", { name: "다시 읽는 중..." });
     expect(running).toBeDisabled();
     fireEvent.click(running);
-    // 다 끝나기 전에는 완료를 보이지 않는다 · 도는 동안 [보유 현재가 업데이트](POST 뒤 다시 읽기)도 막힌다(검토 지적 4 · 11)
+    // 다 끝나기 전에는 완료를 보이지 않는다 · 도는 동안 [최신 자료 갱신](POST 뒤 다시 읽기)도 막힌다(검토 지적 4 · 11)
     expect(screen.queryByTestId("tc-reload-state")).toBeNull();
-    expect(screen.getAllByRole("button", { name: "보유 현재가 업데이트" }).every((b) => (b as HTMLButtonElement).disabled)).toBe(true);
+    expect(screen.getAllByRole("button", { name: "최신 자료 갱신" }).every((b) => (b as HTMLButtonElement).disabled)).toBe(true);
     await act(async () => release());
     await screen.findByText(/^다시 읽기 완료 · /);
     expect(dialog()).toBeNull(); // 모두 최신 → 창 없이 바로 반영
@@ -314,10 +381,11 @@ describe("POC6-16 · POC6-27 지금 확인할 내용", () => {
     expect(fetchOciStartupStatus).not.toHaveBeenCalled();
     expect(refreshMarket).not.toHaveBeenCalled();
     expect(postMarketRefresh).not.toHaveBeenCalled();
+    expect(postRefreshAll).not.toHaveBeenCalled();
     // 안내 문장(설계 §2)은 [?] 안에.
     fireEvent.click(screen.getByRole("button", { name: "요약 다시 읽기 도움말" }));
     expect(screen.getByRole("dialog", { name: "요약 다시 읽기 도움말" }).textContent).toContain(
-      "저장된 값만 다시 읽습니다. 시장 판정과 요즘 잘 오르는 ETF 목록은 이 버튼으로 다시 계산하지 않습니다.",
+      "PC 에 저장된 값만 다시 읽습니다(새로 받지 않음). 시장 판정은 이 버튼으로 다시 계산하지 않습니다. 새 자료를 받으려면 [최신 자료 갱신]을 누르세요.",
     );
   });
 
@@ -339,9 +407,8 @@ describe("POC6-16 · POC6-27 지금 확인할 내용", () => {
     expect(within(row("research")).getByText("아직 비교할 결과가 없습니다")).toBeInTheDocument();
     expect(screen.getByTestId("tc-read-range").textContent).toBe(readBefore);
     expect(screen.getByTestId("tc-reload-state").textContent).toContain("다시 읽기 취소 · 화면 값은 그대로입니다");
-    // 상단 두 최신화 버튼은 그대로 누를 수 있다.
-    expect(screen.getAllByRole("button", { name: "보유 현재가 업데이트" })[0]).not.toBeDisabled();
-    expect(screen.getAllByRole("button", { name: "최신 시장 데이터 갱신" })[0]).not.toBeDisabled();
+    // 상단 [최신 자료 갱신]은 그대로 누를 수 있다.
+    expect(screen.getAllByRole("button", { name: "최신 자료 갱신" })[0]).not.toBeDisabled();
   });
 
   it("판정 Q3 — [이 자료로 계속] = 창에 보인 같은 결과 반영(다시 조회 없음) · 완료 표시", async () => {
@@ -366,39 +433,63 @@ describe("POC6-16 · POC6-27 지금 확인할 내용", () => {
     expect(dlg.querySelector('[data-failed="보유 근거"]')?.textContent).toMatch(/불러오지 못함 · 이전 값\(.+에 읽음\) 유지 · x/);
     fireEvent.click(within(dlg).getByRole("button", { name: "이 자료로 계속" }));
     expect(await screen.findByText(/^다시 읽기 일부 실패\(보유 근거\)/)).toBeInTheDocument();
-    expect(screen.getByLabelText("보유 점검").textContent).toMatch(/보유 근거: 다시 읽기 실패 · \d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}에 읽은 값을 표시 중/);
+    // 「보유 점검」 카드는 보유 근거를 쓰지 않는다(판정 Q10 — 요약 price_flow) · 그 카드 원천이 실패하면 아래 따로.
+    expect(screen.getByLabelText("보유 점검").textContent).not.toContain("다시 읽기 실패");
     expect(within(row("research")).getByText("예측 기록 없음")).toBeInTheDocument();
     expect(row("research").textContent).not.toContain("다시 읽기 실패");
     // 보유 근거로 만든 정비 항목을 보이는 자료 확인 줄에도 그 값의 시각(검토 지적 3)
     expect(row("data").textContent).toMatch(/보유 근거: 다시 읽기 실패 · \d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}에 읽은 값을 표시 중/);
   });
 
-  it("[보유 현재가 업데이트](POST 뒤 다시 읽기)가 도는 동안 [요약 다시 읽기]는 막힘 — 같은 조회가 겹쳐 POST 전 값으로 완료되지 않게(검토 지적 4)", async () => {
+  it("다시 읽기 일부 실패 — 잘 오르는 ETF · 보유 하락 판정 요약이 실패하면 두 카드에 이전 값 + 그 시각(완료로 위장 안 함)", async () => {
+    prime("ok");
+    await renderView();
+    fetchEtfCompareSummary.mockRejectedValueOnce(new Error("x"));
+    fireEvent.click(screen.getByRole("button", { name: "요약 다시 읽기" }));
+    const dlg = await screen.findByTestId("tc-stale-dialog");
+    fireEvent.click(within(dlg).getByRole("button", { name: "이 자료로 계속" }));
+    expect(await screen.findByText(/^다시 읽기 일부 실패\(잘 오르는 ETF · 보유 하락 판정\)/)).toBeInTheDocument();
+    const re = /잘 오르는 ETF · 보유 하락 판정: 다시 읽기 실패 · \d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}에 읽은 값을 표시 중/;
+    expect(screen.getByLabelText("보유 점검").textContent).toMatch(re);
+    expect(screen.getByLabelText("잘 오르는 ETF").textContent).toMatch(re);
+    // 이전 값은 그대로 보인다(0종목 · 빈 목록으로 바꾸지 않음).
+    expect(within(screen.getByLabelText("잘 오르는 ETF")).getByTestId("tc-cand-top").children).toHaveLength(3);
+  });
+
+  it("[최신 자료 갱신](POST 뒤 다시 읽기)가 도는 동안 [요약 다시 읽기]는 막힘 — 같은 조회가 겹쳐 POST 전 값으로 완료되지 않게(검토 지적 4)", async () => {
     await renderView();
     let done!: () => void;
-    refreshMarket.mockImplementation(() => new Promise((r) => (done = () => r({}))));
-    fireEvent.click(screen.getAllByRole("button", { name: "보유 현재가 업데이트" })[0]);
+    postRefreshAll.mockImplementation(
+      () => new Promise((r) => (done = () => r(allState("done", { status: "done", ok_count: 1, fail_count: 0 }, { status: "skipped_cooldown", cooldown_remaining_seconds: 1800, message: "" })))),
+    );
+    fireEvent.click(screen.getAllByRole("button", { name: "최신 자료 갱신" })[0]);
     await waitFor(() => expect(screen.getByRole("button", { name: "요약 다시 읽기" })).toBeDisabled());
     await act(async () => done());
     await waitFor(() => expect(screen.getByRole("button", { name: "요약 다시 읽기" })).not.toBeDisabled());
+    expect(postRefreshAll).toHaveBeenCalledTimes(1);
+    expect(refreshMarket).not.toHaveBeenCalled(); // 보유 현재가는 서버 묶음 작업이 받는다(화면이 따로 부르지 않음)
   });
 
-  it("판정 Q2 — 시장 자료 지연 할 일은 맨 위 「자료 최신화 필요」 안 · 버튼은 이 화면 [최신 시장 데이터 갱신](누를 때만 시작)", async () => {
+  it("판정 Q2 · POC6-29 Q7 — 시장 자료 지연 할 일은 맨 위 「자료 최신화 필요」 안 · 버튼은 이 화면 [최신 자료 갱신](누를 때만 시작)", async () => {
     const { onNavigate } = await renderView();
     expect(screen.getByTestId("tc-fresh-summary").textContent).toContain("6거래일 늦음");
     const body = openFresh();
     const task = body.querySelector('[data-task="market_refresh"]') as HTMLElement;
     expect(task.textContent).toContain("시장 자료 갱신이 필요합니다.");
     expect(task.textContent).toContain("지금 PC에 저장된 시장 자료: KOSPI 2026-10-22 · ETF 가격 2026-10-23");
-    expect(task.textContent).toContain("[최신 시장 데이터 갱신]을 눌러 주세요(맨 위 버튼과 같은 작업).");
-    expect(postMarketRefresh).not.toHaveBeenCalled();
-    fireEvent.click(within(body).getByRole("button", { name: "최신 시장 데이터 갱신" }));
-    await waitFor(() => expect(postMarketRefresh).toHaveBeenCalledTimes(1));
+    expect(task.textContent).toContain("[최신 자료 갱신]을 눌러 주세요(맨 위 버튼과 같은 작업 · 보유 현재가 → 시장 자료).");
+    expect(postRefreshAll).not.toHaveBeenCalled();
+    postRefreshAll.mockResolvedValue(
+      allState("running", { status: "done", ok_count: 1, fail_count: 0 }, { status: "accepted", refresh_id: "r1", message: "", cooldown_remaining_seconds: 0 }),
+    );
+    fetchMarketRefreshStatus.mockResolvedValue({ status: "running", refresh_id: "r1", cooldown_remaining_seconds: 0 });
+    fireEvent.click(within(body).getByRole("button", { name: "최신 자료 갱신" }));
+    await waitFor(() => expect(postRefreshAll).toHaveBeenCalledTimes(1));
     expect(onNavigate).not.toHaveBeenCalled();
-    expect(refreshMarket).not.toHaveBeenCalled();
-    expect(await screen.findByTestId("tc-market-result")).toHaveTextContent("시장 데이터 갱신 중입니다");
+    expect(postMarketRefresh).not.toHaveBeenCalled(); // 시장 갱신 시작은 서버 묶음 작업이 한다
+    expect(await screen.findByTestId("tc-market-result")).toHaveTextContent("② 시장 자료 갱신 중입니다");
     // 같은 작업은 진행 중 다시 시작하지 않는다(중복 실행 막음).
-    for (const b of screen.getAllByRole("button", { name: /시장 데이터 갱신/ })) expect(b).toBeDisabled();
+    for (const b of screen.getAllByRole("button", { name: /자료 갱신/ })) expect(b).toBeDisabled();
   });
 
   it("늦은 자료 · 할 일이 없으면 「자료 최신화 필요」 카드 없음 · 연구 대기는 할 일이 아님", async () => {
@@ -418,39 +509,63 @@ describe("POC6-16 · POC6-27 지금 확인할 내용", () => {
     expect(body.querySelector('[data-task="market_refresh"]')).toBeNull();
     expect(within(body).getByRole("button", { name: "요약 다시 읽기" })).toBeInTheDocument();
     expect(screen.getByTestId("tc-risk-failed").textContent).toBe("보유 자료를 불러오지 못했습니다.");
-    expect(screen.getByTestId("tc-flow-regime").textContent).toBe("하락장 · 11거래일째");
+    expect(screen.getByTestId("tc-now-regime").textContent).toContain("하락장(11거래일째)");
   });
 
-  it("버튼 — 카드 · 줄마다 이동 목적지(자료 확인 줄은 버튼 없음 · 바로 아래 펼침)", async () => {
+  it("버튼 — 카드 · 줄마다 이동 목적지(자료 확인 줄은 버튼 없음 · 바로 아래 펼침 · 「요즘 잘 오르는 ETF」 이동 없음)", async () => {
     const { onNavigate } = await renderView();
     expect(row("data").querySelectorAll(".tc-sum-go button")).toHaveLength(0);
     const primaries = Array.from(row("research").querySelectorAll(".tc-sum-go button")).filter((b) => !b.classList.contains("tc-fold-btn"));
     expect(primaries.map((b) => b.textContent)).toEqual(["예측과 결과 비교"]);
     for (const [area, name, key] of [
-      ["보유 점검", "확인 근거 보기 →", "holdings_evidence"],
-      ["보유 점검", "보유 현황 보기 →", "holdings"],
-      ["잘 오르는 ETF", "요즘 잘 오르는 ETF →", "market_discovery"],
-      ["잘 오르는 ETF 자세히", "ETF 비교하기", "workbench"],
+      ["보유 점검", "보유 보기 →", "workbench_holdings"],
+      ["잘 오르는 ETF", "후보리스트 보기 →", "workbench"],
     ] as const) {
       fireEvent.click(within(screen.getByLabelText(area)).getByRole("button", { name }));
       expect(onNavigate).toHaveBeenLastCalledWith(key);
     }
     fireEvent.click(within(row("research")).getByRole("button", { name: "예측과 결과 비교" }));
     expect(onNavigate).toHaveBeenLastCalledWith("ml");
-    fireEvent.click(within(flowCard()).getByRole("button", { name: "시장 흐름 자세히(요즘 잘 오르는 ETF)" }));
-    expect(onNavigate).toHaveBeenLastCalledWith("market_discovery");
+    // C 는 메뉴에서 뺐다(Q14 · Q16) — 이 화면에 그 화면으로 가는 버튼 · 낱말이 없다.
+    expect(within(flowCard()).queryByRole("button", { name: /요즘 잘 오르는 ETF/ })).toBeNull();
+    expect(document.body.textContent).not.toContain("요즘 잘 오르는 ETF");
+    expect(onNavigate.mock.calls.map((c) => c[0])).not.toContain("market_discovery");
   });
 
-  it("같은 화면 이동 — [보유 자세히 ↓] · [ETF 자세히 ↓]는 목적 카드로 스크롤하고 포커스 · 화면 전환 없음", async () => {
-    const spy = vi.fn();
-    Element.prototype.scrollIntoView = spy;
-    const { onNavigate } = await renderView();
-    fireEvent.click(screen.getByRole("button", { name: "보유 자세히 ↓" }));
-    expect(document.activeElement).toBe(screen.getByLabelText("보유 자세히"));
-    fireEvent.click(screen.getByRole("button", { name: "ETF 자세히 ↓" }));
-    expect(document.activeElement).toBe(screen.getByLabelText("잘 오르는 ETF 자세히"));
-    expect(spy).toHaveBeenCalledTimes(2);
+  it("시장 근거 접기(판정 Q8) — 처음에는 접힘 · 펼치면 ①② · 다시 들어오면 접힘 · 화면 전환 없음", async () => {
+    const { unmount, onNavigate } = await renderView();
+    const fold = () => screen.getByTestId("tc-evidence-fold") as HTMLDetailsElement;
+    expect(fold().open).toBe(false);
+    fireEvent.click(within(fold()).getByText("시장 근거와 다른 변화 보기"));
+    expect(fold().open).toBe(true);
+    for (const name of ["VIX", "시장 흐름 상세"]) expect(within(fold()).getByLabelText(name)).toBeInTheDocument();
+    // 접기 번호 = 아침 요약 · VIX 안내가 가리키는 번호(① 수급 · VIX · ② 기간별 흐름 · 사건)
+    expect(within(fold()).getAllByRole("heading", { level: 3 }).map((h) => h.textContent).slice(0, 2)).toEqual([
+      "① 수급 · VIX · 원/달러 · WTI",
+      "② 기간별 흐름 · 날짜별 사건",
+    ]);
+    // 형수님 결정(2026-11-13 · 마감 뒤 화면 조절) — 카드 머리 기호식 안내 줄('아침 요약 = … / 오늘 시장 변화 = …')은 뺐다
+    // (각 구역 제목 옆에 기준이 있음 · 근거는 접기 제목)
+    expect(flowCard().textContent).not.toMatch(/아침 요약 = |오늘 시장 변화 = /);
+    expect(within(flowCard()).getAllByText(/마감 기준/).length).toBeGreaterThan(0); // 구역 제목 옆 기준은 그대로
+    // 형수님 결정(2026-11-13) — 시장 판정 근거 표 → 코스피 공식 종가 덩어리는 접기 밖 「오늘 시장 변화」의 당일 판정 바로 아래
+    expect(within(fold()).queryByLabelText("시장 판정 근거")).toBeNull();
+    expect(within(fold()).queryByLabelText("코스피 공식 종가")).toBeNull();
+    const now = screen.getByTestId("tc-market-now");
+    const verdict = within(now).getByTestId("tc-now-regime");
+    const basis = within(now).getByLabelText("시장 판정 근거");
+    expect(verdict.nextElementSibling).toBe(basis);
+    expect(basis.nextElementSibling).toBe(within(now).getByLabelText("코스피 공식 종가"));
+    expect(within(basis).getByText("시장 판정 근거 · KODEX 200")).toBeInTheDocument();
+    expect(within(basis).getByTestId("tc-regime-today").textContent).toContain("하락장 · 11거래일째");
+    // 형수님 결정(2026-11-13) — 표 아래 '당일 판정 근거(N건) · … · 점수' 줄은 위 당일 판정 상자와 같아 뺐다
+    expect(within(basis).queryByTestId("tc-regime-reasons")).toBeNull();
+    expect(now.textContent).not.toContain("당일 판정 근거(");
+    expect(now.textContent).not.toMatch(/점수 [+-]?\d/);
     expect(onNavigate).not.toHaveBeenCalled();
+    unmount();
+    await renderView();
+    expect(fold().open).toBe(false);
   });
 
   // 검증자 r1 F1 — 원천 7개 × 첫 조회 실패(이전 값 없음): 화면에서 빠지지 않고 · 정비 점검 원천이면 '갱신 필요 없음'이 아니다.

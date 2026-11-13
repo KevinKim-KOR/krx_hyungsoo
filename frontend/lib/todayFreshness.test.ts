@@ -157,3 +157,26 @@ describe("코스피 — 기존 화면 판정 그대로", () => {
     expect(freshnessRows(src({ market: holiday }), "copy")[0]).toMatchObject({ key: "kospi", state: "fresh" });
   });
 });
+
+// 설계자 RESULT 재판정 V3 §3 — [AI용 시장 정보 복사]의 '시장 판정(KODEX 200)' 줄 = 시장 판정 줄과 같은 선택 결과(verdict)
+describe("복사 — 시장 판정 줄과 [자료 상태]의 시장 판정 줄이 같은 선택 결과", () => {
+  const ctx = { asof: "2026-11-06" } as never;
+  const regime = (over: Partial<FreshSources>) => freshnessRows(src(over), "copy").find((r) => r.key === "regime");
+  it.each<[string, Partial<FreshSources>, string | null, string | null]>([
+    // [제목, 원천, 기대 lastDate, 기대 사유(포함)]
+    ["시장 판정 응답 실패여도 같은 읽기의 판정이 있으면 그 날짜로(자료 없음이라 하지 않음)", { market: null, marketPhase: "error", verdict: { ctx, date: "2026-11-06", row: null, missing: null } }, "2026-11-06", null],
+    ["시장 판정 응답이 다른 날(이전 값)이어도 같은 선택 결과의 날짜", { verdict: { ctx, date: "2026-11-05", row: null, missing: null } }, "2026-11-05", null],
+    ["둘 다 못 쓰면 화면과 같은 사유", { market: null, marketPhase: "error", verdict: { ctx: null, date: null, row: null, missing: "당일 판정을 불러오지 못했습니다" } }, null, "당일 판정을 불러오지 못했습니다"],
+    ["같은 읽기가 미확인이면 그 사유", { verdict: { ctx: null, date: "2026-11-06", row: null, missing: "당일 판정 미확인 — KODEX 200 판정 근거 부족(저장 이력)" } }, null, "당일 판정 미확인 — KODEX 200 판정 근거 부족(저장 이력)"],
+  ])("%s", (_t, over, lastDate, reason) => {
+    const r = regime(over);
+    expect(r).toBeTruthy();
+    expect(r!.lastDate).toBe(lastDate);
+    if (reason) expect(r!.reason).toBe(reason);
+    else expect(r!.reason).not.toContain("시장 판정 자료 없음");
+  });
+  it("불러오는 중(판정 · 사유 없음)이면 줄을 만들지 않는다 · verdict 가 없으면 예전대로 시장 판정 응답", () => {
+    expect(regime({ verdict: { ctx: null, date: null, row: null, missing: null } })).toBeUndefined();
+    expect(regime({})?.lastDate).toBe("2026-11-06");
+  });
+});

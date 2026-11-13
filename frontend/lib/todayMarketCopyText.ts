@@ -6,6 +6,8 @@
 import type { MarketTopNResponse } from "@/lib/api";
 import type { MarketFlowContext } from "@/lib/api/marketFlow";
 import { kospiValuesUsable } from "@/lib/kospiStatus";
+import type { TodayBasis } from "@/lib/morningText";
+import { storedRowText } from "@/lib/refreshCompare";
 import type { FreshRow } from "@/lib/todayFreshness";
 import { freshnessLine } from "@/lib/todayFreshness";
 import {
@@ -42,20 +44,26 @@ export function buildTodayMarketCopyText({
   market,
   flow,
   fresh,
+  verdict,
 }: {
   market: MarketTopNResponse | null;
   flow: MarketFlowContext | null;
   fresh: FreshRow[];
+  // 설계자 RESULT 재판정 V3 §3(2026-11-13) — 시장 판정 줄은 화면 당일 상자 · 표와 같은 선택 결과(todayBasis) ·
+  // 그 결과의 기준일 · 저장 상태(같은 한 번 읽기의 끝 행 · 없으면 '저장 시점 확인 필요') · 미확인이면 화면과 같은 사유.
+  verdict: TodayBasis;
 }): string {
   const L: string[] = [];
   const ctx = market?.market_context ?? null;
-  const streak = ctx?.regime_streak?.streak_days;
+  const tc = verdict.ctx;
+  const streak = tc?.regime_streak?.streak_days;
   L.push(
-    ctx
-      ? `[시장 판정] KODEX 200 ${ctx.regime_label ?? NA}` +
-          (streak != null ? ` · ${streak}거래일째${ctx.regime_streak?.at_least ? " 이상" : ""}` : " · 지속일 확인 불가") +
-          ` · ${ctx.asof ?? NA}`
-      : `[시장 판정] ${NA}`,
+    tc
+      ? `[시장 판정] KODEX 200 ${tc.regime_label ?? NA}` +
+          (streak != null ? ` · ${streak}거래일째${tc.regime_streak?.at_least ? " 이상" : ""}` : " · 지속일 확인 불가") +
+          ` · ${verdict.date ?? NA}` +
+          ` · ${verdict.row ? storedRowText(verdict.row) : "저장 시점 확인 필요"}`
+      : `[시장 판정] ${verdict.missing ?? NA}`,
   );
 
   const obs = kospiObs(flow);

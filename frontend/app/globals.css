@@ -2392,8 +2392,9 @@ details.ml-dev-details > summary {
   margin-bottom: 4px;
 }
 
-.market-risk-mini {
+.market-risk-chart {
   margin-top: 4px;
+  min-width: 0;
 }
 
 .market-risk-detail {
@@ -4083,3 +4084,103 @@ button.help-pop-btn[aria-expanded="true"] .help-pop-dot, button.help-pop-btn:hov
   .ec-rank-row { grid-template-columns: 28px minmax(0, 1fr); }
   .ec-rank-row .ec-rank-val { grid-column: 2; text-align: left; }
 }
+
+/* ── POC6-29 「후보리스트」 [표] · 「보유와 후보 비교」 · 오늘 점검 시장 근거 접기 · 잘 오르는 ETF 1 ~ 3위 ───── */
+.ec-save-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.ec-table-wrap { overflow-x: auto; max-width: 100%; display: grid; gap: 6px; }
+.ec-table { border-collapse: collapse; width: 100%; font-size: 13px; font-variant-numeric: tabular-nums; }
+.ec-table th,
+.ec-table td { border-bottom: 1px solid var(--border-soft); padding: 6px 8px; text-align: left; vertical-align: top; }
+.ec-table thead th { background: var(--card); font-size: 12px; color: var(--muted); font-weight: 600; white-space: nowrap; }
+.ec-table tbody td:first-child { white-space: nowrap; }
+.ec-table tbody tr[role="button"] { cursor: pointer; }
+.ec-table tbody tr[role="button"]:hover,
+.ec-table tbody tr.sel { background: #f8fafc; }
+.hcc-pick { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.hcc-box { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; display: grid; gap: 6px; min-width: 0; }
+.hcc-box select { min-height: 40px; width: 100%; min-width: 0; }
+.tc-cand-top { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+.tc-cand-top li { display: flex; align-items: baseline; gap: 8px; }
+.tc-cand-rank { color: var(--muted); font-size: 12px; min-width: 28px; }
+.tc-cand-name { flex: 1; min-width: 0; }
+.tc-evidence-fold > summary { cursor: pointer; }
+.tc-evidence-body { display: grid; gap: 14px; margin-top: 10px; }
+.tc-evidence-sec { display: grid; gap: 8px; min-width: 0; }
+@media (max-width: 760px) {
+  .hcc-pick { grid-template-columns: 1fr; }
+}
+/* POC6-29 보완 2차 S3 — 「보유와 후보 비교」 기본 비교 표(값 줄 + 차이 줄) · 종목별 근거(종목 탭 하나) */
+.hcc-basic, .hcc-evidence { display: grid; gap: 10px; min-width: 0; }
+.hcc-h2 { margin: 0; font-size: 17px; font-weight: 700; }
+.hcc-ev-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.hcc-preview { display: grid; gap: 8px; min-width: 0; }
+.ec-table.hcc-table { table-layout: fixed; }
+.hcc-table .hcc-col-k { width: 96px; }
+.ec-table.hcc-table thead th,
+.ec-table.hcc-table tbody th,
+.ec-table.hcc-table tbody td { white-space: normal; overflow-wrap: anywhere; }
+.ec-table.hcc-table thead th { color: var(--fg); font-size: 13px; font-weight: 400; vertical-align: top; }
+.ec-table.hcc-table thead th:first-child { color: var(--muted); font-weight: 600; }
+.ec-table.hcc-table tbody th { font-size: 13px; font-weight: 700; }
+.hcc-table .hcc-val-row > th,
+.hcc-table .hcc-val-row > td { border-bottom: 0; padding-bottom: 2px; }
+.hcc-table .hcc-diff-row > td { background: #f8fafc; font-size: 13px; padding-top: 6px; padding-bottom: 8px; }
+.hcc-table .hcc-diff-row > td[data-kind="compared"],
+.hcc-table .hcc-diff-row > td[data-kind="provisional"] { font-weight: 600; }
+.hcc-table .hcc-diff-row > td[data-kind="not_compared"],
+.hcc-table .hcc-diff-row > td[data-kind="pending"] { color: var(--muted); }
+.hcc-who { display: grid; gap: 4px; justify-items: start; min-width: 0; }
+.hcc-who .tc-sum-badge { white-space: normal; }
+.hcc-name { font-size: 15px; font-weight: 700; }
+.hcc-when { font-size: 12px; color: var(--muted); }
+.hcc-sub { font-size: 12px; }
+.hcc-num { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+@media (max-width: 560px) {
+  .hcc-table .hcc-col-k { width: 64px; }
+  .ec-table.hcc-table th,
+  .ec-table.hcc-table td { padding-left: 4px; padding-right: 4px; }
+  .hcc-num { font-size: 16px; }
+}
+/* POC6-29 보완 R1 — 「시장 흐름」 맨 위 '지금 시장'(빠른 시세 3칸 · 흐름 문장) */
+.tc-now { display: grid; gap: 8px; padding-bottom: 10px; border-bottom: 1px solid var(--border-soft); }
+.tc-now-quotes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.tc-now-quote { background: #f8fafc; border-radius: 10px; padding: 8px 10px; display: grid; gap: 2px; min-width: 0; }
+.tc-now-val { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+/* 형수님 결정(2026-11-13) — 당일 판정 강조 상자 · 바로 아래 시장 판정 근거 표 → 코스피 공식 종가 덩어리 */
+.tc-now-verdict { background: #eff6ff; border-left: 4px solid var(--accent); border-radius: 8px; padding: 10px 14px; display: grid; gap: 4px; min-width: 0; }
+.tc-now-verdict-text { font-size: 16px; font-weight: 700; line-height: 1.55; color: var(--fg); overflow-wrap: anywhere; }
+.tc-now-verdict-basis { font-size: 13.5px; font-weight: 600; color: #1e40af; }
+.tc-regime-basis { display: grid; gap: 6px; min-width: 0; }
+.tc-kospi-block { display: grid; gap: 8px; min-width: 0; padding-top: 4px; }
+.tc-regime-basis > .tc-label,
+.tc-kospi-block > .tc-label { margin-bottom: 0; }
+@media (max-width: 640px) {
+  .tc-now-quotes { grid-template-columns: 1fr; }
+}
+/* POC6-29 보완 2차 — 아침 요약 · 오늘 시장 변화 머리 · 상태 옆 [?] · 근거 표(판정서 V2 · S 판정 · PLAN §10) */
+.tc-morning { display: grid; gap: 6px; padding-bottom: 10px; border-bottom: 1px solid var(--border-soft); min-width: 0; }
+.tc-morning-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
+.tc-morning-head strong { font-size: 15px; }
+/* 설계자 정리(2026-11-13 · 마감 뒤) — 시장 판단을 먼저 · 자료 상태는 끝 한 줄 · 원인은 [자료 상태 보기] */
+.tc-morning-verdict { margin: 0; font-size: 15px; line-height: 1.6; }
+.tc-morning .tc-now-text { display: grid; gap: 2px; font-size: 15px; line-height: 1.6; }
+.tc-morning .tc-now-text p { margin: 0; }
+.tc-morning-status { font-size: 13px; }
+.tc-morning-status-ok { color: var(--ok); }
+.tc-morning-status-warn { color: #9a3412; }
+.tc-morning-status-muted { color: var(--muted); }
+.tc-morning-why { display: inline; margin-left: 6px; }
+.tc-morning-why > summary { display: inline; cursor: pointer; color: var(--accent); }
+.tc-morning-why[open] { display: block; margin: 4px 0 0; }
+.tc-morning-ready { background: #ecfdf5; color: #166534; border-radius: 8px; padding: 6px 10px; font-size: 13.5px; font-weight: 600; }
+.tc-morning-miss { background: #fff7ed; color: #9a3412; border: 1px solid #fdba74; border-radius: 8px; padding: 6px 10px; font-size: 13.5px; font-weight: 600; }
+.tc-src { display: inline-block; position: relative; margin-left: 4px; vertical-align: middle; }
+.tc-src > summary { list-style: none; cursor: pointer; width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--border); background: var(--card); color: var(--muted); font-size: 12px; font-weight: 700; display: inline-grid; place-items: center; }
+.tc-src > summary::-webkit-details-marker { display: none; }
+.tc-src[open] > summary { border-color: var(--accent); color: var(--accent); }
+.tc-src-pop { position: absolute; right: 0; top: 24px; z-index: 5; width: max-content; max-width: min(260px, 70vw); background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; font-size: 12px; color: var(--fg); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); white-space: normal; }
+.ec-table.tc-ev-table th[scope="row"] { white-space: nowrap; font-weight: 600; }
+/* 판정 표 제목 옆 [?](점수 산식 · 긴 글) — 떠 있는 상자 대신 제목 아래로 펼친다(좁은 화면에서 옆으로 넘치지 않게) */
+.tc-src-left[open] { display: block; margin-left: 0; margin-top: 4px; }
+.tc-src-left .tc-src-pop { position: static; display: block; width: auto; max-width: 100%; margin-top: 4px; box-shadow: none; font-weight: 400; }
+.ec-table.tc-ev-table td { min-width: 90px; }

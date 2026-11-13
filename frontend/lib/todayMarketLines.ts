@@ -183,13 +183,22 @@ export interface RecentChanges {
   shown: string[];
   rest: number;
   excluded: number;
+  // POC6-29 보완 — 위 흐름 문장에 넣어 뺀 사건 수(저점 문장과 같은 1건과 따로 셈)
+  merged: number;
   unchecked: string | null;
   empty: string | null;
   // 구조 칸이 없는 옛 응답: 서버 원문 줄(괄호 안 = 비교 기준값 안내 붙임).
   legacy: string | null;
 }
 
-export function recentChanges(flow: MarketFlowContext, lowShown: boolean): RecentChanges {
+// merged = 위 '지금 시장' 흐름 문장에 이미 넣은 사건(같은 객체) — 목록에서 뺀다(POC6-29 보완 R1).
+// POC6-29 보완 2차 — `allow` = 아침 요약에 올릴 계열만(기준을 채운 자료 · 미완료 계열의 사건은 근거 접기로 · §10-1).
+export function recentChanges(
+  flow: MarketFlowContext,
+  lowShown: boolean,
+  merged: readonly FlowEvent[] = [],
+  allow: (e: FlowEvent) => boolean = () => true,
+): RecentChanges {
   const chk = flow.event_check ?? { unchecked_text: null, empty_text: null };
   const events = flow.events ?? [];
   if (events.length > 0 && !hasStructuredEvents(flow)) {
@@ -198,18 +207,21 @@ export function recentChanges(flow: MarketFlowContext, lowShown: boolean): Recen
       shown: [],
       rest: 0,
       excluded: 0,
+      merged: 0,
       unchecked: null,
       empty: null,
       legacy: line ? `${line} (괄호 안 = 비교 기준값)` : null,
     };
   }
   const obs = lowShown ? kospiObs(flow) : null;
-  const kept = obs ? events.filter((e) => !isSameAsLow(e, obs)) : events;
+  const notLow = obs ? events.filter((e) => !isSameAsLow(e, obs)) : events;
+  const kept = notLow.filter((e) => !merged.includes(e) && allow(e));
   const shown = kept.slice(0, 2).map(eventSentence);
   return {
     shown,
     rest: kept.length - shown.length,
-    excluded: events.length - kept.length,
+    excluded: events.length - notLow.length,
+    merged: notLow.filter((e) => merged.includes(e)).length,
     unchecked: chk.unchecked_text,
     empty: events.length === 0 ? chk.empty_text : null,
     legacy: null,

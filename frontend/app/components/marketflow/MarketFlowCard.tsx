@@ -84,7 +84,7 @@ function FlowBasisLines({ data }: { data: MarketFlowContext }) {
       ) : null}
       {press ? (
         <div className="mf-basis" data-testid="mf-flow-press">
-          이 화면의 [최신 시장 데이터 갱신]을 누르면 OCI가 모은 수급을 PC에 반영합니다(자동 실행은 보관본만 받고 화면 자료는
+          화면 위 [최신 자료 갱신]을 누르면 OCI가 모은 수급을 PC에 반영합니다(자동 실행은 보관본만 받고 화면 자료는
           바꾸지 않습니다).
         </div>
       ) : null}

@@ -178,8 +178,8 @@ describe("재진입 검토 창", () => {
   it("← History · 이동 링크 · 매매 창 연결(자동 실행 없음)", async () => {
     const p = renderReview();
     await screen.findByRole("heading", { name: /저장된 근거/ });
-    fireEvent.click(screen.getByRole("button", { name: /요즘 잘 오르는 ETF/ }));
-    expect(p.onNavigate).toHaveBeenCalledWith("market_discovery");
+    fireEvent.click(screen.getByRole("button", { name: /오늘의 투자 점검/ }));
+    expect(p.onNavigate).toHaveBeenCalledWith("today_check");
     fireEvent.click(screen.getByRole("button", { name: /받은 알림 기록/ }));
     expect(p.onNavigate).toHaveBeenCalledWith("alert_records");
     fireEvent.click(screen.getByRole("button", { name: /매매 창/ }));
@@ -226,8 +226,8 @@ describe("History → 재진입 검토 → History", () => {
     fireEvent.click(review);
     await waitFor(() => expect(fetchReentryReview).toHaveBeenCalledWith(V1_POS.position_id, V1_POS.cycles[0].cycle_id));
     expect(screen.getAllByRole("dialog")).toHaveLength(1); // 창 위에 창을 겹치지 않는다
-    fireEvent.click(await screen.findByRole("button", { name: /요즘 잘 오르는 ETF/ }));
-    expect(onNavigate).toHaveBeenCalledWith("market_discovery");
+    fireEvent.click(await screen.findByRole("button", { name: /오늘의 투자 점검/ }));
+    expect(onNavigate).toHaveBeenCalledWith("today_check");
     fireEvent.click(screen.getByRole("button", { name: "← History" }));
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByRole("button", { name: "재진입 검토" })).toBeInTheDocument();

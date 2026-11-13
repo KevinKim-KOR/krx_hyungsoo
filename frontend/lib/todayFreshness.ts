@@ -16,6 +16,7 @@ import type {
 import type { MarketFlowContext } from "@/lib/api/marketFlow";
 import { kospiStatusView } from "@/lib/kospiStatus";
 import { isRealDate, josa, md, parseIsoInstant } from "@/lib/todayMarketLines";
+import type { TodayBasis } from "./morningText";
 
 export type FreshState = "fresh" | "late" | "check";
 // 이 자료를 새로 받는 이 화면의 동작(상단 버튼과 같은 작업).
@@ -42,6 +43,9 @@ export interface FreshSources {
   holdingsFailed: boolean;
   evidence: HoldingsMarketEvidenceResponse | null;
   evidenceFailed: boolean;
+  // 설계자 V3 §3 — [AI용 시장 정보 복사]만: 시장 판정 줄과 같은 선택 결과(todayBasis)로 '시장 판정(KODEX 200)' 줄도
+  // 판정한다(한 글 안에서 판정 날짜가 두 응답으로 갈리지 않게). 없으면 예전대로 시장 판정 응답.
+  verdict?: TodayBasis;
 }
 
 export function krBasisText(b: string | null | undefined): string {
@@ -224,7 +228,26 @@ export function freshnessRows(src: FreshSources, scope: "reload" | "copy"): Fres
   const rows: FreshRow[] = [];
   const k = kospiRow(src, expected, basis);
   if (k) rows.push(k);
-  if (!flowLoading && (src.marketPhase === "success" || src.marketPhase === "error")) {
+  const v = src.verdict;
+  if (v) {
+    if (!flowLoading && (v.ctx || v.missing)) {
+      rows.push(
+        v.ctx
+          ? compareRow("regime", "시장 판정(KODEX 200)", v.date, expected, basis, "market")
+          : {
+              key: "regime",
+              label: "시장 판정(KODEX 200)",
+              lastDate: null,
+              expected,
+              basis,
+              state: "check",
+              behind: null,
+              reason: v.missing ?? "시장 판정 자료 없음",
+              action: null,
+            },
+      );
+    }
+  } else if (!flowLoading && (src.marketPhase === "success" || src.marketPhase === "error")) {
     rows.push(
       src.market?.market_context
         ? compareRow("regime", "시장 판정(KODEX 200)", src.market.market_context.asof, expected, basis, "market")

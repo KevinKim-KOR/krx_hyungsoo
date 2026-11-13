@@ -194,7 +194,7 @@ describe("저장하지 않은 기존 초안 — 확인 줄(Q2 (a))", () => {
     await generate();
     fireEvent.click(screen.getByRole("button", { name: "AI 세션에서 검토" }));
     const row = screen.getByRole("alert");
-    expect(row.textContent).toContain("「요즘 잘 오르는 ETF」 · 후보 10개 · 2026-10-18 13:52");
+    expect(row.textContent).toContain("「후보리스트」 · 목록 10개 · 2026-10-18 13:52");
     expect(loadAISessionsDraft()).toEqual(oldDraft());
     expect(onNavigate).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "취소" }));
@@ -333,11 +333,11 @@ describe("생성 중 · 새 결과 도착 · 초안 출처", () => {
   it("「ETF 구성종목」 초안은 분석 전(null)이어도 그 출처 · 시각이 없으면 시각 생략", () => {
     const etf = { ...oldDraft(), constituent_snapshot: null, overlap_snapshot: null };
     expect(describeDraftOrigin(etf)).toBe("「ETF 구성종목」 · 후보 10개 · 2026-10-18 13:52");
-    expect(describeDraftOrigin(oldDraft())).toBe("「요즘 잘 오르는 ETF」 · 후보 10개 · 2026-10-18 13:52");
+    expect(describeDraftOrigin(oldDraft())).toBe("「후보리스트」 · 목록 10개 · 2026-10-18 13:52");
     const noTime = { ...oldDraft(), draft_created_at: undefined as unknown as string };
-    expect(describeDraftOrigin(noTime)).toBe("「요즘 잘 오르는 ETF」 · 후보 10개");
+    expect(describeDraftOrigin(noTime)).toBe("「후보리스트」 · 목록 10개");
     expect(describeDraftOrigin(selectedDraft())).toBe(
-      "「보유와 비교」 판단 근거 미리보기 · KODEX AI반도체TOP2플러스 · 2026-10-18 22:44",
+      "판단 근거 미리보기 · KODEX AI반도체TOP2플러스 · 2026-10-18 22:44",
     );
   });
 });
@@ -415,7 +415,7 @@ describe("작성 화면 — 선택 근거 모드", () => {
     expect(box.textContent).not.toContain("미리보기 생성일 사용");
     expect(screen.queryByText("기준일 (asof)")).toBeNull();
     expect(screen.queryByText("후보 스냅샷")).toBeNull();
-    expect(screen.getByText(/「보유와 비교」 판단 근거 미리보기에서 넘어온 선택 종목/)).toBeTruthy();
+    expect(screen.getByText(/판단 근거 미리보기에서 넘어온 선택 종목/)).toBeTruthy();
     const q = container.querySelector("#ais-question") as HTMLTextAreaElement;
     expect(q.value).toBe(TEXT);
     fireEvent.change(q, { target: { value: "(내 질문)\n\n" + TEXT } });

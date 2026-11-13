@@ -28,7 +28,9 @@ export type RefreshUiState =
   // POC5-10 — 완료여도 확인할 사유(예: 보유 개별주 가격 갱신 실패)가 있으면 note 로 보인다.
   | { kind: "completed"; refreshId: string | null; note: string | null }
   | { kind: "failed"; message: string }
-  | { kind: "cooldown"; cooldownRemainingSeconds: number };
+  | { kind: "cooldown"; cooldownRemainingSeconds: number }
+  // POC6-29 보완 2차 — ③ 전일 자료 보충이 도는 중이라 시작 거절(실패 아님 · 끝난 뒤 다시 누름).
+  | { kind: "blocked"; message: string };
 
 const POLL_INTERVAL_MS = 4000;
 // 2026-05-22 — 운영 사고 1건 후 90 → 120 으로 상향. 1115 ETF 가격 수집이
@@ -217,6 +219,39 @@ export function useMarketRefresh({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // POC6-29 — 시작 응답을 받은 뒤의 처리(직접 시작 · [최신 자료 갱신] 묶음 작업이 시작한 응답 넘겨받기 공통).
+  const handleStarted = useCallback(
+    (started: MarketRefreshStartResponse, gen: number) => {
+      // 화면을 떠났어도 시작된 갱신은 기억한다(돌아오면 이어 봄 · 상태 확인은 지금 새로 열지 않음).
+      if (started.status === "accepted" || started.status === "running") {
+        setStartedRefreshId(started.refresh_id ?? null);
+      }
+      if (gen !== pollGenRef.current) return;
+      if (takeOverRef.current?.(started)) {
+        setRefreshUi({ kind: "idle" }); // POC5-12 — 'VIX 다시 받기'가 도는 중이라 거절됨 → 그 진행을 보인다
+        return;
+      }
+      if (started.status === "accepted" || started.status === "running") {
+        setRefreshUi({ kind: "running", refreshId: started.refresh_id ?? null });
+        startPolling();
+        return;
+      }
+      if (started.status === "skipped_cooldown") {
+        setRefreshUi({
+          kind: "cooldown",
+          cooldownRemainingSeconds: started.cooldown_remaining_seconds,
+        });
+        return;
+      }
+      if (started.status === "prevday_running") {
+        setRefreshUi({ kind: "blocked", message: started.message });
+        return;
+      }
+      setRefreshUi({ kind: "failed", message: started.message });
+    },
+    [startPolling],
+  );
+
   const start = useCallback(async () => {
     setRefreshUi({ kind: "starting" });
     const gen = pollGenRef.current; // 화면을 떠나면 올라간다(POST 응답이 늦어도 상태 확인을 새로 열지 않음)
@@ -227,30 +262,15 @@ export function useMarketRefresh({
       setRefreshUi({ kind: "failed", message: describeError(e) });
       return;
     }
-    // 화면을 떠났어도 시작된 갱신은 기억한다(돌아오면 이어 봄 · 상태 확인은 지금 새로 열지 않음).
-    if (started.status === "accepted" || started.status === "running") {
-      setStartedRefreshId(started.refresh_id ?? null);
-    }
-    if (gen !== pollGenRef.current) return;
-    if (takeOverRef.current?.(started)) {
-      setRefreshUi({ kind: "idle" }); // POC5-12 — 'VIX 다시 받기'가 도는 중이라 거절됨 → 그 진행을 보인다
-      return;
-    }
-    if (started.status === "accepted" || started.status === "running") {
-      setRefreshUi({ kind: "running", refreshId: started.refresh_id ?? null });
-      startPolling();
-      return;
-    }
-    if (started.status === "skipped_cooldown") {
-      setRefreshUi({
-        kind: "cooldown",
-        cooldownRemainingSeconds: started.cooldown_remaining_seconds,
-      });
-      return;
-    }
-    setRefreshUi({ kind: "failed", message: started.message });
-  }, [startPolling]);
+    handleStarted(started, gen);
+  }, [handleStarted]);
+
+  // POC6-29 — PC 서버 묶음 작업이 시작한 시장 갱신(시작 응답과 같은 모양)을 넘겨받아 같은 방식으로 따라간다.
+  const adopt = useCallback(
+    (started: MarketRefreshStartResponse) => handleStarted(started, pollGenRef.current),
+    [handleStarted],
+  );
 
   const busy = refreshUi.kind === "starting" || refreshUi.kind === "running";
-  return { refreshUi, start, busy };
+  return { refreshUi, start, adopt, busy };
 }

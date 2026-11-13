@@ -167,7 +167,22 @@ def load_candidate_bundle(
     cand = next((c for c in resp.candidates if c.ticker == ticker), None)
     if cand is None:
         return None
+    cand_dump = cand.model_dump()
+    return {
+        "candidate": cand_dump,
+        "market_context": (
+            resp.market_context.model_dump() if resp.market_context else None
+        ),
+        "basis": query.basis,
+        "order": query.order,
+        **selected_extras(ticker, cand_dump, db_path=db_path),
+    }
 
+
+def selected_extras(
+    ticker: str, cand_dump: dict[str, Any], *, db_path: Path = DEFAULT_DB_PATH
+) -> dict[str, Any]:
+    """선택 1종목 추가 읽기(거래량 · 흔들림 · 이동평균 · 직접 보유 · 중복) — 두 후보 경로 공통(POC6-29)."""
     # 「확인 근거」와 같은 읽기 · 같은 날짜 정의(pc_price_basis: 같은 읽기의 첫 행 = 끝 날짜).
     rows = load_recent_price_rows([ticker], db_path=db_path)
     mine = rows[ticker]
@@ -197,14 +212,7 @@ def load_candidate_bundle(
         ]
         overlap = _candidate_overlap(ticker, held_etfs, db_path=db_path)
 
-    cand_dump = cand.model_dump()
     return {
-        "candidate": cand_dump,
-        "market_context": (
-            resp.market_context.model_dump() if resp.market_context else None
-        ),
-        "basis": query.basis,
-        "order": query.order,
         "reference_date": reference_date,
         "end_date": end_date,
         "stored_volume": compute_stored_volume_evidence(ticker, mine).model_dump(),

@@ -110,6 +110,8 @@ export function evMissingText(ev: EvPhase): string {
 // 화면 위 보유 근거 안내 — 요약 price_flow 로 이미 보이는 가격 변화 · 하락 판정을 '못 보인다'고 하지 않는다.
 // missing = 요약 연결은 있는데 그 응답에 가격 흐름이 없는 보유 수(종목 자체가 없거나 칸이 없음 · 이 종목들만 보유 근거에 기댄다).
 // rowsShown = 보유 행이 그려졌는가 — 행이 없으면 무엇이 '보인다'고 말하지 않는다(독립 검토).
+// POC6-29 — 월간 수익률은 행 상세의 종목 상세 수치(같은 응답 · 같은 정의)로 옮겨 이 화면은 보유 근거를 가격 흐름 대체에만
+//   쓴다. 그래서 보유 근거 실패가 화면 값에 영향이 없으면(모든 보유가 요약 가격 흐름) 안내하지 않는다.
 export function evidenceNotice(ev: EvPhase, sl: SumLinks, missing: number, rowsShown: boolean): string | null {
   if (ev !== "error" && ev !== "stale") return null;
   if (!rowsShown) return ev === "error" ? "보유 근거 조회 실패" : null;
@@ -119,14 +121,10 @@ export function evidenceNotice(ev: EvPhase, sl: SumLinks, missing: number, rowsS
       : missing > 0
         ? `비교 요약에 가격 흐름이 없는 보유 ${missing}종목의 가격 변화 · 하락 판정`
       : null;
-  if (ev === "error") {
-    return flowPart
-      ? `보유 근거 조회 실패 — 월간 수익률(보유 근거)과 ${flowPart}을 보이지 못합니다.`
-      : "보유 근거 조회 실패 — 월간 수익률(보유 근거)을 보이지 못합니다. 가격 변화 · 하락 판정은 비교 요약 값으로 보입니다.";
-  }
-  return flowPart
-    ? `보유 근거 다시 조회 실패 — 월간 수익률(보유 근거)과 ${flowPart}은 이전 조회값입니다(최신 아님).`
-    : "보유 근거 다시 조회 실패 — 월간 수익률(보유 근거)은 이전 조회값입니다(최신 아님). 가격 변화 · 하락 판정은 비교 요약 값입니다.";
+  if (!flowPart) return null;
+  return ev === "error"
+    ? `보유 근거 조회 실패 — ${flowPart}을 보이지 못합니다.`
+    : `보유 근거 다시 조회 실패 — ${flowPart}은 이전 조회값입니다(최신 아님).`;
 }
 
 // 하락 판정 — 비교 요약이 있으면 그 응답의 price_flow(값 · 저장 상태가 같은 읽기), 없을 때만 보유 근거(검증자 r2 F4).
