@@ -131,6 +131,8 @@ function flow1109(state: "fresh" | "late" = "fresh") {
       { key: "flows", label: "투자자별 순매수", E: state === "late" ? "2026-11-05" : "2026-11-06", collected_at: null },
     ],
     periods: {
+      "1M": { label: "1개월", boundary: "2026-10-04", start: "2026-10-05", end: "2026-11-05", lines: [], kospi: { from_date: "2026-10-02", from: 6400, to_date: "2026-11-05", to: 5383.8, diff: -1016.2, pct: -15.878125 } },
+      "3M": { label: "3개월", boundary: "2026-08-04", start: "2026-08-05", end: "2026-11-05", lines: [], kospi: { from_date: "2026-08-04", from: 6700, to_date: "2026-11-05", to: 5383.8, diff: -1316.2, pct: -19.644776 } },
       "6M": {
         label: "6개월", boundary: "2026-05-05", start: "2026-05-06", end: "2026-11-05", lines: [],
         kospi: { from_date: "2026-05-04", from: 6936.99, to_date: "2026-11-05", to: 5383.8, diff: -1553.19, pct: -22.38997 },
@@ -222,11 +224,14 @@ describe("시장 흐름 — 11/9 사례(설계 §3 · 판정 §2 · §4)", () =>
     expect(low).toContain("11/5의 최근 저점 5,383.80을 밑돌았습니다.");
     expect(low).toContain("(비교 기준: 직전 20개 저장 종가의 최저 5,383.80 · 11/5)");
     expect(low).not.toContain("직전 거래일");
-    expect(screen.getByTestId("tc-tile-20").textContent).toBe("코스피 20거래일-23.64%11/6 기준");
-    expect(screen.getByTestId("tc-tile-60").textContent).toBe("코스피 60거래일-19.16%11/6 기준");
+    // 형수님 결정(2026-11-14) — 20 · 60거래일 칸(시장 판정 응답) 대신 같은 시장 흐름 응답의 1 · 3개월(시작 ~ 끝 날짜)
+    expect(screen.getByTestId("tc-tile-1m").textContent).toBe("코스피 1개월-15.88%10/2~11/5");
+    expect(screen.getByTestId("tc-tile-3m").textContent).toBe("코스피 3개월-19.64%8/4~11/5");
+    expect(screen.queryByTestId("tc-tile-20")).toBeNull();
+    expect(screen.queryByTestId("tc-tile-60")).toBeNull();
     expect(screen.getByTestId("tc-tile-6m").textContent).toBe("코스피 6개월-22.39%5/4~11/5 · 수급과 같은 기간");
     // 사용자 결정 ① 의 '숫자 바로 아래' — 종가 → 저점 → 칸 → 차트 순서(같은 구역 안)
-    const seq = ["tc-kospi-low", "tc-tile-20", "tc-flow-chart"].map((id) => screen.getByTestId(id));
+    const seq = ["tc-kospi-low", "tc-tile-1m", "tc-flow-chart"].map((id) => screen.getByTestId(id));
     for (let k = 1; k < seq.length; k++) {
       expect(seq[k - 1].compareDocumentPosition(seq[k]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
       expect(close.contains(seq[k])).toBe(true);
@@ -253,9 +258,18 @@ describe("시장 흐름 — 11/9 사례(설계 §3 · 판정 §2 · §4)", () =>
     expect(screen.getByTestId("tc-kospi-close").textContent).not.toMatch(/직전 거래일\(|전일/);
   });
 
-  it("판정 Q9 — 차트는 기존 KospiChart 의 최근 최대 120개 저장일(130개 저장 중)", async () => {
+  it("판정 Q9 — 차트는 기존 KospiChart 의 최근 최대 120개 저장일(130개 저장 중) · 그래프 아래 줄 없음", async () => {
     await renderView();
-    expect(within(screen.getByTestId("tc-flow-chart")).getByText(/최근 120개 저장일/)).toBeInTheDocument();
+    const chart = screen.getByTestId("tc-flow-chart");
+    await within(chart).findByTestId("kospi-chart-readout");
+    const pts = series(130).series.slice(-120);
+    const x = Array.from(chart.querySelectorAll(".rc-x > span")).map((e) => e.textContent);
+    expect(x[0]).toBe(pts[0].date); // 130개 중 끝에서 120번째부터
+    expect(x[x.length - 1]).toBe(pts[119].date.slice(5)); // 같은 해 끝 눈금은 '월-일'
+    expect(within(chart).getByTestId("kospi-chart-readout").textContent).toBe(`${pts[119].date} · 코스피 5,129.00pt`);
+    // 형수님 결정(2026-11-14) — 그래프 아래 두 줄(기간 · 저장일 수 · 최종값 / 배지 · 기준일)은 머리 줄과 겹쳐 뺐다.
+    expect(chart.textContent).not.toMatch(/개 저장일|최종|기준일/);
+    expect(chart.querySelector(".kospi-badge")).toBeNull();
   });
 
   it("시장 흐름 응답 실패면 수치 '확인 불가' · 최근 변화 없음 · 실패 안내 · 당일 판정은 남는다", async () => {

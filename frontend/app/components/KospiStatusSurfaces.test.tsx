@@ -1,12 +1,13 @@
 // POC3-02D-OPS-03 확정 계약 9 ⑥ · PLAN STEP 5-5 — KOSPI 를 보여 주는 나머지 자리도 카드와
 // **같은 판정 · 같은 문구**를 쓰는지 본다.
-//   - 코스피 차트: 부모가 넘긴 topn KOSPI 필드로 같은 배지 · 기준 줄(추가 조회 없음 · KS-1).
+//   - 코스피 차트: 부모가 넘긴 topn KOSPI 필드로 같은 판정의 선 색(추가 조회 없음 · KS-1) · 배지 · 기준 줄은 차트 아래에 없음
+//     (머리 줄과 겹쳐 뺌 · 형수님 결정 2026-11-14 · POC6-29-1 결과서 §4-1).
 //   - AI 복사 텍스트 · AI 세션 스냅샷: 'N/A' 대신 같은 상태 문장.
 // 설계자 RESULT STEP 4 (2026-09-30) — 제목에서 'KS11' 제거 · 공식 자료원 한 줄 ·
-// 「오늘의 투자 점검」 KOSPI 카드 '마지막 자료 기준일' = KOSPI 기준일 · 정비 큐 KOSPI 항목.
+// 「오늘의 투자 점검」 KOSPI 카드 출처 한 줄(기준일은 머리 줄 · 2026-11-14 '마지막 자료 기준일' 뺌) · 정비 큐 KOSPI 항목.
 // 외부 호출 0 — `@/lib/api` 는 대역.
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, within, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, within, waitFor, act } from "@testing-library/react";
 import type {
   MarketCandidate,
   MarketContext,
@@ -14,7 +15,7 @@ import type {
   MarketTopNFilters,
   MarketTopNResponse,
 } from "@/lib/api";
-import { __resetQueryCache, type QueryState } from "@/lib/api/queryCache";
+import { __resetQueryCache, markQueryFailed, type QueryState } from "@/lib/api/queryCache";
 
 const fetchBenchmarkSeries = vi.fn();
 vi.mock("@/lib/api", () => ({
@@ -32,7 +33,8 @@ vi.mock("@/lib/api/marketFlow", async (importOriginal) => ({
   fetchMarketFlowContext: (...a: unknown[]) => fetchMarketFlowContext(...a),
 }));
 
-import KospiChart from "./today/KospiChart";
+import KospiChart, { KOSPI_SERIES_KEY } from "./today/KospiChart";
+import { morningOk } from "@/lib/morningTestFixtures";
 import KospiHeadline from "./today/KospiHeadline";
 import MarketContextCard from "./MarketContextCard";
 import ListTransfer from "./workbench/ListTransfer";
@@ -110,46 +112,61 @@ beforeEach(() => {
   window.sessionStorage.clear();
 });
 
-describe("코스피 차트 — 카드와 같은 배지 · 기준 줄", () => {
-  it("기준일 지연: 같은 배지 · 같은 기준 줄 · 선은 경고색", async () => {
+describe("코스피 차트 — 같은 판정으로 선 색 · 그래프 아래 줄 없음(형수님 결정 2026-11-14)", () => {
+  // 그래프 아래 두 줄(기간 · 저장일 수 · 최종값 / 배지 · 기준일 · N거래일 지연)은 코스피 공식 종가 머리 줄과 겹쳐 뺐다.
+  const noBottomLines = (c: HTMLElement) => {
+    expect(c.querySelector("[data-kospi-chart-state]")).toBeNull();
+    expect(c.querySelector(".kospi-badge")).toBeNull();
+    expect(c.textContent).not.toMatch(/개 저장일|최종|기준일|거래일 지연/);
+  };
+
+  it("기준일 지연: 아래 상태 줄 없이 선은 경고색", async () => {
     const { container } = render(<KospiChart kospi={STALE_T2} phase="success" />);
-    await screen.findByText(/최근 2개 저장일/);
-    const box = container.querySelector("[data-kospi-chart-state]");
-    expect(box?.getAttribute("data-kospi-chart-state")).toBe("stale");
-    expect(screen.getByText("기준일 지연")).toHaveClass("kospi-badge", "warn");
-    expect(box?.textContent).toContain("KOSPI 기준일 2026-09-28 · 1거래일 지연");
+    await screen.findByTestId("kospi-chart-readout");
+    noBottomLines(container);
     expect(container.querySelector("path")?.getAttribute("stroke")).toBe("var(--warn)");
     // 가격 흐름 조회는 차트 자기 것 1회뿐 — 판정은 부모가 넘긴 값(추가 호출 없음).
     expect(fetchBenchmarkSeries).toHaveBeenCalledTimes(1);
   });
 
-  it("정상: 배지 · 상태 줄 없음 · 선은 기본색", async () => {
+  it("정상: 아래 줄 없음 · 선은 기본색", async () => {
     const { container } = render(<KospiChart kospi={OK} phase="success" />);
-    await screen.findByText(/최근 2개 저장일/);
-    expect(container.querySelector("[data-kospi-chart-state]")).toBeNull();
-    expect(container.querySelector(".kospi-badge")).toBeNull();
+    await screen.findByTestId("kospi-chart-readout");
+    noBottomLines(container);
     expect(container.querySelector("path")?.getAttribute("stroke")).toBe("var(--accent)");
   });
 
-  it("자료원 확인 실패 · 휴장일도 같은 생성기 문구", async () => {
-    const { unmount } = render(
+  it("자료원 확인 실패 = 경고색 · 휴장일 = 기본색(둘 다 아래 줄 없음)", async () => {
+    const { container, unmount } = render(
       <KospiChart kospi={{ ...STALE_T2, display_state: "source_failed" }} phase="success" />,
     );
-    await screen.findByText(/최근 2개 저장일/);
-    expect(screen.getByText("자료원 확인 실패")).toHaveClass("kospi-badge", "warn");
+    await screen.findByTestId("kospi-chart-readout");
+    noBottomLines(container);
+    expect(container.querySelector("path")?.getAttribute("stroke")).toBe("var(--warn)");
     unmount();
     __resetQueryCache();
     const holiday = { ...OK, display_state: "holiday" as const, today_is_trading_day: false };
     const r = render(<KospiChart kospi={holiday} phase="success" />);
-    await screen.findByText(/최근 2개 저장일/);
-    expect(screen.getByText("휴장일")).toHaveClass("kospi-badge", "neutral");
+    await screen.findByTestId("kospi-chart-readout");
+    noBottomLines(r.container);
     expect(r.container.querySelector("path")?.getAttribute("stroke")).toBe("var(--accent)");
   });
 
-  it("KOSPI 판정을 불러오는 중이면 배지를 달지 않는다", async () => {
+  it("KOSPI 판정을 불러오는 중이면 선은 기본색 · 아래 줄 없음", async () => {
     const { container } = render(<KospiChart kospi={null} phase="loading" />);
-    await screen.findByText(/최근 2개 저장일/);
-    expect(container.querySelector("[data-kospi-chart-state]")).toBeNull();
+    await screen.findByTestId("kospi-chart-readout");
+    noBottomLines(container);
+    expect(container.querySelector("path")?.getAttribute("stroke")).toBe("var(--accent)");
+  });
+
+  it("가격 흐름 다시 읽기 실패로 이전 값을 그리면 경고 한 줄 · 선은 경고색", async () => {
+    const { container } = render(<KospiChart kospi={OK} phase="success" />);
+    await screen.findByTestId("kospi-chart-readout");
+    expect(screen.queryByTestId("kospi-chart-stale")).toBeNull();
+    act(() => markQueryFailed(KOSPI_SERIES_KEY)); // 이전 성공값은 두고 '다시 읽기 실패' 표시(캐시 실패 경로와 같음)
+    expect((await screen.findByTestId("kospi-chart-stale")).textContent).toBe("⚠ 이전 조회값 (재조회 실패)");
+    expect(container.querySelector("path")?.getAttribute("stroke")).toBe("var(--warn)");
+    noBottomLines(container);
   });
 });
 
@@ -264,28 +281,36 @@ describe("설계자 RESULT STEP 4-1 · 4-2 — 시장 배경 카드 제목 · �
 });
 
 describe("설계자 RESULT STEP 4-2 · 4-3 — 「오늘의 투자 점검」 KOSPI 카드", () => {
-  it("마지막 자료 기준일 = KOSPI 기준일(KODEX200 날짜 아님) · 출처는 카드 전체에 한 줄", async () => {
+  // 2026-11-14(설계자 지시 · POC6-29-1 결과서 §5) — 기준일은 코스피 공식 종가 머리 줄 한 곳이라 이 카드의 '마지막 자료
+  // 기준일' 은 뺐다. 출처(KRX 약관 제10조③)는 카드 전체에 한 줄 그대로 · 코스피 수익률 · 위치의 날짜는 KOSPI 저장 종가
+  // 끝 행(KODEX200 날짜 아님).
+  const MORNING = { phase: "success", data: morningOk(), stale: false } as const;
+
+  it("출처는 카드 전체에 한 줄 · 날짜는 KOSPI 종가 기준일(KODEX200 날짜 아님) · '마지막 자료 기준일' 없음", async () => {
     // POC6-27 — 차트는 「시장 흐름」 안으로 옮겼다(사용자 결정 ①) · 이 부품은 나머지 지표만(차트 없음).
-    render(<KospiHeadline market={todayMarket(STALE_T2)} />);
+    render(<KospiHeadline market={todayMarket(STALE_T2)} morning={MORNING} />);
     const card = screen.getByLabelText("KOSPI 현재 위치");
-    const foot = within(card).getByText(/마지막 자료 기준일/);
-    expect(foot.textContent).toBe(`마지막 자료 기준일 2026-09-28 · ${KRX_SOURCE}`);
-    expect(card.textContent).not.toContain("마지막 자료 기준일 2026-09-21");
+    expect(within(card).getByTestId("tc-kospi-source").textContent).toBe(KRX_SOURCE);
+    expect(card.textContent).not.toContain("마지막 자료 기준일");
     expect(within(card).getAllByText(new RegExp(KRX_SOURCE.replace(/[()]/g, "\\$&")))).toHaveLength(1);
     // 설계자 RESULT 재판정 V3 D4(2026-11-13) — 펼친 칸의 '기존 시장 판정 참고'(KODEX200 기준일 D)는 뺐다(당일 판정 ·
-    // 판정 표와 중복). 이 카드에는 KODEX200 날짜가 없고 '마지막 자료 기준일'은 KOSPI 날짜 그대로.
+    // 판정 표와 중복). 이 카드에는 KODEX200 날짜가 없다.
     fireEvent.click(within(card).getByRole("button", { name: "시장 수치와 거래량 펼치기" }));
     expect(card.textContent).not.toContain("KODEX200 기준일");
     expect(card.textContent).not.toContain("2026-09-21");
-    // 펼친 뒤에도 출처 줄은 카드 전체에 한 줄 · 마지막 자료 기준일은 KOSPI 날짜 그대로.
+    expect(within(card).getByTestId("tc-kospi-detail").textContent).toContain("11/11 종가 기준");
+    // 펼친 뒤에도 출처 줄은 카드 전체에 한 줄.
     expect(within(card).getAllByText(new RegExp(KRX_SOURCE.replace(/[()]/g, "\\$&")))).toHaveLength(1);
-    expect(card.textContent).not.toContain("마지막 자료 기준일 2026-09-21");
   });
 
-  it("KOSPI 기준일이 없으면 날짜를 내지 않는다 — KODEX200 날짜로 대신하지 않음", async () => {
+  it("KOSPI 저장 종가가 없으면 날짜를 내지 않는다 — KODEX200 날짜로 대신하지 않음", async () => {
+    const none = morningOk({
+      kospi_detail: { status: "unavailable", as_of_date: null, r20: null, r60: null, return_1y_pct: null, high_52w_gap_pct: null, reason: "저장된 코스피 공식 종가 없음" },
+    });
     render(
       <KospiHeadline
         market={todayMarket({ status: "unavailable", as_of_date: null, display_state: "no_result" })}
+        morning={{ phase: "success", data: none, stale: false }}
       />,
     );
     const card = screen.getByLabelText("KOSPI 현재 위치");
@@ -293,8 +318,9 @@ describe("설계자 RESULT STEP 4-2 · 4-3 — 「오늘의 투자 점검」 KOS
     for (const step of ["접힘", "펼침"]) {
       if (step === "펼침") {
         fireEvent.click(within(card).getByRole("button", { name: "시장 수치와 거래량 펼치기" }));
+        expect(within(card).getByTestId("tc-kospi-detail").textContent).toBe("코스피 수익률·위치코스피 수익률 확인 불가 — 저장된 코스피 공식 종가 없음");
       }
-      expect(card.textContent).not.toContain("마지막 자료 기준일");
+      expect(card.textContent).not.toMatch(/마지막 자료 기준일|종가 기준|\d{1,2}\/\d{1,2}/);
       expect(within(card).getByText(KRX_SOURCE)).toHaveClass("tc-muted", "tc-small");
     }
   });

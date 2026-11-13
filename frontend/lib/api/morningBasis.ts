@@ -47,6 +47,23 @@ export interface TodayRegime extends MorningRegime {
   } | null;
 }
 
+// 설계자 지시 · 형수님 결정(2026-11-14 · POC6-29-1 결과서 §5) — 「시장 수치와 거래량」 코스피 수익률 · 위치.
+// 저장된 KOSPI 공식 종가 끝 행 기준(시장 판정 응답과 같은 산식) · 20 · 60거래일은 실제 계산 시작일과 함께 · 최신성과 무관.
+export interface KospiWindow {
+  start_date: string;
+  end_date: string;
+  pct: number;
+}
+export interface KospiDetail {
+  status: "ok" | "unavailable";
+  as_of_date: string | null;
+  r20: KospiWindow | null;
+  r60: KospiWindow | null;
+  return_1y_pct: number | null;
+  high_52w_gap_pct: number | null;
+  reason: string | null;
+}
+
 export interface MorningBasisResponse {
   status: "ok" | "invalid";
   message: string | null;
@@ -60,6 +77,8 @@ export interface MorningBasisResponse {
   today_regime?: TodayRegime | null;
   // 설계자 V3 D1 — 판정 점수 산식의 경계값(기존 판정 상수 그대로 · [?] 설명 문장이 읽음)
   score_rule?: { return_20d_pct: number; return_60d_pct: number; bull_min: number; bear_max: number } | null;
+  // 칸 없음(옛 서버) · null(읽기 실패) = 상세 '코스피 수익률 확인 불가'
+  kospi_detail?: KospiDetail | null;
   full_refresh: { cooldown_remaining_seconds: number; next_available_at: string | null } | null;
 }
 

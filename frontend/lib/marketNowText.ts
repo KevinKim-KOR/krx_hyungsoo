@@ -160,6 +160,12 @@ export function regimeSentence(
   };
 }
 
+// 숫자 뒤 '(으)로' — 끝 숫자를 읽은 소리가 받침(ㄹ 제외)으로 끝나면 '으로'(0 영 · 3 삼 · 6 육), 아니면 '로'
+// (1 일 · 7 칠 · 8 팔 = ㄹ 받침 · 2 · 4 · 5 · 9 = 받침 없음). 2026-11-14 운영 화면 'VIX … 18.70로' 정정.
+export function roAfterNumber(numText: string): string {
+  return /[036]$/.test(numText) ? "으로" : "로";
+}
+
 export function vixSentence(vix: MarketRiskVix | null | undefined): NowSentence | null {
   if (!vix || vix.availability !== "available" || vix.close == null) return null;
   const c = vix.change_1d_pct;
@@ -169,8 +175,8 @@ export function vixSentence(vix: MarketRiskVix | null | undefined): NowSentence 
     c == null || !Number.isFinite(c)
       ? `VIX(미국 변동성)는 ${v}입니다.`
       : c === 0
-        ? `VIX(미국 변동성)는 ${v}로 전일과 같습니다.`
-        : `VIX(미국 변동성)는 ${v}로 전일보다 ${Math.abs(c).toFixed(2)}% ${c > 0 ? "높아졌습니다" : "낮아졌습니다"}.`;
+        ? `VIX(미국 변동성)는 ${v}${roAfterNumber(v)} 전일과 같습니다.`
+        : `VIX(미국 변동성)는 ${v}${roAfterNumber(v)} 전일보다 ${Math.abs(c).toFixed(2)}% ${c > 0 ? "높아졌습니다" : "낮아졌습니다"}.`;
   const notice = vixFreshnessNotice(vix);
   return {
     key: "vix",

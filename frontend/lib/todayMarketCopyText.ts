@@ -3,9 +3,7 @@
 // 화면이 이미 받은 값(시장 판정 응답 · 시장 흐름 응답의 구조 칸 · 최신성 판정)만 쓴다 — 다시 조회 · 새 계산 없음.
 // 빠진 값은 '확인 불가', 늦거나 기준 확인이 필요한 자료는 [자료 상태] 줄에 남긴다(계속을 고른 경우 포함).
 // 사건은 전체를 남긴다(화면의 '최근 2건 · 외 N건'과 달리 · 판정 §2).
-import type { MarketTopNResponse } from "@/lib/api";
 import type { MarketFlowContext } from "@/lib/api/marketFlow";
-import { kospiValuesUsable } from "@/lib/kospiStatus";
 import type { TodayBasis } from "@/lib/morningText";
 import { storedRowText } from "@/lib/refreshCompare";
 import type { FreshRow } from "@/lib/todayFreshness";
@@ -25,11 +23,12 @@ import {
   wonAbs,
 } from "@/lib/todayMarketLines";
 
-// 설계 §6 고정 프롬프트(글자 그대로).
+// 설계 §6 고정 프롬프트(글자 그대로 · 2번의 기간만 설계자 지시 2026-11-14 로 '20거래일·60거래일·6개월' → '1개월·3개월·6개월' —
+// 복사문의 코스피 기간 수익률이 화면 요약 칸과 같은 1 · 3 · 6개월 저장값이 됨 · POC6-29-1 결과서 §5).
 export const TODAY_MARKET_PROMPT = `아래 시장 자료를 읽고, 한국 ETF를 검토하기 전에 내가 무엇을 알아야 하는지 쉬운 한국어로 설명해 주세요.
 
 1. 시장 상태를 한 문장으로 써 주세요. KODEX 200 시장 판정과 코스피 가격 관측의 기준을 각각 밝혀 주세요.
-2. 코스피의 최근 가격 움직임과 20거래일·60거래일·6개월 흐름을 줄을 나눠 써 주세요. 주어진 값과 실제 비교 기간을 사용해 주세요.
+2. 코스피의 최근 가격 움직임과 1개월·3개월·6개월 흐름을 줄을 나눠 써 주세요. 주어진 값과 실제 비교 기간을 사용해 주세요.
 3. 외국인 누적 순매도와 최근 매도 속도 변화를 구분해 주세요. 가격과 수급이 다른 방향을 보이면 그 차이를 설명해 주세요.
 4. 원/달러·WTI나 최근 사건 중 위 내용을 이해하는 데 도움이 되는 관측이 있으면 별도 줄에 추가해 주세요.
 5. 마지막에 다음에 확인할 점을 한 줄 써 주세요.
@@ -40,13 +39,13 @@ export const TODAY_MARKET_PROMPT = `아래 시장 자료를 읽고, 한국 ETF�
 
 const NA = "확인 불가";
 
+// 시장 판정 응답은 직접 읽지 않는다 — 판정 줄은 `verdict`(화면과 같은 선택) · 코스피 기간은 시장 흐름 응답(2026-11-14 ·
+// 예전 '[코스피 기간 수익률] 20 · 60거래일'이 시장 판정 응답을 읽던 유일한 줄이었다) · 늦은 자료는 `fresh`.
 export function buildTodayMarketCopyText({
-  market,
   flow,
   fresh,
   verdict,
 }: {
-  market: MarketTopNResponse | null;
   flow: MarketFlowContext | null;
   fresh: FreshRow[];
   // 설계자 RESULT 재판정 V3 §3(2026-11-13) — 시장 판정 줄은 화면 당일 상자 · 표와 같은 선택 결과(todayBasis) ·
@@ -54,7 +53,6 @@ export function buildTodayMarketCopyText({
   verdict: TodayBasis;
 }): string {
   const L: string[] = [];
-  const ctx = market?.market_context ?? null;
   const tc = verdict.ctx;
   const streak = tc?.regime_streak?.streak_days;
   L.push(
@@ -76,23 +74,21 @@ export function buildTodayMarketCopyText({
       : `[코스피 최신 종가] ${NA}`,
   );
 
-  const kospi = ctx?.kospi ?? null;
-  L.push(
-    kospi && kospiValuesUsable(kospi)
-      ? `[코스피 기간 수익률] 20거래일 ${signedPct(kospi.return_20d_pct ?? null)} · 60거래일 ${signedPct(
-          kospi.return_60d_pct ?? null,
-        )}(둘 다 ${kospi.as_of_date ?? NA} 기준)`
-      : `[코스피 기간 수익률] ${NA}`,
-  );
-
-  const p6 = flow?.periods?.["6M"];
-  const k6 = p6?.kospi ?? null;
-  L.push(
-    k6
-      ? `[코스피 6개월] ${signedPct(k6.pct)} · ${md(k6.from_date)} ${num2(k6.from)} → ${md(k6.to_date)} ${num2(k6.to)}` +
-          ` · 가격과 수급의 공통 비교 종료일 ${flow?.D ? md(flow.D) : NA}`
-      : `[코스피 6개월] ${NA}`,
-  );
+  // 설계자 지시(2026-11-14 · POC6-29-1 결과서 §5) — 화면 요약 칸(코스피 1 · 3 · 6개월)과 같은 시장 흐름 응답의 저장값 · 같은 기간.
+  // 예전 '[코스피 기간 수익률] 20 · 60거래일'(시장 판정 응답 · 기준일이 기대 직전 거래일이 아니면 '확인 불가')은 뺐다.
+  for (const [key, label] of [
+    ["1M", "1개월"],
+    ["3M", "3개월"],
+    ["6M", "6개월"],
+  ] as const) {
+    const k = flow?.periods?.[key]?.kospi ?? null;
+    L.push(
+      k
+        ? `[코스피 ${label}] ${signedPct(k.pct)} · ${md(k.from_date)} ${num2(k.from)} → ${md(k.to_date)} ${num2(k.to)}` +
+            (key === "6M" ? ` · 가격과 수급의 공통 비교 종료일 ${flow?.D ? md(flow.D) : NA}` : "")
+        : `[코스피 ${label}] ${NA}`,
+    );
+  }
 
   const fv = foreignView(flow);
   L.push(

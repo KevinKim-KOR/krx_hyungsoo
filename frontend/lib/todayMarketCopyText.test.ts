@@ -13,7 +13,8 @@ const DESIGN_PROMPT = [
   "아래 시장 자료를 읽고, 한국 ETF를 검토하기 전에 내가 무엇을 알아야 하는지 쉬운 한국어로 설명해 주세요.",
   "",
   "1. 시장 상태를 한 문장으로 써 주세요. KODEX 200 시장 판정과 코스피 가격 관측의 기준을 각각 밝혀 주세요.",
-  "2. 코스피의 최근 가격 움직임과 20거래일·60거래일·6개월 흐름을 줄을 나눠 써 주세요. 주어진 값과 실제 비교 기간을 사용해 주세요.",
+  // 2번 기간만 설계자 지시(2026-11-14 · POC6-29-1 결과서 §5)로 '20거래일·60거래일·6개월' → '1개월·3개월·6개월'
+  "2. 코스피의 최근 가격 움직임과 1개월·3개월·6개월 흐름을 줄을 나눠 써 주세요. 주어진 값과 실제 비교 기간을 사용해 주세요.",
   "3. 외국인 누적 순매도와 최근 매도 속도 변화를 구분해 주세요. 가격과 수급이 다른 방향을 보이면 그 차이를 설명해 주세요.",
   "4. 원/달러·WTI나 최근 사건 중 위 내용을 이해하는 데 도움이 되는 관측이 있으면 별도 줄에 추가해 주세요.",
   "5. 마지막에 다음에 확인할 점을 한 줄 써 주세요.",
@@ -38,6 +39,8 @@ function flow1109(): MarketFlowContext {
   return flowWith({
     D: "2026-11-05",
     periods: {
+      "1M": { label: "1개월", boundary: "2026-10-04", start: "2026-10-05", end: "2026-11-05", lines: [], kospi: { from_date: "2026-10-02", from: 6400, to_date: "2026-11-05", to: 5383.8, diff: -1016.2, pct: -15.878125 } },
+      "3M": { label: "3개월", boundary: "2026-08-04", start: "2026-08-05", end: "2026-11-05", lines: [], kospi: { from_date: "2026-08-04", from: 6700, to_date: "2026-11-05", to: 5383.8, diff: -1316.2, pct: -19.644776 } },
       "6M": {
         label: "6개월", boundary: "2026-05-05", start: "2026-05-06", end: "2026-11-05", lines: [],
         kospi: { from_date: "2026-05-04", from: 6936.99, to_date: "2026-11-05", to: 5383.8, diff: -1553.19, pct: -22.38997 },
@@ -80,7 +83,6 @@ function build(market: MarketTopNResponse | null, flow: MarketFlowContext | null
   );
   // 아침 기준 응답이 없으면 화면과 같이 시장 판정 응답의 판정 · 날짜만(저장 시점 확인 필요)
   return buildTodayMarketCopyText({
-    market,
     flow,
     fresh,
     verdict: todayBasis({ phase: "idle" }, market?.market_context ?? null, market ? "success" : "error"),
@@ -98,7 +100,9 @@ describe("[AI용 시장 정보 복사]", () => {
     expect(lines).toEqual([
       "[시장 판정] KODEX 200 하락장 · 21거래일째 · 2026-11-06 · 저장 시점 확인 필요",
       "[코스피 최신 종가] 5,059.69 · 2026-11-06 · 2026-11-05 대비 -324.11pt(-6.02%)",
-      "[코스피 기간 수익률] 20거래일 -23.64% · 60거래일 -19.16%(둘 다 2026-11-06 기준)",
+      // 2026-11-14 — 화면 요약 칸(코스피 1 · 3 · 6개월)과 같은 시장 흐름 응답 저장값 · 같은 기간
+      "[코스피 1개월] -15.88% · 10/2 6,400.00 → 11/5 5,383.80",
+      "[코스피 3개월] -19.64% · 8/4 6,700.00 → 11/5 5,383.80",
       "[코스피 6개월] -22.39% · 5/4 6,936.99 → 11/5 5,383.80 · 가격과 수급의 공통 비교 종료일 11/5",
       "[외국인 6개월] 누적 순매도 164.3조원 · 11/5까지 124/124일",
       "[외국인 매도 속도] 직전 20거래일 24.0조원 순매도(일평균 1.2조원) → 최근 20거래일 22.1조원 순매도(일평균 1.1조원) · 11/5까지 · 직전 20거래일보다 일평균 매도 감소",
@@ -121,7 +125,7 @@ describe("[AI용 시장 정보 복사]", () => {
   it("빠진 값은 '확인 불가'(시장 판정 · 시장 흐름 모두 없음) · 시장 판정 줄은 화면과 같은 사유(설계자 V3 §3)", () => {
     const text = build(null, null);
     expect(text).toContain("[시장 판정] 당일 판정을 불러오지 못했습니다");
-    for (const tag of ["[코스피 최신 종가]", "[코스피 기간 수익률]", "[코스피 6개월]", "[외국인 6개월]", "[원/달러]", "[WTI]", "[최근 큰 변화]"]) {
+    for (const tag of ["[코스피 최신 종가]", "[코스피 1개월]", "[코스피 3개월]", "[코스피 6개월]", "[외국인 6개월]", "[원/달러]", "[WTI]", "[최근 큰 변화]"]) {
       expect(text).toContain(`${tag} 확인 불가`);
     }
     expect(text).toContain("[자료 상태]");
@@ -146,9 +150,18 @@ describe("[AI용 시장 정보 복사]", () => {
     expect(text).not.toContain("[최근 저점]");
   });
 
-  it("KOSPI 화면 판정이 지연이면 기간 수익률을 싣지 않는다(화면과 같은 규칙)", () => {
-    const stale = { ...MARKET, market_context: { ...MARKET.market_context, kospi: { status: "stale", display_state: "stale", as_of_date: "2026-11-05", trading_day_lag: 1 } } } as unknown as MarketTopNResponse;
-    expect(build(stale, flow1109())).toContain("[코스피 기간 수익률] 확인 불가");
+  // 설계자 지시(2026-11-14) — 주말 · 장 시작 전(KOSPI 판정 지연 · 시장 판정 응답에 기간 값 없음)에도 저장값 1 · 3 · 6개월을
+  // 화면 요약 칸과 같이 싣는다(예전 '[코스피 기간 수익률] 확인 불가' 대신). 정상일과 같은 줄.
+  it.each([
+    ["주말(휴장일 · 지연)", false],
+    ["장 시작 전(평일 · 지연)", true],
+  ])("%s에도 코스피 1 · 3 · 6개월은 저장값으로 · 정상일과 같은 줄", (_t, tradingDay) => {
+    const stale = { ...MARKET, market_context: { ...MARKET.market_context, kospi: { status: "stale", display_state: "stale", as_of_date: "2026-11-05", trading_day_lag: 1, today_is_trading_day: tradingDay } } } as unknown as MarketTopNResponse;
+    const pick = (t: string) => t.split("\n").filter((l) => /^\[코스피 [136]개월\]/.test(l));
+    const got = pick(build(stale, flow1109()));
+    expect(got).toHaveLength(3);
+    expect(got).toEqual(pick(build(MARKET, flow1109())));
+    expect(build(stale, flow1109())).not.toContain("[코스피 기간 수익률]");
   });
 });
 
@@ -185,6 +198,6 @@ describe("[AI용 시장 정보 복사] 시장 판정 줄 = 화면과 같은 당�
     ],
     ["둘 다 없음", { ctx: null, date: null, row: null, missing: null }, "[시장 판정] 확인 불가"],
   ])("%s", (_t, verdict, want) => {
-    expect(line(buildTodayMarketCopyText({ market: null, flow, fresh, verdict }))).toBe(want);
+    expect(line(buildTodayMarketCopyText({ flow, fresh, verdict }))).toBe(want);
   });
 });

@@ -338,10 +338,14 @@ describe("POC6-16 · POC6-27 지금 확인할 내용", () => {
   it("요약 = 원래 구역 값(시장 판정 · KOSPI 상태 · 잘 오르는 ETF 선정 1 ~ 3위 · 연구 결론)", async () => {
     await renderView();
     expect(screen.getByTestId("tc-now-regime").textContent).toContain("하락장(11거래일째)");
-    // KOSPI 가 화면 판정상 지연이면 20 · 60거래일 값을 보이지 않고 기존 사유를 보인다(복사문과 같은 규칙).
-    expect(screen.getByTestId("tc-tile-20").textContent).toContain("확인 불가");
-    // 보완 2차 — 코스피 지연 배지는 코스피 공식 종가 줄에(당일 판정 아래)(처음 화면은 아침 요약 준비 상태 줄이 같은 판단)
-    expect(screen.getByTestId("tc-kospi-close").textContent).toContain("KOSPI 기준일 2026-10-22 · 6거래일 지연");
+    // 1 · 3개월 칸은 시장 흐름 응답의 기간 값(형수님 결정 2026-11-14) — 이 자료(기간 없음)면 '확인 불가 · 자료 없음'.
+    expect(screen.getByTestId("tc-tile-1m").textContent).toBe("코스피 1개월확인 불가자료 없음");
+    // 보완 2차 — 코스피 지연 배지는 코스피 공식 종가 머리 줄 한 곳(당일 판정 아래) · 2026-11-14 설계자 지시로 같은 구역의
+    // 상태 줄(기준일 · N거래일 지연 · 사유)은 뺐다(수집 · 지연 사유는 자료 상태 · 처음 화면은 아침 요약 준비 상태 줄).
+    // (이 자료는 시장 흐름 응답에 코스피 관측이 없어 머리 줄이 '확인 불가' — 지연은 자료 상태 「자료 최신화 필요」에 남는다)
+    const close = screen.getByTestId("tc-kospi-close");
+    expect(close.textContent).not.toMatch(/KOSPI 기준일|거래일 지연|원자료가 최근 거래일까지/);
+    expect(openFresh().querySelector('[data-fresh="kospi"]')?.textContent).toContain("2026-10-22");
     const top = within(screen.getByLabelText("잘 오르는 ETF")).getByTestId("tc-cand-top");
     expect(Array.from(top.querySelectorAll(".tc-cand-name")).map((e) => e.textContent)).toEqual(["인도 대표", "인도 대표2", "헬스케어"]);
     // 이 화면 조건(1개월 · 4종 제외 고정)으로 요약을 읽는다.
@@ -351,12 +355,20 @@ describe("POC6-16 · POC6-27 지금 확인할 내용", () => {
     expect(within(row("research")).getByText("아직 비교할 결과가 없습니다")).toBeInTheDocument();
   });
 
-  it("KOSPI 정상이면 20 · 60거래일 값 · 기준일을 칸에 보인다(시장 판정 응답 그대로)", async () => {
-    prime("ok");
+  // 형수님 결정(2026-11-14 · POC6-29-1 결과서 §4-2) — 1 · 3개월 칸 = 시장 흐름 응답(저장 종가)의 기간 값 · 시작 ~ 끝 날짜.
+  // KOSPI 화면 판정(정상 · 지연)과 무관하게 같은 값(예전 20 · 60거래일 칸은 지연이면 '확인 불가'였다).
+  it.each([["정상", "ok"], ["지연", "stale"]] as const)("1 · 3개월 칸은 KOSPI 판정이 %s이어도 시장 흐름 응답 값 · 날짜", async (_t, st) => {
+    prime(st);
+    fetchMarketFlowContext.mockResolvedValue({
+      ...FLOW,
+      periods: {
+        "1M": { label: "1개월", lines: [], kospi: { from_date: "2026-09-23", from: 5800, to_date: "2026-10-23", to: 5533, diff: -267, pct: -4.6034 } },
+        "3M": { label: "3개월", lines: [], kospi: { from_date: "2026-07-23", from: 6000, to_date: "2026-10-23", to: 5533, diff: -467, pct: -7.7833 } },
+      },
+    });
     await renderView();
-    expect(screen.getByTestId("tc-tile-20").textContent).toContain("-3.50%");
-    expect(screen.getByTestId("tc-tile-20").textContent).toContain("10/23 기준");
-    expect(screen.getByTestId("tc-tile-60").textContent).toContain("-7.25%");
+    expect(screen.getByTestId("tc-tile-1m").textContent).toBe("코스피 1개월-4.60%9/23~10/23");
+    expect(screen.getByTestId("tc-tile-3m").textContent).toBe("코스피 3개월-7.78%7/23~10/23");
   });
 
   it("[요약 다시 읽기] = 저장 자료 7개만 원천별 1번 · 시장 판정 · OCI · 명령 0 · 중복 클릭 막음 · 완료 표시", async () => {

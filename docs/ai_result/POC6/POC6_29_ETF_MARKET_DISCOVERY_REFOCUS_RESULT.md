@@ -20,6 +20,7 @@ RESULT 판정 = docs/ai_design/POC6/POC6_29_ETF_MARKET_DISCOVERY_REFOCUS_RESULT_
 RESULT 재판정 = docs/ai_design/POC6/POC6_29_ETF_MARKET_DISCOVERY_REFOCUS_RESULT_DECISION_V2_2026-11-12.md(PARTIAL 유지 · 다음 = 실제 PC 자료일 대조 → 보완 PLAN · 화면 → 재판정)
 RESULT 재판정 V3 = docs/ai_design/POC6/POC6_29_ETF_MARKET_DISCOVERY_REFOCUS_RESULT_DECISION_V3_2026-11-13.md(PASS_WITH_CLOSING_CORRECTIONS · 출처 변경 · 11/13 배치 수용 · D1 ~ D4 · 복사 · 마감 확인)
 RESULT 마감 판정 = docs/ai_design/POC6/POC6_29_ETF_MARKET_DISCOVERY_REFOCUS_RESULT_CLOSEOUT_DECISION_2026-11-13.md(PASS · main 반영과 운영 확인 대기 · 근거 §27 ~ §30 · §32)
+이어서   = docs/ai_result/POC6/POC6_29_1_ETF_MARKET_DISCOVERY_REFOCUS_OPERATION_RESULT.md(POC6-29-1 · main 반영 뒤 운영 확인 · 운영 화면 정리 · 설계자 판정 2026-11-14)
 보완 PLAN §10 판정 = docs/ai_design/POC6/POC6_29_ETF_MARKET_DISCOVERY_REFOCUS_S_PLAN_DECISION_2026-11-12.md(승인 · Q-S1 ~ Q-S6 · 단기 흐름 5거래일 · 당일 판정은 오늘 시장 변화 · 공개 시각은 확인된 것만)
 PLAN     = docs/ai_plan/POC6/POC6_29_ETF_MARKET_DISCOVERY_REFOCUS_PLAN_V1.md
 MOCKUP   = docs/ai_plan/POC6/POC6_29_ETF_MARKET_DISCOVERY_REFOCUS_MOCKUP.html
@@ -1467,3 +1468,7 @@ V3 §3과 §29 정정 내용을 작업 사본의 stage와 대조했다. 기준 �
 2. **운영 화면 확인(3000 · 8000)** — main 반영 뒤 주요 화면과 [최신 자료 갱신]에서 ② 시장 전체 갱신이 대기할 때 ③ 전일 자료 보충으로 이어지는 실제 동작 · 화면 결과. 실행 시점의 직전 국내 거래일, 자료별 저장 · 표시일을 남긴다(보충 대상이 이미 준비돼 있으면 그 상태 · 기준일 / 보충을 실행하면 항목별 저장 · 표시 또는 실패 사유). 근거 구분: §27-5 = 기존 PC 전체 갱신 · §17-6 = 격리 ③ 직접 실행 · 화면 시험. 2026-11-13 이 기록 시점 실측: 3000 · 8000 · 3001 · 8001 모두 듣는 프로세스 없음(`lsof -iTCP:<포트> -sTCP:LISTEN` 결과 없음 · `curl http://127.0.0.1:8000/health` 연결 실패) — 운영 확인 때 3000 · 8000 을 띄워야 한다.
 3. **격리 사본 정리** — main 에 검증분과 기록이 모두 반영됐고 격리 사본에만 남은 변경이 없음을 대조한다. 3001 · 8001 은 위 실측처럼 이미 멈춤. 작업 사본 `/Users/hyungsookim/projects/krx_hyungsoo_wt_poc6_29` · 로컬 브랜치 `poc6-29-abc-refocus` 삭제는 형수님 승인 뒤. 종료 · 제거를 확인해 기록한다.
 4. **POC6-29 종료** — 운영 확인과 격리 정리 기록 뒤 `CLOSED`. 운영 · 개발 기준은 main 으로 돌아오고 다음 작업은 POC6-30 으로 시작한다.
+
+## 33. 운영 확인 이후 — POC6-29-1 결과서로 나눔(2026-11-14 · 형수님 요청)
+
+main 반영(구현 커밋 d2e995ae) 뒤의 운영 확인 · 운영 화면 정리 · 설계자 지시 · 판정은 `docs/ai_result/POC6/POC6_29_1_ETF_MARKET_DISCOVERY_REFOCUS_OPERATION_RESULT.md` 에 적는다. 이 문서는 §32(설계자 RESULT 마감 판정 PASS)까지다.

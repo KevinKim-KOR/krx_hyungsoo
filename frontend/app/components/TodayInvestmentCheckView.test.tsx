@@ -292,7 +292,7 @@ describe("TodayInvestmentCheckView", () => {
     const now = within(flow).getByTestId("tc-market-now");
     const order = [
       within(flow).getByTestId("tc-morning"),
-      ...["tc-now-regime", "tc-kodex-basis", "tc-kospi-close", "tc-tile-20", "tc-tile-60", "tc-tile-6m", "tc-flow-chart"].map((id) =>
+      ...["tc-now-regime", "tc-kodex-basis", "tc-kospi-close", "tc-tile-1m", "tc-tile-3m", "tc-tile-6m", "tc-flow-chart"].map((id) =>
         within(now).getByTestId(id),
       ),
       within(now).getByLabelText("KOSPI 현재 위치"),
@@ -303,21 +303,22 @@ describe("TodayInvestmentCheckView", () => {
     // 판정 표 바로 다음이 코스피 공식 종가 덩어리(한 덩어리 · 칸 · 차트 · 지표가 그 안)
     const close = within(now).getByTestId("tc-kospi-close");
     expect(within(now).getByTestId("tc-kodex-basis").nextElementSibling).toBe(close);
-    for (const id of ["tc-tile-20", "tc-tile-6m", "tc-flow-chart"]) expect(close.contains(within(now).getByTestId(id))).toBe(true);
+    for (const id of ["tc-tile-1m", "tc-tile-3m", "tc-tile-6m", "tc-flow-chart"]) expect(close.contains(within(now).getByTestId(id))).toBe(true);
     expect(close.contains(within(now).getByLabelText("KOSPI 현재 위치"))).toBe(true);
     // 접기 안에는 코스피 덩어리가 없고 근거 표가 있다
     const fold = screen.getByTestId("tc-evidence-fold");
     expect(within(fold).queryByTestId("tc-kospi-close")).toBeNull();
     expect(within(fold).queryByTestId("tc-flow-chart")).toBeNull();
     expect(within(fold).getByTestId("tc-ev-table")).toBeInTheDocument();
-    // 차트는 기존 KospiChart(최근 최대 120개 저장일 · 이 fixture 는 2개).
-    expect(within(within(now).getByTestId("tc-flow-chart")).getByText(/최근 2개 저장일/)).toBeInTheDocument();
+    // 차트는 기존 KospiChart(최근 최대 120개 저장일 · 이 fixture 는 2개 · 그래프 아래 줄은 2026-11-14 형수님 결정으로 뺌).
+    expect(await within(within(now).getByTestId("tc-flow-chart")).findByTestId("kospi-chart-readout")).toBeInTheDocument();
+    expect(within(now).getByTestId("tc-flow-chart").textContent).not.toMatch(/개 저장일/);
     // 시장 흐름은 좌우 두 칸 격자 안에 있지 않다(전체 폭).
     expect(flow.closest(".tc-check-grid")).toBeNull();
     expect(flow.closest(".tc-detail-grid")).toBeNull();
   });
 
-  it("코스피 기간 수익률(1M/3M)을 표시한다 (저장 KOSPI 시계열)", async () => {
+  it("코스피 기간 수익률(20 · 60거래일 · 예전 이름 1M/3M)을 표시한다 (저장 KOSPI 시계열)", async () => {
     fetchMarketTopnLatest.mockResolvedValue(
       marketOk({
         market_context: {
@@ -340,16 +341,36 @@ describe("TodayInvestmentCheckView", () => {
             status: "ok",
             return_1m_pct: -25.08,
             return_3m_pct: 3.32,
+            return_20d_pct: -25.08, // 서버는 1m = 20거래일 · 3m = 60거래일(같은 계산)
+            return_60d_pct: 3.32,
           },
           primary_benchmark: "KODEX200",
           regime_reasons: [],
         },
       }),
     );
+    // 2026-11-14(설계자 지시 · POC6-29-1 결과서 §5) — 상세 값은 아침 기준 응답의 저장값 상세(kospi_detail · 실제 시작일 · 위 시장 판정
+    // 응답의 20 · 60거래일 칸은 이 칸에 쓰지 않음)
+    fetchMorningBasis.mockResolvedValue(
+      morningOk({
+        kospi_detail: {
+          status: "ok",
+          as_of_date: "2026-07-24",
+          r20: { start_date: "2026-06-25", end_date: "2026-07-24", pct: -25.08 },
+          r60: { start_date: "2026-04-28", end_date: "2026-07-24", pct: 3.32 },
+          return_1y_pct: null,
+          high_52w_gap_pct: null,
+          reason: null,
+        },
+      }),
+    );
     await renderView();
     const headline = screen.getByLabelText("KOSPI 현재 위치");
-    expect(within(headline).getByText(/1개월/)).toBeInTheDocument();
-    expect(within(headline).getByText(/3개월/)).toBeInTheDocument();
+    // 형수님 결정(2026-11-14) — 이름을 실제 계산대로(위 1 · 3개월 칸 = 달력 기간과 겹치지 않게)
+    expect(within(headline).getByText("20거래일 -25.08% (6/25부터)")).toBeInTheDocument();
+    expect(within(headline).getByText("60거래일 +3.32% (4/28부터)")).toBeInTheDocument();
+    expect(within(headline).getByText(/코스피 수익률·위치/).textContent).toBe("코스피 수익률·위치 · 7/24 종가 기준");
+    expect(within(headline).queryByText(/1개월|3개월/)).toBeNull();
   });
 
   it("§3.1 강제 분리: KODEX200 판정을 코스피와 별도 라벨로 표기한다", async () => {
@@ -378,8 +399,8 @@ describe("TodayInvestmentCheckView", () => {
     const headline = screen.getByLabelText("KOSPI 현재 위치");
     const text = headline.textContent ?? "";
     // 일간·1년·최근 1년 고점 대비 실제값 (개발 중 자리표시자 아님).
-    // UI-03 — 일간은 기본 화면 '코스피 일간 변화' 칸의 값(fixture -1.5%).
-    expect(screen.getByTestId("tc-kospi-daily").textContent).toContain("-1.50%");
+    // 일간 변화 칸은 2026-11-14 뺐다(형수님 결정 · 코스피 공식 종가 머리 줄이 같은 일간 변화 · 비교 날짜를 보임).
+    expect(screen.queryByTestId("tc-kospi-daily")).toBeNull();
     expect(text).toContain("최근 1년 고점 대비");
     // 흐름 지속 거래일 수 실제값 — 설계자 V3 D4(2026-11-13)로 코스피 구역의 '기존 시장 판정 참고'를 빼서 판정 표에서 읽는다.
     expect(screen.getByTestId("tc-regime-today").textContent).toContain("12거래일째");
@@ -502,9 +523,11 @@ describe("TodayInvestmentCheckView", () => {
     // 「자료 확인」 목록에는 같은 코스피 항목을 다시 두지 않는다 · 판단 영역에는 들어가지 않는다(AC-4/AC-5).
     expect(within(screen.getByLabelText("자료 업데이트 목록")).queryByText(/KOSPI 원자료/)).toBeNull();
     expect(within(screen.getByLabelText("보유 점검")).queryByText(/KOSPI 원자료/)).toBeNull();
-    // 펼침 안 KOSPI 지표의 기준일은 KOSPI 기준일(시장 판정 기준일 2026-07-24 아님).
+    // 2026-11-14(설계자 지시 · POC6-29-1 결과서 §5) — 수집 · 지연 사유는 위 「자료 최신화 필요」(자료 상태) 한 곳 · KOSPI 지표 칸에는
+    // '마지막 자료 기준일' · 사유 줄 없이 출처 한 줄(기준일은 코스피 공식 종가 머리 줄).
     const headline = screen.getByLabelText("KOSPI 현재 위치");
-    expect(headline.textContent).toContain("마지막 자료 기준일 2026-07-23 · 출처: 한국거래소(KRX)");
+    expect(within(headline).getByTestId("tc-kospi-source").textContent).toBe("출처: 한국거래소(KRX)");
+    expect(headline.textContent).not.toMatch(/마지막 자료 기준일|원자료가 최근 거래일까지|거래일 지연/);
   });
 
   it("AC-7 사용자 언어: 본문 + 툴팁(title/aria-label)에 내부 용어가 없다", async () => {
@@ -972,8 +995,8 @@ describe("POC5-UI-03 「오늘의 투자 점검」 기본 화면 · 아래 묶�
     await waitFor(() => {
       expect(screen.queryByText(/불러오는 중/)).toBeNull();
     });
-    // 시장 응답 반영 앵커 = 기본 화면 일간 변화 값(fixture -1.5%).
-    await screen.findByText("-1.50%");
+    // 시장 응답 반영 앵커 = 펼친 '코스피 수익률·위치'의 1년 값(fixture 12.3% · 일간 변화 칸은 2026-11-14 뺌).
+    await screen.findByText("1년 +12.30%");
   }
 
   it("배치(POC6-27 → POC6-29) — 머리 → 자료 최신화 · OCI(기본 접힘) → 지금 확인할 내용(보유 점검 · 잘 오르는 ETF) → 시장 근거(접힘) → 자료 · 연구 상태 → 맨 아래 「현재 제공 범위와 남은 기능」", async () => {

@@ -679,3 +679,167 @@ def test_trend_default_keeps_the_twenty_day_wording():
         "일평균 매도 감소 (직전 20거래일 대비)",
     )
     assert _trend(a, b, 5)[0] == "직전 5거래일보다 일평균 매도 감소"
+
+
+# ── 코스피 상세(kospi_detail · 설계자 지시 · 형수님 결정 2026-11-14 · POC6-29-1 결과서 §5) ───────────────
+def _kospi_varied(db: Path, first: str, last: str) -> list[tuple[str, float]]:
+    """KOSPI 공식 종가를 오르내리는 값으로 다시 쓴다(같은 날짜는 덮어씀) — 수익률이 0 이 아니게."""
+    rows = [
+        (d, 5000.0 + 13 * i + (i % 5) * 21 - (i % 7) * 17)
+        for i, d in enumerate(_weekdays(first, last))
+    ]
+    upsert_benchmark_prices(
+        benchmark_id="KOSPI",
+        benchmark_name="KOSPI",
+        rows=rows,
+        source=KOSPI_SOURCE,
+        db_path=db,
+    )
+    return rows
+
+
+def _detail_at(db: Path, now: datetime) -> dict:
+    return mb.build_morning_basis(
+        db_path=db, now=now, evidence_root=db.parent / "evidence"
+    )["kospi_detail"]
+
+
+def test_kospi_detail_equals_market_regime_values_on_a_fresh_day(tmp_path):
+    """정상일(KOSPI 기준일 = 기대 직전 거래일) — 20 · 60거래일 = 시장 판정 응답과 같은 값 · 1년 · 고점 대비 = 같은 함수 ·
+    시작일은 저장 종가로 다시 계산해도 같은 수익률."""
+    from app.market_regime import compute_kospi_position_metrics
+
+    from app.market_data_store import fetch_price_history
+
+    db = _seed(tmp_path)
+    kospi = _kospi_varied(db, "2026-06-01", EXPECTED)
+    det = _build(db)["kospi_detail"]
+    # 비교 축 = 시장 판정 응답(`market_topn`)이 넘기는 그대로(`fetch_price_history`) — 상세가 읽는 축과 따로 읽음
+    kodex = fetch_price_history("069500", db_path=db)
+    ctx = compute_market_context(
+        asof=kodex[-1][0],
+        kodex200_history=kodex,
+        kospi_history=kospi,
+        kospi_today_kst="2026-10-30",
+    )["kospi"]
+    assert ctx["status"] == "ok"
+    assert det["status"] == "ok" and det["as_of_date"] == EXPECTED
+    assert det["r20"]["pct"] == ctx["return_20d_pct"]
+    assert det["r60"]["pct"] == ctx["return_60d_pct"]
+    pos = compute_kospi_position_metrics(kospi)
+    assert det["return_1y_pct"] == pos["return_1y_pct"]
+    assert det["high_52w_gap_pct"] == pos["high_52w_gap_pct"]
+    close = dict(kospi)
+    for key, n in (("r20", 20), ("r60", 60)):
+        w = det[key]
+        axis = [d for d, _c in kodex]
+        assert w["end_date"] == EXPECTED
+        assert axis.index(EXPECTED) - axis.index(w["start_date"]) == n
+        assert w["pct"] == round(
+            (close[EXPECTED] / close[w["start_date"]] - 1) * 100, 2
+        )
+
+
+@pytest.mark.parametrize(
+    "now, kospi_last, expected",
+    [
+        # 토요일 10:00 KST — 기대 직전 거래일 10/30(금) · KRX 는 10/30 종가를 다음 영업일에 공개 → 저장 10/29
+        (datetime(2026, 10, 31, 1, 0, tzinfo=timezone.utc), "2026-10-29", "2026-10-30"),
+        # 평일 장 시작 전 07:00 KST — 기대 10/29 · 저장 10/28(10/29 종가는 08:00 공개)
+        (datetime(2026, 10, 29, 22, 0, tzinfo=timezone.utc), "2026-10-28", EXPECTED),
+    ],
+)
+def test_kospi_detail_readable_on_weekend_and_before_open(
+    tmp_path, now, kospi_last, expected
+):
+    """시장 판정 응답은 기준일이 기대 직전 거래일이 아니면 값을 주지 않지만(엄격 규칙 그대로), 상세는 저장 끝 행 기준 값 ·
+    실제 기간을 준다(저장값이 있으면 주말 · 장 시작 전에도 읽힘)."""
+    db = _seed(tmp_path, kospi_last=kospi_last)
+    kospi = _kospi_varied(db, "2026-06-01", kospi_last)
+    body = mb.build_morning_basis(
+        db_path=db, now=now, evidence_root=db.parent / "evidence"
+    )
+    assert body["expected_date"] == expected
+    kodex = [(d, c) for d, c, _at in mb._kodex_rows(db)]
+    ctx = compute_market_context(
+        asof=kodex[-1][0],
+        kodex200_history=kodex,
+        kospi_history=kospi,
+        kospi_today_kst=now.astimezone(timezone(timedelta(hours=9))).date().isoformat(),
+    )["kospi"]
+    assert ctx["status"] == "stale" and ctx.get("return_20d_pct") is None
+    det = body["kospi_detail"]
+    assert det["status"] == "ok" and det["as_of_date"] == kospi_last
+    axis = [d for d, _c in kodex]
+    close = dict(kospi)
+    for key, n in (("r20", 20), ("r60", 60)):
+        w = det[key]
+        assert w["end_date"] == kospi_last
+        assert axis.index(kospi_last) - axis.index(w["start_date"]) == n
+        assert w["pct"] == round(
+            (close[kospi_last] / close[w["start_date"]] - 1) * 100, 2
+        )
+    assert (
+        det["return_1y_pct"] is None
+    )  # 저장 이력이 1년 미만 — 대신 값 없음(0 으로 위장 안 함)
+
+
+def test_kospi_detail_short_history_has_only_the_windows_it_can_compute(tmp_path):
+    """KOSPI 저장이 09/01 부터라 60거래일 전 날짜에 값이 없으면 60거래일만 없음(더 오래된 값으로 대체하지 않음)."""
+    det = _build(_seed(tmp_path))["kospi_detail"]
+    assert det["status"] == "ok"
+    assert det["r20"] is not None and det["r60"] is None
+
+
+@pytest.mark.parametrize("case", ["no_rows", "no_table"])
+def test_kospi_detail_without_kospi_keeps_the_response_ok(tmp_path, case):
+    """KOSPI 를 아직 받지 않은 PC — 행이 없거나 표 자체가 없어도 응답 전체는 ok(항목 · 판정은 그대로) · 상세만 사유
+    (독립 검토 2026-11-14 — 표가 없을 때 응답 전체가 '읽지 못함'이 되던 것을 같은 읽기 함수로 막음)."""
+    db = _seed(tmp_path)
+    con = sqlite3.connect(db)
+    if case == "no_rows":
+        con.execute(
+            "DELETE FROM market_benchmark_daily_price WHERE benchmark_id = 'KOSPI'"
+        )
+    else:
+        con.execute("DROP TABLE market_benchmark_daily_price")
+    con.commit()
+    con.close()
+    body = _build(db)
+    assert body["status"] == "ok" and body["today_regime"]["status"] == "ok"
+    det = body["kospi_detail"]
+    assert (
+        det["status"] == "unavailable"
+        and det["reason"] == "저장된 코스피 공식 종가 없음"
+    )
+    assert det["r20"] is None and det["r60"] is None and det["return_1y_pct"] is None
+
+
+def test_kospi_detail_without_that_days_kodex_price_keeps_1y_and_explains(tmp_path):
+    """그날 KODEX 200 저장 가격이 없으면(KOSPI 10/29 · KODEX 200 은 10/28 까지) 20 · 60거래일만 계산하지 않고 쉬운 말로
+    사유 · 1년 · 고점 대비는 그대로(그 계산은 KODEX 200 날짜가 필요 없음 · 독립 검토 2026-11-14)."""
+    from app.market_regime import compute_kospi_position_metrics
+
+    db = _seed(tmp_path, kodex_last="2026-10-28", today_row=False)
+    kospi = _kospi_varied(db, "2025-09-01", EXPECTED)
+    det = _build(db)["kospi_detail"]
+    assert det["status"] == "ok" and det["as_of_date"] == EXPECTED
+    assert det["r20"] is None and det["r60"] is None
+    assert (
+        det["reason"]
+        == "10/29 KODEX 200 저장 가격이 없어 20 · 60거래일은 계산하지 못했습니다"
+    )
+    pos = compute_kospi_position_metrics(kospi)
+    assert det["return_1y_pct"] == pos["return_1y_pct"] is not None
+    assert det["high_52w_gap_pct"] == pos["high_52w_gap_pct"] is not None
+
+
+def test_kospi_detail_is_none_when_build_fails(tmp_path, monkeypatch):
+    db = _seed(tmp_path)
+
+    def boom(_db):
+        raise RuntimeError("x")
+
+    monkeypatch.setattr(mb, "_kospi_rows", boom)
+    body = _build(db)
+    assert body["status"] == "invalid" and body["kospi_detail"] is None

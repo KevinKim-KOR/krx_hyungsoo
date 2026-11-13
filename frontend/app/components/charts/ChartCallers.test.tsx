@@ -51,12 +51,13 @@ describe("코스피 차트 — 기존 최근 120개 · pt 눈금 · 고른 날 �
     const s = series(150, "2026-03-02", 6000);
     fetchBenchmarkSeries.mockResolvedValue(resp("KOSPI", s));
     const { container } = render(<KospiChart />);
-    await screen.findByText(/최근 120개 저장일/);
+    await screen.findByTestId("kospi-chart-readout");
     const recent = s.slice(-120);
     expect(xLabels(container)[0]).toBe(recent[0].date);
+    expect(xLabels(container)[4]).toBe(recent[119].date.slice(5)); // 같은 해 끝 눈금은 '월-일'
     expect(xLabels(container)).toHaveLength(5);
-    // 아래 줄 = 저장일 개수(연속 거래일로 설명하지 않음) · 최종 값에 단위.
-    expect(screen.getByText(`코스피 ${recent[0].date} ~ ${recent[119].date} · 최근 120개 저장일 · 최종 6,186.25pt`, { exact: false })).toBeTruthy();
+    // 그래프 아래 설명 줄(기간 · 저장일 수 · 최종값)은 뺐다(형수님 결정 2026-11-14 · 머리 줄과 겹침) — 기간은 날짜 눈금으로 읽는다.
+    expect(container.textContent).not.toMatch(/개 저장일|최종/);
     expect(screen.getByTestId("kospi-chart-readout").textContent).toBe(`${recent[119].date} · 코스피 6,186.25pt`);
     expect(yLabels(container).every((t) => t.endsWith("pt"))).toBe(true);
     fireEvent.keyDown(container.querySelector(".rc-plot") as HTMLElement, { key: "Home" });

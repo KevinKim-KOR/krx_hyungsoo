@@ -10,6 +10,7 @@ import {
   quickResultLine,
   quoteView,
   regimeSentence,
+  roAfterNumber,
   vixSentence,
 } from "./marketNowText";
 import { QUICK_FETCHED, quickItems } from "./quickQuotesTestFixtures";
@@ -121,6 +122,22 @@ describe("regimeSentence — 국면 · 판정 근거 · 기준", () => {
     );
     expect(regimeSentence(ctx({ regime_streak: null }), "중립", null)!.text).toMatch(/^국내 시장은 중립입니다\./);
     expect(regimeSentence(null, "", null)).toBeNull();
+  });
+});
+
+// 2026-11-14 운영 화면 'VIX … 18.70로' 정정 — 끝 숫자 소리의 받침(ㄹ 제외)이면 '으로'
+describe("roAfterNumber — 숫자 뒤 '(으)로'", () => {
+  it.each([
+    ["18.70", "으로"], ["17.43", "으로"], ["17.46", "으로"],
+    ["17.41", "로"], ["17.42", "로"], ["17.44", "로"], ["17.45", "로"], ["17.47", "로"], ["17.48", "로"], ["17.49", "로"],
+  ])("%s → %s", (n, want) => {
+    expect(roAfterNumber(n)).toBe(want);
+  });
+  it("VIX 문장에 그대로 — 18.70으로 · 17.49로", () => {
+    const base = { availability: "available", change_1d_pct: 6.92, change_5d_pct: 1, as_of_date: "2026-11-12" } as MarketRiskVix;
+    expect(vixSentence({ ...base, close: 18.7 })?.text).toBe("VIX(미국 변동성)는 18.70으로 전일보다 6.92% 높아졌습니다.");
+    expect(vixSentence({ ...base, close: 18.7, change_1d_pct: 0 })?.text).toBe("VIX(미국 변동성)는 18.70으로 전일과 같습니다.");
+    expect(vixSentence({ ...base, close: 17.49 })?.text).toBe("VIX(미국 변동성)는 17.49로 전일보다 6.92% 높아졌습니다.");
   });
 });
 

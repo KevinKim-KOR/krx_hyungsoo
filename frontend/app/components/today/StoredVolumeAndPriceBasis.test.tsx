@@ -15,6 +15,7 @@ vi.mock("@/lib/api", async (importOriginal) => {
 });
 
 import KospiHeadline from "./KospiHeadline";
+import { morningOk } from "@/lib/morningTestFixtures";
 import InDevelopmentSection from "./InDevelopmentSection";
 import KospiDetailSection from "./KospiDetailSection";
 
@@ -53,7 +54,7 @@ function market(over: Partial<MarketTopNResponse> = {}): QueryState<MarketTopNRe
 }
 
 async function renderHeadline(m: QueryState<MarketTopNResponse>) {
-  render(<KospiHeadline market={m} />);
+  render(<KospiHeadline market={m} morning={{ phase: "success", data: morningOk(), stale: false }} />);
   await act(async () => {
     await Promise.resolve();
   });

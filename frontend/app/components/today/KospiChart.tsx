@@ -7,10 +7,11 @@
 // - BUY/SELL 마커·예측선·목표가 없음. KOSPI 지수 거래량은 미저장이라 이 차트에 없음(§4.1 Q5) ·
 //   KODEX200 거래량은 KospiHeadline 의 'KODEX200 거래량' 칸(POC5-09).
 // - 최상단 대표 정보 — 장식 배경이 아니라 흐름을 읽을 수 있는 크기(§4.1 차트 구성).
-// - POC3-02D-OPS-03 확정 계약 9 ⑥ — 차트도 KOSPI 카드와 **같은 판정 · 같은 배지 · 같은 기준
-//   줄**을 단다(PLAN STEP 5-5). 판정은 부모가 이미 받은 `/market/topn/latest` 의 KOSPI
-//   필드(`display_state` · `trading_day_lag`)다 — 차트가 따로 조회 · 계산하지 않는다(KS-1).
-//   정상이 아니면 선을 경고색으로 그려 낡은 값을 정상처럼 보이지 않게 한다.
+// - POC3-02D-OPS-03 확정 계약 9 ⑥ — 차트도 KOSPI 카드와 **같은 판정**을 쓴다(PLAN STEP 5-5). 판정은 부모가
+//   이미 받은 `/market/topn/latest` 의 KOSPI 필드(`display_state`)다 — 차트가 따로 조회 · 계산하지 않는다(KS-1).
+//   정상이 아니면 선을 경고색으로 그려 낡은 값을 정상처럼 보이지 않게 한다. 같은 배지 · 기준 줄은 차트 아래에
+//   두지 않는다 — 이 차트는 코스피 공식 종가 구역(KospiCloseBlock) 머리 줄 바로 아래에만 쓰이고, 머리 줄이 기준일 ·
+//   배지를 이미 보인다(형수님 결정 2026-11-14 · POC6-29-1 결과서 §4-1).
 
 import { useSharedQuery } from "@/lib/api/queryCache";
 import {
@@ -19,13 +20,12 @@ import {
   type PriceSeriesResponse,
 } from "@/lib/api";
 import { kospiStatusView, type KospiQueryPhase } from "@/lib/kospiStatus";
-import { KospiStatusBadges } from "../KospiStatusNote";
 import ReadableLineChart from "../charts/ReadableLineChart";
 
 export const KOSPI_SERIES_KEY = "today:price-series?benchmark=KOSPI";
 
 // 최근 N개 저장값만 표시 (전체 12년 시계열은 대표 차트에서 흐름 판독을 흐린다).
-// POC5-19 차트 읽기 개정: 아래 줄은 '최근 N개 저장일'(연속 거래일로 설명하지 않음) · 최종 값에 pt.
+// 기간은 차트 날짜 눈금 · 고른 날 줄로 읽는다(아래 설명 줄은 2026-11-14 형수님 결정으로 뺌).
 const RECENT_DAYS = 120;
 
 export default function KospiChart({
@@ -69,8 +69,6 @@ export default function KospiChart({
   }
 
   const recent = data.series.slice(-RECENT_DAYS);
-  const first = recent[0];
-  const last = recent[recent.length - 1];
 
   return (
     <div>
@@ -84,21 +82,14 @@ export default function KospiChart({
         warn={q.stale || flagged}
         testId="kospi-chart"
       />
-      <div className="tc-small tc-muted" style={{ marginTop: 6 }}>
-        코스피 {first.date} ~ {last.date} · 최근 {recent.length}개 저장일 · 최종{" "}
-        {last.price.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}pt
-        {q.stale && <span className="tc-warn"> · ⚠ 이전 조회값 (재조회 실패)</span>}
-      </div>
-      {status !== null && !status.loading && status.state !== "ok" ? (
-        <div
-          className="kospi-status"
-          data-kospi-chart-state={status.state}
-          style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 6 }}
-        >
-          <KospiStatusBadges kospi={kospi} phase={phase} />
-          {status.basisLine ? (
-            <span className="kospi-status-basis">{status.basisLine}</span>
-          ) : null}
+      {/* 형수님 결정(2026-11-14 · POC6-29 운영 화면 · POC6-29-1 결과서 §4-1): 그래프 아래 두 줄(기간 · 저장일 수 · 최종값 /
+          상태 배지 · 기준일 · N거래일 지연)은 바로 위 코스피 공식 종가 머리 줄(큰 숫자 · 기준일 · 배지)과 겹쳐 뺐다.
+          지연 · 수집 사유는 자료 상태(아침 요약 [자료 상태 보기] · 「자료 최신화 필요」)에서 본다(설계자 지시 2026-11-14 ·
+          POC6-29-1 결과서 §5). 다시 읽기 실패로 이전 값을
+          그릴 때만 아래 경고 한 줄을 둔다(낡은 차트를 새 값처럼 보이지 않게). */}
+      {q.stale ? (
+        <div className="tc-small tc-warn" style={{ marginTop: 6 }} data-testid="kospi-chart-stale">
+          ⚠ 이전 조회값 (재조회 실패)
         </div>
       ) : null}
     </div>

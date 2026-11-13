@@ -1,7 +1,7 @@
 // 시험 전용 — 아침 요약 기준(GET /market/morning-basis) · 수급 5거래일(GET /market/short-flows) 응답(POC6-29 보완 2차).
 // 값 모양 = 2026-11-12 격리 작업본 실측(기준일 11/11 · 코스피 · 수급 11/9 · KODEX 200 11/11 마감 뒤 저장 · 보유 자료 없음).
 import type { MarketContext } from "./api/marketEvidence";
-import type { MorningBasisResponse, MorningItem, MorningKey } from "./api/morningBasis";
+import type { KospiDetail, MorningBasisResponse, MorningItem, MorningKey } from "./api/morningBasis";
 import type { ShortFlowsResponse } from "./api/shortFlows";
 
 function item(key: MorningKey, label: string, required: boolean, stored: string, over: Partial<MorningItem> = {}): MorningItem {
@@ -45,6 +45,17 @@ export const MORNING_CTX = {
   warnings: [],
 } as unknown as MarketContext;
 
+// 2026-11-14(POC6-29-1 결과서 §5) — 코스피 상세(저장 종가 끝 행 기준 · 20 · 60거래일 실제 시작일 · 최신성과 무관)
+export const KOSPI_DETAIL: KospiDetail = {
+  status: "ok",
+  as_of_date: "2026-11-11",
+  r20: { start_date: "2026-10-14", end_date: "2026-11-11", pct: -3.5 },
+  r60: { start_date: "2026-08-12", end_date: "2026-11-11", pct: -7.25 },
+  return_1y_pct: 12.3,
+  high_52w_gap_pct: -7.4,
+  reason: null,
+};
+
 // 기본 = 필수 3 모두 충족(준비됨)
 export function morningOk(over: Partial<MorningBasisResponse> = {}): MorningBasisResponse {
   return {
@@ -68,6 +79,7 @@ export function morningOk(over: Partial<MorningBasisResponse> = {}): MorningBasi
     full_refresh: { cooldown_remaining_seconds: 0, next_available_at: null },
     // 설계자 V3 D1 — 기존 판정 상수(서버 SCORE_RULE 와 같은 값)
     score_rule: { return_20d_pct: 2, return_60d_pct: 5, bull_min: 2, bear_max: -2 },
+    kospi_detail: KOSPI_DETAIL,
     ...over,
   };
 }

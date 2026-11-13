@@ -518,7 +518,7 @@ export default function TodayInvestmentCheckView({ onNavigate }: Props) {
     const verdict = todayBasis(morning, dataOf(market)?.market_context ?? null, market.phase);
     const src = { ...sourcesNow(), verdict };
     const all = freshnessRows(src, "copy");
-    const text = buildTodayMarketCopyText({ market: src.market, flow: src.flow, fresh: all, verdict });
+    const text = buildTodayMarketCopyText({ flow: src.flow, fresh: all, verdict });
     const doCopy = () => {
       const fail = () =>
         setCopyState({ message: "복사하지 못했습니다 — 아래 글을 직접 선택해 복사하세요.", fallback: text });

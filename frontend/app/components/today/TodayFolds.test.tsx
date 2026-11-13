@@ -21,6 +21,10 @@ vi.mock("@/lib/api", async (importOriginal) => {
 });
 
 import KospiHeadline from "./KospiHeadline";
+import KospiCloseBlock from "./KospiCloseBlock";
+import type { MarketFlowContext } from "@/lib/api/marketFlow";
+import type { KospiDetail } from "@/lib/api/morningBasis";
+import { morningOk } from "@/lib/morningTestFixtures";
 
 // ── fixture ──────────────────────────────────────────────────────────────────
 const KOSPI_OK: MarketContextKospi = {
@@ -32,9 +36,22 @@ const KOSPI_OK: MarketContextKospi = {
   daily_return_pct: -3.65,
   return_1m_pct: -8.2,
   return_3m_pct: -14.6,
+  return_20d_pct: -8.2, // 서버는 1m = 20거래일 · 3m = 60거래일(같은 계산)
+  return_60d_pct: -14.6,
   return_1y_pct: 76.82,
   high_52w_gap_pct: -29.96,
 } as MarketContextKospi;
+
+// 2026-11-14(POC6-29-1 결과서 §5) — 코스피 수익률 · 위치는 아침 기준 응답의 저장값 상세(KOSPI 판정 상태와 무관)
+const KD: KospiDetail = {
+  status: "ok",
+  as_of_date: "2026-10-12",
+  r20: { start_date: "2026-09-12", end_date: "2026-10-12", pct: -8.2 },
+  r60: { start_date: "2026-07-16", end_date: "2026-10-12", pct: -14.6 },
+  return_1y_pct: 76.82,
+  high_52w_gap_pct: -29.96,
+  reason: null,
+};
 
 const VOL_OK: StoredVolumeEvidence = {
   ticker: "069500",
@@ -104,8 +121,10 @@ function market(
   };
 }
 
-async function renderHeadline(m: QueryState<MarketTopNResponse>) {
-  const r = render(<KospiHeadline market={m} />);
+async function renderHeadline(m: QueryState<MarketTopNResponse>, kd: KospiDetail | null = KD) {
+  const r = render(
+    <KospiHeadline market={m} morning={{ phase: "success", data: morningOk({ kospi_detail: kd }), stale: false }} />,
+  );
   await act(async () => {
     await Promise.resolve();
   });
@@ -127,18 +146,20 @@ beforeEach(() => {
 
 // ── KOSPI 카드 ───────────────────────────────────────────────────────────────
 describe("KOSPI 카드 — 기본 화면 · 시장 수치와 거래량 펼치기 (설계 §2)", () => {
-  it("기본 = 일간 변화만(기준선 대비 위치는 판정 표 · 설계자 V3 D3), 나머지는 접힘 · 펼치면 같은 응답 값 · 다시 접힘", async () => {
+  it("기본 = 일간 변화 칸 없음(머리 줄 · 형수님 결정 2026-11-14) · 기준선 대비 위치는 판정 표(설계자 V3 D3), 나머지는 접힘 · 펼치면 같은 응답 값 · 다시 접힘", async () => {
     await renderHeadline(market());
     const c = card();
     const btn = marketToggle();
     expect(btn).toHaveAttribute("aria-expanded", "false");
     expect(btn).toHaveClass("btn-md", "tc-fold-btn");
-    expect(within(c).getByTestId("tc-kospi-daily").textContent).toContain("-3.65%");
+    expect(within(c).queryByTestId("tc-kospi-daily")).toBeNull();
+    expect(c.textContent).not.toContain("코스피 일간 변화");
     expect(c.textContent).not.toContain("KODEX200 MA20 대비");
     expect(c.textContent).not.toContain("기준선 대비 위치");
     // 접힌 칸은 그리지 않는다.
     expect(within(c).queryByTestId("tc-market-detail")).toBeNull();
     expect(c.textContent).not.toContain("1개월");
+    expect(c.textContent).not.toContain("20거래일");
     expect(c.textContent).not.toContain("하락장");
     expect(within(c).queryByTestId("stored-volume")).toBeNull();
     // 정상이면 '확인 필요' 없음.
@@ -147,9 +168,13 @@ describe("KOSPI 카드 — 기본 화면 · 시장 수치와 거래량 펼치기
     fireEvent.click(btn);
     expect(marketToggle()).toHaveAttribute("aria-expanded", "true");
     const d = within(c).getByTestId("tc-market-detail");
-    for (const t of ["1개월 -8.20%", "3개월 -14.60%", "1년 +76.82%", "최근 1년 고점 대비 -29.96%"]) {
+    // 형수님 결정(2026-11-14) — 이름을 실제 계산대로 20 · 60거래일(위 1 · 3개월 칸 = 달력 기간과 겹치지 않게)
+    // 2026-11-14 — 실제 계산 시작일(끝 = 제목의 종가 기준일)
+    expect(within(d).getByText(/코스피 수익률·위치/).textContent).toBe("코스피 수익률·위치 · 10/12 종가 기준");
+    for (const t of ["20거래일 -8.20% (9/12부터)", "60거래일 -14.60% (7/16부터)", "1년 +76.82%", "최근 1년 고점 대비 -29.96%"]) {
       expect(d.textContent).toContain(t);
     }
+    expect(d.textContent).not.toMatch(/1개월|3개월/);
     // 설계자 V3 D4 — '기존 시장 판정 참고'(국면 · 지속일 · KODEX200 기준일)는 뺐다(당일 판정 · 판정 표와 중복)
     expect(d.textContent).not.toContain("하락장");
     expect(d.textContent).not.toContain("기존 시장 판정 참고");
@@ -162,10 +187,10 @@ describe("KOSPI 카드 — 기본 화면 · 시장 수치와 거래량 펼치기
 
   // 설계자 RESULT 재판정 V3 D3 · D4(2026-11-13) — 기준선 옆 날짜(market_risk_reference) · 판정 줄 날짜(market_context.asof)를
   // 보이던 두 칸이 빠져, 이 카드의 날짜는 KOSPI 기준일 하나만(KODEX200 날짜로 대신하지 않음 · 판정 날짜는 판정 표).
-  it("날짜 = 'KOSPI 기준일'만 · KODEX200 기준선 · 판정 날짜는 이 카드에 없다(펼친 뒤에도 · 거래량은 자기 기준일)", async () => {
+  it("날짜 = KOSPI 종가 기준일만(펼친 칸 제목) · '마지막 자료 기준일' 줄 없음(머리 줄 한 곳 · 2026-11-14) · KODEX200 기준선 · 판정 날짜는 이 카드에 없다", async () => {
     await renderHeadline(market());
     const c = card();
-    expect(c.textContent).toContain("마지막 자료 기준일 2026-10-12");
+    expect(c.textContent).not.toContain("마지막 자료 기준일");
     expect(within(c).queryByTestId("tc-kodex200-date")).toBeNull();
     for (const d of ["2026-10-13", "2026-10-14"]) expect(c.textContent).not.toContain(d);
     expect(c.textContent).not.toContain("기준선 자료 확인 불가");
@@ -173,26 +198,22 @@ describe("KOSPI 카드 — 기본 화면 · 시장 수치와 거래량 펼치기
     expect(within(c).queryByTestId("tc-regime-date")).toBeNull();
     expect(c.textContent).not.toContain("KODEX200 기준일");
     expect(c.textContent).not.toContain("2026-10-14"); // 판정 날짜(market_context.asof)
+    expect(c.textContent).not.toMatch(/10\/13|10\/14/);
+    expect(within(c).getByTestId("tc-kospi-detail").textContent).toContain("10/12 종가 기준");
   });
 
-  it("일간 칸은 화면 판정 기준 — 지연이면 사유 문장 · 휴장이면 값 · 운영 ok 라도 화면 지연이면 사유", async () => {
-    const stale = { ...KOSPI_OK, status: "stale", display_state: "stale", trading_day_lag: 1 } as MarketContextKospi;
-    let r = await renderHeadline(market({}, ctx({}, stale)));
-    let daily = within(card()).getByTestId("tc-kospi-daily");
-    expect(daily.textContent).toContain("KOSPI 원자료가 최근 거래일까지 갱신되지 않았습니다.");
-    expect(daily.textContent).not.toContain("%");
-    r.unmount();
-
-    const holiday = { ...KOSPI_OK, display_state: "holiday", today_is_trading_day: false } as MarketContextKospi;
-    r = await renderHeadline(market({}, ctx({}, holiday)));
-    expect(within(card()).getByTestId("tc-kospi-daily").textContent).toContain("-3.65%");
-    r.unmount();
-
-    const okButScreenStale = { ...KOSPI_OK, display_state: "stale", trading_day_lag: 1 } as MarketContextKospi;
-    await renderHeadline(market({}, ctx({}, okButScreenStale)));
-    daily = within(card()).getByTestId("tc-kospi-daily");
-    expect(daily.textContent).not.toContain("-3.65%");
-    expect(daily.textContent).toContain("KOSPI 원자료가 최근 거래일까지 갱신되지 않았습니다.");
+  // 형수님 결정(2026-11-14 · POC6-29-1 결과서 §4-2) — 일간 변화는 코스피 공식 종가 머리 줄(시장 흐름 응답 obs.d1 · 비교 날짜)이
+  // 보인다. 이 카드의 '코스피 일간 변화' 칸은 어떤 판정에서도 그리지 않는다(지연일 때 같은 값을 사유 문장으로 막던 칸).
+  it.each([
+    ["정상", { ...KOSPI_OK }],
+    ["지연", { ...KOSPI_OK, status: "stale", display_state: "stale", trading_day_lag: 1 }],
+    ["휴장일", { ...KOSPI_OK, display_state: "holiday", today_is_trading_day: false }],
+    ["운영 ok · 화면 지연", { ...KOSPI_OK, display_state: "stale", trading_day_lag: 1 }],
+  ])("일간 변화 칸 없음 — %s", async (_t, k) => {
+    await renderHeadline(market({}, ctx({}, k as MarketContextKospi)));
+    expect(within(card()).queryByTestId("tc-kospi-daily")).toBeNull();
+    expect(card().textContent).not.toContain("코스피 일간 변화");
+    expect(card().textContent).not.toContain("-3.65%");
   });
 });
 
@@ -228,13 +249,17 @@ describe("접힌 시장 칸의 자료 문제는 펼치기 전후 모두 보인�
     expect(notes()).toBe("확인 필요: KODEX200 거래량 평균 대비 계산 불가");
   });
 
-  it("코스피 1년 · 고점 대비 자료 없음 · 지속일 자료 없음", async () => {
-    const k = { ...KOSPI_OK, return_1y_pct: null, high_52w_gap_pct: null } as MarketContextKospi;
-    await renderHeadline(market({}, ctx({ regime_streak: null } as Partial<MarketContext>, k)));
+  it("코스피 1년 · 고점 대비 자료 없음 · 60거래일 자료 부족 · 지속일 자료 없음", async () => {
+    await renderHeadline(
+      market({}, ctx({ regime_streak: null } as Partial<MarketContext>)),
+      { ...KD, r60: null, return_1y_pct: null, high_52w_gap_pct: null },
+    );
     expect(notes()).toBe(
       // 설계자 V3 D4 — '기존 시장 판정 지속일 자료 없음'은 그 칸을 빼며 함께 뺐다(지속일은 판정 표 · 당일 판정 상자)
-      "확인 필요: 코스피 1년 자료 없음 · 코스피 최근 1년 고점 대비 자료 없음",
+      "확인 필요: 코스피 60거래일 자료 부족 · 코스피 1년 자료 없음 · 코스피 최근 1년 고점 대비 자료 없음",
     );
+    fireEvent.click(marketToggle());
+    expect(within(card()).getByTestId("tc-kospi-detail").textContent).toContain("60거래일 자료 부족");
   });
 
   // 설계자 V3 D4 — 접힌 칸에 시장 판정이 없으므로 '시장 판정 확인 불가'를 이 칸의 안내로 내지 않는다(판정 확인 불가는 판정 표
@@ -247,16 +272,74 @@ describe("접힌 시장 칸의 자료 문제는 펼치기 전후 모두 보인�
     expect(notes()).not.toContain("시장 판정");
   });
 
-  it("KOSPI 가 지연이면 수익률 칸 빈 값은 세지 않는다(사유가 이미 보임) · 위험 문구를 만들지 않는다", async () => {
-    const stale = {
-      ...KOSPI_OK, status: "stale", display_state: "stale", trading_day_lag: 1,
-      return_1y_pct: null, high_52w_gap_pct: null,
-    } as MarketContextKospi;
+  // 설계자 지시(2026-11-14) — 주말 · 장 시작 전(KOSPI 기준일 ≠ 기대 직전 거래일 · 시장 판정 응답은 값 없음)에도 저장값이
+  // 있으면 상세를 읽는다. 상세가 계산되지 않으면(저장 종가 없음 등) 빈 칸을 세지 않는다(칸 자리에 사유).
+  it.each([
+    ["주말(휴장일 · 지연)", { ...KOSPI_OK, status: "stale", display_state: "stale", trading_day_lag: 1, today_is_trading_day: false }],
+    ["장 시작 전(평일 · 지연)", { ...KOSPI_OK, status: "stale", display_state: "stale", trading_day_lag: 1, today_is_trading_day: true }],
+  ])("%s — 시장 판정 응답에 값이 없어도 저장값 상세가 보인다 · 위험 문구 없음", async (_t, k) => {
+    const stale = { ...k, return_20d_pct: null, return_60d_pct: null, return_1y_pct: null, high_52w_gap_pct: null } as MarketContextKospi;
     await renderHeadline(market({}, ctx({}, stale)));
     expect(notes()).toBe("");
+    fireEvent.click(marketToggle());
+    const d = within(card()).getByTestId("tc-kospi-detail");
+    expect(d.textContent).toContain("20거래일 -8.20% (9/12부터)");
+    expect(d.textContent).toContain("1년 +76.82%");
+    expect(d.textContent).not.toMatch(/확인 불가|원자료가 최근 거래일까지/);
     expect(card().textContent).not.toMatch(/위험|하락 신호|경보/);
+  });
+
+  it("그날 KODEX 200 저장 가격이 없으면 20 · 60거래일 '계산 불가' + 쉬운 말 사유 · 1년 · 고점 대비는 값(독립 검토 2026-11-14)", async () => {
+    const reason = "10/12 KODEX 200 저장 가격이 없어 20 · 60거래일은 계산하지 못했습니다";
+    await renderHeadline(market(), { ...KD, r20: null, r60: null, reason });
+    expect(notes()).toBe("확인 필요: 코스피 20거래일 계산 불가 · 코스피 60거래일 계산 불가");
+    fireEvent.click(marketToggle());
+    const d = within(card()).getByTestId("tc-kospi-detail");
+    expect(d.textContent).toContain("20거래일 계산 불가");
+    expect(d.textContent).toContain("60거래일 계산 불가");
+    expect(d.textContent).toContain("1년 +76.82%");
+    expect(within(d).getByTestId("tc-kospi-detail-reason").textContent).toBe(reason);
+    expect(d.textContent).not.toMatch(/축|axis/);
+  });
+
+  it("상세를 계산하지 못하면 빈 칸을 세지 않고 칸 자리에 사유 · 아침 기준 읽기 실패 · 옛 서버(칸 없음)", async () => {
+    const r = await renderHeadline(market(), { ...KD, status: "unavailable", r20: null, r60: null, return_1y_pct: null, high_52w_gap_pct: null, reason: "코스피 기준일이 KODEX 200 거래일 축에 없음" });
+    expect(notes()).toBe("");
+    fireEvent.click(marketToggle());
+    expect(within(card()).getByTestId("tc-kospi-detail").textContent).toBe("코스피 수익률·위치코스피 수익률 확인 불가 — 코스피 기준일이 KODEX 200 거래일 축에 없음");
+    r.unmount();
+    render(<KospiHeadline market={market()} morning={{ phase: "error" }} startOpen />);
+    expect(within(card()).getByTestId("tc-kospi-detail").textContent).toContain("코스피 수익률을 불러오지 못했습니다");
+    expect(notes()).toBe("");
   });
 });
 
 // POC6-29 — 「보유 자세히」(최대 3개 · 종목별 수치 더보기 · 가격 기준일이 달라 뺀 보유)는 카드 합침으로 없앴다(설계 §2 ·
 // 종목별 수치는 「보유」). 그 구역만 보던 두 묶음 시험은 지웠다.
+
+// 독립 검토(2026-11-14) — 코스피 1 · 3 · 6개월 칸은 시장 흐름을 불러오는 중 · 불러오지 못함 · 그 기간 없음을 나눈다
+// ('자료 없음'으로 뭉뚱그리지 않음).
+describe("코스피 1 · 3 · 6개월 칸 — 값이 없을 때의 문구", () => {
+  const MORNING = { phase: "success", data: morningOk(), stale: false } as const;
+  const tiles = () => ["tc-tile-1m", "tc-tile-3m", "tc-tile-6m"].map((id) => screen.getByTestId(id).textContent ?? "");
+  it.each([
+    ["불러오는 중", { phase: "loading" }, "확인 중불러오는 중"],
+    ["불러오지 못함", { phase: "error" }, "확인 불가시장 흐름을 불러오지 못했습니다"],
+    ["응답에 그 기간 없음", { phase: "success", data: { periods: {}, short_lines: [] }, stale: false }, "확인 불가자료 없음"],
+  ])("%s", async (_t, flow, tail) => {
+    render(
+      <KospiCloseBlock
+        market={market()}
+        flow={flow as QueryState<MarketFlowContext>}
+        morning={MORNING}
+      />,
+    );
+    await act(async () => {
+      await Promise.resolve();
+    });
+    const [m1, m3, m6] = tiles();
+    expect(m1).toBe(`코스피 1개월${tail}`);
+    expect(m3).toBe(`코스피 3개월${tail}`);
+    expect(m6).toBe(`코스피 6개월${tail}`);
+  });
+});

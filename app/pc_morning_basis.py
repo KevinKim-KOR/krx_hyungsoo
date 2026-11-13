@@ -15,6 +15,10 @@
   그 결과에서 만든다 — 판정 값과 저장 시점이 다른 저장본에서 오지 않는다.
 - 사유는 확인된 결과만(마지막 시도 기록 · ③ 결과 파일 · 수급 연결 상태 · PC 보관소 목록). 공개 · 수집 예정 시각을
   추정하지 않는다. 대기 다음 시각은 ETF 전체 갱신이 실제로 대기 중일 때만.
+- 코스피 상세(`kospi_detail` · 설계자 지시 · 형수님 결정 2026-11-14 · POC6-29-1 결과서 §5) = 저장된 KOSPI 공식 종가 전체로 시장 판정
+  응답과 같은 산식(20 · 60거래일 = KODEX 200 거래일 축 `return_by_trading_days` · 1년 · 최근 1년 고점 대비 =
+  `compute_kospi_position_metrics`) + 20 · 60거래일의 실제 계산 시작일. 최신성(기대 직전 거래일) 판정과 무관하게 저장값이 있으면
+  주말 · 장 시작 전에도 읽힌다. 시장 판정 응답(`market_context.kospi`)의 엄격 규칙 · 그 값을 쓰는 곳은 그대로.
 """
 
 from __future__ import annotations
@@ -29,17 +33,22 @@ from typing import Any, Optional
 from fastapi import APIRouter
 
 from app import market_refresh_service as svc
-from app.market_benchmark_store import KOSPI_SOURCE
+from app.market_benchmark_store import KOSPI_ID, KOSPI_SOURCE
 from app.market_data_store import (
     DEFAULT_DB_PATH,
     latest_refresh_log,
 )
 from app.market_freshness_rows import _kr_item
+from app.market_benchmark_freshness import return_by_trading_days
 from app.market_regime import (
+    LOOKBACK_20D,
+    LOOKBACK_60D,
     REGIME_BEAR_MAX_SCORE,
     REGIME_BULL_MIN_SCORE,
     SCORE_THRESHOLD_20D_PCT,
     SCORE_THRESHOLD_60D_PCT,
+    _round_pct,
+    compute_kospi_position_metrics,
     compute_market_context,
     compute_regime_streak,
     kodex200_return_dates,
@@ -60,6 +69,7 @@ from app.supply_fx_oil_store import (
     USDKRW,
     WTI,
     read_benchmark_collected_at,
+    read_benchmark_series,
     read_macro_series,
 )
 from app.trading_day_lag import expected_previous_trading_day
@@ -352,6 +362,72 @@ def morning_regime(
     return {**base, "status": "ok", "context": ctx}
 
 
+def _kospi_rows(db_path: Path) -> list[tuple[str, float]]:
+    """KOSPI 공식 종가 (date, close) 날짜 오름차순 — 같은 응답의 다른 저장값 읽기와 같은 함수
+    (`read_benchmark_series` · 읽기 전용 · close 가 null · 0 이하 제외 · 파일 · 표가 없으면 빈 목록 — KOSPI 를 아직 한 번도
+    받지 않은 PC 에서도 응답 전체가 '읽지 못함'이 되지 않게 · 독립 검토 2026-11-14)."""
+    return read_benchmark_series(KOSPI_ID, db_path=db_path)
+
+
+def kospi_detail(
+    kodex_rows: list[tuple[str, float, Optional[str]]],
+    kospi: list[tuple[str, float]],
+) -> dict[str, Any]:
+    """「시장 수치와 거래량」 코스피 수익률 · 위치 — 저장된 KOSPI 공식 종가 끝 행 기준 · 실제 계산 기간과 함께.
+
+    20 · 60거래일 = 시장 판정 응답(`market_regime.compute_kospi_metrics`)과 같은 축
+    (KODEX 200 저장 거래일 · close > 0) · 같은 함수(`return_by_trading_days`) · 같은 반올림.
+    시작일 = 그 함수가 쓰는 축의 lookback 칸(`axis[i - n]`).
+    1년 · 최근 1년 고점 대비 = 같은 함수(`compute_kospi_position_metrics`). 기대 직전 거래일과 맞는지는 보지 않는다
+    (그 판정 · 배지는 화면 머리 줄 · 자료 상태가 맡는다)."""
+    base: dict[str, Any] = {
+        "status": "unavailable",
+        "as_of_date": None,
+        "r20": None,
+        "r60": None,
+        "return_1y_pct": None,
+        "high_52w_gap_pct": None,
+        "reason": None,
+    }
+    if not kospi:
+        return {**base, "reason": "저장된 코스피 공식 종가 없음"}
+    as_of = kospi[-1][0]
+    axis = [r[0] for r in kodex_rows]
+    pos = compute_kospi_position_metrics(
+        kospi
+    )  # 1년 · 고점 대비는 거래일 날짜 목록이 필요 없다
+    if as_of not in axis:
+        # 그날 KODEX 200 저장 가격이 없으면(PC 가 꺼져 시장 전체 갱신 전 · ③ 보충으로 코스피만 들어온 날 등) 20 · 60거래일만
+        # 계산하지 않는다 — 시장 판정 응답과 같은 날짜 목록이라 그 날짜가 빠지면 같은 값을 만들 수 없음(대신하지 않음).
+        return {
+            **base,
+            "status": "ok",
+            "as_of_date": as_of,
+            "return_1y_pct": pos.get("return_1y_pct"),
+            "high_52w_gap_pct": pos.get("high_52w_gap_pct"),
+            "reason": f"{md(as_of)} KODEX 200 저장 가격이 없어 20 · 60거래일은 계산하지 못했습니다",
+        }
+    i = axis.index(as_of)
+
+    def win(n: int) -> Optional[dict[str, Any]]:
+        pct = return_by_trading_days(
+            kospi, trading_days=axis, lookback=n, as_of_date=as_of
+        )
+        if pct is None:
+            return None
+        return {"start_date": axis[i - n], "end_date": as_of, "pct": _round_pct(pct)}
+
+    return {
+        **base,
+        "status": "ok",
+        "as_of_date": as_of,
+        "r20": win(LOOKBACK_20D),
+        "r60": win(LOOKBACK_60D),
+        "return_1y_pct": pos.get("return_1y_pct"),
+        "high_52w_gap_pct": pos.get("high_52w_gap_pct"),
+    }
+
+
 def today_regime(rows: list[tuple[str, float, Optional[str]]]) -> dict[str, Any]:
     """당일 판정 — 저장된 이력 전체(끝 행까지)로 시장 판정 응답과 같은 기존 산식 · 끝 행의 저장 시점을 함께."""
     base: dict[str, Any] = {
@@ -441,6 +517,7 @@ def build_morning_basis(
         ]
         regime = morning_regime(rows, expected, kodex)
         today_reg = today_regime(rows)
+        kdetail = kospi_detail(rows, _kospi_rows(db_path))
         if kodex["met"] and regime["status"] != "ok":
             # 검증자 F5 — 기준일 마감 가격이 있어도 판정을 계산하지 못하면 '판정 근거'는 미충족
             # (준비 상태 · 끝 줄 · 화면이 같은 판단 · 다시 받아도 이력이 늘지 않으면 그대로라 갱신 안내 없음).
@@ -464,6 +541,7 @@ def build_morning_basis(
             "items": [],
             "morning_regime": None,
             "today_regime": None,
+            "kospi_detail": None,
             "score_rule": SCORE_RULE,
             "full_refresh": None,
         }
@@ -478,6 +556,7 @@ def build_morning_basis(
         "items": items,
         "morning_regime": regime,
         "today_regime": today_reg,
+        "kospi_detail": kdetail,
         "score_rule": SCORE_RULE,
         "full_refresh": {
             "cooldown_remaining_seconds": cd,
