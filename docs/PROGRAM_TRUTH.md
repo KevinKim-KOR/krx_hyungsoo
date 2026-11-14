@@ -220,7 +220,7 @@ flowchart LR
 
 ## 5. 화면 및 사용자 기능 (§10.3~10.4)
 
-라우팅은 URL 폴더 분기가 아니라 `MainPanel` 의 클라이언트 상태(`MenuKey` switch)로 처리(`MainPanel.tsx :: switch(active)`). 좌측 5그룹(`LeftSidebar.tsx :: MENU_GROUPS`). 첫 진입 = `today_check`.
+라우팅은 URL 폴더 분기가 아니라 `MainPanel` 의 클라이언트 상태(`MenuKey` switch)로 처리(`MainPanel.tsx :: switch(active)`). 좌측 5그룹(`LeftSidebar.tsx :: MENU_GROUPS`). 첫 진입 = `today_check`. 화면이 바뀌면(좌측 메뉴 · 화면 안 이동 버튼 = 모두 `active` 변경) 창 스크롤을 맨 위로 올린다(`MainPanel.tsx :: useLayoutEffect` · 그리기 전 · 첫 진입 · 같은 메뉴 다시 누름은 그대로 · 2026-11-14 형수님 결정 — 전에는 앞 화면의 스크롤이 남아 짧은 화면은 맨 아래가 보였다).
 
 ### 5.1 전체 화면 요약표
 

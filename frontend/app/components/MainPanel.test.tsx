@@ -155,3 +155,57 @@ describe("MainPanel 라우팅 관통 (POC3-02D-OPS-02 3-1)", () => {
     expect(current[0].textContent).toContain("OCI 운영·적용");
   });
 });
+
+// 2026-11-14 형수님 결정 — 화면이 바뀌면 맨 위에서 시작(앞 화면의 창 스크롤이 남아 「보유」가 맨 아래로 보이던 문제).
+describe("MainPanel 화면 전환 = 맨 위에서 시작", () => {
+  const menuBtn = (label: string) => {
+    const sidebar = screen.getByRole("complementary", { name: "좌측 메뉴" });
+    const btn = within(sidebar)
+      .getAllByRole("button")
+      .find((b) => b.querySelector(".sidebar-menu-label")?.textContent === label);
+    if (!btn) throw new Error(`좌측 메뉴에 「${label}」 없음`);
+    return btn;
+  };
+
+  it("좌측 메뉴 · 화면 안 이동 버튼으로 바뀔 때만 맨 위로 · 첫 진입 · 같은 메뉴 다시 누름은 그대로", async () => {
+    // 스크롤을 부를 때 이미 새 화면이 그려져 있어야 한다(옛 화면을 올리는 것이 아님).
+    const shownAtCall: string[] = [];
+    const scrollTo = vi.spyOn(window, "scrollTo").mockImplementation(() => {
+      shownAtCall.push(screen.queryAllByRole("heading", { level: 1 }).map((h) => h.textContent ?? "").join("|"));
+    });
+    try {
+      render(<MainPanel />);
+      expect(
+        await screen.findByRole("heading", { level: 1, name: "오늘의 투자 점검" }),
+      ).toBeInTheDocument();
+      expect(scrollTo).not.toHaveBeenCalled(); // 첫 진입
+
+      fireEvent.click(menuBtn("보유"));
+      expect(await screen.findByRole("heading", { level: 1, name: "보유" })).toBeInTheDocument();
+      expect(scrollTo).toHaveBeenCalledTimes(1);
+      expect(scrollTo).toHaveBeenLastCalledWith(0, 0);
+      expect(shownAtCall[0]).toBe("보유");
+
+      fireEvent.click(menuBtn("보유")); // 같은 메뉴 다시 누름
+      expect(scrollTo).toHaveBeenCalledTimes(1);
+
+      fireEvent.click(menuBtn("오늘의 투자 점검"));
+      expect(
+        await screen.findByRole("heading", { level: 1, name: "오늘의 투자 점검" }),
+      ).toBeInTheDocument();
+      expect(scrollTo).toHaveBeenCalledTimes(2);
+
+      // 화면 안 이동 버튼(onNavigate)도 같은 한 곳을 지난다.
+      fireEvent.click(await screen.findByRole("button", { name: "OCI 운영 스케줄 확인 펼치기" }));
+      fireEvent.click(await screen.findByRole("button", { name: "OCI 운영·적용 →" }));
+      expect(
+        await screen.findByRole("heading", { level: 1, name: "OCI 운영·적용" }),
+      ).toBeInTheDocument();
+      expect(scrollTo).toHaveBeenCalledTimes(3);
+      expect(scrollTo).toHaveBeenLastCalledWith(0, 0);
+      expect(shownAtCall).toEqual(["보유", "오늘의 투자 점검", "OCI 운영·적용"]);
+    } finally {
+      scrollTo.mockRestore();
+    }
+  });
+});

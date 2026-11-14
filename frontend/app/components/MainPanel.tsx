@@ -11,7 +11,7 @@
 //   (holdings_manage)·확인 근거(holdings_evidence)·데이터 상태(data_status) 로 분리.
 //   초안 생성 버튼이 Holdings 계열에서 제거되어 draft→approval 자동 전환은 없다(§4.6).
 
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import AISessionsView from "./AISessionsView";
 import AlertRecordsView from "./AlertRecordsView";
 import ApprovalTelegramView from "./ApprovalTelegramView";
@@ -39,6 +39,17 @@ export default function MainPanel() {
   //   2026-08-05 POC3-07: 미리보기·샘플이 승인·적용에서 진단·상태로 이동하며 run 공유
   //   대상도 DiagnosticsView 로 옮겨졌다. 자동 발송 아님(PREVIEW/TEST).
   const [run, setRun] = useState<Run | null>(null);
+
+  // 2026-11-14 형수님 결정 — 화면이 바뀌면(좌측 메뉴 · 화면 안 이동 버튼 모두 여기 한 곳) 맨 위에서 시작한다.
+  //   메뉴는 새 페이지가 아니라 같은 창의 내용만 바꾸므로, 그대로 두면 앞 화면에서 내려가 있던 창 스크롤이 남아
+  //   더 짧은 화면은 맨 아래가 보였다(「오늘의 투자 점검」을 내린 뒤 「보유」 → 맨 아래 · 실화면 재현).
+  //   그리기 전(layout effect)에 올려 새 화면이 아래에 잠깐 보이지 않게 한다. 첫 진입 · 같은 메뉴 다시 누름은 그대로.
+  const shownMenu = useRef(active);
+  useLayoutEffect(() => {
+    if (shownMenu.current === active) return;
+    shownMenu.current = active;
+    window.scrollTo(0, 0);
+  }, [active]);
 
   let view: React.ReactNode;
   switch (active) {
