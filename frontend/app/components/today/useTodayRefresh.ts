@@ -12,12 +12,15 @@
 // - POC6-29 보완(보완 PLAN 판정 Q-R2) — 맨 앞 ⓪ 빠른 시세 단계가 끝나는 대로 먼저 알린다(onQuickDone · 6시간 대기와 무관).
 // - POC6-29 보완 2차(S 판정 Q-S2) — ② 가 대기면 서버가 같은 작업에서 ③ 전일 자료 보충을 돈다. 끝나면 알린다(onPrevdayDone).
 //   ③ 이 길 수 있어(수급 가져오기 상한 150초 + KRX · 해외 지표) 상태 확인 상한을 6분으로 둔다.
+// - POC6-31 STEP 2(판정 Q5 (b)) — ③ 뒤 보유 구성종목(최대 3묶음 · 묶음마다 30초 예산 + 요청 대기)이 끝나면 알린다
+//   (onConstituentsDone). 이 단계가 더해져 상태 확인 상한을 8분으로 늘린다.
 import { useCallback, useEffect, useRef, useState } from "react";
 // 개별 모듈에서 읽는다(화면 시험이 `@/lib/api` 를 통째로 가짜로 바꾸는 방식과 겹치지 않게 · 기존 관례).
 import type { MarketRefreshStartResponse, MarketRefreshStatusResponse } from "@/lib/api/market";
 import {
   fetchRefreshAllStatus,
   postRefreshAll,
+  type RefreshAllConstituentsStep,
   type RefreshAllHoldingsStep,
   type RefreshAllPrevdayStep,
   type RefreshAllQuickStep,
@@ -29,7 +32,7 @@ import { useMarketVixRetry } from "../useMarketVixRetry";
 export type AllPhase = "idle" | "starting" | "running" | "done" | "failed";
 
 const POLL_MS = 1500;
-const POLL_MAX = 240; // 1.5초 × 240 = 6분(③ 포함)
+const POLL_MAX = 320; // 1.5초 × 320 = 8분(③ · 보유 구성종목 포함)
 
 export function useTodayRefresh({
   onMarketCompleted,
@@ -37,12 +40,14 @@ export function useTodayRefresh({
   onVixDone,
   onQuickDone,
   onPrevdayDone,
+  onConstituentsDone,
 }: {
   onMarketCompleted: () => void;
   onHoldingsDone: (step: RefreshAllHoldingsStep) => void;
   onVixDone: () => void;
   onQuickDone?: (step: RefreshAllQuickStep) => void;
   onPrevdayDone?: (step: RefreshAllPrevdayStep) => void;
+  onConstituentsDone?: (step: RefreshAllConstituentsStep) => void;
 }) {
   const lastStatusRef = useRef<MarketRefreshStatusResponse | null>(null);
   // 화면을 떠난 뒤 도착한 응답은 버린다(묶음 작업 상태 · 시작 응답 — 검토 지적).
@@ -78,12 +83,20 @@ export function useTodayRefresh({
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const ticksRef = useRef(0);
   // 같은 작업의 단계 결과는 한 번만 넘긴다(상태를 여러 번 읽어도).
-  const handledRef = useRef<{ job: string | null; quick: boolean; holdings: boolean; market: boolean; prevday: boolean }>({
+  const handledRef = useRef<{
+    job: string | null;
+    quick: boolean;
+    holdings: boolean;
+    market: boolean;
+    prevday: boolean;
+    constituents: boolean;
+  }>({
     job: null,
     quick: false,
     holdings: false,
     market: false,
     prevday: false,
+    constituents: false,
   });
   const holdingsRef = useRef(onHoldingsDone);
   holdingsRef.current = onHoldingsDone;
@@ -91,6 +104,8 @@ export function useTodayRefresh({
   quickRef.current = onQuickDone;
   const prevdayRef = useRef(onPrevdayDone);
   prevdayRef.current = onPrevdayDone;
+  const constituentsRef = useRef(onConstituentsDone);
+  constituentsRef.current = onConstituentsDone;
   const adoptRef = useRef(marketRefresh.adopt);
   adoptRef.current = marketRefresh.adopt;
 
@@ -108,7 +123,14 @@ export function useTodayRefresh({
       setStatus(s);
       const h = handledRef.current;
       if (h.job !== s.job_id) {
-        handledRef.current = { job: s.job_id, quick: false, holdings: false, market: false, prevday: false };
+        handledRef.current = {
+          job: s.job_id,
+          quick: false,
+          holdings: false,
+          market: false,
+          prevday: false,
+          constituents: false,
+        };
       }
       const cur = handledRef.current;
       const qs = s.steps.quick;
@@ -135,6 +157,11 @@ export function useTodayRefresh({
       if (ps && !cur.prevday && ps.status !== "pending" && ps.status !== "running") {
         cur.prevday = true;
         prevdayRef.current?.(ps);
+      }
+      const cs = s.steps.constituents;
+      if (cs && !cur.constituents && cs.status !== "pending" && cs.status !== "running") {
+        cur.constituents = true;
+        constituentsRef.current?.(cs);
       }
       if (s.state === "running") setPhase("running");
       else if (s.state === "done") {

@@ -6,6 +6,7 @@
 import { request } from "./core";
 import type { MarketRefreshStartStatus } from "./market";
 import type { QuickAttemptStatus, QuickCode } from "./quickQuotes";
+import type { ConstituentCounts, ConstituentItem } from "./constituentsStatus";
 
 export interface RefreshAllQuickStep {
   status: "pending" | "running" | "done" | "partial" | "failed";
@@ -52,6 +53,24 @@ export interface RefreshAllPrevdayStep {
   items?: Partial<Record<"kospi" | "flows" | "vix" | "usdkrw" | "wti", PrevdayItem>>;
 }
 
+// POC6-31 STEP 2(PLAN 판정 Q5 (b) · Q20) — 보유 구성종목: ② 시작 요청 · 해당 ③ 뒤 · 화면에는 번호 없는 별도 줄.
+export interface RefreshAllConstituentsStep {
+  status: "pending" | "running" | "done" | "skipped" | "failed";
+  reason?: string | null;
+  target_date?: string | null;
+  total?: number | null;
+  done?: number | null;
+  batch_index?: number | null;
+  batch_total?: number | null;
+  calls?: number | null;
+  counts?: ConstituentCounts | null;
+  update_failed?: number | null;
+  reason_detail?: string | null; // 예외 이름 등(화면 '자세히' 안)
+  shared?: number | null; // 다른 작업과 함께 받은 수
+  unlogged_logs?: number | null; // 저장소 잠김으로 끝내 못 쓴 확인 기록 수
+  items?: ConstituentItem[];
+}
+
 export interface RefreshAllStatus {
   state: "idle" | "running" | "done";
   job_id: string | null;
@@ -64,6 +83,8 @@ export interface RefreshAllStatus {
     holdings: RefreshAllHoldingsStep | null;
     market: RefreshAllMarketStep | null;
     prevday?: RefreshAllPrevdayStep | null;
+    // constituents 가 없는 응답(POC6-31 전 서버)도 읽는다.
+    constituents?: RefreshAllConstituentsStep | null;
   };
 }
 

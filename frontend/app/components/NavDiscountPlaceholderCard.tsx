@@ -44,18 +44,10 @@ export default function NavDiscountPlaceholderCard({ candidates = [] }: Props) {
     )
     .slice(0, 5);
 
-  // POC6-29 — 「후보리스트」에서 넘긴 목록에는 NAV · 괴리율 칸을 담지 않는다. '데이터 없음 · 갱신하면 재수집'이 아니라
-  // 볼 수 있는 곳을 알린다(검토 지적 — 갱신해도 이 카드는 바뀌지 않음).
+  // POC6-29 — 「후보리스트」에서 넘긴 목록에는 NAV · 괴리율 칸을 담지 않는다. POC6-31(형수님 직접 지시 2026-11-16) —
+  // 보일 값이 없는 안내 카드는 그리지 않는다(NAV · 괴리율은 「후보리스트」 [표] · 행 상세 · 「보유와 후보 비교」 종목별 근거에 있음).
   if (candidates.length > 0 && candidates.every((c) => !c.data_quality)) {
-    return (
-      <div className="card" data-testid="nav-not-carried">
-        <h2>NAV / 괴리율 상태</h2>
-        <p className="helper">
-          넘겨받은 목록에는 NAV · 괴리율을 담지 않았습니다. 「후보리스트」 [표] 또는 행 상세의 &lsquo;시장가 · 기준가(NAV) ·
-          괴리율&rsquo;에서 확인하세요.
-        </p>
-      </div>
-    );
+    return null;
   }
 
   if (candidates.length === 0 || stats.ok === 0) {

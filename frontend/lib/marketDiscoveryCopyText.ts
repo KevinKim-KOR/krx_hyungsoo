@@ -21,6 +21,8 @@
 //   섹션 제목 [동일 기간 KODEX200 대비] · 양쪽 수익률 · 사용 종가 날짜 · 한계(가격 조정 기준 연속성 미검사) 한 번.
 // - 날짜 판정은 화면과 같은 lib/returnPeriod 를 쓴다.
 
+import type { CrossFamilyResponse } from "./api/constituentsStatus";
+import { crossFamilyVerdict, pairRestText, splitPairs } from "./constituentsText";
 import type {
   ConstituentsAnalysisResponse,
   MarketCandidate,
@@ -99,6 +101,10 @@ export interface BuildCopyTextInput {
   // [구성종목 / 중복 노출] 섹션 + AI 요청 문구가 독립 테마 vs 반복 노출 해석을
   // 요구하는 형태로 강화.
   constituentsAnalysis?: ConstituentsAnalysisResponse | null;
+  // POC6-31(판정 Q7 · Q21) — 여러 지수 계열이 함께 담은 주식(예전 '반복 등장 핵심 종목' 자리 · 그 목록으로 대신 채우지 않음).
+  // 읽지 못했으면 crossFamilyError 를 넘긴다(질문 글에 '읽지 못함'으로 적는다).
+  crossFamily?: CrossFamilyResponse | null;
+  crossFamilyError?: string | null;
   // POC6-01 — 시장 흐름(수급 · 환율 · 유가) 구간 = 서버 공통 글 그대로(`marketFlowCopySection`).
   // 넘기지 않으면(undefined) 구간 없음 · 넘기면 그 글(자료 없음 문구 포함)을 [시스템 시장 판정] 다음에.
   marketFlowText?: string;
@@ -110,6 +116,8 @@ export interface BuildCopyTextInput {
 function appendConstituentsSection(
   lines: string[],
   analysis: ConstituentsAnalysisResponse | null | undefined,
+  crossFamily?: CrossFamilyResponse | null,
+  crossFamilyError?: string | null,
 ): void {
   if (!analysis) return;
   lines.push("[구성종목 / 중복 노출]");
@@ -138,7 +146,7 @@ function appendConstituentsSection(
       const top3c = c.concentration.top3_weight_pct;
       const top5c = c.concentration.top5_weight_pct;
       lines.push(
-        `  · ${c.etf_ticker} ${c.etf_name ?? "-"}: ${top5} (top3 ${
+        `  · ${c.etf_ticker} ${c.etf_name ?? "-"}(${c.asof} 구성): ${top5} (top3 ${
           top3c !== null && top3c !== undefined ? `${top3c.toFixed(1)}%` : "-"
         } / top5 ${
           top5c !== null && top5c !== undefined ? `${top5c.toFixed(1)}%` : "-"
@@ -147,7 +155,12 @@ function appendConstituentsSection(
     });
   }
   if (analysis.overlap_matrix.length > 0) {
-    const top_pairs = [...analysis.overlap_matrix]
+    // POC6-31(판정 Q7 · §4 M2) — 같은 구성일 쌍(서버 pair_scope · 양쪽 원천일 확인)만 순위로 · 보낸 범위와 뺀 쌍 수를 적는다
+    // (칸 없는 예전 서버 = 한 날짜로 읽음 · 같은 구성일로 봄).
+    const split = splitPairs(analysis.overlap_matrix);
+    const same = split.same_date;
+    const rest = pairRestText(split);
+    const top_pairs = [...same]
       .filter((p) => p.weighted_overlap_pct !== null && p.weighted_overlap_pct !== undefined)
       .sort(
         (a, b) =>
@@ -155,7 +168,9 @@ function appendConstituentsSection(
       )
       .slice(0, 5);
     if (top_pairs.length > 0) {
-      lines.push("- 중복률 상위 (top 5 쌍):");
+      lines.push(
+        `- 중복률 상위 (같은 구성일 쌍 ${same.length}개 중 ${top_pairs.length}쌍${rest ? ` · 같은 구성일이 아닌 쌍(${rest})은 뺌` : ""}):`,
+      );
       top_pairs.forEach((p) => {
         lines.push(
           `  · ${p.left_ticker} ↔ ${p.right_ticker}: 공통 ${p.common_count_top10}, 비중중복 ${
@@ -167,13 +182,32 @@ function appendConstituentsSection(
       });
     }
   }
-  if (analysis.repeated_core_holdings.length > 0) {
-    lines.push("- 반복 등장 핵심 종목:");
-    analysis.repeated_core_holdings.slice(0, 10).forEach((r) => {
-      lines.push(
-        `  · ${r.name ?? r.ticker ?? "-"}: ${r.appears_in_etf_count}개 ETF`,
-      );
+  if (crossFamily) {
+    const sc = crossFamily.scope;
+    const head = `- 여러 지수 계열이 함께 담은 주식(최신 구성일 ${sc.latest_date ?? "-"} · 같은 날짜 ETF ${sc.same_date}개 · 원본 1~10행 주식만)`;
+    const verdict = crossFamilyVerdict({
+      status: crossFamily.status,
+      stockCount: crossFamily.stocks.length,
+      evidenceCount: sc.evidence_count ?? 0,
     });
+    if (crossFamily.status !== "ok" || crossFamily.stocks.length === 0) {
+      lines.push(`${head}: ${verdict}`);
+    } else {
+      lines.push(`${head} — 전체 ${crossFamily.stocks.length}종목 중 상위 ${Math.min(10, crossFamily.stocks.length)}:`);
+      crossFamily.stocks.slice(0, 10).forEach((st) => {
+        lines.push(
+          `  · ${st.name}: 계열 ${st.family_count} · ETF ${st.etf_count} · 최대 비중 ${st.max_weight_pct.toFixed(1)}%(${st.max_entry.etf_name ?? st.max_entry.etf})`,
+        );
+      });
+    }
+    lines.push("  (업종 해석은 가설 — 주식 업종 자료 없음)");
+  } else {
+    // 읽지 못했거나 아직 읽는 중 — 예전 '반복 등장 핵심 종목'(날짜 섞임 · 행 종류 안 가림)으로 대신 채우지 않는다.
+    lines.push(
+      crossFamilyError
+        ? `- 여러 지수 계열이 함께 담은 주식: 읽지 못함 — ${crossFamilyError}`
+        : "- 여러 지수 계열이 함께 담은 주식: 아직 읽지 않아 넣지 않음",
+    );
   }
 }
 
@@ -413,7 +447,7 @@ export function buildMarketDiscoveryCopyText(input: BuildCopyTextInput): string 
   // 2026-05-27 — 구성종목/중복률 섹션 (지시문 §10). analysis 가 있을 때만 노출.
   if (input.constituentsAnalysis) {
     lines.push("");
-    appendConstituentsSection(lines, input.constituentsAnalysis);
+    appendConstituentsSection(lines, input.constituentsAnalysis, input.crossFamily, input.crossFamilyError);
   }
   lines.push("");
   lines.push("[요청]");

@@ -7,6 +7,9 @@
 //   [복사]는 응답 글(`preview_text`)을 그대로 복사한다(설계 §4 '같은 문자열').
 // - 대상 종목 · 종류 · 후보 목록 조건이 바뀌면 이전 결과를 비우고 늦은 응답은 버린다(판정 §4).
 // - 저장 · 발송 · 승인 · LLM 호출 없음.
+// - POC6-31 STEP 5(PLAN C25 · 판정 Q13) — 「보유와 후보 비교」 후보 미리보기는 고른 보유와 화면이 받은 구성종목 비교의 근거 지문을
+//   싣는다(서버가 다시 계산해 같을 때만 생성 · 다르면 '자료가 바뀌었습니다' 안내). 지문을 아직 못 받았으면 만들지 않는다.
+//   만든 뒤 화면의 고른 보유 · 근거가 바뀌었으면 [AI 세션에서 검토] 때 다시 만들지 먼저 묻는다.
 
 import { getMarketFlowPeriod } from "@/lib/marketFlowPeriod";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -31,6 +34,7 @@ import { SAME_PERIOD_LIMIT } from "@/lib/samePeriodKodex";
 import { VOLUME_HELP } from "@/lib/storedVolume";
 import HelpPopover from "../holdings_risk_evidence/HelpPopover";
 import { VOL_HELP_BASIS, VOL_HELP_MEANING } from "../holdings_risk_evidence/priceVolatility";
+import { constituentDatesText } from "@/lib/pairExposureText";
 
 interface Props {
   targetKind: DecisionDraftTargetKind;
@@ -45,6 +49,8 @@ interface Props {
   // POC6-29(판정 Q8) — 시장 흐름 묶음 기간을 화면이 정해 넘긴다(「ETF보유 및 후보 선정」 화면 = 6개월 고정 ·
   //   「오늘의 투자 점검」 시장 근거에서 고른 기간과 무관). 없으면 예전처럼 시장 흐름 카드에서 고른 기간.
   flowPeriod?: string;
+  // POC6-31 C25 — 「보유와 후보 비교」 후보만: 고른 보유 · 화면이 받은 구성종목 비교 근거 지문(아직 못 받았으면 null).
+  pair?: { holding: string | null; fingerprint: string | null };
 }
 
 // POC5-24 — 지금 보이는 응답 그대로 AI 세션 초안(재생성 · 재계산 없음 · 질문 = 원문).
@@ -100,8 +106,9 @@ export const PREVIEW_HELP = [
     SAME_PERIOD_LIMIT,
   "거래량 — " + VOLUME_HELP,
   "가격 흔들림 — " + VOL_HELP_MEANING + " " + VOL_HELP_BASIS,
-  "중복 — 보유 ETF 는 이 ETF 저장 구성종목 상위 10건과, 구성종목이 저장된 지금 1개월 상위 10 후보에 2번 이상 나오는 종목의 겹침입니다(내 보유 ETF 사이 중복 아님 · 일치 0건은 비교 범위 한정)."
-    + " 후보는 각 보유 ETF 와 저장 구성종목 상위 10건끼리 비교한 「ETF 구성종목」 중복률(Top 10 기준)이며, 구성종목 자료가 없는 쌍은 계산하지 않습니다(중복 없음이라는 뜻 아님). 직접 보유 여부는 따로 적습니다.",
+  "중복 — 보유 ETF 는 이 ETF 저장 구성종목 상위 10건과, 구성종목이 저장된 지금 1개월 상위 10 후보에 2번 이상 나오는 종목의 겹침입니다(내 보유 ETF 사이 중복 아님 · 일치 0건은 비교 범위 한정). 후보는 직접 보유 여부를 적습니다.",
+  // POC6-31 C26 — 후보의 예전 쌍별 중복률 줄을 대신하는 묶음.
+  "구성종목 비교(후보만) — 후보의 원본 비중 1 ~ 10행 주식마다 후보 비중 · 고른 보유 비중(「보유와 후보 비교」에서 고른 경우) · 내 보유 전체의 확인된 노출을 적습니다. 노출 = 보유에서 확인된 가장 최근 구성일의 보유 ETF 평가 비중 × 그 ETF 안 편입 비중의 합 + 같은 주식 직접 보유 평가 비중(현금 제외 보유 평가액 기준 · 금액 없음). 계산에 들어간 범위 · 빠진 범위와 사유 · 날짜를 먼저 적고, 30행(또는 예전 10행)까지만 받은 ETF 에 없는 주식은 '저장 범위에서 미확인'으로 둡니다.",
 ];
 
 // 응답 글을 묶음 단위로 나눈다(제목 줄 '[…]' + 본문). 글 자체는 바꾸지 않는다.
@@ -121,6 +128,7 @@ export default function DecisionDraftPreviewCard({
   rank,
   onNavigate,
   flowPeriod,
+  pair,
 }: Props) {
   // POC5-24 — 저장 안 한 기존 초안이 있으면 바꾸기 전에 묻는다(Q2 (a)).
   const [pendingReplace, setPendingReplace] = useState<string | null>(null);
@@ -130,6 +138,11 @@ export default function DecisionDraftPreviewCard({
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
+  // POC6-31 C25 — 결과를 만든 때의 고른 보유 · 근거 지문 · 지금과 달라 다시 만들지 묻는 중인지.
+  const [resultPair, setResultPair] = useState<string>("");
+  const [pairDiffers, setPairDiffers] = useState<boolean>(false);
+  const pairKey = pair ? `${pair.holding ?? ""}|${pair.fingerprint ?? ""}` : "";
+  const pairPending = !!pair && !pair.fingerprint;
   // 요청 시작 시점의 대상 식별자 — 늦게 도착한 응답이 새 대상에 표시되지 않도록.
   const currentReqIdRef = useRef<number>(0);
   const queryKey = useMemo(
@@ -147,19 +160,28 @@ export default function DecisionDraftPreviewCard({
     setLoading(false);
     setCopyState("idle");
     setPendingReplace(null);
+    setPairDiffers(false);
     currentReqIdRef.current += 1;
   }, [targetKind, ticker, queryKey]);
 
   const handleGenerate = useCallback(async () => {
-    if (loading || !ticker) return;
+    if (loading || !ticker || pairPending) return;
     const reqId = ++currentReqIdRef.current;
     const reqFor = targetKey;
+    const reqPair = pairKey;
     setLoading(true);
     setError(null);
     setCopyState("idle");
     setPendingReplace(null);
+    setPairDiffers(false);
     try {
-      const res = await postDecisionDraftPreview(targetKind, ticker, listQuery, flowPeriod ?? getMarketFlowPeriod());
+      const res = await postDecisionDraftPreview(
+        targetKind,
+        ticker,
+        listQuery,
+        flowPeriod ?? getMarketFlowPeriod(),
+        pair && pair.fingerprint ? { holding: pair.holding, fingerprint: pair.fingerprint } : undefined,
+      );
       if (reqId !== currentReqIdRef.current) return;
       if (res.status !== "ok" || !res.preview_text) {
         // 서버 사유(예: 현재 목록 조건에 없음)가 있으면 그대로 · 없으면 기본 문구.
@@ -168,6 +190,7 @@ export default function DecisionDraftPreviewCard({
       } else {
         setResult(res);
         setResultFor(reqFor);
+        setResultPair(reqPair);
         setPendingReplace(null);
       }
     } catch {
@@ -177,7 +200,7 @@ export default function DecisionDraftPreviewCard({
     } finally {
       if (reqId === currentReqIdRef.current) setLoading(false);
     }
-  }, [loading, targetKind, ticker, listQuery, targetKey, flowPeriod]);
+  }, [loading, targetKind, ticker, listQuery, targetKey, flowPeriod, pair, pairKey, pairPending]);
 
   const handleCopy = useCallback(() => {
     const text = result?.preview_text;
@@ -211,6 +234,12 @@ export default function DecisionDraftPreviewCard({
         setPendingReplace(null);
         return;
       }
+      // POC6-31 C25 — 만든 뒤 고른 보유 · 근거가 바뀌었으면 먼저 다시 만들지 묻는다(지금 화면과 다른 근거를 넘기지 않음).
+      if (pair && pairKey !== resultPair) {
+        setPairDiffers(true);
+        setPendingReplace(null);
+        return;
+      }
       const old = loadAISessionsDraft();
       if (old && !force) {
         setPendingReplace(describeDraftOrigin(old));
@@ -220,7 +249,7 @@ export default function DecisionDraftPreviewCard({
       setPendingReplace(null);
       onNavigate?.("ai_sessions");
     },
-    [reviewDraft, loading, onNavigate],
+    [reviewDraft, loading, onNavigate, pair, pairKey, resultPair],
   );
 
   const label = targetKind === "holding" ? "보유" : "후보";
@@ -243,7 +272,7 @@ export default function DecisionDraftPreviewCard({
         <button
           type="button"
           onClick={handleGenerate}
-          disabled={loading || !ticker}
+          disabled={loading || !ticker || pairPending}
           className="button-primary"
         >
           {loading ? "판단 근거 미리보기 생성 중..." : ok ? "다시 생성" : "판단 근거 미리보기 생성"}
@@ -267,6 +296,22 @@ export default function DecisionDraftPreviewCard({
       {ok ? (
         // POC6-24 판정 Q1 — 버튼 근처 기본 안내(팝업 · 동의 기록 · 자동 전송 없음).
         <div className="cap-warn ddp-amount-note">{AMOUNT_NOTE}</div>
+      ) : null}
+      {pairPending ? (
+        <div className="helper" data-testid="ddp-pair-pending">
+          위 구성종목 비교를 읽은 뒤 만들 수 있습니다(같은 근거로만 만듦).
+        </div>
+      ) : null}
+      {pairDiffers ? (
+        <div className="ddp-replace" role="alert" data-testid="ddp-pair-differs">
+          <span>지금 화면과 미리보기가 다릅니다(고른 보유 또는 구성종목 비교가 바뀜) — 다시 만들까요?</span>
+          <button type="button" className="btn-md" onClick={handleGenerate} disabled={pairPending}>
+            다시 만들기
+          </button>
+          <button type="button" className="btn-md ddp-cancel" onClick={() => setPairDiffers(false)}>
+            취소
+          </button>
+        </div>
       ) : null}
       {pendingReplace ? (
         <div className="ddp-replace" role="alert">
@@ -292,6 +337,7 @@ export default function DecisionDraftPreviewCard({
             생성 {gen} · 가격 기준일 {ok.evidence_as_of?.target_as_of_date ?? DASH} · KODEX200{" "}
             {ok.evidence_as_of?.kodex200_as_of_date ?? DASH} · VIX{" "}
             {ok.evidence_as_of?.vix_as_of_date ?? DASH}(미국 날짜)
+            {constituentDatesText(ok.evidence_as_of) ? ` · ${constituentDatesText(ok.evidence_as_of)}` : ""}
           </div>
           <div className="ddp-grid" data-testid="ddp-grid">
             {splitPreviewSections(ok.preview_text as string).map((sec, i) => (

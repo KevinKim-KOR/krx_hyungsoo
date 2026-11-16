@@ -87,6 +87,9 @@ const saved = new Map<ScreenId, SavedBasisRead>();
 // 다른 탭 저장 뒤 다시 읽어도 바뀌지 않는다(지금 조회 조건도 그대로이므로).
 const started = new Map<ScreenId, SavedBasisStatus>();
 const subs = new Set<() => void>();
+// POC6-31 — '이동 한 번' 조건(받는 화면이 꺼낼 때까지) · 화면별 setScreenCondition 횟수(아래 설명)
+const oneTime = new Map<ScreenId, CompareCondition>();
+const setCount = new Map<ScreenId, number>();
 
 function savedOf(id: ScreenId): SavedBasisRead {
   let r = saved.get(id);
@@ -134,14 +137,43 @@ function emit() {
 export function setScreenCondition(id: ScreenId, next: CompareCondition): void {
   // today 는 제외 4종 고정(판정 Q2) — 기간만 바뀐다.
   const fixed = id === "today" ? { basis: next.basis, filters: { ...ETF_COMPARE_DEFAULT.filters } } : next;
-  if (sameCondition(getScreenCondition(id), fixed)) return;
-  current.set(id, copy(fixed));
+  // 사용자가 조건을 정했다는 표시(값이 같아도) — 그 화면에 떠 있는 '이동 한 번' 조건을 내린다(POC6-31).
+  setCount.set(id, (setCount.get(id) ?? 0) + 1);
+  if (!sameCondition(getScreenCondition(id), fixed)) current.set(id, copy(fixed));
   emit();
 }
 
+// ── POC6-31(판정 Q10 · Q17) — 다른 화면에서 넘긴 조건은 그 이동 한 번에만 ──
+// 보내는 쪽은 presetOneTimeCondition 만 부르고(화면 조건 메모리 · 저장값을 바꾸지 않음), 받는 화면은 처음 그릴 때
+// takeOneTimeCondition 으로 꺼내 그 화면이 떠 있는 동안만 쓴다. 그 화면에서 사용자가 조건을 정하면(setScreenCondition)
+// 사용자 값이 이긴다. 화면을 떠났다 메뉴로 다시 들어오면 원래 화면 조건으로 보인다.
+
+export interface OneTimeCondition {
+  cond: CompareCondition;
+  at: number; // 꺼낼 때의 setScreenCondition 횟수 — 그 뒤 사용자가 정하면 내린다
+}
+
+export function presetOneTimeCondition(id: ScreenId, cond: CompareCondition): void {
+  oneTime.set(id, copy(cond));
+}
+
+export function takeOneTimeCondition(id: ScreenId): OneTimeCondition | null {
+  const c = oneTime.get(id);
+  oneTime.delete(id);
+  return c ? { cond: c, at: setCount.get(id) ?? 0 } : null;
+}
+
+export function useScreenSetCount(id: ScreenId): number {
+  return useSyncExternalStore(
+    subscribe,
+    () => setCount.get(id) ?? 0,
+    () => 0,
+  );
+}
+
 // [이 기준을 기본으로] — 지금 기간을 이 화면의 기본으로 저장. 다시 읽어 같은 값일 때만 성공(true).
-export function saveScreenBasis(id: ScreenId): boolean {
-  const basis = getScreenCondition(id).basis;
+// basis = 화면에 보이는 기간(이동 한 번 조건이 떠 있으면 그 기간 · POC6-31) — 없으면 화면 조건의 기간.
+export function saveScreenBasis(id: ScreenId, basis: CompareBasis = getScreenCondition(id).basis): boolean {
   try {
     window.localStorage.setItem(storageKeyOf(id), basis);
     if (window.localStorage.getItem(storageKeyOf(id)) !== basis) return false;
@@ -194,6 +226,8 @@ export function __resetEtfCompareCondition(): void {
   current.clear();
   saved.clear();
   started.clear();
+  oneTime.clear();
+  setCount.clear();
   subs.clear();
   window.removeEventListener("storage", onStorage);
 }

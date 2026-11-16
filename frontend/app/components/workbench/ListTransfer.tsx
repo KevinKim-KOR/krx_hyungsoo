@@ -27,7 +27,7 @@ import { appendMarketContextSection } from "@/lib/marketDiscoveryCopyText";
 import { BASIS_LABEL, filtersText, md, pct, priceStateLine } from "@/lib/etfCompare";
 import { marketFlowCopySection } from "@/lib/marketFlowText";
 import type { MenuKey } from "../LeftSidebar";
-import CopyListButton from "./CopyListButton";
+import { COPY_LIST_LABEL, CopyListMsg, CopyListNote, useCopyList } from "./CopyListButton";
 
 export const TRANSFER_FLOW_PERIOD = "6M";
 
@@ -137,6 +137,7 @@ export default function ListTransfer({
 }) {
   const [pending, setPending] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const copy = useCopyList(s, side);
   // 누를 때 한 번 — 시장 흐름 글 · 시장 판정을 함께 읽는다.
   const readContext = async (): Promise<{ text: string; market: MarketRead }> => {
     const [data, market] = await Promise.all([
@@ -207,6 +208,8 @@ export default function ListTransfer({
         marketFlowText: text,
         // 판정 Q5 — 「ETF 구성종목」 화면 · 그 화면이 만드는 AI 질문 글에도 기간 · 날짜 · 제외 · 상하위 · 건수.
         listScope: `「후보리스트」 ${scope}`,
+        // POC6-31(PLAN C19) — 조건을 칸으로도 넘긴다(「보유와 후보 비교」로 후보를 넘길 때 이 조건을 쓴다 · 판정 Q10).
+        listCondition: { basis: s.basis, side, start: s.period.start, end: s.end_date, filters: s.filters },
       }),
     );
     onNavigate?.("etf_exposure");
@@ -225,6 +228,10 @@ export default function ListTransfer({
         <button type="button" className="wb-btn btn-md" disabled={rows.length === 0 || busy} onClick={() => void goExposure()}>
           이 목록을 ETF 구성종목에서 보기
         </button>
+        {/* POC6-31 사용자 직접 지시(2026-11-16) — 세 버튼을 한 줄에(복사 안내 · 결과는 아래) */}
+        <button type="button" className="wb-btn btn-md" onClick={copy.doCopy} data-testid={`ec-copy-${side}`}>
+          {COPY_LIST_LABEL}
+        </button>
       </div>
       {pending && (
         <div className="ddp-replace" role="alert">
@@ -237,8 +244,9 @@ export default function ListTransfer({
           </button>
         </div>
       )}
-      <CopyListButton s={s} side={side} />
-      <div className="ec-small">한 종목의 AI 검토는 행을 펼친 뒤 [AI 세션에서 검토] · 목록 전달은 위 버튼입니다.</div>
+      <CopyListMsg msg={copy.msg} />
+      <CopyListNote s={s} side={side} />
+      <div className="ec-small">목록 전달은 위 버튼 · 한 종목의 AI 검토는 아래 목록에서 행을 펼친 뒤 [AI 세션에서 검토]입니다.</div>
     </div>
   );
 }

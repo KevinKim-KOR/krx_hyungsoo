@@ -16,9 +16,15 @@
 //      draft 에 없는 티커는 티커 그대로 둔다 — 이름을 지어내지 않는다.
 //   ② 반복 종목 카드 우측에 **최고 비중** 을 둔다 (응답 값 중 최대값 선택).
 //   ③ 쌍 정렬 기본값은 **중복률 높은순** (정렬이 없어 93% 짜리가 목록에 묻혔다).
+//
+// POC6-31(판정 Q7 · Q21 · §4 M2) — 같은 구성일 쌍(양쪽 원천 기준일 확인 · 같은 날짜 · 서버 pair_scope) 중 정렬 상위 10쌍 +
+//   남은 쌍 수(펼쳐 보기). 구성일이 다르거나 원천 기준일이 확인되지 않은 쌍은 참고로 따로(이유 · 양쪽 날짜).
+//   한쪽 구성 자료가 없는 쌍은 세지 않고 개수만 밝힌다(30개 중 29개만 자료 → 같은 구성일 쌍 최대 406).
+//   예전 '반복 등장 핵심 종목' 자리에는 '여러 지수 계열이 함께 담은 주식' 카드(slot)를 둔다.
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import type { ConstituentsAnalysisResponse, OverlapPair } from "@/lib/api";
+import { pairDateText, pairRestText, splitPairs } from "@/lib/constituentsText";
 
 const DASH = "-";
 
@@ -29,15 +35,21 @@ function fmtPctp(value: number | null | undefined): string {
   return `${value.toFixed(2)}%`;
 }
 
+const TOP_PAIRS = 10;
+
 export default function OverlapTab({
   analysis,
   nameByTicker,
+  slot,
 }: {
   analysis: ConstituentsAnalysisResponse | null;
   // 티커 → ETF 이름. 없으면 티커만 쓴다 (선택 prop — 호출자가 draft 에서 만든다).
   nameByTicker?: Record<string, string>;
+  // 예전 '반복 등장 핵심 종목' 자리(POC6-31 · 판정 Q21)
+  slot?: ReactNode;
 }) {
   const [pairSort, setPairSort] = useState<PairSortKey>("overlap");
+  const [showRest, setShowRest] = useState(false);
 
   const nm = (t: string): string => nameByTicker?.[t] ?? t;
 
@@ -57,6 +69,11 @@ export default function OverlapTab({
       return bv - av;
     });
   }, [analysis, pairSort]);
+  // 서버 쌍 범위(pair_scope) 기준 · 칸 없는 예전 서버 응답은 한 날짜로 읽은 것이라 같은 구성일로 본다.
+  const split = splitPairs(pairs);
+  const samePairs = split.same_date;
+  const refPairs = [...split.different_date, ...split.unconfirmed];
+  const restText = pairRestText(split);
 
   if (!analysis) {
     return (
@@ -99,8 +116,13 @@ export default function OverlapTab({
                 ))}
               </span>
             </div>
+            <p className="helper" data-testid="overlap-pair-scope">
+              같은 구성일 쌍 {samePairs.length}개 중 {Math.min(TOP_PAIRS, samePairs.length)}쌍
+              {samePairs.length > TOP_PAIRS && !showRest ? ` · 나머지 ${samePairs.length - TOP_PAIRS}쌍은 아래에서 펼칩니다` : ""}
+              {restText ? ` · 같은 구성일이 아닌 쌍(${restText})은 세지 않음` : ""}
+            </p>
             <div className="wb-hlist" data-testid="overlap-pair-list">
-              {pairs.map((p, idx) => (
+              {(showRest ? samePairs : samePairs.slice(0, TOP_PAIRS)).map((p, idx) => (
                 <PairCard
                   key={`${p.left_ticker}-${p.right_ticker}-${idx}`}
                   pair={p}
@@ -108,73 +130,29 @@ export default function OverlapTab({
                 />
               ))}
             </div>
+            {samePairs.length > TOP_PAIRS ? (
+              <button type="button" className="wb-btn btn-md" onClick={() => setShowRest(!showRest)} data-testid="overlap-rest">
+                {showRest ? `상위 ${TOP_PAIRS}쌍만 보기` : `나머지 ${samePairs.length - TOP_PAIRS}쌍 보기`}
+              </button>
+            ) : null}
+            {refPairs.length > 0 ? (
+              <details data-testid="overlap-ref-pairs">
+                <summary>
+                  같은 구성일이 아닌 쌍 {refPairs.length}개(참고 · 구성일 다름 {split.different_date.length} · 원천 기준일 미확인{" "}
+                  {split.unconfirmed.length})
+                </summary>
+                <div className="wb-hlist">
+                  {refPairs.map((p, idx) => (
+                    <PairCard key={`r-${p.left_ticker}-${p.right_ticker}-${idx}`} pair={p} nm={nm} note={pairDateText(p)} />
+                  ))}
+                </div>
+              </details>
+            ) : null}
           </>
         )}
       </div>
 
-      <div className="card">
-        <h2>반복 등장 핵심 종목</h2>
-        {analysis.repeated_core_holdings.length === 0 ? (
-          <div className="helper">반복 등장 종목이 없습니다.</div>
-        ) : (
-          <div className="wb-hlist" data-testid="overlap-core-list">
-            {analysis.repeated_core_holdings.map((r, idx) => {
-              // 비중 높은 순으로 칩을 놓는다 (값은 그대로, 순서만).
-              const items = [...r.items].sort(
-                (a, b) => (b.weight_pct ?? 0) - (a.weight_pct ?? 0),
-              );
-              const top = items.length > 0 ? items[0] : null;
-              return (
-                <div className="wb-hrow compact" key={`${r.ticker ?? "x"}-${idx}`}>
-                  <div className="wb-hcard">
-                    <div className="wb-hrow-top">
-                      <div className="wb-hrow-name">
-                        {r.name ?? DASH}
-                        {/* 티커가 없는 종목이 있다 (해외 종목 등). 무엇인지 단정하지
-                            않고 "티커 없음" 으로만 적는다. */}
-                        {r.ticker ? null : (
-                          <span className="wb-hbadges">
-                            <span className="wb-hb mute">티커 없음</span>
-                          </span>
-                        )}
-                      </div>
-                      <div className="wb-hrow-pnl">
-                        <span className="amt">{r.appears_in_etf_count}</span>
-                        <span className="rate wb-hmuted">개 ETF</span>
-                      </div>
-                    </div>
-                    <div className="wb-hrow-bot">
-                      <div className="wb-hrow-facts">
-                        <span className="tk">{r.ticker ?? DASH}</span>
-                        <span className="sep">|</span>
-                        <span className="ovl-chips">
-                          {items.map((it, i) => (
-                            <span className="ovl-chip" key={`${it.etf_ticker}-${i}`}>
-                              {nm(it.etf_ticker)}{" "}
-                              <b>{fmtPctp(it.weight_pct)}</b>
-                            </span>
-                          ))}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="wb-hmetrics">
-                    <div className="wb-hm-cell">
-                      <span className="k">최고 비중</span>
-                      <span className="v">{fmtPctp(top?.weight_pct)}</span>
-                    </div>
-                    {top ? (
-                      <div className="ovl-cap" title={nm(top.etf_ticker)}>
-                        {nm(top.etf_ticker)}
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+      {slot}
     </>
   );
 }
@@ -182,9 +160,11 @@ export default function OverlapTab({
 function PairCard({
   pair: p,
   nm,
+  note,
 }: {
   pair: OverlapPair;
   nm: (t: string) => string;
+  note?: string; // 참고 쌍 — 같은 구성일이 아닌 이유 · 양쪽 날짜
 }) {
   const w = p.weighted_overlap_pct;
   const names = p.common_holdings
@@ -203,6 +183,13 @@ function PairCard({
             {w == null ? (
               <span className="wb-hbadges">
                 <span className="wb-hb mute">겹치는 종목 없음</span>
+              </span>
+            ) : null}
+            {note ? (
+              <span className="wb-hbadges">
+                <span className="wb-hb mute" data-testid="overlap-ref-note">
+                  {note}
+                </span>
               </span>
             ) : null}
           </div>

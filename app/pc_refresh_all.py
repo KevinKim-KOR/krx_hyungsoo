@@ -15,9 +15,12 @@
 → ③ 전일 자료 보충(`pc_prevday_fill.run_prevday_fill` · 보완 2차 PLAN §10-4 · S 판정 Q-S2) = ② 가 6시간 대기로
 건너뛰었을 때만 같은 작업에서 모자란 코스피 공식 종가 · 수급 · VIX · 원/달러 · WTI 를 기존 경로로 받는다. ② 가 시작 ·
 진행 중이면 같은 수집을 공유하므로 돌지 않는다(`skipped` · 사유).
+→ 보유 구성종목(POC6-31 STEP 2 · PLAN 판정 Q5 (b) · Q20) = ② 시작 요청과 해당하는 ③ 뒤에 보유 ETF 구성종목을
+`holdings_constituents_refresh.constituents_step` 으로 받는다(필요한 ETF만 · 시작 때 보유 ETF 수 이내 · 10개씩 ·
+기존 간격 · 시간 예산 · ② 대기 여부와 상관없이 필요 여부 확인). 화면에는 번호 없는 별도 줄로 보인다.
 
 상태 = {state: idle · running · done, job_id, started_at, finished_at(UTC 'Z'),
-steps: {quick, holdings, market, prevday}}.
+steps: {quick, holdings, market, prevday, constituents}}.
 - quick = pending · running 또는 `refresh_quick_quotes` 결과 그대로({status: done · partial · failed,
   fetched_at(KST), items: {코드: {status: updated · unchanged · failed, reason}}, message}) ·
   예외 = failed(items 비움 · 안내 문장).
@@ -27,6 +30,8 @@ steps: {quick, holdings, market, prevday}}.
   prevday_running) · 시작 중 예외 = failed_to_start.
 - prevday.status = pending · running · done(항목별 결과 `items`) · skipped(사유 `reason`) ·
   failed(예외 · 안내 문장).
+- constituents.status = pending · running(묶음 진행 · 받은 ETF 결과) · done(ETF별 결과 `items` · 개수 `counts`) ·
+  skipped(보유 없음 · 손상 · ETF 목록 없음 · 사유 `reason`) · failed(예외 · 안내 문장).
 
 외부 호출 = 기존 네이버 종목 경로 · 기존 시장 갱신 + 빠른 시세의 네이버 지수 경로(판정 Q-R1 · 이 묶음 작업에서만).
 연타 · 다른 탭은 도는 작업을 이어 보므로 빠른 시세도 그 작업에서 한 번만 받는다. 상태는 이 프로세스 메모리에만
@@ -46,7 +51,12 @@ from fastapi import APIRouter
 
 from app import api_market_topn
 from app import holdings as holdings_module
-from app import market_cache, pc_prevday_fill, pc_quick_quotes
+from app import (
+    holdings_constituents_refresh,
+    market_cache,
+    pc_prevday_fill,
+    pc_quick_quotes,
+)
 from app.holdings import HoldingsValidationError
 from app.holdings_quote_refresh import (
     HoldingsRefreshRejected,
@@ -66,6 +76,8 @@ MarketStarter = Callable[
     [], Any
 ]  # status · refresh_id · message · cooldown_remaining_seconds 속성
 PrevdayFiller = Callable[[], dict[str, Any]]  # `run_prevday_fill` 결과
+# 진행 알림 함수를 받아 '보유 구성종목' 단계 결과를 돌려준다(`constituents_step`).
+ConstituentsRunner = Callable[[Callable[[dict[str, Any]], None]], dict[str, Any]]
 ThreadRunner = Callable[[Callable[[], None]], None]
 
 REASON_EMPTY = "holdings_empty"
@@ -98,7 +110,13 @@ def _idle() -> dict[str, Any]:
         "job_id": None,
         "started_at": None,
         "finished_at": None,
-        "steps": {"quick": None, "holdings": None, "market": None, "prevday": None},
+        "steps": {
+            "quick": None,
+            "holdings": None,
+            "market": None,
+            "prevday": None,
+            "constituents": None,
+        },
     }
 
 
@@ -267,6 +285,42 @@ def _prevday_step(filler: PrevdayFiller, market: dict[str, Any]) -> dict[str, An
         }
 
 
+def _constituents_step(runner: ConstituentsRunner) -> dict[str, Any]:
+    """보유 구성종목 — 어떻게 실패해도 작업은 끝난다(결과로 적음)."""
+    try:
+        result = runner(lambda s: _set_step("constituents", s))
+        if not isinstance(result, dict):
+            raise TypeError(f"constituents result is {type(result).__name__}")
+        return result
+    except Exception:  # noqa: BLE001 — 이 단계만 실패로 적는다
+        logger.exception("refresh-all: constituents step failed")
+        return {
+            "status": "failed",
+            "reason": holdings_constituents_refresh.STEP_ERROR_TEXT,
+            "items": [],
+        }
+
+
+def _default_constituents_runner(
+    on_progress, plan: Optional[dict[str, Any]]
+) -> dict[str, Any]:
+    # 부를 때 모듈 속성으로 찾는다(시험이 바꿔 끼운다). plan = 작업 시작 때 고정한 대상(검증자 r1 F3).
+    if plan is None:
+        raise RuntimeError("constituents plan unreadable at start")
+    return holdings_constituents_refresh.constituents_step(
+        on_progress=on_progress, plan=plan
+    )
+
+
+def _plan_at_start() -> Optional[dict[str, Any]]:
+    """보유 구성종목 대상 · 한도 · 목표일을 지금(작업 시작 때) 고정한다. 못 읽으면 None(그 단계만 실패로 적음)."""
+    try:
+        return holdings_constituents_refresh.plan_step()
+    except Exception:  # noqa: BLE001
+        logger.exception("refresh-all: constituents plan unreadable")
+        return None
+
+
 def _default_prevday_filler() -> dict[str, Any]:
     # 부를 때 모듈 속성으로 찾는다(시험이 바꿔 끼운다).
     return pc_prevday_fill.run_prevday_fill()
@@ -300,6 +354,7 @@ def _runner(
     refresher: HoldingsRefresher,
     starter: MarketStarter,
     prevday: PrevdayFiller,
+    constituents: ConstituentsRunner,
 ) -> None:
     try:
         _set_step("quick", {"status": "running"})
@@ -328,6 +383,8 @@ def _runner(
         if market.get("status") == "skipped_cooldown":
             _set_step("prevday", {"status": "running"})
         _set_step("prevday", _prevday_step(prevday, market))
+        _set_step("constituents", {"status": "running"})
+        _set_step("constituents", _constituents_step(constituents))
     finally:
         with _lock:
             if _job["job_id"] == job_id:
@@ -343,6 +400,7 @@ def start_refresh_all(
     thread_runner: Optional[ThreadRunner] = None,
     market_running: Optional[MarketRunning] = None,
     prevday_filler: Optional[PrevdayFiller] = None,
+    constituents_runner: Optional[ConstituentsRunner] = None,
 ) -> dict[str, Any]:
     """시작(`status = accepted`) · 이미 도는 중이면 그 작업 상태(`status = running`).
 
@@ -374,6 +432,7 @@ def start_refresh_all(
                 "holdings": {"status": "pending"},
                 "market": {"status": "pending"},
                 "prevday": {"status": "pending"},
+                "constituents": {"status": "pending"},
             },
         }
         started = deepcopy(_job)
@@ -381,9 +440,17 @@ def start_refresh_all(
     refresher = holdings_refresher or refresh_holdings_quotes_shared
     starter = market_starter or _default_market_starter
     prevday = prevday_filler or _default_prevday_filler
+    if constituents_runner is not None:
+        constituents = constituents_runner
+    else:
+        # 검증자 r1 F3 — 대상(보유 ETF) · 한도 · 목표일은 [최신 자료 갱신]을 누른 지금 고정한다(단계에 들어가서 읽지 않음).
+        plan = _plan_at_start()
+
+        def constituents(on_progress) -> dict[str, Any]:
+            return _default_constituents_runner(on_progress, plan)
 
     def run() -> None:
-        _runner(job_id, quick, refresher, starter, prevday)
+        _runner(job_id, quick, refresher, starter, prevday, constituents)
 
     if thread_runner is not None:
         thread_runner(run)

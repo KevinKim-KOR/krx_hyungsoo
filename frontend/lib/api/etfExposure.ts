@@ -81,6 +81,8 @@ export interface ConstituentItem {
   status: "ok" | "unavailable";
   source?: string | null;
   asof: string;
+  // POC6-31 — 이 ETF 구성일이 원천이 준 날짜로 확인됐나(없는 응답 = 예전 서버)
+  asof_confirmed?: boolean | null;
   top_holdings: TopHolding[];
   concentration: Concentration;
 }
@@ -98,6 +100,13 @@ export interface OverlapPair {
   common_count_top10: number;
   weighted_overlap_pct?: number | null;
   common_holdings: OverlapCommonHolding[];
+  // POC6-31(판정 Q7) — 양쪽 구성일 · 같은 날짜 쌍인가(없는 응답 = 예전 서버 · 같은 날짜로 본다)
+  left_asof?: string | null;
+  right_asof?: string | null;
+  same_date?: boolean | null;
+  // POC6-31 — 쌍 범위(서버가 정함): 같은 구성일(양쪽 원천일 확인) · 원천 기준일 미확인 · 구성일 다름 · 한쪽 자료 없음.
+  // 칸 없는 응답 = 예전 서버(한 날짜로 읽음).
+  pair_scope?: "same_date" | "unconfirmed" | "different_date" | "no_data" | null;
 }
 
 export interface RepeatedCoreItem {

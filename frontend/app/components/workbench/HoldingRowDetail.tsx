@@ -164,9 +164,10 @@ export default function HoldingRowDetail({
             <>
               {link.side === "bottom" ? `직접 — 후보 하위 ${link.side_rank}위 · ` : ""}
               {exposureText(link)}
+              {/* POC6-31(판정 Q16) — 보유 ETF 구성종목은 「오늘의 투자 점검」 [최신 자료 갱신]에서 받는다 */}
               {link.exposure.status === "no_constituents" && (
-                <button type="button" className="wb-btn ec-inline" onClick={() => onNavigate("etf_exposure")}>
-                  ETF 구성종목에서 확인 →
+                <button type="button" className="wb-btn ec-inline" onClick={() => onNavigate("today_check")}>
+                  [최신 자료 갱신]에서 받기 →
                 </button>
               )}
             </>

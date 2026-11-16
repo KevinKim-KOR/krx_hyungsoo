@@ -41,6 +41,16 @@ export interface DecisionDraftPreviewEvidenceAsOf {
   target_as_of_date: string | null;
   kodex200_as_of_date: string | null;
   vix_as_of_date: string | null;
+  // POC6-31 STEP 5(PLAN C26) — 역할별 기준일(선택 칸 · 예전 기록 · 예전 응답에는 없음).
+  candidate_constituents_asof?: string | null;
+  holding_constituents_asof?: string | null;
+  exposure_asof?: string | null;
+}
+
+// POC6-31 C25 — 「보유와 후보 비교」 후보 미리보기: 고른 보유와 화면이 받은 구성종목 비교의 근거 지문.
+export interface DecisionDraftPairEvidence {
+  holding: string | null;
+  fingerprint: string;
 }
 
 export interface DecisionDraftPreviewResponse {
@@ -59,11 +69,15 @@ export async function postDecisionDraftPreview(
   ticker: string,
   listQuery?: DecisionDraftListQuery,
   flowPeriod?: string, // POC6-01 — 시장 흐름 묶음 기간(화면에서 고른 값 · 없으면 서버 기본 6개월)
+  pair?: DecisionDraftPairEvidence, // POC6-31 C25 — 후보만 · 서버가 다시 계산해 지문이 같을 때만 만든다
 ): Promise<DecisionDraftPreviewResponse> {
   return request<DecisionDraftPreviewResponse>("POST", "/decision-draft/preview", {
     target_kind,
     ticker,
     ...(target_kind === "candidate" ? listQuery ?? {} : holdingScope(listQuery)),
     ...(flowPeriod ? { flow_period: flowPeriod } : {}),
+    ...(target_kind === "candidate" && pair
+      ? { pair_holding: pair.holding, pair_fingerprint: pair.fingerprint }
+      : {}),
   });
 }

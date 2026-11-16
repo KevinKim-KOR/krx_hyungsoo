@@ -1,0 +1,6799 @@
+{
+ "_note": "POC6-30 대조용 사본(11/14 15:07 수집 · 11/13 기준 구성)에서 뽑은 공개 시장 자료 — 1개월 상위 30 ETF의 저장 구성 행 · 공식 기초지수명 · 선정 순서. 보유 정보 없음. POC6-31 계열 계산 재현 시험용(반복 40종목 · 근거 138건).",
+ "constituents": {
+  "0004G0": {
+   "asof": "2026-11-13",
+   "rows": [
+    {
+     "isin": "US65336K1034",
+     "key": "NXST.O",
+     "market_type": "2",
+     "name": "넥스타 미디어 그룹",
+     "rank": 1,
+     "reuters": "NXST.O",
+     "ticker": null,
+     "weight_pct": 5.95
+    },
+    {
+     "isin": "US0865161014",
+     "key": "BBY",
+     "market_type": "2",
+     "name": "베스트 바이",
+     "rank": 2,
+     "reuters": "BBY",
+     "ticker": null,
+     "weight_pct": 5.58
+    },
+    {
+     "isin": "US4370761029",
+     "key": "HD",
+     "market_type": "2",
+     "name": "홈디포",
+     "rank": 3,
+     "reuters": "HD",
+     "ticker": null,
+     "weight_pct": 5.54
+    },
+    {
+     "isin": "US5398301094",
+     "key": "LMT",
+     "market_type": "2",
+     "name": "록히드 마틴",
+     "rank": 4,
+     "reuters": "LMT",
+     "ticker": null,
+     "weight_pct": 5.53
+    },
+    {
+     "isin": "US9113121068",
+     "key": "UPS",
+     "market_type": "2",
+     "name": "UPS(유나이티드 파셀 서비스)",
+     "rank": 5,
+     "reuters": "UPS",
+     "ticker": null,
+     "weight_pct": 5.47
+    },
+    {
+     "isin": "US7134481081",
+     "key": "PEP.O",
+     "market_type": "2",
+     "name": "펩시코",
+     "rank": 6,
+     "reuters": "PEP.O",
+     "ticker": null,
+     "weight_pct": 5.22
+    },
+    {
+     "isin": "US24906P1093",
+     "key": "XRAY.O",
+     "market_type": "2",
+     "name": "덴츠플라이 시로나",
+     "rank": 7,
+     "reuters": "XRAY.O",
+     "ticker": null,
+     "weight_pct": 5.13
+    },
+    {
+     "isin": "US0311621009",
+     "key": "AMGN.O",
+     "market_type": "2",
+     "name": "암젠",
+     "rank": 8,
+     "reuters": "AMGN.O",
+     "ticker": null,
+     "weight_pct": 5.06
+    },
+    {
+     "isin": "US1941621039",
+     "key": "CL",
+     "market_type": "2",
+     "name": "콜게이트-팜올리브",
+     "rank": 9,
+     "reuters": "CL",
+     "ticker": null,
+     "weight_pct": 5.04
+    },
+    {
+     "isin": "US02209S1033",
+     "key": "MO",
+     "market_type": "2",
+     "name": "알트리아그룹",
+     "rank": 10,
+     "reuters": "MO",
+     "ticker": null,
+     "weight_pct": 5.01
+    },
+    {
+     "isin": "US25659T1079",
+     "key": "DLB",
+     "market_type": "2",
+     "name": "돌비 래보라토리스",
+     "rank": 11,
+     "reuters": "DLB",
+     "ticker": null,
+     "weight_pct": 4.98
+    },
+    {
+     "isin": "US4523081093",
+     "key": "ITW",
+     "market_type": "2",
+     "name": "일리노이 툴 웍스",
+     "rank": 12,
+     "reuters": "ITW",
+     "ticker": null,
+     "weight_pct": 4.98
+    },
+    {
+     "isin": "US09260D1072",
+     "key": "BX",
+     "market_type": "2",
+     "name": "블랙스톤",
+     "rank": 13,
+     "reuters": "BX",
+     "ticker": null,
+     "weight_pct": 4.9
+    },
+    {
+     "isin": "US1255231003",
+     "key": "CI",
+     "market_type": "2",
+     "name": "시그나",
+     "rank": 14,
+     "reuters": "CI",
+     "ticker": null,
+     "weight_pct": 4.84
+    },
+    {
+     "isin": "US1101221083",
+     "key": "BMY",
+     "market_type": "2",
+     "name": "브리스톨-마이어스 스큅",
+     "rank": 15,
+     "reuters": "BMY",
+     "ticker": null,
+     "weight_pct": 4.73
+    },
+    {
+     "isin": "US92343V1044",
+     "key": "VZ",
+     "market_type": "2",
+     "name": "버라이존",
+     "rank": 16,
+     "reuters": "VZ",
+     "ticker": null,
+     "weight_pct": 4.57
+    },
+    {
+     "isin": "US8718291078",
+     "key": "SYY",
+     "market_type": "2",
+     "name": "시스코",
+     "rank": 17,
+     "reuters": "SYY",
+     "ticker": null,
+     "weight_pct": 4.5
+    },
+    {
+     "isin": "US64110D1046",
+     "key": "NTAP.O",
+     "market_type": "2",
+     "name": "넷앱",
+     "rank": 18,
+     "reuters": "NTAP.O",
+     "ticker": null,
+     "weight_pct": 3.48
+    },
+    {
+     "isin": "US1184401065",
+     "key": "BKE",
+     "market_type": "2",
+     "name": "버클",
+     "rank": 19,
+     "reuters": "BKE",
+     "ticker": null,
+     "weight_pct": 2.17
+    },
+    {
+     "isin": "US74144T1088",
+     "key": "TROW.O",
+     "market_type": "2",
+     "name": "티 로웨 프라이스 그룹",
+     "rank": 20,
+     "reuters": "TROW.O",
+     "ticker": null,
+     "weight_pct": 1.99
+    },
+    {
+     "isin": "US9134561094",
+     "key": "UVV",
+     "market_type": "2",
+     "name": "유니버설",
+     "rank": 21,
+     "reuters": "UVV",
+     "ticker": null,
+     "weight_pct": 1.47
+    },
+    {
+     "isin": "US4180561072",
+     "key": "HAS.O",
+     "market_type": "2",
+     "name": "해즈브로",
+     "rank": 22,
+     "reuters": "HAS.O",
+     "ticker": null,
+     "weight_pct": 1.01
+    },
+    {
+     "isin": "US03743Q1085",
+     "key": "APA.O",
+     "market_type": "2",
+     "name": "APA",
+     "rank": 23,
+     "reuters": "APA.O",
+     "ticker": null,
+     "weight_pct": 0.99
+    },
+    {
+     "isin": "US60786M1053",
+     "key": "MC",
+     "market_type": "2",
+     "name": "모엘리스",
+     "rank": 24,
+     "reuters": "MC",
+     "ticker": null,
+     "weight_pct": 0.35
+    },
+    {
+     "isin": "US3719011096",
+     "key": "GNTX.O",
+     "market_type": "2",
+     "name": "젠텍스",
+     "rank": 25,
+     "reuters": "GNTX.O",
+     "ticker": null,
+     "weight_pct": 0.3
+    },
+    {
+     "isin": "US32051X1081",
+     "key": "FHB.O",
+     "market_type": "2",
+     "name": "퍼스트 하와이안",
+     "rank": 26,
+     "reuters": "FHB.O",
+     "ticker": null,
+     "weight_pct": 0.25
+    },
+    {
+     "isin": "MHY2065G1219",
+     "key": "DHT",
+     "market_type": "2",
+     "name": "DHT 홀딩스",
+     "rank": 27,
+     "reuters": "DHT",
+     "ticker": null,
+     "weight_pct": 0.22
+    },
+    {
+     "isin": "US04316A1088",
+     "key": "APAM.K",
+     "market_type": "2",
+     "name": "아티잔 파트너스 애셋 매니지먼트",
+     "rank": 28,
+     "reuters": "APAM.K",
+     "ticker": null,
+     "weight_pct": 0.2
+    },
+    {
+     "isin": "US9598021098",
+     "key": "WU",
+     "market_type": "2",
+     "name": "웨스턴유니온",
+     "rank": 29,
+     "reuters": "WU",
+     "ticker": null,
+     "weight_pct": 0.18
+    },
+    {
+     "isin": "KRD010010001",
+     "key": "KRD010010001",
+     "market_type": "0",
+     "name": "원화현금",
+     "rank": 30,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 0.15
+    }
+   ],
+   "source": "naver_stock_etf_component"
+  },
+  "0048K0": {
+   "asof": "2026-11-13",
+   "rows": [
+    {
+     "isin": "CNE100000V46",
+     "key": "300124.SZ",
+     "market_type": "2",
+     "name": "회천기술",
+     "rank": 1,
+     "reuters": "300124.SZ",
+     "ticker": null,
+     "weight_pct": 6.98
+    },
+    {
+     "isin": "CNE1000043F9",
+     "key": "688017.SS",
+     "market_type": "2",
+     "name": "녹적해파",
+     "rank": 2,
+     "reuters": "688017.SS",
+     "ticker": null,
+     "weight_pct": 6.65
+    },
+    {
+     "isin": "CNE000001M22",
+     "key": "002050.SZ",
+     "market_type": "2",
+     "name": "삼화",
+     "rank": 3,
+     "reuters": "002050.SZ",
+     "ticker": null,
+     "weight_pct": 6.06
+    },
+    {
+     "isin": "CNE1000023J3",
+     "key": "601689.SS",
+     "market_type": "2",
+     "name": "탁보그룹",
+     "rank": 4,
+     "reuters": "601689.SS",
+     "ticker": null,
+     "weight_pct": 6.06
+    },
+    {
+     "isin": "CNE1000019R4",
+     "key": "601100.SS",
+     "market_type": "2",
+     "name": "항립유항",
+     "rank": 5,
+     "reuters": "601100.SS",
+     "ticker": null,
+     "weight_pct": 5.98
+    },
+    {
+     "isin": "CNE100007WT4",
+     "key": "688836.SS",
+     "market_type": "2",
+     "name": "Yushu Technology Co. Ltd. Class A",
+     "rank": 6,
+     "reuters": "688836.SS",
+     "ticker": null,
+     "weight_pct": 5.91
+    },
+    {
+     "isin": "CNE100003RK2",
+     "key": "603893.SS",
+     "market_type": "2",
+     "name": "서심미전자",
+     "rank": 7,
+     "reuters": "603893.SS",
+     "ticker": null,
+     "weight_pct": 5.86
+    },
+    {
+     "isin": "CNE100004G17",
+     "key": "300953.SZ",
+     "market_type": "2",
+     "name": "영파진유과기",
+     "rank": 8,
+     "reuters": "300953.SZ",
+     "ticker": null,
+     "weight_pct": 5.73
+    },
+    {
+     "isin": "CNE1000015L5",
+     "key": "002600.SZ",
+     "market_type": "2",
+     "name": "영익지조",
+     "rank": 9,
+     "reuters": "002600.SZ",
+     "ticker": null,
+     "weight_pct": 5.67
+    },
+    {
+     "isin": "CNE100003662",
+     "key": "300750.SZ",
+     "market_type": "2",
+     "name": "닝더스다이",
+     "rank": 10,
+     "reuters": "300750.SZ",
+     "ticker": null,
+     "weight_pct": 5.58
+    },
+    {
+     "isin": "CNE100006CQ4",
+     "key": "9880.HK",
+     "market_type": "2",
+     "name": "유비테크 로보틱스",
+     "rank": 11,
+     "reuters": "9880.HK",
+     "ticker": null,
+     "weight_pct": 5.08
+    },
+    {
+     "isin": "CNE100000TF4",
+     "key": "002472.SZ",
+     "market_type": "2",
+     "name": "쌍환전동기계",
+     "rank": 12,
+     "reuters": "002472.SZ",
+     "ticker": null,
+     "weight_pct": 4.79
+    },
+    {
+     "isin": "CNE100002JV8",
+     "key": "002851.SZ",
+     "market_type": "2",
+     "name": "맥격미특전기",
+     "rank": 13,
+     "reuters": "002851.SZ",
+     "ticker": null,
+     "weight_pct": 4.74
+    },
+    {
+     "isin": "CNE000001BJ3",
+     "key": "600580.SS",
+     "market_type": "2",
+     "name": "와룡전기",
+     "rank": 14,
+     "reuters": "600580.SS",
+     "ticker": null,
+     "weight_pct": 4.2
+    },
+    {
+     "isin": "CNE100000GH7",
+     "key": "300024.SZ",
+     "market_type": "2",
+     "name": "신송로봇",
+     "rank": 15,
+     "reuters": "300024.SZ",
+     "ticker": null,
+     "weight_pct": 4.17
+    },
+    {
+     "isin": "CNE000000DJ1",
+     "key": "600699.SS",
+     "market_type": "2",
+     "name": "균승전자",
+     "rank": 16,
+     "reuters": "600699.SS",
+     "ticker": null,
+     "weight_pct": 4.1
+    },
+    {
+     "isin": "CNE100001X35",
+     "key": "002747.SZ",
+     "market_type": "2",
+     "name": "애사돈자동화",
+     "rank": 17,
+     "reuters": "002747.SZ",
+     "ticker": null,
+     "weight_pct": 3.82
+    },
+    {
+     "isin": "CNE1000032Q9",
+     "key": "002896.SZ",
+     "market_type": "2",
+     "name": "중대역덕",
+     "rank": 18,
+     "reuters": "002896.SZ",
+     "ticker": null,
+     "weight_pct": 3.39
+    },
+    {
+     "isin": "CNE100006BK9",
+     "key": "688698.SS",
+     "market_type": "2",
+     "name": "위창전기",
+     "rank": 19,
+     "reuters": "688698.SS",
+     "ticker": null,
+     "weight_pct": 2.5
+    },
+    {
+     "isin": "CNE1000035C2",
+     "key": "300718.SZ",
+     "market_type": "2",
+     "name": "길성축승",
+     "rank": 20,
+     "reuters": "300718.SZ",
+     "ticker": null,
+     "weight_pct": 2.48
+    },
+    {
+     "isin": "KRD010010001",
+     "key": "KRD010010001",
+     "market_type": "0",
+     "name": "원화현금",
+     "rank": 21,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 0.12
+    }
+   ],
+   "source": "naver_stock_etf_component"
+  },
+  "0053L0": {
+   "asof": "2026-11-13",
+   "rows": [
+    {
+     "isin": "CNE100006CQ4",
+     "key": "9880.HK",
+     "market_type": "2",
+     "name": "유비테크 로보틱스",
+     "rank": 1,
+     "reuters": "9880.HK",
+     "ticker": null,
+     "weight_pct": 9.64
+    },
+    {
+     "isin": "KYG982AW1003",
+     "key": "9868.HK",
+     "market_type": "2",
+     "name": "샤오펑 Class A",
+     "rank": 2,
+     "reuters": "9868.HK",
+     "ticker": null,
+     "weight_pct": 9.32
+    },
+    {
+     "isin": "CNE100006QF7",
+     "key": "2432.HK",
+     "market_type": "2",
+     "name": "도봇",
+     "rank": 3,
+     "reuters": "2432.HK",
+     "ticker": null,
+     "weight_pct": 8.47
+    },
+    {
+     "isin": "CNE100000V46",
+     "key": "300124.SZ",
+     "market_type": "2",
+     "name": "회천기술",
+     "rank": 4,
+     "reuters": "300124.SZ",
+     "ticker": null,
+     "weight_pct": 8.12
+    },
+    {
+     "isin": "CNE100000TP3",
+     "key": "002475.SZ",
+     "market_type": "2",
+     "name": "입신정밀",
+     "rank": 5,
+     "reuters": "002475.SZ",
+     "ticker": null,
+     "weight_pct": 7.36
+    },
+    {
+     "isin": "CNE000001M22",
+     "key": "002050.SZ",
+     "market_type": "2",
+     "name": "삼화",
+     "rank": 6,
+     "reuters": "002050.SZ",
+     "ticker": null,
+     "weight_pct": 7.28
+    },
+    {
+     "isin": "CNE100000B81",
+     "key": "002230.SZ",
+     "market_type": "2",
+     "name": "신비정보",
+     "rank": 7,
+     "reuters": "002230.SZ",
+     "ticker": null,
+     "weight_pct": 6.76
+    },
+    {
+     "isin": "CNE100002XM8",
+     "key": "603501.SS",
+     "market_type": "2",
+     "name": "웨이얼반도체",
+     "rank": 8,
+     "reuters": "603501.SS",
+     "ticker": null,
+     "weight_pct": 6.68
+    },
+    {
+     "isin": "CNE1000019R4",
+     "key": "601100.SS",
+     "market_type": "2",
+     "name": "항립유항",
+     "rank": 9,
+     "reuters": "601100.SS",
+     "ticker": null,
+     "weight_pct": 4.31
+    },
+    {
+     "isin": "KYG8586D1097",
+     "key": "2382.HK",
+     "market_type": "2",
+     "name": "서니옵티컬",
+     "rank": 10,
+     "reuters": "2382.HK",
+     "ticker": null,
+     "weight_pct": 3.98
+    },
+    {
+     "isin": "CNE100003RK2",
+     "key": "603893.SS",
+     "market_type": "2",
+     "name": "서심미전자",
+     "rank": 11,
+     "reuters": "603893.SS",
+     "ticker": null,
+     "weight_pct": 3.97
+    },
+    {
+     "isin": "CNE1000023J3",
+     "key": "601689.SS",
+     "market_type": "2",
+     "name": "탁보그룹",
+     "rank": 12,
+     "reuters": "601689.SS",
+     "ticker": null,
+     "weight_pct": 3.74
+    },
+    {
+     "isin": "CNE100000TF4",
+     "key": "002472.SZ",
+     "market_type": "2",
+     "name": "쌍환전동기계",
+     "rank": 13,
+     "reuters": "002472.SZ",
+     "ticker": null,
+     "weight_pct": 3.53
+    },
+    {
+     "isin": "CNE1000015L5",
+     "key": "002600.SZ",
+     "market_type": "2",
+     "name": "영익지조",
+     "rank": 14,
+     "reuters": "002600.SZ",
+     "ticker": null,
+     "weight_pct": 3.14
+    },
+    {
+     "isin": "CNE1000043F9",
+     "key": "688017.SS",
+     "market_type": "2",
+     "name": "녹적해파",
+     "rank": 15,
+     "reuters": "688017.SS",
+     "ticker": null,
+     "weight_pct": 2.97
+    },
+    {
+     "isin": "CNE100005QB8",
+     "key": "688322.SS",
+     "market_type": "2",
+     "name": "Orbbec Inc Class A",
+     "rank": 16,
+     "reuters": "688322.SS",
+     "ticker": null,
+     "weight_pct": 2.93
+    },
+    {
+     "isin": "CNE100000T40",
+     "key": "300115.SZ",
+     "market_type": "2",
+     "name": "장영정밀",
+     "rank": 17,
+     "reuters": "300115.SZ",
+     "ticker": null,
+     "weight_pct": 2.37
+    },
+    {
+     "isin": "CNE100004G17",
+     "key": "300953.SZ",
+     "market_type": "2",
+     "name": "영파진유과기",
+     "rank": 18,
+     "reuters": "300953.SZ",
+     "ticker": null,
+     "weight_pct": 2.13
+    },
+    {
+     "isin": "CNE000001BJ3",
+     "key": "600580.SS",
+     "market_type": "2",
+     "name": "와룡전기",
+     "rank": 19,
+     "reuters": "600580.SS",
+     "ticker": null,
+     "weight_pct": 2.11
+    },
+    {
+     "isin": "KYG6145U1094",
+     "key": "0425.HK",
+     "market_type": "2",
+     "name": "민실그룹",
+     "rank": 20,
+     "reuters": "0425.HK",
+     "ticker": null,
+     "weight_pct": 1.55
+    },
+    {
+     "isin": "KRD010010001",
+     "key": "KRD010010001",
+     "market_type": "0",
+     "name": "원화현금",
+     "rank": 21,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": -0.44
+    }
+   ],
+   "source": "naver_stock_etf_component"
+  },
+  "0115C0": {
+   "asof": "2026-11-13",
+   "rows": [
+    {
+     "isin": "US0311621009",
+     "key": "AMGN.O",
+     "market_type": "2",
+     "name": "암젠",
+     "rank": 1,
+     "reuters": "AMGN.O",
+     "ticker": null,
+     "weight_pct": 11.98
+    },
+    {
+     "isin": "US1912161007",
+     "key": "KO",
+     "market_type": "2",
+     "name": "코카콜라",
+     "rank": 2,
+     "reuters": "KO",
+     "ticker": null,
+     "weight_pct": 11.54
+    },
+    {
+     "isin": "US58933Y1055",
+     "key": "MRK",
+     "market_type": "2",
+     "name": "머크 앤 코",
+     "rank": 3,
+     "reuters": "MRK",
+     "ticker": null,
+     "weight_pct": 11.54
+    },
+    {
+     "isin": "US7427181091",
+     "key": "PG",
+     "market_type": "2",
+     "name": "P&G(프록터 & 갬블)",
+     "rank": 4,
+     "reuters": "PG",
+     "ticker": null,
+     "weight_pct": 10.41
+    },
+    {
+     "isin": "US91324P1021",
+     "key": "UNH",
+     "market_type": "2",
+     "name": "유나이티드헬스 그룹",
+     "rank": 5,
+     "reuters": "UNH",
+     "ticker": null,
+     "weight_pct": 10.31
+    },
+    {
+     "isin": "US1667641005",
+     "key": "CVX",
+     "market_type": "2",
+     "name": "셰브론",
+     "rank": 6,
+     "reuters": "CVX",
+     "ticker": null,
+     "weight_pct": 10.16
+    },
+    {
+     "isin": "US4370761029",
+     "key": "HD",
+     "market_type": "2",
+     "name": "홈디포",
+     "rank": 7,
+     "reuters": "HD",
+     "ticker": null,
+     "weight_pct": 8.99
+    },
+    {
+     "isin": "US92343V1044",
+     "key": "VZ",
+     "market_type": "2",
+     "name": "버라이존",
+     "rank": 8,
+     "reuters": "VZ",
+     "ticker": null,
+     "weight_pct": 8.9
+    },
+    {
+     "isin": "US4592001014",
+     "key": "IBM",
+     "market_type": "2",
+     "name": "IBM",
+     "rank": 9,
+     "reuters": "IBM",
+     "ticker": null,
+     "weight_pct": 8.59
+    },
+    {
+     "isin": "US6541061031",
+     "key": "NKE",
+     "market_type": "2",
+     "name": "나이키",
+     "rank": 10,
+     "reuters": "NKE",
+     "ticker": null,
+     "weight_pct": 7.3
+    },
+    {
+     "isin": "KRD010010001",
+     "key": "KRD010010001",
+     "market_type": "0",
+     "name": "원화현금",
+     "rank": 11,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 0.23
+    }
+   ],
+   "source": "naver_stock_etf_component"
+  },
+  "227540": {
+   "asof": "2026-11-13",
+   "rows": [
+    {
+     "isin": "KR7068270008",
+     "key": "068270",
+     "market_type": "0",
+     "name": "셀트리온",
+     "rank": 1,
+     "reuters": null,
+     "ticker": "068270",
+     "weight_pct": 22.93
+    },
+    {
+     "isin": "KR7207940008",
+     "key": "207940",
+     "market_type": "0",
+     "name": "삼성바이오로직스",
+     "rank": 2,
+     "reuters": null,
+     "ticker": "207940",
+     "weight_pct": 21.29
+    },
+    {
+     "isin": "KR7000100008",
+     "key": "000100",
+     "market_type": "0",
+     "name": "유한양행",
+     "rank": 3,
+     "reuters": null,
+     "ticker": "000100",
+     "weight_pct": 12.69
+    },
+    {
+     "isin": "KR7326030004",
+     "key": "326030",
+     "market_type": "0",
+     "name": "SK바이오팜",
+     "rank": 4,
+     "reuters": null,
+     "ticker": "326030",
+     "weight_pct": 9.87
+    },
+    {
+     "isin": "KR7128940004",
+     "key": "128940",
+     "market_type": "0",
+     "name": "한미약품",
+     "rank": 5,
+     "reuters": null,
+     "ticker": "128940",
+     "weight_pct": 8.5
+    },
+    {
+     "isin": "KR70126Z0002",
+     "key": "0126Z0",
+     "market_type": "0",
+     "name": "삼성에피스홀딩스",
+     "rank": 6,
+     "reuters": null,
+     "ticker": "0126Z0",
+     "weight_pct": 5.4
+    },
+    {
+     "isin": "KR7009420001",
+     "key": "009420",
+     "market_type": "0",
+     "name": "한올바이오파마",
+     "rank": 7,
+     "reuters": null,
+     "ticker": "009420",
+     "weight_pct": 5.23
+    },
+    {
+     "isin": "KR7008930000",
+     "key": "008930",
+     "market_type": "0",
+     "name": "한미사이언스",
+     "rank": 8,
+     "reuters": null,
+     "ticker": "008930",
+     "weight_pct": 4.42
+    },
+    {
+     "isin": "KR7302440003",
+     "key": "302440",
+     "market_type": "0",
+     "name": "SK바이오사이언스",
+     "rank": 9,
+     "reuters": null,
+     "ticker": "302440",
+     "weight_pct": 2.93
+    },
+    {
+     "isin": "KR7006280002",
+     "key": "006280",
+     "market_type": "0",
+     "name": "녹십자",
+     "rank": 10,
+     "reuters": null,
+     "ticker": "006280",
+     "weight_pct": 2.16
+    },
+    {
+     "isin": "KR7185750007",
+     "key": "185750",
+     "market_type": "0",
+     "name": "종근당",
+     "rank": 11,
+     "reuters": null,
+     "ticker": "185750",
+     "weight_pct": 1.45
+    },
+    {
+     "isin": "KR7069620003",
+     "key": "069620",
+     "market_type": "0",
+     "name": "대웅제약",
+     "rank": 12,
+     "reuters": null,
+     "ticker": "069620",
+     "weight_pct": 1.32
+    },
+    {
+     "isin": "KR7003090008",
+     "key": "003090",
+     "market_type": "0",
+     "name": "대웅",
+     "rank": 13,
+     "reuters": null,
+     "ticker": "003090",
+     "weight_pct": 0.9
+    },
+    {
+     "isin": "KR7137310009",
+     "key": "137310",
+     "market_type": "0",
+     "name": "에스디바이오센서",
+     "rank": 14,
+     "reuters": null,
+     "ticker": "137310",
+     "weight_pct": 0.71
+    },
+    {
+     "isin": "KRD010010001",
+     "key": "KRD010010001",
+     "market_type": "0",
+     "name": "원화현금",
+     "rank": 15,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 0.11
+    }
+   ],
+   "source": "naver_stock_etf_component"
+  },
+  "428560": {
+   "asof": "2026-11-13",
+   "rows": [
+    {
+     "isin": "US55354G1004",
+     "key": "MSCI.K",
+     "market_type": "2",
+     "name": "MSCI",
+     "rank": 1,
+     "reuters": "MSCI.K",
+     "ticker": null,
+     "weight_pct": 15.62
+    },
+    {
+     "isin": "US78409V1044",
+     "key": "SPGI.K",
+     "market_type": "2",
+     "name": "S&P 글로벌",
+     "rank": 2,
+     "reuters": "SPGI.K",
+     "ticker": null,
+     "weight_pct": 14.66
+    },
+    {
+     "isin": "US09290D1019",
+     "key": "BLK",
+     "market_type": "2",
+     "name": "블랙록",
+     "rank": 3,
+     "reuters": "BLK",
+     "ticker": null,
+     "weight_pct": 14.11
+    },
+    {
+     "isin": "US12572Q1058",
+     "key": "CME.O",
+     "market_type": "2",
+     "name": "CME 그룹",
+     "rank": 4,
+     "reuters": "CME.O",
+     "ticker": null,
+     "weight_pct": 10.07
+    },
+    {
+     "isin": "US45866F1049",
+     "key": "ICE",
+     "market_type": "2",
+     "name": "인터컨티넨털 익스체인지",
+     "rank": 5,
+     "reuters": "ICE",
+     "ticker": null,
+     "weight_pct": 10.03
+    },
+    {
+     "isin": "US6311031081",
+     "key": "NDAQ.O",
+     "market_type": "2",
+     "name": "나스닥",
+     "rank": 6,
+     "reuters": "NDAQ.O",
+     "ticker": null,
+     "weight_pct": 9.89
+    },
+    {
+     "isin": "US8926721064",
+     "key": "TW.O",
+     "market_type": "2",
+     "name": "트레이드웹 마켓",
+     "rank": 7,
+     "reuters": "TW.O",
+     "ticker": null,
+     "weight_pct": 6.76
+    },
+    {
+     "isin": "US6177001095",
+     "key": "MORN.O",
+     "market_type": "2",
+     "name": "모닝스타",
+     "rank": 8,
+     "reuters": "MORN.O",
+     "ticker": null,
+     "weight_pct": 6.36
+    },
+    {
+     "isin": "US3030751057",
+     "key": "FDS",
+     "market_type": "2",
+     "name": "팩트셋 리서치 시스템즈",
+     "rank": 9,
+     "reuters": "FDS",
+     "ticker": null,
+     "weight_pct": 6.16
+    },
+    {
+     "isin": "US6153691059",
+     "key": "MCO",
+     "market_type": "2",
+     "name": "무디스",
+     "rank": 10,
+     "reuters": "MCO",
+     "ticker": null,
+     "weight_pct": 5.66
+    },
+    {
+     "isin": "KRD010010001",
+     "key": "KRD010010001",
+     "market_type": "0",
+     "name": "원화현금",
+     "rank": 11,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 0.64
+    }
+   ],
+   "source": "naver_stock_etf_component"
+  },
+  "429000": {
+   "asof": "2026-11-13",
+   "rows": [
+    {
+     "isin": "IE00BLS09M33",
+     "key": "PNR",
+     "market_type": "2",
+     "name": "펜테어",
+     "rank": 1,
+     "reuters": "PNR",
+     "ticker": null,
+     "weight_pct": 1.81
+    },
+    {
+     "isin": "US1890541097",
+     "key": "CLX",
+     "market_type": "2",
+     "name": "크로락스",
+     "rank": 2,
+     "reuters": "CLX",
+     "ticker": null,
+     "weight_pct": 1.74
+    },
+    {
+     "isin": "US8545021011",
+     "key": "SWK",
+     "market_type": "2",
+     "name": "스탠리 블랙 & 데커",
+     "rank": 3,
+     "reuters": "SWK",
+     "ticker": null,
+     "weight_pct": 1.67
+    },
+    {
+     "isin": "US7766961061",
+     "key": "ROP.O",
+     "market_type": "2",
+     "name": "로퍼 테크놀로지스",
+     "rank": 4,
+     "reuters": "ROP.O",
+     "ticker": null,
+     "weight_pct": 1.66
+    },
+    {
+     "isin": "US5486611073",
+     "key": "LOW",
+     "market_type": "2",
+     "name": "로우스 컴퍼니",
+     "rank": 5,
+     "reuters": "LOW",
+     "ticker": null,
+     "weight_pct": 1.63
+    },
+    {
+     "isin": "US3546131018",
+     "key": "BEN",
+     "market_type": "2",
+     "name": "프랭클린 템플턴",
+     "rank": 6,
+     "reuters": "BEN",
+     "ticker": null,
+     "weight_pct": 1.58
+    },
+    {
+     "isin": "US6935061076",
+     "key": "PPG",
+     "market_type": "2",
+     "name": "PPG 인더스트리스",
+     "rank": 7,
+     "reuters": "PPG",
+     "ticker": null,
+     "weight_pct": 1.57
+    },
+    {
+     "isin": "US5801351017",
+     "key": "MCD",
+     "market_type": "2",
+     "name": "맥도날드",
+     "rank": 8,
+     "reuters": "MCD",
+     "ticker": null,
+     "weight_pct": 1.54
+    },
+    {
+     "isin": "US29530P1021",
+     "key": "ERIE.O",
+     "market_type": "2",
+     "name": "이리 인뎀니티",
+     "rank": 9,
+     "reuters": "ERIE.O",
+     "ticker": null,
+     "weight_pct": 1.54
+    },
+    {
+     "isin": "US0758871091",
+     "key": "BDX",
+     "market_type": "2",
+     "name": "벡톤 디킨슨 앤 코",
+     "rank": 10,
+     "reuters": "BDX",
+     "ticker": null,
+     "weight_pct": 1.52
+    },
+    {
+     "isin": "US3848021040",
+     "key": "GWW",
+     "market_type": "2",
+     "name": "W W 그레인저",
+     "rank": 11,
+     "reuters": "GWW",
+     "ticker": null,
+     "weight_pct": 1.52
+    },
+    {
+     "isin": "US65339F1012",
+     "key": "NEE",
+     "market_type": "2",
+     "name": "넥스트에라 에너지",
+     "rank": 12,
+     "reuters": "NEE",
+     "ticker": null,
+     "weight_pct": 1.52
+    },
+    {
+     "isin": "US1720621010",
+     "key": "CINF.O",
+     "market_type": "2",
+     "name": "신시내티 파이낸셜",
+     "rank": 13,
+     "reuters": "CINF.O",
+     "ticker": null,
+     "weight_pct": 1.51
+    },
+    {
+     "isin": "IE00BTN1Y115",
+     "key": "MDT",
+     "market_type": "2",
+     "name": "메드트로닉",
+     "rank": 14,
+     "reuters": "MDT",
+     "ticker": null,
+     "weight_pct": 1.51
+    },
+    {
+     "isin": "US0028241000",
+     "key": "ABT",
+     "market_type": "2",
+     "name": "애보트 래보라토리",
+     "rank": 15,
+     "reuters": "ABT",
+     "ticker": null,
+     "weight_pct": 1.5
+    },
+    {
+     "isin": "US8318652091",
+     "key": "AOS",
+     "market_type": "2",
+     "name": "A O 스미스",
+     "rank": 16,
+     "reuters": "AOS",
+     "ticker": null,
+     "weight_pct": 1.5
+    },
+    {
+     "isin": "US4781601046",
+     "key": "JNJ",
+     "market_type": "2",
+     "name": "존슨앤드존슨",
+     "rank": 17,
+     "reuters": "JNJ",
+     "ticker": null,
+     "weight_pct": 1.5
+    },
+    {
+     "isin": "US14149Y1082",
+     "key": "CAH",
+     "market_type": "2",
+     "name": "카디널 헬스",
+     "rank": 18,
+     "reuters": "CAH",
+     "ticker": null,
+     "weight_pct": 1.49
+    },
+    {
+     "isin": "US7561091049",
+     "key": "O",
+     "market_type": "2",
+     "name": "리얼티 인컴",
+     "rank": 19,
+     "reuters": "O",
+     "ticker": null,
+     "weight_pct": 1.49
+    },
+    {
+     "isin": "US30040W1080",
+     "key": "ES",
+     "market_type": "2",
+     "name": "에버소스 에너지",
+     "rank": 20,
+     "reuters": "ES",
+     "ticker": null,
+     "weight_pct": 1.49
+    },
+    {
+     "isin": "US4404521001",
+     "key": "HRL",
+     "market_type": "2",
+     "name": "호멜 푸즈",
+     "rank": 21,
+     "reuters": "HRL",
+     "ticker": null,
+     "weight_pct": 1.48
+    },
+    {
+     "isin": "US1156372096",
+     "key": "BFb",
+     "market_type": "2",
+     "name": "브라운-포맨 Class B",
+     "rank": 22,
+     "reuters": "BFb",
+     "ticker": null,
+     "weight_pct": 1.48
+    },
+    {
+     "isin": "US78409V1044",
+     "key": "SPGI.K",
+     "market_type": "2",
+     "name": "S&P 글로벌",
+     "rank": 23,
+     "reuters": "SPGI.K",
+     "ticker": null,
+     "weight_pct": 1.48
+    },
+    {
+     "isin": "US7427181091",
+     "key": "PG",
+     "market_type": "2",
+     "name": "P&G(프록터 & 갬블)",
+     "rank": 24,
+     "reuters": "PG",
+     "ticker": null,
+     "weight_pct": 1.48
+    },
+    {
+     "isin": "US74144T1088",
+     "key": "TROW.O",
+     "market_type": "2",
+     "name": "티 로웨 프라이스 그룹",
+     "rank": 25,
+     "reuters": "TROW.O",
+     "ticker": null,
+     "weight_pct": 1.48
+    },
+    {
+     "isin": "US7134481081",
+     "key": "PEP.O",
+     "market_type": "2",
+     "name": "펩시코",
+     "rank": 26,
+     "reuters": "PEP.O",
+     "ticker": null,
+     "weight_pct": 1.48
+    },
+    {
+     "isin": "US2788651006",
+     "key": "ECL",
+     "market_type": "2",
+     "name": "이콜랩",
+     "rank": 27,
+     "reuters": "ECL",
+     "ticker": null,
+     "weight_pct": 1.48
+    },
+    {
+     "isin": "US3137451015",
+     "key": "FRT",
+     "market_type": "2",
+     "name": "페더럴 리얼티 인베스트먼트 트러스트",
+     "rank": 28,
+     "reuters": "FRT",
+     "ticker": null,
+     "weight_pct": 1.48
+    },
+    {
+     "isin": "US1713401024",
+     "key": "CHD",
+     "market_type": "2",
+     "name": "처치 & 드와이트",
+     "rank": 29,
+     "reuters": "CHD",
+     "ticker": null,
+     "weight_pct": 1.47
+    },
+    {
+     "isin": "US2091151041",
+     "key": "ED",
+     "market_type": "2",
+     "name": "콘솔리데이티드 에디슨",
+     "rank": 30,
+     "reuters": "ED",
+     "ticker": null,
+     "weight_pct": 1.47
+    }
+   ],
+   "source": "naver_stock_etf_component"
+  },
+  "446720": {
+   "asof": "2026-11-13",
+   "rows": [
+    {
+     "isin": "US8825081040",
+     "key": "TXN.O",
+     "market_type": "2",
+     "name": "텍사스 인스트루먼트",
+     "rank": 1,
+     "reuters": "TXN.O",
+     "ticker": null,
+     "weight_pct": 4.7
+    },
+    {
+     "isin": "US7427181091",
+     "key": "PG",
+     "market_type": "2",
+     "name": "P&G(프록터 & 갬블)",
+     "rank": 2,
+     "reuters": "PG",
+     "ticker": null,
+     "weight_pct": 4.39
+    },
+    {
+     "isin": "US1912161007",
+     "key": "KO",
+     "market_type": "2",
+     "name": "코카콜라",
+     "rank": 3,
+     "reuters": "KO",
+     "ticker": null,
+     "weight_pct": 4.28
+    },
+    {
+     "isin": "US4370761029",
+     "key": "HD",
+     "market_type": "2",
+     "name": "홈디포",
+     "rank": 4,
+     "reuters": "HD",
+     "ticker": null,
+     "weight_pct": 4.26
+    },
+    {
+     "isin": "US0311621009",
+     "key": "AMGN.O",
+     "market_type": "2",
+     "name": "암젠",
+     "rank": 5,
+     "reuters": "AMGN.O",
+     "ticker": null,
+     "weight_pct": 4.09
+    },
+    {
+     "isin": "US7475251036",
+     "key": "QCOM.O",
+     "market_type": "2",
+     "name": "퀄컴",
+     "rank": 6,
+     "reuters": "QCOM.O",
+     "ticker": null,
+     "weight_pct": 4.02
+    },
+    {
+     "isin": "US7134481081",
+     "key": "PEP.O",
+     "market_type": "2",
+     "name": "펩시코",
+     "rank": 7,
+     "reuters": "PEP.O",
+     "ticker": null,
+     "weight_pct": 3.96
+    },
+    {
+     "isin": "US91324P1021",
+     "key": "UNH",
+     "market_type": "2",
+     "name": "유나이티드헬스 그룹",
+     "rank": 8,
+     "reuters": "UNH",
+     "ticker": null,
+     "weight_pct": 3.9
+    },
+    {
+     "isin": "US1667641005",
+     "key": "CVX",
+     "market_type": "2",
+     "name": "셰브론",
+     "rank": 9,
+     "reuters": "CVX",
+     "ticker": null,
+     "weight_pct": 3.89
+    },
+    {
+     "isin": "US20825C1045",
+     "key": "COP",
+     "market_type": "2",
+     "name": "코노코필립스",
+     "rank": 10,
+     "reuters": "COP",
+     "ticker": null,
+     "weight_pct": 3.88
+    },
+    {
+     "isin": "US0028241000",
+     "key": "ABT",
+     "market_type": "2",
+     "name": "애보트 래보라토리",
+     "rank": 11,
+     "reuters": "ABT",
+     "ticker": null,
+     "weight_pct": 3.82
+    },
+    {
+     "isin": "US58933Y1055",
+     "key": "MRK",
+     "market_type": "2",
+     "name": "머크 앤 코",
+     "rank": 12,
+     "reuters": "MRK",
+     "ticker": null,
+     "weight_pct": 3.75
+    },
+    {
+     "isin": "IE00B4BNMY34",
+     "key": "ACN",
+     "market_type": "2",
+     "name": "액센추어",
+     "rank": 13,
+     "reuters": "ACN",
+     "ticker": null,
+     "weight_pct": 3.64
+    },
+    {
+     "isin": "US92343V1044",
+     "key": "VZ",
+     "market_type": "2",
+     "name": "버라이존",
+     "rank": 14,
+     "reuters": "VZ",
+     "ticker": null,
+     "weight_pct": 3.59
+    },
+    {
+     "isin": "US02209S1033",
+     "key": "MO",
+     "market_type": "2",
+     "name": "알트리아그룹",
+     "rank": 15,
+     "reuters": "MO",
+     "ticker": null,
+     "weight_pct": 3.03
+    },
+    {
+     "isin": "US1101221083",
+     "key": "BMY",
+     "market_type": "2",
+     "name": "브리스톨-마이어스 스큅",
+     "rank": 16,
+     "reuters": "BMY",
+     "ticker": null,
+     "weight_pct": 3.01
+    },
+    {
+     "isin": "US5398301094",
+     "key": "LMT",
+     "market_type": "2",
+     "name": "록히드 마틴",
+     "rank": 17,
+     "reuters": "LMT",
+     "ticker": null,
+     "weight_pct": 2.9
+    },
+    {
+     "isin": "US0530151036",
+     "key": "ADP.O",
+     "market_type": "2",
+     "name": "오토매틱 데이터 프로세싱",
+     "rank": 18,
+     "reuters": "ADP.O",
+     "ticker": null,
+     "weight_pct": 2.85
+    },
+    {
+     "isin": "US09260D1072",
+     "key": "BX",
+     "market_type": "2",
+     "name": "블랙스톤",
+     "rank": 19,
+     "reuters": "BX",
+     "ticker": null,
+     "weight_pct": 2.14
+    },
+    {
+     "isin": "US20030N1019",
+     "key": "CMCSA.O",
+     "market_type": "2",
+     "name": "컴캐스트",
+     "rank": 20,
+     "reuters": "CMCSA.O",
+     "ticker": null,
+     "weight_pct": 2.07
+    },
+    {
+     "isin": "US9113121068",
+     "key": "UPS",
+     "market_type": "2",
+     "name": "UPS(유나이티드 파셀 서비스)",
+     "rank": 21,
+     "reuters": "UPS",
+     "ticker": null,
+     "weight_pct": 1.97
+    },
+    {
+     "isin": "US26875P1012",
+     "key": "EOG",
+     "market_type": "2",
+     "name": "EOG 리소시스",
+     "rank": 22,
+     "reuters": "EOG",
+     "ticker": null,
+     "weight_pct": 1.89
+    },
+    {
+     "isin": "AN8068571086",
+     "key": "SLB",
+     "market_type": "2",
+     "name": "SLB",
+     "rank": 23,
+     "reuters": "SLB",
+     "ticker": null,
+     "weight_pct": 1.77
+    },
+    {
+     "isin": "US87612E1064",
+     "key": "TGT",
+     "market_type": "2",
+     "name": "타겟",
+     "rank": 24,
+     "reuters": "TGT",
+     "ticker": null,
+     "weight_pct": 1.73
+    },
+    {
+     "isin": "US3119001044",
+     "key": "FAST.O",
+     "market_type": "2",
+     "name": "패스널",
+     "rank": 25,
+     "reuters": "FAST.O",
+     "ticker": null,
+     "weight_pct": 1.49
+    },
+    {
+     "isin": "US30609A1097",
+     "key": "OKE",
+     "market_type": "2",
+     "name": "원오케이",
+     "rank": 26,
+     "reuters": "OKE",
+     "ticker": null,
+     "weight_pct": 1.3
+    },
+    {
+     "isin": "US25179M1036",
+     "key": "DVN",
+     "market_type": "2",
+     "name": "데번 에너지",
+     "rank": 27,
+     "reuters": "DVN",
+     "ticker": null,
+     "weight_pct": 1.15
+    },
+    {
+     "isin": "US3167731005",
+     "key": "FITB.K",
+     "market_type": "2",
+     "name": "피프스 서드 뱅코프",
+     "rank": 28,
+     "reuters": "FITB.K",
+     "ticker": null,
+     "weight_pct": 1.15
+    },
+    {
+     "isin": "US3453708600",
+     "key": "F",
+     "market_type": "2",
+     "name": "포드 모터",
+     "rank": 29,
+     "reuters": "F",
+     "ticker": null,
+     "weight_pct": 1.12
+    },
+    {
+     "isin": "US7043261079",
+     "key": "PAYX.O",
+     "market_type": "2",
+     "name": "페이첵스",
+     "rank": 30,
+     "reuters": "PAYX.O",
+     "ticker": null,
+     "weight_pct": 0.86
+    }
+   ],
+   "source": "naver_stock_etf_component"
+  },
+  "451530": {
+   "asof": "2026-11-13",
+   "rows": [
+    {
+     "isin": "KRC035LP5638",
+     "key": "KRC035LP5638",
+     "market_type": "3",
+     "name": "국고채원금분리채권01210-5603(26-2)",
+     "rank": 1,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 52.63
+    },
+    {
+     "isin": "KRC035LP5596",
+     "key": "KRC035LP5596",
+     "market_type": "3",
+     "name": "국고채원금분리채권01210-5509(25-7)",
+     "rank": 2,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 29.28
+    },
+    {
+     "isin": "KRD010010001",
+     "key": "KRD010010001",
+     "market_type": "0",
+     "name": "원화현금",
+     "rank": 3,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 10.07
+    },
+    {
+     "isin": "KRC035LP5497",
+     "key": "KRC035LP5497",
+     "market_type": "3",
+     "name": "국고채원금분리채권01220-5409(24-8)",
+     "rank": 4,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 8.0
+    }
+   ],
+   "source": "naver_stock_etf_component"
+  },
+  "453630": {
+   "asof": "2026-11-13",
+   "rows": [
+    {
+     "isin": "US9311421039",
+     "key": "WMT.O",
+     "market_type": "2",
+     "name": "월마트",
+     "rank": 1,
+     "reuters": "WMT.O",
+     "ticker": null,
+     "weight_pct": 9.71
+    },
+    {
+     "isin": "US22160K1051",
+     "key": "COST.O",
+     "market_type": "2",
+     "name": "코스트코 홀세일",
+     "rank": 2,
+     "reuters": "COST.O",
+     "ticker": null,
+     "weight_pct": 8.36
+    },
+    {
+     "isin": "KRD010010001",
+     "key": "KRD010010001",
+     "market_type": "0",
+     "name": "원화현금",
+     "rank": 3,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 7.77
+    },
+    {
+     "isin": "US7427181091",
+     "key": "PG",
+     "market_type": "2",
+     "name": "P&G(프록터 & 갬블)",
+     "rank": 4,
+     "reuters": "PG",
+     "ticker": null,
+     "weight_pct": 6.75
+    },
+    {
+     "isin": "US1912161007",
+     "key": "KO",
+     "market_type": "2",
+     "name": "코카콜라",
+     "rank": 5,
+     "reuters": "KO",
+     "ticker": null,
+     "weight_pct": 6.55
+    },
+    {
+     "isin": "US7181721090",
+     "key": "PM",
+     "market_type": "2",
+     "name": "필립 모리스 인터내셔널",
+     "rank": 6,
+     "reuters": "PM",
+     "ticker": null,
+     "weight_pct": 5.3
+    },
+    {
+     "isin": "US81369Y3080",
+     "key": "XLP",
+     "market_type": "2",
+     "name": "State Street Consumer Staples Sel Sect SPDR ETF",
+     "rank": 7,
+     "reuters": "XLP",
+     "ticker": null,
+     "weight_pct": 5.25
+    },
+    {
+     "isin": "US02209S1033",
+     "key": "MO",
+     "market_type": "2",
+     "name": "알트리아그룹",
+     "rank": 8,
+     "reuters": "MO",
+     "ticker": null,
+     "weight_pct": 3.98
+    },
+    {
+     "isin": "US1941621039",
+     "key": "CL",
+     "market_type": "2",
+     "name": "콜게이트-팜올리브",
+     "rank": 9,
+     "reuters": "CL",
+     "ticker": null,
+     "weight_pct": 3.89
+    },
+    {
+     "isin": "US6092071058",
+     "key": "MDLZ.O",
+     "market_type": "2",
+     "name": "몬덜리즈 인터내셔널",
+     "rank": 10,
+     "reuters": "MDLZ.O",
+     "ticker": null,
+     "weight_pct": 3.73
+    },
+    {
+     "isin": "US7134481081",
+     "key": "PEP.O",
+     "market_type": "2",
+     "name": "펩시코",
+     "rank": 11,
+     "reuters": "PEP.O",
+     "ticker": null,
+     "weight_pct": 3.68
+    },
+    {
+     "isin": "US87612E1064",
+     "key": "TGT",
+     "market_type": "2",
+     "name": "타겟",
+     "rank": 12,
+     "reuters": "TGT",
+     "ticker": null,
+     "weight_pct": 3.61
+    },
+    {
+     "isin": "US4943681035",
+     "key": "KMB.O",
+     "market_type": "2",
+     "name": "킴벌리클라크",
+     "rank": 13,
+     "reuters": "KMB.O",
+     "ticker": null,
+     "weight_pct": 3.32
+    },
+    {
+     "isin": "US61174X1090",
+     "key": "MNST.O",
+     "market_type": "2",
+     "name": "몬스터 베버리지",
+     "rank": 14,
+     "reuters": "MNST.O",
+     "ticker": null,
+     "weight_pct": 3.23
+    },
+    {
+     "isin": "US49271V1008",
+     "key": "KDP.O",
+     "market_type": "2",
+     "name": "큐리그 닥터 페퍼",
+     "rank": 15,
+     "reuters": "KDP.O",
+     "ticker": null,
+     "weight_pct": 2.59
+    },
+    {
+     "isin": "US5010441013",
+     "key": "KR",
+     "market_type": "2",
+     "name": "크로거",
+     "rank": 16,
+     "reuters": "KR",
+     "ticker": null,
+     "weight_pct": 1.97
+    },
+    {
+     "isin": "US8718291078",
+     "key": "SYY",
+     "market_type": "2",
+     "name": "시스코",
+     "rank": 17,
+     "reuters": "SYY",
+     "ticker": null,
+     "weight_pct": 1.83
+    },
+    {
+     "isin": "US0394831020",
+     "key": "ADM",
+     "market_type": "2",
+     "name": "아처 대니얼스 미들랜드",
+     "rank": 18,
+     "reuters": "ADM",
+     "ticker": null,
+     "weight_pct": 1.7
+    },
+    {
+     "isin": "US2566771059",
+     "key": "DG",
+     "market_type": "2",
+     "name": "달러 제너럴",
+     "rank": 19,
+     "reuters": "DG",
+     "ticker": null,
+     "weight_pct": 1.51
+    },
+    {
+     "isin": "US5184391044",
+     "key": "EL",
+     "market_type": "2",
+     "name": "에스티 로더",
+     "rank": 20,
+     "reuters": "EL",
+     "ticker": null,
+     "weight_pct": 1.38
+    },
+    {
+     "isin": "US2567461080",
+     "key": "DLTR.O",
+     "market_type": "2",
+     "name": "달러 트리",
+     "rank": 21,
+     "reuters": "DLTR.O",
+     "ticker": null,
+     "weight_pct": 1.36
+    },
+    {
+     "isin": "US1713401024",
+     "key": "CHD",
+     "market_type": "2",
+     "name": "처치 & 드와이트",
+     "rank": 22,
+     "reuters": "CHD",
+     "ticker": null,
+     "weight_pct": 1.32
+    },
+    {
+     "isin": "US1475281036",
+     "key": "CASY.O",
+     "market_type": "2",
+     "name": "케이시스 제너럴 스토어스",
+     "rank": 23,
+     "reuters": "CASY.O",
+     "ticker": null,
+     "weight_pct": 1.31
+    },
+    {
+     "isin": "US4278661081",
+     "key": "HSY",
+     "market_type": "2",
+     "name": "허쉬",
+     "rank": 24,
+     "reuters": "HSY",
+     "ticker": null,
+     "weight_pct": 1.28
+    },
+    {
+     "isin": "US92892R1086",
+     "key": "VYLR.K",
+     "market_type": "2",
+     "name": "바일러",
+     "rank": 25,
+     "reuters": "VYLR.K",
+     "ticker": null,
+     "weight_pct": 1.27
+    },
+    {
+     "isin": "US21036P1084",
+     "key": "STZ",
+     "market_type": "2",
+     "name": "컨스텔레이션 브랜즈",
+     "rank": 26,
+     "reuters": "STZ",
+     "ticker": null,
+     "weight_pct": 1.08
+    },
+    {
+     "isin": "US5007541064",
+     "key": "KHC",
+     "market_type": "2",
+     "name": "크래프트 하인즈 컴퍼니",
+     "rank": 27,
+     "reuters": "KHC",
+     "ticker": null,
+     "weight_pct": 1.04
+    },
+    {
+     "isin": "US3703341046",
+     "key": "GIS",
+     "market_type": "2",
+     "name": "제너럴 밀즈",
+     "rank": 28,
+     "reuters": "GIS",
+     "ticker": null,
+     "weight_pct": 0.91
+    },
+    {
+     "isin": "US9024941034",
+     "key": "TSN",
+     "market_type": "2",
+     "name": "타이슨 푸드",
+     "rank": 29,
+     "reuters": "TSN",
+     "ticker": null,
+     "weight_pct": 0.84
+    },
+    {
+     "isin": "CH1300646267",
+     "key": "BG",
+     "market_type": "2",
+     "name": "번지 글로벌",
+     "rank": 30,
+     "reuters": "BG",
+     "ticker": null,
+     "weight_pct": 0.78
+    }
+   ],
+   "source": "naver_stock_etf_component"
+  },
+  "453640": {
+   "asof": "2026-11-13",
+   "rows": [
+    {
+     "isin": "US5324571083",
+     "key": "LLY",
+     "market_type": "2",
+     "name": "일라이 릴리",
+     "rank": 1,
+     "reuters": "LLY",
+     "ticker": null,
+     "weight_pct": 16.05
+    },
+    {
+     "isin": "US4781601046",
+     "key": "JNJ",
+     "market_type": "2",
+     "name": "존슨앤드존슨",
+     "rank": 2,
+     "reuters": "JNJ",
+     "ticker": null,
+     "weight_pct": 9.43
+    },
+    {
+     "isin": "US00287Y1091",
+     "key": "ABBV.K",
+     "market_type": "2",
+     "name": "애브비",
+     "rank": 3,
+     "reuters": "ABBV.K",
+     "ticker": null,
+     "weight_pct": 7.27
+    },
+    {
+     "isin": "US58933Y1055",
+     "key": "MRK",
+     "market_type": "2",
+     "name": "머크 앤 코",
+     "rank": 4,
+     "reuters": "MRK",
+     "ticker": null,
+     "weight_pct": 5.07
+    },
+    {
+     "isin": "US91324P1021",
+     "key": "UNH",
+     "market_type": "2",
+     "name": "유나이티드헬스 그룹",
+     "rank": 5,
+     "reuters": "UNH",
+     "ticker": null,
+     "weight_pct": 5.05
+    },
+    {
+     "isin": "IXCZ6",
+     "key": "IXCZ6",
+     "market_type": "2",
+     "name": "XAV Health Care 2026 12",
+     "rank": 6,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 4.36
+    },
+    {
+     "isin": "KRD010010001",
+     "key": "KRD010010001",
+     "market_type": "0",
+     "name": "원화현금",
+     "rank": 7,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 4.23
+    },
+    {
+     "isin": "US8835561023",
+     "key": "TMO",
+     "market_type": "2",
+     "name": "써모 피셔 사이언티픽",
+     "rank": 8,
+     "reuters": "TMO",
+     "ticker": null,
+     "weight_pct": 3.7
+    },
+    {
+     "isin": "US0311621009",
+     "key": "AMGN.O",
+     "market_type": "2",
+     "name": "암젠",
+     "rank": 9,
+     "reuters": "AMGN.O",
+     "ticker": null,
+     "weight_pct": 3.53
+    },
+    {
+     "isin": "US3755581036",
+     "key": "GILD.O",
+     "market_type": "2",
+     "name": "길리어드 사이언시스",
+     "rank": 10,
+     "reuters": "GILD.O",
+     "ticker": null,
+     "weight_pct": 2.93
+    },
+    {
+     "isin": "US0028241000",
+     "key": "ABT",
+     "market_type": "2",
+     "name": "애보트 래보라토리",
+     "rank": 11,
+     "reuters": "ABT",
+     "ticker": null,
+     "weight_pct": 2.64
+    },
+    {
+     "isin": "US7170811035",
+     "key": "PFE",
+     "market_type": "2",
+     "name": "화이자",
+     "rank": 12,
+     "reuters": "PFE",
+     "ticker": null,
+     "weight_pct": 2.34
+    },
+    {
+     "isin": "US46120E6023",
+     "key": "ISRG.O",
+     "market_type": "2",
+     "name": "인튜이티브 서지컬",
+     "rank": 13,
+     "reuters": "ISRG.O",
+     "ticker": null,
+     "weight_pct": 2.21
+    },
+    {
+     "isin": "US2358511028",
+     "key": "DHR",
+     "market_type": "2",
+     "name": "다나허",
+     "rank": 14,
+     "reuters": "DHR",
+     "ticker": null,
+     "weight_pct": 2.05
+    },
+    {
+     "isin": "US92532F1003",
+     "key": "VRTX.O",
+     "market_type": "2",
+     "name": "버텍스 파마슈티컬",
+     "rank": 15,
+     "reuters": "VRTX.O",
+     "ticker": null,
+     "weight_pct": 1.93
+    },
+    {
+     "isin": "US1101221083",
+     "key": "BMY",
+     "market_type": "2",
+     "name": "브리스톨-마이어스 스큅",
+     "rank": 16,
+     "reuters": "BMY",
+     "ticker": null,
+     "weight_pct": 1.79
+    },
+    {
+     "isin": "US58155Q1031",
+     "key": "MCK",
+     "market_type": "2",
+     "name": "매케슨",
+     "rank": 17,
+     "reuters": "MCK",
+     "ticker": null,
+     "weight_pct": 1.75
+    },
+    {
+     "isin": "IE00BTN1Y115",
+     "key": "MDT",
+     "market_type": "2",
+     "name": "메드트로닉",
+     "rank": 18,
+     "reuters": "MDT",
+     "ticker": null,
+     "weight_pct": 1.73
+    },
+    {
+     "isin": "US1266501006",
+     "key": "CVS",
+     "market_type": "2",
+     "name": "CVS 헬스",
+     "rank": 19,
+     "reuters": "CVS",
+     "ticker": null,
+     "weight_pct": 1.59
+    },
+    {
+     "isin": "US8636671013",
+     "key": "SYK",
+     "market_type": "2",
+     "name": "스트라이커",
+     "rank": 20,
+     "reuters": "SYK",
+     "ticker": null,
+     "weight_pct": 1.55
+    },
+    {
+     "isin": "US75886F1075",
+     "key": "REGN.O",
+     "market_type": "2",
+     "name": "리제네론 파마슈티컬스",
+     "rank": 21,
+     "reuters": "REGN.O",
+     "ticker": null,
+     "weight_pct": 1.31
+    },
+    {
+     "isin": "US0367521038",
+     "key": "ELV",
+     "market_type": "2",
+     "name": "엘레반스 헬스",
+     "rank": 22,
+     "reuters": "ELV",
+     "ticker": null,
+     "weight_pct": 1.3
+    },
+    {
+     "isin": "US60770K1079",
+     "key": "MRNA.O",
+     "market_type": "2",
+     "name": "모더나",
+     "rank": 23,
+     "reuters": "MRNA.O",
+     "ticker": null,
+     "weight_pct": 1.28
+    },
+    {
+     "isin": "US1255231003",
+     "key": "CI",
+     "market_type": "2",
+     "name": "시그나",
+     "rank": 24,
+     "reuters": "CI",
+     "ticker": null,
+     "weight_pct": 1.11
+    },
+    {
+     "isin": "US40412C1018",
+     "key": "HCA",
+     "market_type": "2",
+     "name": "HCA 헬스케어",
+     "rank": 25,
+     "reuters": "HCA",
+     "ticker": null,
+     "weight_pct": 1.04
+    },
+    {
+     "isin": "US03073E1055",
+     "key": "COR",
+     "market_type": "2",
+     "name": "센코라",
+     "rank": 26,
+     "reuters": "COR",
+     "ticker": null,
+     "weight_pct": 0.93
+    },
+    {
+     "isin": "US1011371077",
+     "key": "BSX",
+     "market_type": "2",
+     "name": "보스턴 사이언티픽",
+     "rank": 27,
+     "reuters": "BSX",
+     "ticker": null,
+     "weight_pct": 0.91
+    },
+    {
+     "isin": "US14149Y1082",
+     "key": "CAH",
+     "market_type": "2",
+     "name": "카디널 헬스",
+     "rank": 28,
+     "reuters": "CAH",
+     "ticker": null,
+     "weight_pct": 0.9
+    },
+    {
+     "isin": "US28176E1082",
+     "key": "EW",
+     "market_type": "2",
+     "name": "에드워즈 라이프사이언시스",
+     "rank": 29,
+     "reuters": "EW",
+     "ticker": null,
+     "weight_pct": 0.85
+    },
+    {
+     "isin": "US0758871091",
+     "key": "BDX",
+     "market_type": "2",
+     "name": "벡톤 디킨슨 앤 코",
+     "rank": 30,
+     "reuters": "BDX",
+     "ticker": null,
+     "weight_pct": 0.81
+    }
+   ],
+   "source": "naver_stock_etf_component"
+  },
+  "453810": {
+   "asof": "2026-11-13",
+   "rows": [
+    {
+     "isin": "INE040A01034",
+     "key": "INE040A01034",
+     "market_type": "2",
+     "name": "HDFC Bank Ltd",
+     "rank": 1,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 10.74
+    },
+    {
+     "isin": "INE090A01021",
+     "key": "INE090A01021",
+     "market_type": "2",
+     "name": "ICICI Bank Ltd",
+     "rank": 2,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 9.79
+    },
+    {
+     "isin": "INE002A01018",
+     "key": "INE002A01018",
+     "market_type": "2",
+     "name": "Reliance Industries Ltd",
+     "rank": 3,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 7.76
+    },
+    {
+     "isin": "INE397D01024",
+     "key": "INE397D01024",
+     "market_type": "2",
+     "name": "Bharti Airtel Ltd",
+     "rank": 4,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 5.57
+    },
+    {
+     "isin": "INE018A01030",
+     "key": "INE018A01030",
+     "market_type": "2",
+     "name": "Larsen & Toubro Ltd",
+     "rank": 5,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 4.28
+    },
+    {
+     "isin": "INE062A01020",
+     "key": "INE062A01020",
+     "market_type": "2",
+     "name": "State Bank of India",
+     "rank": 6,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 3.81
+    },
+    {
+     "isin": "INE009A01021",
+     "key": "INE009A01021",
+     "market_type": "2",
+     "name": "Infosys Ltd",
+     "rank": 7,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 3.54
+    },
+    {
+     "isin": "INE238A01034",
+     "key": "INE238A01034",
+     "market_type": "2",
+     "name": "Axis Bank Ltd",
+     "rank": 8,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 3.34
+    },
+    {
+     "isin": "INE237A01036",
+     "key": "INE237A01036",
+     "market_type": "2",
+     "name": "Kotak Mahindra Bank Ltd",
+     "rank": 9,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 3.12
+    },
+    {
+     "isin": "INE101A01026",
+     "key": "INE101A01026",
+     "market_type": "2",
+     "name": "Mahindra & Mahindra Ltd",
+     "rank": 10,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 2.69
+    },
+    {
+     "isin": "INE296A01032",
+     "key": "INE296A01032",
+     "market_type": "2",
+     "name": "Bajaj Finance Ltd",
+     "rank": 11,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 2.55
+    },
+    {
+     "isin": "INE154A01025",
+     "key": "INE154A01025",
+     "market_type": "2",
+     "name": "ITC Ltd",
+     "rank": 12,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 2.38
+    },
+    {
+     "isin": "INE758T01015",
+     "key": "INE758T01015",
+     "market_type": "2",
+     "name": "ETERNAL LTD",
+     "rank": 13,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 2.27
+    },
+    {
+     "isin": "INE467B01029",
+     "key": "INE467B01029",
+     "market_type": "2",
+     "name": "Tata Consultancy Services Ltd",
+     "rank": 14,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 2.19
+    },
+    {
+     "isin": "INE280A01028",
+     "key": "INE280A01028",
+     "market_type": "2",
+     "name": "Titan Co Ltd",
+     "rank": 15,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 1.78
+    },
+    {
+     "isin": "INE044A01036",
+     "key": "INE044A01036",
+     "market_type": "2",
+     "name": "Sun Pharmaceutical Industries",
+     "rank": 16,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 1.75
+    },
+    {
+     "isin": "INE030A01027",
+     "key": "INE030A01027",
+     "market_type": "2",
+     "name": "Hindustan Unilever Ltd",
+     "rank": 17,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 1.56
+    },
+    {
+     "isin": "INE585B01010",
+     "key": "INE585B01010",
+     "market_type": "2",
+     "name": "Maruti Suzuki India Ltd",
+     "rank": 18,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 1.49
+    },
+    {
+     "isin": "INE118H01025",
+     "key": "INE118H01025",
+     "market_type": "2",
+     "name": "BSE LTD",
+     "rank": 19,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 1.38
+    },
+    {
+     "isin": "INE081A01020",
+     "key": "INE081A01020",
+     "market_type": "2",
+     "name": "Tata Steel Ltd",
+     "rank": 20,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 1.36
+    },
+    {
+     "isin": "INE733E01010",
+     "key": "INE733E01010",
+     "market_type": "2",
+     "name": "NTPC Ltd",
+     "rank": 21,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 1.35
+    },
+    {
+     "isin": "INE742F01042",
+     "key": "INE742F01042",
+     "market_type": "2",
+     "name": "Adani Ports & Special Economic Zone",
+     "rank": 22,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 1.29
+    },
+    {
+     "isin": "INE481G01011",
+     "key": "INE481G01011",
+     "market_type": "2",
+     "name": "UltraTech Cement Ltd",
+     "rank": 23,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 1.27
+    },
+    {
+     "isin": "INE860A01027",
+     "key": "INE860A01027",
+     "market_type": "2",
+     "name": "HCL Technologies Ltd",
+     "rank": 24,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 1.27
+    },
+    {
+     "isin": "INE263A01024",
+     "key": "INE263A01024",
+     "market_type": "2",
+     "name": "Bharat Electronics Ltd",
+     "rank": 25,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 1.24
+    },
+    {
+     "isin": "INE038A01020",
+     "key": "INE038A01020",
+     "market_type": "2",
+     "name": "Hindalco Industries Ltd",
+     "rank": 26,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 1.21
+    },
+    {
+     "isin": "INE721A01047",
+     "key": "INE721A01047",
+     "market_type": "2",
+     "name": "SHRIRAM FINANCE LTD",
+     "rank": 27,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 1.18
+    },
+    {
+     "isin": "INE019A01038",
+     "key": "INE019A01038",
+     "market_type": "2",
+     "name": "JSW Steel Ltd",
+     "rank": 28,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 1.13
+    },
+    {
+     "isin": "INE646L01027",
+     "key": "INE646L01027",
+     "market_type": "2",
+     "name": "InterGlobe Aviation Ltd",
+     "rank": 29,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 1.11
+    },
+    {
+     "isin": "INE917I01010",
+     "key": "INE917I01010",
+     "market_type": "2",
+     "name": "Bajaj Auto Ltd",
+     "rank": 30,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 1.04
+    }
+   ],
+   "source": "naver_stock_etf_component"
+  },
+  "453870": {
+   "asof": "2026-11-13",
+   "rows": [
+    {
+     "isin": "INE040A01034",
+     "key": "INE040A01034",
+     "market_type": "2",
+     "name": "HDFC BANK LIMITED",
+     "rank": 1,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 10.58
+    },
+    {
+     "isin": "INE090A01021",
+     "key": "INE090A01021",
+     "market_type": "2",
+     "name": "ICICI BANK LTD",
+     "rank": 2,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 9.64
+    },
+    {
+     "isin": "INE002A01018",
+     "key": "INE002A01018",
+     "market_type": "2",
+     "name": "RELIANCE INDUSTRIES LIMITED",
+     "rank": 3,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 7.64
+    },
+    {
+     "isin": "INE397D01024",
+     "key": "INE397D01024",
+     "market_type": "2",
+     "name": "BHARTI AIRTEL LTD",
+     "rank": 4,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 5.49
+    },
+    {
+     "isin": "INE018A01030",
+     "key": "INE018A01030",
+     "market_type": "2",
+     "name": "LARSEN & TOUBRO LTD",
+     "rank": 5,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 4.22
+    },
+    {
+     "isin": "INE062A01020",
+     "key": "INE062A01020",
+     "market_type": "2",
+     "name": "STATE BANK OF INDIA",
+     "rank": 6,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 3.75
+    },
+    {
+     "isin": "INE009A01021",
+     "key": "INE009A01021",
+     "market_type": "2",
+     "name": "INFOSYS LTD",
+     "rank": 7,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 3.49
+    },
+    {
+     "isin": "INE238A01034",
+     "key": "INE238A01034",
+     "market_type": "2",
+     "name": "AXIS BANK LTD",
+     "rank": 8,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 3.28
+    },
+    {
+     "isin": "INE237A01036",
+     "key": "INE237A01036",
+     "market_type": "2",
+     "name": "KOTAK MAHINDRA BANK LTD",
+     "rank": 9,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 3.07
+    },
+    {
+     "isin": "INE101A01026",
+     "key": "INE101A01026",
+     "market_type": "2",
+     "name": "MAHINDRA & MAHINDRA LTD",
+     "rank": 10,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 2.65
+    },
+    {
+     "isin": "INE296A01032",
+     "key": "INE296A01032",
+     "market_type": "2",
+     "name": "BAJAJ FINANCE LTD",
+     "rank": 11,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 2.52
+    },
+    {
+     "isin": "INE154A01025",
+     "key": "INE154A01025",
+     "market_type": "2",
+     "name": "ITC LTD",
+     "rank": 12,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 2.35
+    },
+    {
+     "isin": "INE758T01015",
+     "key": "INE758T01015",
+     "market_type": "2",
+     "name": "ETERNAL LTD",
+     "rank": 13,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 2.24
+    },
+    {
+     "isin": "INE467B01029",
+     "key": "INE467B01029",
+     "market_type": "2",
+     "name": "TATA CONSULTANCY SVCS LTD",
+     "rank": 14,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 2.16
+    },
+    {
+     "isin": "INE280A01028",
+     "key": "INE280A01028",
+     "market_type": "2",
+     "name": "TITAN CO LTD",
+     "rank": 15,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 1.75
+    },
+    {
+     "isin": "INE044A01036",
+     "key": "INE044A01036",
+     "market_type": "2",
+     "name": "SUN PHARMACEUTICAL INDUS",
+     "rank": 16,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 1.72
+    },
+    {
+     "isin": "INE030A01027",
+     "key": "INE030A01027",
+     "market_type": "2",
+     "name": "HINDUSTAN UNILEVER LTD",
+     "rank": 17,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 1.53
+    },
+    {
+     "isin": "INE585B01010",
+     "key": "INE585B01010",
+     "market_type": "2",
+     "name": "MARUTI SUZUKI INDIA LTD",
+     "rank": 18,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 1.46
+    },
+    {
+     "isin": "INE118H01025",
+     "key": "INE118H01025",
+     "market_type": "2",
+     "name": "BSE LTD",
+     "rank": 19,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 1.36
+    },
+    {
+     "isin": "INE081A01020",
+     "key": "INE081A01020",
+     "market_type": "2",
+     "name": "TATA STEEL LTD",
+     "rank": 20,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 1.34
+    },
+    {
+     "isin": "INE733E01010",
+     "key": "INE733E01010",
+     "market_type": "2",
+     "name": "NTPC LTD",
+     "rank": 21,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 1.33
+    },
+    {
+     "isin": "INE742F01042",
+     "key": "INE742F01042",
+     "market_type": "2",
+     "name": "ADANI PORTS AND SPECIAL ECON",
+     "rank": 22,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 1.27
+    },
+    {
+     "isin": "INE481G01011",
+     "key": "INE481G01011",
+     "market_type": "2",
+     "name": "ULTRATECH CEMENT LTD",
+     "rank": 23,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 1.25
+    },
+    {
+     "isin": "INE860A01027",
+     "key": "INE860A01027",
+     "market_type": "2",
+     "name": "HCL TECHNOLOGIES LTD",
+     "rank": 24,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 1.25
+    },
+    {
+     "isin": "INE263A01024",
+     "key": "INE263A01024",
+     "market_type": "2",
+     "name": "BHARAT ELECTRONICS LTD",
+     "rank": 25,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 1.22
+    },
+    {
+     "isin": "INE038A01020",
+     "key": "INE038A01020",
+     "market_type": "2",
+     "name": "HINDALCO INDUSTRIES LTD",
+     "rank": 26,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 1.19
+    },
+    {
+     "isin": "INE721A01047",
+     "key": "INE721A01047",
+     "market_type": "2",
+     "name": "SHRIRAM FINANCE LTD",
+     "rank": 27,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 1.16
+    },
+    {
+     "isin": "INE019A01038",
+     "key": "INE019A01038",
+     "market_type": "2",
+     "name": "JSW STEEL LTD",
+     "rank": 28,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 1.11
+    },
+    {
+     "isin": "INE646L01027",
+     "key": "INE646L01027",
+     "market_type": "2",
+     "name": "INTERGLOBE AVIATION LTD",
+     "rank": 29,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 1.09
+    },
+    {
+     "isin": "INE917I01010",
+     "key": "INE917I01010",
+     "market_type": "2",
+     "name": "BAJAJ AUTO LTD",
+     "rank": 30,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 1.03
+    }
+   ],
+   "source": "naver_stock_etf_component"
+  },
+  "458750": {
+   "asof": "2026-11-13",
+   "rows": [
+    {
+     "isin": "US8085247976",
+     "key": "SCHD.K",
+     "market_type": "2",
+     "name": "Schwab US Dividend Equity ETF",
+     "rank": 1,
+     "reuters": "SCHD.K",
+     "ticker": null,
+     "weight_pct": 13.09
+    },
+    {
+     "isin": "US8825081040",
+     "key": "TXN.O",
+     "market_type": "2",
+     "name": "텍사스 인스트루먼트",
+     "rank": 2,
+     "reuters": "TXN.O",
+     "ticker": null,
+     "weight_pct": 4.1
+    },
+    {
+     "isin": "US7427181091",
+     "key": "PG",
+     "market_type": "2",
+     "name": "P&G(프록터 & 갬블)",
+     "rank": 3,
+     "reuters": "PG",
+     "ticker": null,
+     "weight_pct": 3.82
+    },
+    {
+     "isin": "US1912161007",
+     "key": "KO",
+     "market_type": "2",
+     "name": "코카콜라",
+     "rank": 4,
+     "reuters": "KO",
+     "ticker": null,
+     "weight_pct": 3.73
+    },
+    {
+     "isin": "US4370761029",
+     "key": "HD",
+     "market_type": "2",
+     "name": "홈디포",
+     "rank": 5,
+     "reuters": "HD",
+     "ticker": null,
+     "weight_pct": 3.72
+    },
+    {
+     "isin": "US7475251036",
+     "key": "QCOM.O",
+     "market_type": "2",
+     "name": "퀄컴",
+     "rank": 6,
+     "reuters": "QCOM.O",
+     "ticker": null,
+     "weight_pct": 3.52
+    },
+    {
+     "isin": "US0311621009",
+     "key": "AMGN.O",
+     "market_type": "2",
+     "name": "암젠",
+     "rank": 7,
+     "reuters": "AMGN.O",
+     "ticker": null,
+     "weight_pct": 3.52
+    },
+    {
+     "isin": "US7134481081",
+     "key": "PEP.O",
+     "market_type": "2",
+     "name": "펩시코",
+     "rank": 8,
+     "reuters": "PEP.O",
+     "ticker": null,
+     "weight_pct": 3.46
+    },
+    {
+     "isin": "US91324P1021",
+     "key": "UNH",
+     "market_type": "2",
+     "name": "유나이티드헬스 그룹",
+     "rank": 9,
+     "reuters": "UNH",
+     "ticker": null,
+     "weight_pct": 3.44
+    },
+    {
+     "isin": "US20825C1045",
+     "key": "COP",
+     "market_type": "2",
+     "name": "코노코필립스",
+     "rank": 10,
+     "reuters": "COP",
+     "ticker": null,
+     "weight_pct": 3.39
+    },
+    {
+     "isin": "US1667641005",
+     "key": "CVX",
+     "market_type": "2",
+     "name": "셰브론",
+     "rank": 11,
+     "reuters": "CVX",
+     "ticker": null,
+     "weight_pct": 3.38
+    },
+    {
+     "isin": "US0028241000",
+     "key": "ABT",
+     "market_type": "2",
+     "name": "애보트 래보라토리",
+     "rank": 12,
+     "reuters": "ABT",
+     "ticker": null,
+     "weight_pct": 3.33
+    },
+    {
+     "isin": "US58933Y1055",
+     "key": "MRK",
+     "market_type": "2",
+     "name": "머크 앤 코",
+     "rank": 13,
+     "reuters": "MRK",
+     "ticker": null,
+     "weight_pct": 3.26
+    },
+    {
+     "isin": "IE00B4BNMY34",
+     "key": "ACN",
+     "market_type": "2",
+     "name": "액센추어",
+     "rank": 14,
+     "reuters": "ACN",
+     "ticker": null,
+     "weight_pct": 3.2
+    },
+    {
+     "isin": "US92343V1044",
+     "key": "VZ",
+     "market_type": "2",
+     "name": "버라이존",
+     "rank": 15,
+     "reuters": "VZ",
+     "ticker": null,
+     "weight_pct": 3.13
+    },
+    {
+     "isin": "US02209S1033",
+     "key": "MO",
+     "market_type": "2",
+     "name": "알트리아그룹",
+     "rank": 16,
+     "reuters": "MO",
+     "ticker": null,
+     "weight_pct": 2.64
+    },
+    {
+     "isin": "US1101221083",
+     "key": "BMY",
+     "market_type": "2",
+     "name": "브리스톨-마이어스 스큅",
+     "rank": 17,
+     "reuters": "BMY",
+     "ticker": null,
+     "weight_pct": 2.62
+    },
+    {
+     "isin": "US0530151036",
+     "key": "ADP.O",
+     "market_type": "2",
+     "name": "오토매틱 데이터 프로세싱",
+     "rank": 18,
+     "reuters": "ADP.O",
+     "ticker": null,
+     "weight_pct": 2.49
+    },
+    {
+     "isin": "US5398301094",
+     "key": "LMT",
+     "market_type": "2",
+     "name": "록히드 마틴",
+     "rank": 19,
+     "reuters": "LMT",
+     "ticker": null,
+     "weight_pct": 2.48
+    },
+    {
+     "isin": "US09260D1072",
+     "key": "BX",
+     "market_type": "2",
+     "name": "블랙스톤",
+     "rank": 20,
+     "reuters": "BX",
+     "ticker": null,
+     "weight_pct": 1.86
+    },
+    {
+     "isin": "US20030N1019",
+     "key": "CMCSA.O",
+     "market_type": "2",
+     "name": "컴캐스트",
+     "rank": 21,
+     "reuters": "CMCSA.O",
+     "ticker": null,
+     "weight_pct": 1.81
+    },
+    {
+     "isin": "US9113121068",
+     "key": "UPS",
+     "market_type": "2",
+     "name": "UPS(유나이티드 파셀 서비스)",
+     "rank": 22,
+     "reuters": "UPS",
+     "ticker": null,
+     "weight_pct": 1.71
+    },
+    {
+     "isin": "US26875P1012",
+     "key": "EOG",
+     "market_type": "2",
+     "name": "EOG 리소시스",
+     "rank": 23,
+     "reuters": "EOG",
+     "ticker": null,
+     "weight_pct": 1.66
+    },
+    {
+     "isin": "AN8068571086",
+     "key": "SLB",
+     "market_type": "2",
+     "name": "SLB",
+     "rank": 24,
+     "reuters": "SLB",
+     "ticker": null,
+     "weight_pct": 1.54
+    },
+    {
+     "isin": "US87612E1064",
+     "key": "TGT",
+     "market_type": "2",
+     "name": "타겟",
+     "rank": 25,
+     "reuters": "TGT",
+     "ticker": null,
+     "weight_pct": 1.52
+    },
+    {
+     "isin": "US3119001044",
+     "key": "FAST.O",
+     "market_type": "2",
+     "name": "패스널",
+     "rank": 26,
+     "reuters": "FAST.O",
+     "ticker": null,
+     "weight_pct": 1.29
+    },
+    {
+     "isin": "US30609A1097",
+     "key": "OKE",
+     "market_type": "2",
+     "name": "원오케이",
+     "rank": 27,
+     "reuters": "OKE",
+     "ticker": null,
+     "weight_pct": 1.13
+    },
+    {
+     "isin": "US25179M1036",
+     "key": "DVN",
+     "market_type": "2",
+     "name": "데번 에너지",
+     "rank": 28,
+     "reuters": "DVN",
+     "ticker": null,
+     "weight_pct": 1.01
+    },
+    {
+     "isin": "US3167731005",
+     "key": "FITB.K",
+     "market_type": "2",
+     "name": "피프스 서드 뱅코프",
+     "rank": 29,
+     "reuters": "FITB.K",
+     "ticker": null,
+     "weight_pct": 1.0
+    },
+    {
+     "isin": "US3453708600",
+     "key": "F",
+     "market_type": "2",
+     "name": "포드 모터",
+     "rank": 30,
+     "reuters": "F",
+     "ticker": null,
+     "weight_pct": 0.98
+    }
+   ],
+   "source": "naver_stock_etf_component"
+  },
+  "458760": {
+   "asof": "2026-11-13",
+   "rows": [
+    {
+     "isin": "US8825081040",
+     "key": "TXN.O",
+     "market_type": "2",
+     "name": "텍사스 인스트루먼트",
+     "rank": 1,
+     "reuters": "TXN.O",
+     "ticker": null,
+     "weight_pct": 4.71
+    },
+    {
+     "isin": "US7427181091",
+     "key": "PG",
+     "market_type": "2",
+     "name": "P&G(프록터 & 갬블)",
+     "rank": 2,
+     "reuters": "PG",
+     "ticker": null,
+     "weight_pct": 4.37
+    },
+    {
+     "isin": "US1912161007",
+     "key": "KO",
+     "market_type": "2",
+     "name": "코카콜라",
+     "rank": 3,
+     "reuters": "KO",
+     "ticker": null,
+     "weight_pct": 4.26
+    },
+    {
+     "isin": "US4370761029",
+     "key": "HD",
+     "market_type": "2",
+     "name": "홈디포",
+     "rank": 4,
+     "reuters": "HD",
+     "ticker": null,
+     "weight_pct": 4.24
+    },
+    {
+     "isin": "US0311621009",
+     "key": "AMGN.O",
+     "market_type": "2",
+     "name": "암젠",
+     "rank": 5,
+     "reuters": "AMGN.O",
+     "ticker": null,
+     "weight_pct": 4.06
+    },
+    {
+     "isin": "US7475251036",
+     "key": "QCOM.O",
+     "market_type": "2",
+     "name": "퀄컴",
+     "rank": 6,
+     "reuters": "QCOM.O",
+     "ticker": null,
+     "weight_pct": 4.0
+    },
+    {
+     "isin": "US7134481081",
+     "key": "PEP.O",
+     "market_type": "2",
+     "name": "펩시코",
+     "rank": 7,
+     "reuters": "PEP.O",
+     "ticker": null,
+     "weight_pct": 3.96
+    },
+    {
+     "isin": "US1667641005",
+     "key": "CVX",
+     "market_type": "2",
+     "name": "셰브론",
+     "rank": 8,
+     "reuters": "CVX",
+     "ticker": null,
+     "weight_pct": 3.91
+    },
+    {
+     "isin": "US91324P1021",
+     "key": "UNH",
+     "market_type": "2",
+     "name": "유나이티드헬스 그룹",
+     "rank": 9,
+     "reuters": "UNH",
+     "ticker": null,
+     "weight_pct": 3.89
+    },
+    {
+     "isin": "US20825C1045",
+     "key": "COP",
+     "market_type": "2",
+     "name": "코노코필립스",
+     "rank": 10,
+     "reuters": "COP",
+     "ticker": null,
+     "weight_pct": 3.89
+    },
+    {
+     "isin": "US0028241000",
+     "key": "ABT",
+     "market_type": "2",
+     "name": "애보트 래보라토리",
+     "rank": 11,
+     "reuters": "ABT",
+     "ticker": null,
+     "weight_pct": 3.82
+    },
+    {
+     "isin": "US58933Y1055",
+     "key": "MRK",
+     "market_type": "2",
+     "name": "머크 앤 코",
+     "rank": 12,
+     "reuters": "MRK",
+     "ticker": null,
+     "weight_pct": 3.76
+    },
+    {
+     "isin": "IE00B4BNMY34",
+     "key": "ACN",
+     "market_type": "2",
+     "name": "액센추어",
+     "rank": 13,
+     "reuters": "ACN",
+     "ticker": null,
+     "weight_pct": 3.61
+    },
+    {
+     "isin": "US92343V1044",
+     "key": "VZ",
+     "market_type": "2",
+     "name": "버라이존",
+     "rank": 14,
+     "reuters": "VZ",
+     "ticker": null,
+     "weight_pct": 3.58
+    },
+    {
+     "isin": "US02209S1033",
+     "key": "MO",
+     "market_type": "2",
+     "name": "알트리아그룹",
+     "rank": 15,
+     "reuters": "MO",
+     "ticker": null,
+     "weight_pct": 3.02
+    },
+    {
+     "isin": "US1101221083",
+     "key": "BMY",
+     "market_type": "2",
+     "name": "브리스톨-마이어스 스큅",
+     "rank": 16,
+     "reuters": "BMY",
+     "ticker": null,
+     "weight_pct": 3.0
+    },
+    {
+     "isin": "US5398301094",
+     "key": "LMT",
+     "market_type": "2",
+     "name": "록히드 마틴",
+     "rank": 17,
+     "reuters": "LMT",
+     "ticker": null,
+     "weight_pct": 2.94
+    },
+    {
+     "isin": "US0530151036",
+     "key": "ADP.O",
+     "market_type": "2",
+     "name": "오토매틱 데이터 프로세싱",
+     "rank": 18,
+     "reuters": "ADP.O",
+     "ticker": null,
+     "weight_pct": 2.88
+    },
+    {
+     "isin": "US09260D1072",
+     "key": "BX",
+     "market_type": "2",
+     "name": "블랙스톤",
+     "rank": 19,
+     "reuters": "BX",
+     "ticker": null,
+     "weight_pct": 2.15
+    },
+    {
+     "isin": "US20030N1019",
+     "key": "CMCSA.O",
+     "market_type": "2",
+     "name": "컴캐스트",
+     "rank": 20,
+     "reuters": "CMCSA.O",
+     "ticker": null,
+     "weight_pct": 2.07
+    },
+    {
+     "isin": "US9113121068",
+     "key": "UPS",
+     "market_type": "2",
+     "name": "UPS(유나이티드 파셀 서비스)",
+     "rank": 21,
+     "reuters": "UPS",
+     "ticker": null,
+     "weight_pct": 1.98
+    },
+    {
+     "isin": "US26875P1012",
+     "key": "EOG",
+     "market_type": "2",
+     "name": "EOG 리소시스",
+     "rank": 22,
+     "reuters": "EOG",
+     "ticker": null,
+     "weight_pct": 1.89
+    },
+    {
+     "isin": "AN8068571086",
+     "key": "SLB",
+     "market_type": "2",
+     "name": "SLB",
+     "rank": 23,
+     "reuters": "SLB",
+     "ticker": null,
+     "weight_pct": 1.77
+    },
+    {
+     "isin": "US87612E1064",
+     "key": "TGT",
+     "market_type": "2",
+     "name": "타겟",
+     "rank": 24,
+     "reuters": "TGT",
+     "ticker": null,
+     "weight_pct": 1.72
+    },
+    {
+     "isin": "US3119001044",
+     "key": "FAST.O",
+     "market_type": "2",
+     "name": "패스널",
+     "rank": 25,
+     "reuters": "FAST.O",
+     "ticker": null,
+     "weight_pct": 1.48
+    },
+    {
+     "isin": "US30609A1097",
+     "key": "OKE",
+     "market_type": "2",
+     "name": "원오케이",
+     "rank": 26,
+     "reuters": "OKE",
+     "ticker": null,
+     "weight_pct": 1.29
+    },
+    {
+     "isin": "US25179M1036",
+     "key": "DVN",
+     "market_type": "2",
+     "name": "데번 에너지",
+     "rank": 27,
+     "reuters": "DVN",
+     "ticker": null,
+     "weight_pct": 1.16
+    },
+    {
+     "isin": "US3167731005",
+     "key": "FITB.K",
+     "market_type": "2",
+     "name": "피프스 서드 뱅코프",
+     "rank": 28,
+     "reuters": "FITB.K",
+     "ticker": null,
+     "weight_pct": 1.15
+    },
+    {
+     "isin": "US3453708600",
+     "key": "F",
+     "market_type": "2",
+     "name": "포드 모터",
+     "rank": 29,
+     "reuters": "F",
+     "ticker": null,
+     "weight_pct": 1.12
+    },
+    {
+     "isin": "US7043261079",
+     "key": "PAYX.O",
+     "market_type": "2",
+     "name": "페이첵스",
+     "rank": 30,
+     "reuters": "PAYX.O",
+     "ticker": null,
+     "weight_pct": 0.86
+    }
+   ],
+   "source": "naver_stock_etf_component"
+  },
+  "460660": {
+   "asof": "2026-11-13",
+   "rows": [
+    {
+     "isin": "US4404521001",
+     "key": "HRL",
+     "market_type": "2",
+     "name": "호멜 푸즈",
+     "rank": 1,
+     "reuters": "HRL",
+     "ticker": null,
+     "weight_pct": 5.25
+    },
+    {
+     "isin": "US4943681035",
+     "key": "KMB.O",
+     "market_type": "2",
+     "name": "킴벌리클라크",
+     "rank": 2,
+     "reuters": "KMB.O",
+     "ticker": null,
+     "weight_pct": 4.64
+    },
+    {
+     "isin": "US7134481081",
+     "key": "PEP.O",
+     "market_type": "2",
+     "name": "펩시코",
+     "rank": 3,
+     "reuters": "PEP.O",
+     "ticker": null,
+     "weight_pct": 4.31
+    },
+    {
+     "isin": "US8545021011",
+     "key": "SWK",
+     "market_type": "2",
+     "name": "스탠리 블랙 & 데커",
+     "rank": 4,
+     "reuters": "SWK",
+     "ticker": null,
+     "weight_pct": 3.98
+    },
+    {
+     "isin": "US3137451015",
+     "key": "FRT",
+     "market_type": "2",
+     "name": "페더럴 리얼티 인베스트먼트 트러스트",
+     "rank": 5,
+     "reuters": "FRT",
+     "ticker": null,
+     "weight_pct": 3.96
+    },
+    {
+     "isin": "US0921131092",
+     "key": "BKH",
+     "market_type": "2",
+     "name": "블랙 힐스",
+     "rank": 6,
+     "reuters": "BKH",
+     "ticker": null,
+     "weight_pct": 3.84
+    },
+    {
+     "isin": "US8354951027",
+     "key": "SON",
+     "market_type": "2",
+     "name": "소노코 프로덕트",
+     "rank": 7,
+     "reuters": "SON",
+     "ticker": null,
+     "weight_pct": 3.73
+    },
+    {
+     "isin": "US5138471033",
+     "key": "MZTI.O",
+     "market_type": "2",
+     "name": "마르제티",
+     "rank": 8,
+     "reuters": "MZTI.O",
+     "ticker": null,
+     "weight_pct": 3.71
+    },
+    {
+     "isin": "US2091151041",
+     "key": "ED",
+     "market_type": "2",
+     "name": "콘솔리데이티드 에디슨",
+     "rank": 9,
+     "reuters": "ED",
+     "ticker": null,
+     "weight_pct": 3.2
+    },
+    {
+     "isin": "US3724601055",
+     "key": "GPC",
+     "market_type": "2",
+     "name": "제뉴인 파츠",
+     "rank": 10,
+     "reuters": "GPC",
+     "ticker": null,
+     "weight_pct": 2.91
+    },
+    {
+     "isin": "US55277P1049",
+     "key": "MGEE.O",
+     "market_type": "2",
+     "name": "MGE 에너지",
+     "rank": 11,
+     "reuters": "MGEE.O",
+     "ticker": null,
+     "weight_pct": 2.8
+    },
+    {
+     "isin": "US6935061076",
+     "key": "PPG",
+     "market_type": "2",
+     "name": "PPG 인더스트리스",
+     "rank": 12,
+     "reuters": "PPG",
+     "ticker": null,
+     "weight_pct": 2.8
+    },
+    {
+     "isin": "US7427181091",
+     "key": "PG",
+     "market_type": "2",
+     "name": "P&G(프록터 & 갬블)",
+     "rank": 13,
+     "reuters": "PG",
+     "ticker": null,
+     "weight_pct": 2.79
+    },
+    {
+     "isin": "US5486611073",
+     "key": "LOW",
+     "market_type": "2",
+     "name": "로우스 컴퍼니",
+     "rank": 14,
+     "reuters": "LOW",
+     "ticker": null,
+     "weight_pct": 2.77
+    },
+    {
+     "isin": "US87612E1064",
+     "key": "TGT",
+     "market_type": "2",
+     "name": "타겟",
+     "rank": 15,
+     "reuters": "TGT",
+     "ticker": null,
+     "weight_pct": 2.74
+    },
+    {
+     "isin": "US1307881029",
+     "key": "CWT",
+     "market_type": "2",
+     "name": "캘리포니아 워터 서비스 그룹",
+     "rank": 16,
+     "reuters": "CWT",
+     "ticker": null,
+     "weight_pct": 2.71
+    },
+    {
+     "isin": "US0298991011",
+     "key": "AWR",
+     "market_type": "2",
+     "name": "아메리칸 스테이츠 워터",
+     "rank": 17,
+     "reuters": "AWR",
+     "ticker": null,
+     "weight_pct": 2.5
+    },
+    {
+     "isin": "US4523081093",
+     "key": "ITW",
+     "market_type": "2",
+     "name": "일리노이 툴 웍스",
+     "rank": 18,
+     "reuters": "ITW",
+     "ticker": null,
+     "weight_pct": 2.43
+    },
+    {
+     "isin": "US6361801011",
+     "key": "NFG",
+     "market_type": "2",
+     "name": "내셔널 퓨얼 가스 컴퍼니",
+     "rank": 19,
+     "reuters": "NFG",
+     "ticker": null,
+     "weight_pct": 2.42
+    },
+    {
+     "isin": "US0028241000",
+     "key": "ABT",
+     "market_type": "2",
+     "name": "애보트 래보라토리",
+     "rank": 20,
+     "reuters": "ABT",
+     "ticker": null,
+     "weight_pct": 2.4
+    },
+    {
+     "isin": "US0530151036",
+     "key": "ADP.O",
+     "market_type": "2",
+     "name": "오토매틱 데이터 프로세싱",
+     "rank": 21,
+     "reuters": "ADP.O",
+     "ticker": null,
+     "weight_pct": 2.38
+    },
+    {
+     "isin": "US00287Y1091",
+     "key": "ABBV.K",
+     "market_type": "2",
+     "name": "애브비",
+     "rank": 22,
+     "reuters": "ABBV.K",
+     "ticker": null,
+     "weight_pct": 2.35
+    },
+    {
+     "isin": "US1941621039",
+     "key": "CL",
+     "market_type": "2",
+     "name": "콜게이트-팜올리브",
+     "rank": 23,
+     "reuters": "CL",
+     "ticker": null,
+     "weight_pct": 2.26
+    },
+    {
+     "isin": "US1912161007",
+     "key": "KO",
+     "market_type": "2",
+     "name": "코카콜라",
+     "rank": 24,
+     "reuters": "KO",
+     "ticker": null,
+     "weight_pct": 2.25
+    },
+    {
+     "isin": "US0758871091",
+     "key": "BDX",
+     "market_type": "2",
+     "name": "벡톤 디킨슨 앤 코",
+     "rank": 25,
+     "reuters": "BDX",
+     "ticker": null,
+     "weight_pct": 2.23
+    },
+    {
+     "isin": "US1720621010",
+     "key": "CINF.O",
+     "market_type": "2",
+     "name": "신시내티 파이낸셜",
+     "rank": 26,
+     "reuters": "CINF.O",
+     "ticker": null,
+     "weight_pct": 2.23
+    },
+    {
+     "isin": "US0009571003",
+     "key": "ABM",
+     "market_type": "2",
+     "name": "ABM 인더스트리즈",
+     "rank": 27,
+     "reuters": "ABM",
+     "ticker": null,
+     "weight_pct": 2.17
+    },
+    {
+     "isin": "US0394831020",
+     "key": "ADM",
+     "market_type": "2",
+     "name": "아처 대니얼스 미들랜드",
+     "rank": 28,
+     "reuters": "ADM",
+     "ticker": null,
+     "weight_pct": 2.03
+    },
+    {
+     "isin": "US7496851038",
+     "key": "RPM",
+     "market_type": "2",
+     "name": "RPM 인터내셔널",
+     "rank": 29,
+     "reuters": "RPM",
+     "ticker": null,
+     "weight_pct": 2.02
+    },
+    {
+     "isin": "US4781601046",
+     "key": "JNJ",
+     "market_type": "2",
+     "name": "존슨앤드존슨",
+     "rank": 30,
+     "reuters": "JNJ",
+     "ticker": null,
+     "weight_pct": 1.93
+    }
+   ],
+   "source": "naver_stock_etf_component"
+  },
+  "476070": {
+   "asof": "2026-11-13",
+   "rows": [
+    {
+     "isin": "US5324571083",
+     "key": "LLY",
+     "market_type": "2",
+     "name": "일라이 릴리",
+     "rank": 1,
+     "reuters": "LLY",
+     "ticker": null,
+     "weight_pct": 29.98
+    },
+    {
+     "isin": "US6701002056",
+     "key": "NVO",
+     "market_type": "2",
+     "name": "노보 노디스크 ADR",
+     "rank": 2,
+     "reuters": "NVO",
+     "ticker": null,
+     "weight_pct": 20.92
+    },
+    {
+     "isin": "US75886F1075",
+     "key": "REGN.O",
+     "market_type": "2",
+     "name": "리제네론 파마슈티컬스",
+     "rank": 3,
+     "reuters": "REGN.O",
+     "ticker": null,
+     "weight_pct": 6.88
+    },
+    {
+     "isin": "GB000989529A",
+     "key": "GB000989529A",
+     "market_type": "2",
+     "name": "ASTRAZENECA PLC-SP",
+     "rank": 4,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 6.8
+    },
+    {
+     "isin": "CH1499059983",
+     "key": "CH1499059983",
+     "market_type": "2",
+     "name": "ROCHE HOLDING",
+     "rank": 5,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 6.6
+    },
+    {
+     "isin": "US76243J1051",
+     "key": "RYTM.O",
+     "market_type": "2",
+     "name": "리듬 파머수티컬스",
+     "rank": 6,
+     "reuters": "RYTM.O",
+     "ticker": null,
+     "weight_pct": 6.46
+    },
+    {
+     "isin": "US0311621009",
+     "key": "AMGN.O",
+     "market_type": "2",
+     "name": "암젠",
+     "rank": 7,
+     "reuters": "AMGN.O",
+     "ticker": null,
+     "weight_pct": 6.37
+    },
+    {
+     "isin": "US7170811035",
+     "key": "PFE",
+     "market_type": "2",
+     "name": "화이자",
+     "rank": 8,
+     "reuters": "PFE",
+     "ticker": null,
+     "weight_pct": 6.18
+    },
+    {
+     "isin": "US92686J1060",
+     "key": "VKTX.O",
+     "market_type": "2",
+     "name": "바이킹 테라퓨틱스",
+     "rank": 9,
+     "reuters": "VKTX.O",
+     "ticker": null,
+     "weight_pct": 5.06
+    },
+    {
+     "isin": "DK0060257814",
+     "key": "DK0060257814",
+     "market_type": "2",
+     "name": "Zealand Pharma A/S",
+     "rank": 10,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 4.54
+    },
+    {
+     "isin": "KRD010010001",
+     "key": "KRD010010001",
+     "market_type": "0",
+     "name": "원화현금",
+     "rank": 11,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 0.15
+    }
+   ],
+   "source": "naver_stock_etf_component"
+  },
+  "476310": {
+   "asof": "2026-11-13",
+   "rows": [
+    {
+     "isin": "US5324571083",
+     "key": "LLY",
+     "market_type": "2",
+     "name": "일라이 릴리",
+     "rank": 1,
+     "reuters": "LLY",
+     "ticker": null,
+     "weight_pct": 30.22
+    },
+    {
+     "isin": "US6701002056",
+     "key": "NVO",
+     "market_type": "2",
+     "name": "노보 노디스크 ADR",
+     "rank": 2,
+     "reuters": "NVO",
+     "ticker": null,
+     "weight_pct": 26.42
+    },
+    {
+     "isin": "US00287Y1091",
+     "key": "ABBV.K",
+     "market_type": "2",
+     "name": "애브비",
+     "rank": 3,
+     "reuters": "ABBV.K",
+     "ticker": null,
+     "weight_pct": 9.8
+    },
+    {
+     "isin": "GB0009895292",
+     "key": "AZN",
+     "market_type": "2",
+     "name": "아스트라제네카",
+     "rank": 4,
+     "reuters": "AZN",
+     "ticker": null,
+     "weight_pct": 8.71
+    },
+    {
+     "isin": "US0311621009",
+     "key": "AMGN.O",
+     "market_type": "2",
+     "name": "암젠",
+     "rank": 5,
+     "reuters": "AMGN.O",
+     "ticker": null,
+     "weight_pct": 7.53
+    },
+    {
+     "isin": "US7170811035",
+     "key": "PFE",
+     "market_type": "2",
+     "name": "화이자",
+     "rank": 6,
+     "reuters": "PFE",
+     "ticker": null,
+     "weight_pct": 4.9
+    },
+    {
+     "isin": "US75886F1075",
+     "key": "REGN.O",
+     "market_type": "2",
+     "name": "리제네론 파마슈티컬스",
+     "rank": 7,
+     "reuters": "REGN.O",
+     "ticker": null,
+     "weight_pct": 3.23
+    },
+    {
+     "isin": "US53190C1027",
+     "key": "LTH",
+     "market_type": "2",
+     "name": "라이프 타임 그룹 홀딩스",
+     "rank": 8,
+     "reuters": "LTH",
+     "ticker": null,
+     "weight_pct": 3.1
+    },
+    {
+     "isin": "US5500211090",
+     "key": "LULU.O",
+     "market_type": "2",
+     "name": "룰루레몬 애슬레티카",
+     "rank": 9,
+     "reuters": "LULU.O",
+     "ticker": null,
+     "weight_pct": 2.92
+    },
+    {
+     "isin": "US2533931026",
+     "key": "DKS",
+     "market_type": "2",
+     "name": "딕스 스포팅 굿즈",
+     "rank": 10,
+     "reuters": "DKS",
+     "ticker": null,
+     "weight_pct": 2.91
+    },
+    {
+     "isin": "KRD010010001",
+     "key": "KRD010010001",
+     "market_type": "0",
+     "name": "원화현금",
+     "rank": 11,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 0.2
+    }
+   ],
+   "source": "naver_stock_etf_component"
+  },
+  "476690": {
+   "asof": "2026-11-13",
+   "rows": [
+    {
+     "isin": "US5324571083",
+     "key": "LLY",
+     "market_type": "2",
+     "name": "일라이 릴리",
+     "rank": 1,
+     "reuters": "LLY",
+     "ticker": null,
+     "weight_pct": 28.43
+    },
+    {
+     "isin": "US6701002056",
+     "key": "NVO",
+     "market_type": "2",
+     "name": "노보 노디스크 ADR",
+     "rank": 2,
+     "reuters": "NVO",
+     "ticker": null,
+     "weight_pct": 20.74
+    },
+    {
+     "isin": "US00287Y1091",
+     "key": "ABBV.K",
+     "market_type": "2",
+     "name": "애브비",
+     "rank": 3,
+     "reuters": "ABBV.K",
+     "ticker": null,
+     "weight_pct": 10.89
+    },
+    {
+     "isin": "CH0012032113",
+     "key": "CH0012032113",
+     "market_type": "2",
+     "name": "ROCHE HOLDING AG-BR",
+     "rank": 4,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 8.21
+    },
+    {
+     "isin": "US58933Y1055",
+     "key": "MRK",
+     "market_type": "2",
+     "name": "머크 앤 코",
+     "rank": 5,
+     "reuters": "MRK",
+     "ticker": null,
+     "weight_pct": 7.58
+    },
+    {
+     "isin": "US66987V1098",
+     "key": "NVS",
+     "market_type": "2",
+     "name": "노바티스 ADR",
+     "rank": 6,
+     "reuters": "NVS",
+     "ticker": null,
+     "weight_pct": 6.84
+    },
+    {
+     "isin": "GB0009895292",
+     "key": "AZN",
+     "market_type": "2",
+     "name": "아스트라제네카",
+     "rank": 7,
+     "reuters": "AZN",
+     "ticker": null,
+     "weight_pct": 5.98
+    },
+    {
+     "isin": "US0311621009",
+     "key": "AMGN.O",
+     "market_type": "2",
+     "name": "암젠",
+     "rank": 8,
+     "reuters": "AMGN.O",
+     "ticker": null,
+     "weight_pct": 5.28
+    },
+    {
+     "isin": "US7170811035",
+     "key": "PFE",
+     "market_type": "2",
+     "name": "화이자",
+     "rank": 9,
+     "reuters": "PFE",
+     "ticker": null,
+     "weight_pct": 3.5
+    },
+    {
+     "isin": "US75886F1075",
+     "key": "REGN.O",
+     "market_type": "2",
+     "name": "리제네론 파마슈티컬스",
+     "rank": 10,
+     "reuters": "REGN.O",
+     "ticker": null,
+     "weight_pct": 2.06
+    },
+    {
+     "isin": "KRD010010001",
+     "key": "KRD010010001",
+     "market_type": "0",
+     "name": "원화현금",
+     "rank": 11,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 0.44
+    }
+   ],
+   "source": "naver_stock_etf_component"
+  },
+  "477730": {
+   "asof": "2026-11-13",
+   "rows": [
+    {
+     "isin": "INE467B01029",
+     "key": "INE467B01029",
+     "market_type": "2",
+     "name": "Tata Consultancy Services Ltd",
+     "rank": 1,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 22.67
+    },
+    {
+     "isin": "INE280A01028",
+     "key": "INE280A01028",
+     "market_type": "2",
+     "name": "Titan Co Ltd",
+     "rank": 2,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 18.45
+    },
+    {
+     "isin": "INE081A01020",
+     "key": "INE081A01020",
+     "market_type": "2",
+     "name": "Tata Steel Ltd",
+     "rank": 3,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 14.1
+    },
+    {
+     "isin": "INE849A01020",
+     "key": "INE849A01020",
+     "market_type": "2",
+     "name": "Trent Ltd",
+     "rank": 4,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 9.63
+    },
+    {
+     "isin": "INE1TAE01010",
+     "key": "INE1TAE01010",
+     "market_type": "2",
+     "name": "Tata Motors LTD/NEW",
+     "rank": 5,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 8.38
+    },
+    {
+     "isin": "INE053A01029",
+     "key": "INE053A01029",
+     "market_type": "2",
+     "name": "Indian Hotels Co Ltd",
+     "rank": 6,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 6.88
+    },
+    {
+     "isin": "INE192A01025",
+     "key": "INE192A01025",
+     "market_type": "2",
+     "name": "Tata Consumer Products Ltd",
+     "rank": 7,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 6.39
+    },
+    {
+     "isin": "INE155A01022",
+     "key": "INE155A01022",
+     "market_type": "2",
+     "name": "Tata Motors Passenger Vehicles",
+     "rank": 8,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 5.62
+    },
+    {
+     "isin": "INE245A01021",
+     "key": "INE245A01021",
+     "market_type": "2",
+     "name": "Tata Power Co Ltd/The",
+     "rank": 9,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 5.43
+    },
+    {
+     "isin": "INE226A01021",
+     "key": "INE226A01021",
+     "market_type": "2",
+     "name": "VOLTAS LTD",
+     "rank": 10,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 2.3
+    },
+    {
+     "isin": "KRD010010001",
+     "key": "KRD010010001",
+     "market_type": "0",
+     "name": "원화현금",
+     "rank": 11,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 0.11
+    }
+   ],
+   "source": "naver_stock_etf_component"
+  },
+  "479730": {
+   "asof": "2026-11-13",
+   "rows": [
+    {
+     "isin": "INE101A01026",
+     "key": "INE101A01026",
+     "market_type": "2",
+     "name": "MAHINDRA & MAHINDRA LTD",
+     "rank": 1,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 8.93
+    },
+    {
+     "isin": "INE585B01010",
+     "key": "INE585B01010",
+     "market_type": "2",
+     "name": "MARUTI SUZUKI INDIA LTD",
+     "rank": 2,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 8.34
+    },
+    {
+     "isin": "INE280A01028",
+     "key": "INE280A01028",
+     "market_type": "2",
+     "name": "TITAN CO LTD",
+     "rank": 3,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 8.11
+    },
+    {
+     "isin": "INE758T01015",
+     "key": "INE758T01015",
+     "market_type": "2",
+     "name": "ETERNAL LTD",
+     "rank": 4,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 8.03
+    },
+    {
+     "isin": "INE030A01027",
+     "key": "INE030A01027",
+     "market_type": "2",
+     "name": "HINDUSTAN UNILEVER LTD",
+     "rank": 5,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 7.82
+    },
+    {
+     "isin": "INE917I01010",
+     "key": "INE917I01010",
+     "market_type": "2",
+     "name": "BAJAJ AUTO LTD",
+     "rank": 6,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 7.01
+    },
+    {
+     "isin": "INE494B01023",
+     "key": "INE494B01023",
+     "market_type": "2",
+     "name": "TVS MOTOR CO LTD",
+     "rank": 7,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 6.2
+    },
+    {
+     "isin": "INE066A01021",
+     "key": "INE066A01021",
+     "market_type": "2",
+     "name": "EICHER MOTORS LTD",
+     "rank": 8,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 5.8
+    },
+    {
+     "isin": "INE239A01024",
+     "key": "INE239A01024",
+     "market_type": "2",
+     "name": "NESTLE INDIA LTD",
+     "rank": 9,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 5.18
+    },
+    {
+     "isin": "INE053A01029",
+     "key": "INE053A01029",
+     "market_type": "2",
+     "name": "INDIAN HOTELS CO LTD",
+     "rank": 10,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 4.36
+    },
+    {
+     "isin": "INE158A01026",
+     "key": "INE158A01026",
+     "market_type": "2",
+     "name": "HERO MOTOCORP LTD",
+     "rank": 11,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 4.2
+    },
+    {
+     "isin": "INE192A01025",
+     "key": "INE192A01025",
+     "market_type": "2",
+     "name": "TATA CONSUMER PRODUCTS LTD",
+     "rank": 12,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 4.06
+    },
+    {
+     "isin": "INE956O01016",
+     "key": "INE956O01016",
+     "market_type": "2",
+     "name": "LENSKART SOLUTIONS LTD",
+     "rank": 13,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 3.81
+    },
+    {
+     "isin": "INE155A01022",
+     "key": "INE155A01022",
+     "market_type": "2",
+     "name": "TATA MOTORS PASSENGER VEHICL",
+     "rank": 14,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 3.55
+    },
+    {
+     "isin": "INE216A01030",
+     "key": "INE216A01030",
+     "market_type": "2",
+     "name": "BRITANNIA INDUSTRIES LTD",
+     "rank": 15,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 3.24
+    },
+    {
+     "isin": "INE200M01039",
+     "key": "INE200M01039",
+     "market_type": "2",
+     "name": "VARUN BEVERAGES LTD",
+     "rank": 16,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 3.18
+    },
+    {
+     "isin": "INE196A01026",
+     "key": "INE196A01026",
+     "market_type": "2",
+     "name": "MARICO LTD",
+     "rank": 17,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 2.85
+    },
+    {
+     "isin": "INE388Y01029",
+     "key": "INE388Y01029",
+     "market_type": "2",
+     "name": "FSN E-COMMERCE VENTURES LTD",
+     "rank": 18,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 2.42
+    },
+    {
+     "isin": "INE0V6F01027",
+     "key": "INE0V6F01027",
+     "market_type": "2",
+     "name": "HYUNDAI MOTOR INDIA LTD",
+     "rank": 19,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 1.84
+    },
+    {
+     "isin": "INE324D01010",
+     "key": "INE324D01010",
+     "market_type": "2",
+     "name": "LG ELECTRONICS INDIA LTD",
+     "rank": 20,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 0.99
+    },
+    {
+     "isin": "KRD010010001",
+     "key": "KRD010010001",
+     "market_type": "0",
+     "name": "원화현금",
+     "rank": 21,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": -0.03
+    }
+   ],
+   "source": "naver_stock_etf_component"
+  },
+  "483020": {
+   "asof": "2026-11-13",
+   "rows": [
+    {
+     "isin": "KR7068270008",
+     "key": "068270",
+     "market_type": "0",
+     "name": "셀트리온",
+     "rank": 1,
+     "reuters": null,
+     "ticker": "068270",
+     "weight_pct": 25.43
+    },
+    {
+     "isin": "KR7207940008",
+     "key": "207940",
+     "market_type": "0",
+     "name": "삼성바이오로직스",
+     "rank": 2,
+     "reuters": null,
+     "ticker": "207940",
+     "weight_pct": 23.87
+    },
+    {
+     "isin": "KR7326030004",
+     "key": "326030",
+     "market_type": "0",
+     "name": "SK바이오팜",
+     "rank": 3,
+     "reuters": null,
+     "ticker": "326030",
+     "weight_pct": 19.97
+    },
+    {
+     "isin": "KR7328130000",
+     "key": "328130",
+     "market_type": "1",
+     "name": "루닛",
+     "rank": 4,
+     "reuters": null,
+     "ticker": "328130",
+     "weight_pct": 7.04
+    },
+    {
+     "isin": "KR7468530001",
+     "key": "468530",
+     "market_type": "1",
+     "name": "프로티나",
+     "rank": 5,
+     "reuters": null,
+     "ticker": "468530",
+     "weight_pct": 3.64
+    },
+    {
+     "isin": "KR7069620003",
+     "key": "069620",
+     "market_type": "0",
+     "name": "대웅제약",
+     "rank": 6,
+     "reuters": null,
+     "ticker": "069620",
+     "weight_pct": 3.37
+    },
+    {
+     "isin": "KR7085660009",
+     "key": "085660",
+     "market_type": "1",
+     "name": "차바이오텍",
+     "rank": 7,
+     "reuters": null,
+     "ticker": "085660",
+     "weight_pct": 3.21
+    },
+    {
+     "isin": "KR7458870003",
+     "key": "458870",
+     "market_type": "1",
+     "name": "씨어스",
+     "rank": 8,
+     "reuters": null,
+     "ticker": "458870",
+     "weight_pct": 2.86
+    },
+    {
+     "isin": "KR7475960001",
+     "key": "475960",
+     "market_type": "1",
+     "name": "토모큐브",
+     "rank": 9,
+     "reuters": null,
+     "ticker": "475960",
+     "weight_pct": 2.09
+    },
+    {
+     "isin": "KR7108860008",
+     "key": "108860",
+     "market_type": "1",
+     "name": "셀바스AI",
+     "rank": 10,
+     "reuters": null,
+     "ticker": "108860",
+     "weight_pct": 1.36
+    },
+    {
+     "isin": "KR7394800007",
+     "key": "394800",
+     "market_type": "1",
+     "name": "쓰리빌리언",
+     "rank": 11,
+     "reuters": null,
+     "ticker": "394800",
+     "weight_pct": 1.19
+    },
+    {
+     "isin": "KR7043150002",
+     "key": "043150",
+     "market_type": "1",
+     "name": "바텍",
+     "rank": 12,
+     "reuters": null,
+     "ticker": "043150",
+     "weight_pct": 0.86
+    },
+    {
+     "isin": "KR7376270005",
+     "key": "376270",
+     "market_type": "1",
+     "name": "HEM파마",
+     "rank": 13,
+     "reuters": null,
+     "ticker": "376270",
+     "weight_pct": 0.74
+    },
+    {
+     "isin": "KR7041920000",
+     "key": "041920",
+     "market_type": "1",
+     "name": "메디아나",
+     "rank": 14,
+     "reuters": null,
+     "ticker": "041920",
+     "weight_pct": 0.65
+    },
+    {
+     "isin": "KR7322510009",
+     "key": "322510",
+     "market_type": "1",
+     "name": "제이엘케이",
+     "rank": 15,
+     "reuters": null,
+     "ticker": "322510",
+     "weight_pct": 0.6
+    },
+    {
+     "isin": "KR7405100009",
+     "key": "405100",
+     "market_type": "1",
+     "name": "큐알티",
+     "rank": 16,
+     "reuters": null,
+     "ticker": "405100",
+     "weight_pct": 0.5
+    },
+    {
+     "isin": "KR7338220007",
+     "key": "338220",
+     "market_type": "1",
+     "name": "뷰노",
+     "rank": 17,
+     "reuters": null,
+     "ticker": "338220",
+     "weight_pct": 0.47
+    },
+    {
+     "isin": "KR7388870008",
+     "key": "388870",
+     "market_type": "1",
+     "name": "파로스아이바이오",
+     "rank": 18,
+     "reuters": null,
+     "ticker": "388870",
+     "weight_pct": 0.4
+    },
+    {
+     "isin": "KR70007C0003",
+     "key": "0007C0",
+     "market_type": "1",
+     "name": "아크릴",
+     "rank": 19,
+     "reuters": null,
+     "ticker": "0007C0",
+     "weight_pct": 0.38
+    },
+    {
+     "isin": "KR7380550004",
+     "key": "380550",
+     "market_type": "1",
+     "name": "뉴로핏",
+     "rank": 20,
+     "reuters": null,
+     "ticker": "380550",
+     "weight_pct": 0.36
+    },
+    {
+     "isin": "KR7315640003",
+     "key": "315640",
+     "market_type": "1",
+     "name": "딥노이드",
+     "rank": 21,
+     "reuters": null,
+     "ticker": "315640",
+     "weight_pct": 0.29
+    },
+    {
+     "isin": "KR7389030008",
+     "key": "389030",
+     "market_type": "1",
+     "name": "지니너스",
+     "rank": 22,
+     "reuters": null,
+     "ticker": "389030",
+     "weight_pct": 0.22
+    },
+    {
+     "isin": "KR7382150001",
+     "key": "382150",
+     "market_type": "1",
+     "name": "온코크로스",
+     "rank": 23,
+     "reuters": null,
+     "ticker": "382150",
+     "weight_pct": 0.19
+    },
+    {
+     "isin": "KR7303810006",
+     "key": "303810",
+     "market_type": "1",
+     "name": "동국생명과학",
+     "rank": 24,
+     "reuters": null,
+     "ticker": "303810",
+     "weight_pct": 0.16
+    },
+    {
+     "isin": "KRD010010001",
+     "key": "KRD010010001",
+     "market_type": "0",
+     "name": "원화현금",
+     "rank": 25,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 0.01
+    }
+   ],
+   "source": "naver_stock_etf_component"
+  },
+  "483030": {
+   "asof": "2026-11-13",
+   "rows": [
+    {
+     "isin": "US5324571083",
+     "key": "LLY",
+     "market_type": "2",
+     "name": "일라이 릴리",
+     "rank": 1,
+     "reuters": "LLY",
+     "ticker": null,
+     "weight_pct": 10.84
+    },
+    {
+     "isin": "US58933Y1055",
+     "key": "MRK",
+     "market_type": "2",
+     "name": "머크 앤 코",
+     "rank": 2,
+     "reuters": "MRK",
+     "ticker": null,
+     "weight_pct": 10.13
+    },
+    {
+     "isin": "US00287Y1091",
+     "key": "ABBV.K",
+     "market_type": "2",
+     "name": "애브비",
+     "rank": 3,
+     "reuters": "ABBV.K",
+     "ticker": null,
+     "weight_pct": 10.12
+    },
+    {
+     "isin": "US80105N1054",
+     "key": "SNY.O",
+     "market_type": "2",
+     "name": "사노피 ADR",
+     "rank": 4,
+     "reuters": "SNY.O",
+     "ticker": null,
+     "weight_pct": 10.0
+    },
+    {
+     "isin": "US4781601046",
+     "key": "JNJ",
+     "market_type": "2",
+     "name": "존슨앤드존슨",
+     "rank": 5,
+     "reuters": "JNJ",
+     "ticker": null,
+     "weight_pct": 9.61
+    },
+    {
+     "isin": "US6701002056",
+     "key": "NVO",
+     "market_type": "2",
+     "name": "노보 노디스크 ADR",
+     "rank": 6,
+     "reuters": "NVO",
+     "ticker": null,
+     "weight_pct": 8.15
+    },
+    {
+     "isin": "US0311621009",
+     "key": "AMGN.O",
+     "market_type": "2",
+     "name": "암젠",
+     "rank": 7,
+     "reuters": "AMGN.O",
+     "ticker": null,
+     "weight_pct": 7.36
+    },
+    {
+     "isin": "US66987V1098",
+     "key": "NVS",
+     "market_type": "2",
+     "name": "노바티스 ADR",
+     "rank": 8,
+     "reuters": "NVS",
+     "ticker": null,
+     "weight_pct": 5.01
+    },
+    {
+     "isin": "US1101221083",
+     "key": "BMY",
+     "market_type": "2",
+     "name": "브리스톨-마이어스 스큅",
+     "rank": 9,
+     "reuters": "BMY",
+     "ticker": null,
+     "weight_pct": 4.67
+    },
+    {
+     "isin": "US37733W2044",
+     "key": "GSK",
+     "market_type": "2",
+     "name": "GSK",
+     "rank": 10,
+     "reuters": "GSK",
+     "ticker": null,
+     "weight_pct": 3.74
+    },
+    {
+     "isin": "US8740602052",
+     "key": "TAK",
+     "market_type": "2",
+     "name": "다케다 파마슈티컬 ADR",
+     "rank": 11,
+     "reuters": "TAK",
+     "ticker": null,
+     "weight_pct": 3.61
+    },
+    {
+     "isin": "US7170811035",
+     "key": "PFE",
+     "market_type": "2",
+     "name": "화이자",
+     "rank": 12,
+     "reuters": "PFE",
+     "ticker": null,
+     "weight_pct": 3.6
+    },
+    {
+     "isin": "US60770K1079",
+     "key": "MRNA.O",
+     "market_type": "2",
+     "name": "모더나",
+     "rank": 13,
+     "reuters": "MRNA.O",
+     "ticker": null,
+     "weight_pct": 3.08
+    },
+    {
+     "isin": "US04016X1019",
+     "key": "ARGX.O",
+     "market_type": "2",
+     "name": "아겐스 ADR",
+     "rank": 14,
+     "reuters": "ARGX.O",
+     "ticker": null,
+     "weight_pct": 2.06
+    },
+    {
+     "isin": "US75886F1075",
+     "key": "REGN.O",
+     "market_type": "2",
+     "name": "리제네론 파마슈티컬스",
+     "rank": 15,
+     "reuters": "REGN.O",
+     "ticker": null,
+     "weight_pct": 1.52
+    },
+    {
+     "isin": "US3755581036",
+     "key": "GILD.O",
+     "market_type": "2",
+     "name": "길리어드 사이언시스",
+     "rank": 16,
+     "reuters": "GILD.O",
+     "ticker": null,
+     "weight_pct": 1.23
+    },
+    {
+     "isin": "US02043Q1076",
+     "key": "ALNY.O",
+     "market_type": "2",
+     "name": "앨나일램 파마슈티컬스",
+     "rank": 17,
+     "reuters": "ALNY.O",
+     "ticker": null,
+     "weight_pct": 1.01
+    },
+    {
+     "isin": "US09062X1037",
+     "key": "BIIB.O",
+     "market_type": "2",
+     "name": "바이오젠",
+     "rank": 18,
+     "reuters": "BIIB.O",
+     "ticker": null,
+     "weight_pct": 0.65
+    },
+    {
+     "isin": "US3723032062",
+     "key": "GMAB.O",
+     "market_type": "2",
+     "name": "젠맵 ADR",
+     "rank": 19,
+     "reuters": "GMAB.O",
+     "ticker": null,
+     "weight_pct": 0.63
+    },
+    {
+     "isin": "DK0060615755",
+     "key": "ASND.O",
+     "market_type": "2",
+     "name": "어센디스 파마 ADR",
+     "rank": 20,
+     "reuters": "ASND.O",
+     "ticker": null,
+     "weight_pct": 0.47
+    },
+    {
+     "isin": "US88322Q1085",
+     "key": "TGTX.O",
+     "market_type": "2",
+     "name": "TG 테라퓨틱스",
+     "rank": 21,
+     "reuters": "TGTX.O",
+     "ticker": null,
+     "weight_pct": 0.42
+    },
+    {
+     "isin": "US92532F1003",
+     "key": "VRTX.O",
+     "market_type": "2",
+     "name": "버텍스 파마슈티컬",
+     "rank": 22,
+     "reuters": "VRTX.O",
+     "ticker": null,
+     "weight_pct": 0.38
+    },
+    {
+     "isin": "US86627T1088",
+     "key": "SMMT.O",
+     "market_type": "2",
+     "name": "서밋 테라퓨틱스 ADR",
+     "rank": 23,
+     "reuters": "SMMT.O",
+     "ticker": null,
+     "weight_pct": 0.34
+    },
+    {
+     "isin": "US07725L1026",
+     "key": "ONC.O",
+     "market_type": "2",
+     "name": "비원 메디슨스 ADR",
+     "rank": 24,
+     "reuters": "ONC.O",
+     "ticker": null,
+     "weight_pct": 0.34
+    },
+    {
+     "isin": "US09061G1013",
+     "key": "BMRN.O",
+     "market_type": "2",
+     "name": "바이오마린 파마슈티컬",
+     "rank": 25,
+     "reuters": "BMRN.O",
+     "ticker": null,
+     "weight_pct": 0.24
+    },
+    {
+     "isin": "US92243G1085",
+     "key": "PCVX.O",
+     "market_type": "2",
+     "name": "백사이트",
+     "rank": 26,
+     "reuters": "PCVX.O",
+     "ticker": null,
+     "weight_pct": 0.22
+    },
+    {
+     "isin": "US76243J1051",
+     "key": "RYTM.O",
+     "market_type": "2",
+     "name": "리듬 파머수티컬스",
+     "rank": 27,
+     "reuters": "RYTM.O",
+     "ticker": null,
+     "weight_pct": 0.19
+    },
+    {
+     "isin": "US45256X1037",
+     "key": "IBRX.O",
+     "market_type": "2",
+     "name": "이뮤니티바이오",
+     "rank": 28,
+     "reuters": "IBRX.O",
+     "ticker": null,
+     "weight_pct": 0.17
+    },
+    {
+     "isin": "IE00B4Q5ZN47",
+     "key": "JAZZ.O",
+     "market_type": "2",
+     "name": "재즈 파마슈티컬스",
+     "rank": 29,
+     "reuters": "JAZZ.O",
+     "ticker": null,
+     "weight_pct": 0.16
+    },
+    {
+     "isin": "US4622221004",
+     "key": "IONS.O",
+     "market_type": "2",
+     "name": "아이오니스 파마슈티컬스",
+     "rank": 30,
+     "reuters": "IONS.O",
+     "ticker": null,
+     "weight_pct": 0.1
+    }
+   ],
+   "source": "naver_stock_etf_component"
+  },
+  "483290": {
+   "asof": "2026-11-13",
+   "rows": [
+    {
+     "isin": "US8085247976",
+     "key": "SCHD.K",
+     "market_type": "2",
+     "name": "Schwab US Dividend Equity ETF",
+     "rank": 1,
+     "reuters": "SCHD.K",
+     "ticker": null,
+     "weight_pct": 8.6
+    },
+    {
+     "isin": "US8825081040",
+     "key": "TXN.O",
+     "market_type": "2",
+     "name": "텍사스 인스트루먼트",
+     "rank": 2,
+     "reuters": "TXN.O",
+     "ticker": null,
+     "weight_pct": 4.26
+    },
+    {
+     "isin": "US7427181091",
+     "key": "PG",
+     "market_type": "2",
+     "name": "P&G(프록터 & 갬블)",
+     "rank": 3,
+     "reuters": "PG",
+     "ticker": null,
+     "weight_pct": 3.98
+    },
+    {
+     "isin": "US1912161007",
+     "key": "KO",
+     "market_type": "2",
+     "name": "코카콜라",
+     "rank": 4,
+     "reuters": "KO",
+     "ticker": null,
+     "weight_pct": 3.87
+    },
+    {
+     "isin": "US4370761029",
+     "key": "HD",
+     "market_type": "2",
+     "name": "홈디포",
+     "rank": 5,
+     "reuters": "HD",
+     "ticker": null,
+     "weight_pct": 3.86
+    },
+    {
+     "isin": "US0311621009",
+     "key": "AMGN.O",
+     "market_type": "2",
+     "name": "암젠",
+     "rank": 6,
+     "reuters": "AMGN.O",
+     "ticker": null,
+     "weight_pct": 3.7
+    },
+    {
+     "isin": "US7475251036",
+     "key": "QCOM.O",
+     "market_type": "2",
+     "name": "퀄컴",
+     "rank": 7,
+     "reuters": "QCOM.O",
+     "ticker": null,
+     "weight_pct": 3.64
+    },
+    {
+     "isin": "US7134481081",
+     "key": "PEP.O",
+     "market_type": "2",
+     "name": "펩시코",
+     "rank": 8,
+     "reuters": "PEP.O",
+     "ticker": null,
+     "weight_pct": 3.58
+    },
+    {
+     "isin": "US91324P1021",
+     "key": "UNH",
+     "market_type": "2",
+     "name": "유나이티드헬스 그룹",
+     "rank": 9,
+     "reuters": "UNH",
+     "ticker": null,
+     "weight_pct": 3.53
+    },
+    {
+     "isin": "US1667641005",
+     "key": "CVX",
+     "market_type": "2",
+     "name": "셰브론",
+     "rank": 10,
+     "reuters": "CVX",
+     "ticker": null,
+     "weight_pct": 3.52
+    },
+    {
+     "isin": "US20825C1045",
+     "key": "COP",
+     "market_type": "2",
+     "name": "코노코필립스",
+     "rank": 11,
+     "reuters": "COP",
+     "ticker": null,
+     "weight_pct": 3.51
+    },
+    {
+     "isin": "US0028241000",
+     "key": "ABT",
+     "market_type": "2",
+     "name": "애보트 래보라토리",
+     "rank": 12,
+     "reuters": "ABT",
+     "ticker": null,
+     "weight_pct": 3.46
+    },
+    {
+     "isin": "US58933Y1055",
+     "key": "MRK",
+     "market_type": "2",
+     "name": "머크 앤 코",
+     "rank": 13,
+     "reuters": "MRK",
+     "ticker": null,
+     "weight_pct": 3.4
+    },
+    {
+     "isin": "IE00B4BNMY34",
+     "key": "ACN",
+     "market_type": "2",
+     "name": "액센추어",
+     "rank": 14,
+     "reuters": "ACN",
+     "ticker": null,
+     "weight_pct": 3.29
+    },
+    {
+     "isin": "US92343V1044",
+     "key": "VZ",
+     "market_type": "2",
+     "name": "버라이존",
+     "rank": 15,
+     "reuters": "VZ",
+     "ticker": null,
+     "weight_pct": 3.25
+    },
+    {
+     "isin": "US02209S1033",
+     "key": "MO",
+     "market_type": "2",
+     "name": "알트리아그룹",
+     "rank": 16,
+     "reuters": "MO",
+     "ticker": null,
+     "weight_pct": 2.74
+    },
+    {
+     "isin": "US1101221083",
+     "key": "BMY",
+     "market_type": "2",
+     "name": "브리스톨-마이어스 스큅",
+     "rank": 17,
+     "reuters": "BMY",
+     "ticker": null,
+     "weight_pct": 2.72
+    },
+    {
+     "isin": "US5398301094",
+     "key": "LMT",
+     "market_type": "2",
+     "name": "록히드 마틴",
+     "rank": 18,
+     "reuters": "LMT",
+     "ticker": null,
+     "weight_pct": 2.63
+    },
+    {
+     "isin": "US0530151036",
+     "key": "ADP.O",
+     "market_type": "2",
+     "name": "오토매틱 데이터 프로세싱",
+     "rank": 19,
+     "reuters": "ADP.O",
+     "ticker": null,
+     "weight_pct": 2.58
+    },
+    {
+     "isin": "US09260D1072",
+     "key": "BX",
+     "market_type": "2",
+     "name": "블랙스톤",
+     "rank": 20,
+     "reuters": "BX",
+     "ticker": null,
+     "weight_pct": 1.94
+    },
+    {
+     "isin": "US20030N1019",
+     "key": "CMCSA.O",
+     "market_type": "2",
+     "name": "컴캐스트",
+     "rank": 21,
+     "reuters": "CMCSA.O",
+     "ticker": null,
+     "weight_pct": 1.88
+    },
+    {
+     "isin": "US9113121068",
+     "key": "UPS",
+     "market_type": "2",
+     "name": "UPS(유나이티드 파셀 서비스)",
+     "rank": 22,
+     "reuters": "UPS",
+     "ticker": null,
+     "weight_pct": 1.78
+    },
+    {
+     "isin": "US26875P1012",
+     "key": "EOG",
+     "market_type": "2",
+     "name": "EOG 리소시스",
+     "rank": 23,
+     "reuters": "EOG",
+     "ticker": null,
+     "weight_pct": 1.71
+    },
+    {
+     "isin": "AN8068571086",
+     "key": "SLB",
+     "market_type": "2",
+     "name": "SLB",
+     "rank": 24,
+     "reuters": "SLB",
+     "ticker": null,
+     "weight_pct": 1.6
+    },
+    {
+     "isin": "US87612E1064",
+     "key": "TGT",
+     "market_type": "2",
+     "name": "타겟",
+     "rank": 25,
+     "reuters": "TGT",
+     "ticker": null,
+     "weight_pct": 1.56
+    },
+    {
+     "isin": "US3119001044",
+     "key": "FAST.O",
+     "market_type": "2",
+     "name": "패스널",
+     "rank": 26,
+     "reuters": "FAST.O",
+     "ticker": null,
+     "weight_pct": 1.35
+    },
+    {
+     "isin": "US30609A1097",
+     "key": "OKE",
+     "market_type": "2",
+     "name": "원오케이",
+     "rank": 27,
+     "reuters": "OKE",
+     "ticker": null,
+     "weight_pct": 1.18
+    },
+    {
+     "isin": "US25179M1036",
+     "key": "DVN",
+     "market_type": "2",
+     "name": "데번 에너지",
+     "rank": 28,
+     "reuters": "DVN",
+     "ticker": null,
+     "weight_pct": 1.04
+    },
+    {
+     "isin": "US3167731005",
+     "key": "FITB.K",
+     "market_type": "2",
+     "name": "피프스 서드 뱅코프",
+     "rank": 29,
+     "reuters": "FITB.K",
+     "ticker": null,
+     "weight_pct": 1.04
+    },
+    {
+     "isin": "US3453708600",
+     "key": "F",
+     "market_type": "2",
+     "name": "포드 모터",
+     "rank": 30,
+     "reuters": "F",
+     "ticker": null,
+     "weight_pct": 1.01
+    }
+   ],
+   "source": "naver_stock_etf_component"
+  },
+  "487910": {
+   "asof": "2026-11-13",
+   "rows": [
+    {
+     "isin": "INE101A01026",
+     "key": "INE101A01026",
+     "market_type": "2",
+     "name": "Mahindra & Mahindra Ltd",
+     "rank": 1,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 9.72
+    },
+    {
+     "isin": "INE437A01024",
+     "key": "INE437A01024",
+     "market_type": "2",
+     "name": "Apollo Hospitals Enterprise Ltd",
+     "rank": 2,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 8.46
+    },
+    {
+     "isin": "INE226A01021",
+     "key": "INE226A01021",
+     "market_type": "2",
+     "name": "Voltas Ltd",
+     "rank": 3,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 5.3
+    },
+    {
+     "isin": "INE361B01024",
+     "key": "INE361B01024",
+     "market_type": "2",
+     "name": "Divi's Laboratories Ltd",
+     "rank": 4,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 5.29
+    },
+    {
+     "isin": "INE585B01010",
+     "key": "INE585B01010",
+     "market_type": "2",
+     "name": "Maruti Suzuki India Ltd",
+     "rank": 5,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 5.14
+    },
+    {
+     "isin": "INE089A01031",
+     "key": "INE089A01031",
+     "market_type": "2",
+     "name": "Dr Reddy's Laboratories Ltd",
+     "rank": 6,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 5.01
+    },
+    {
+     "isin": "INE044A01036",
+     "key": "INE044A01036",
+     "market_type": "2",
+     "name": "Sun Pharmaceutical Industries Ltd",
+     "rank": 7,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 5.0
+    },
+    {
+     "isin": "INE494B01023",
+     "key": "INE494B01023",
+     "market_type": "2",
+     "name": "TVS Motor Co Ltd",
+     "rank": 8,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 4.84
+    },
+    {
+     "isin": "INE324D01010",
+     "key": "INE324D01010",
+     "market_type": "2",
+     "name": "LG Electronics India Ltd",
+     "rank": 9,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 4.66
+    },
+    {
+     "isin": "INE176B01034",
+     "key": "INE176B01034",
+     "market_type": "2",
+     "name": "Havells India Ltd",
+     "rank": 10,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 4.62
+    },
+    {
+     "isin": "INE027H01010",
+     "key": "INE027H01010",
+     "market_type": "2",
+     "name": "Max Healthcare Institute Ltd",
+     "rank": 11,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 4.39
+    },
+    {
+     "isin": "INE155A01022",
+     "key": "INE155A01022",
+     "market_type": "2",
+     "name": "Tata Motors Passenger Vehicles Limited",
+     "rank": 12,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 4.36
+    },
+    {
+     "isin": "INE0V6F01027",
+     "key": "INE0V6F01027",
+     "market_type": "2",
+     "name": "Hyundai Motor India Ltd",
+     "rank": 13,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 4.36
+    },
+    {
+     "isin": "INE066A01021",
+     "key": "INE066A01021",
+     "market_type": "2",
+     "name": "Eicher Motors Ltd",
+     "rank": 14,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 4.32
+    },
+    {
+     "isin": "INE472A01039",
+     "key": "INE472A01039",
+     "market_type": "2",
+     "name": "Blue Star Ltd",
+     "rank": 15,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 4.21
+    },
+    {
+     "isin": "INE917I01010",
+     "key": "INE917I01010",
+     "market_type": "2",
+     "name": "Bajaj Auto Ltd",
+     "rank": 16,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 4.15
+    },
+    {
+     "isin": "INE299U01018",
+     "key": "INE299U01018",
+     "market_type": "2",
+     "name": "Crompton Greaves Consumer Electricals Lt",
+     "rank": 17,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 4.11
+    },
+    {
+     "isin": "INE326A01037",
+     "key": "INE326A01037",
+     "market_type": "2",
+     "name": "Lupin Ltd",
+     "rank": 18,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 4.02
+    },
+    {
+     "isin": "INE371P01015",
+     "key": "INE371P01015",
+     "market_type": "2",
+     "name": "Amber Enterprises India Ltd",
+     "rank": 19,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 3.78
+    },
+    {
+     "isin": "INE935N01020",
+     "key": "INE935N01020",
+     "market_type": "2",
+     "name": "Dixon Technologies India Ltd",
+     "rank": 20,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 3.64
+    },
+    {
+     "isin": "KRD010010001",
+     "key": "KRD010010001",
+     "market_type": "0",
+     "name": "원화현금",
+     "rank": 21,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 0.53
+    }
+   ],
+   "source": "naver_stock_etf_component"
+  },
+  "487920": {
+   "asof": "2026-11-13",
+   "rows": [
+    {
+     "isin": "INE742F01042",
+     "key": "INE742F01042",
+     "market_type": "2",
+     "name": "Adani Ports & Special Economic Zone Ltd",
+     "rank": 1,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 6.24
+    },
+    {
+     "isin": "INE002A01018",
+     "key": "INE002A01018",
+     "market_type": "2",
+     "name": "Reliance Industries Ltd",
+     "rank": 2,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 5.81
+    },
+    {
+     "isin": "INE245A01021",
+     "key": "INE245A01021",
+     "market_type": "2",
+     "name": "Tata Power Co Ltd/The",
+     "rank": 3,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 5.65
+    },
+    {
+     "isin": "INE467B01029",
+     "key": "INE467B01029",
+     "market_type": "2",
+     "name": "Tata Consultancy Services Ltd",
+     "rank": 4,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 5.42
+    },
+    {
+     "isin": "INE053A01029",
+     "key": "INE053A01029",
+     "market_type": "2",
+     "name": "Indian Hotels Co Ltd/The",
+     "rank": 5,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 5.26
+    },
+    {
+     "isin": "INE296A01032",
+     "key": "INE296A01032",
+     "market_type": "2",
+     "name": "Bajaj Finance Ltd",
+     "rank": 6,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 5.02
+    },
+    {
+     "isin": "INE481G01011",
+     "key": "INE481G01011",
+     "market_type": "2",
+     "name": "UltraTech Cement Ltd",
+     "rank": 7,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 4.92
+    },
+    {
+     "isin": "INE226A01021",
+     "key": "INE226A01021",
+     "market_type": "2",
+     "name": "Voltas Ltd",
+     "rank": 8,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 4.75
+    },
+    {
+     "isin": "INE192A01025",
+     "key": "INE192A01025",
+     "market_type": "2",
+     "name": "Tata Consumer Products Ltd",
+     "rank": 9,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 4.75
+    },
+    {
+     "isin": "INE849A01020",
+     "key": "INE849A01020",
+     "market_type": "2",
+     "name": "Trent Ltd",
+     "rank": 10,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 4.43
+    },
+    {
+     "isin": "INE081A01020",
+     "key": "INE081A01020",
+     "market_type": "2",
+     "name": "Tata Steel Ltd",
+     "rank": 11,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 4.36
+    },
+    {
+     "isin": "INE280A01028",
+     "key": "INE280A01028",
+     "market_type": "2",
+     "name": "Titan Co Ltd",
+     "rank": 12,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 4.31
+    },
+    {
+     "isin": "INE918I01026",
+     "key": "INE918I01026",
+     "market_type": "2",
+     "name": "Bajaj Finserv Ltd",
+     "rank": 13,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 4.17
+    },
+    {
+     "isin": "INE917I01010",
+     "key": "INE917I01010",
+     "market_type": "2",
+     "name": "Bajaj Auto Ltd",
+     "rank": 14,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 4.08
+    },
+    {
+     "isin": "INE038A01020",
+     "key": "INE038A01020",
+     "market_type": "2",
+     "name": "Hindalco Industries Ltd",
+     "rank": 15,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 4.08
+    },
+    {
+     "isin": "INE758E01017",
+     "key": "INE758E01017",
+     "market_type": "2",
+     "name": "Jio Financial Services Ltd",
+     "rank": 16,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 3.86
+    },
+    {
+     "isin": "INE155A01022",
+     "key": "INE155A01022",
+     "market_type": "2",
+     "name": "Tata Motors Passenger Vehicles Limited",
+     "rank": 17,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 3.82
+    },
+    {
+     "isin": "INE079A01024",
+     "key": "INE079A01024",
+     "market_type": "2",
+     "name": "Ambuja Cements Ltd",
+     "rank": 18,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 3.8
+    },
+    {
+     "isin": "INE101A01026",
+     "key": "INE101A01026",
+     "market_type": "2",
+     "name": "Mahindra & Mahindra Ltd",
+     "rank": 19,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 3.73
+    },
+    {
+     "isin": "INE047A01021",
+     "key": "INE047A01021",
+     "market_type": "2",
+     "name": "Grasim Industries Ltd",
+     "rank": 20,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 3.7
+    },
+    {
+     "isin": "INE018A01030",
+     "key": "INE018A01030",
+     "market_type": "2",
+     "name": "Larsen & Toubro Ltd",
+     "rank": 21,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 3.64
+    },
+    {
+     "isin": "INE423A01024",
+     "key": "INE423A01024",
+     "market_type": "2",
+     "name": "Adani Enterprises Ltd",
+     "rank": 22,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 3.59
+    },
+    {
+     "isin": "KRD010010001",
+     "key": "KRD010010001",
+     "market_type": "0",
+     "name": "원화현금",
+     "rank": 23,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 0.53
+    }
+   ],
+   "source": "naver_stock_etf_component"
+  },
+  "490330": {
+   "asof": "2026-11-13",
+   "rows": [
+    {
+     "isin": "US5324571083",
+     "key": "LLY",
+     "market_type": "2",
+     "name": "일라이 릴리",
+     "rank": 1,
+     "reuters": "LLY",
+     "ticker": null,
+     "weight_pct": 15.07
+    },
+    {
+     "isin": "US09062X1037",
+     "key": "BIIB.O",
+     "market_type": "2",
+     "name": "바이오젠",
+     "rank": 2,
+     "reuters": "BIIB.O",
+     "ticker": null,
+     "weight_pct": 13.32
+    },
+    {
+     "isin": "IE00B4Q5ZN47",
+     "key": "JAZZ.O",
+     "market_type": "2",
+     "name": "재즈 파마슈티컬스",
+     "rank": 3,
+     "reuters": "JAZZ.O",
+     "ticker": null,
+     "weight_pct": 13.25
+    },
+    {
+     "isin": "US64125C1099",
+     "key": "NBIX.O",
+     "market_type": "2",
+     "name": "뉴로크린 바이오사이언시스",
+     "rank": 4,
+     "reuters": "NBIX.O",
+     "ticker": null,
+     "weight_pct": 5.41
+    },
+    {
+     "isin": "US74006W2070",
+     "key": "PRAX.O",
+     "market_type": "2",
+     "name": "프락시스 프리시젼 메디신",
+     "rank": 5,
+     "reuters": "PRAX.O",
+     "ticker": null,
+     "weight_pct": 4.58
+    },
+    {
+     "isin": "IE00B56GVS15",
+     "key": "ALKS.O",
+     "market_type": "2",
+     "name": "앨커미스",
+     "rank": 6,
+     "reuters": "ALKS.O",
+     "ticker": null,
+     "weight_pct": 4.49
+    },
+    {
+     "isin": "US80706P1030",
+     "key": "SRRK.O",
+     "market_type": "2",
+     "name": "스칼러 락 홀딩",
+     "rank": 7,
+     "reuters": "SRRK.O",
+     "ticker": null,
+     "weight_pct": 4.18
+    },
+    {
+     "isin": "CA98420N1050",
+     "key": "XENE.O",
+     "market_type": "2",
+     "name": "제논 파마슈티컬",
+     "rank": 8,
+     "reuters": "XENE.O",
+     "ticker": null,
+     "weight_pct": 4.08
+    },
+    {
+     "isin": "US69366J2006",
+     "key": "PTCT.O",
+     "market_type": "2",
+     "name": "PTC 테라퓨틱스",
+     "rank": 9,
+     "reuters": "PTCT.O",
+     "ticker": null,
+     "weight_pct": 4.04
+    },
+    {
+     "isin": "US24823R1059",
+     "key": "DNLI.O",
+     "market_type": "2",
+     "name": "디날리 테라퓨틱스",
+     "rank": 10,
+     "reuters": "DNLI.O",
+     "ticker": null,
+     "weight_pct": 3.96
+    },
+    {
+     "isin": "VGG1110E1079",
+     "key": "BHVN.K",
+     "market_type": "2",
+     "name": "바이오헤이븐",
+     "rank": 11,
+     "reuters": "BHVN.K",
+     "ticker": null,
+     "weight_pct": 3.89
+    },
+    {
+     "isin": "US05464T1043",
+     "key": "AXSM.O",
+     "market_type": "2",
+     "name": "액섬 테라퓨틱스",
+     "rank": 12,
+     "reuters": "AXSM.O",
+     "ticker": null,
+     "weight_pct": 3.55
+    },
+    {
+     "isin": "US0042251084",
+     "key": "ACAD.O",
+     "market_type": "2",
+     "name": "아카디아 파마슈티컬스",
+     "rank": 13,
+     "reuters": "ACAD.O",
+     "ticker": null,
+     "weight_pct": 3.36
+    },
+    {
+     "isin": "US4131971040",
+     "key": "HRMY.O",
+     "market_type": "2",
+     "name": "하모니 바이오사이언시스 홀딩스",
+     "rank": 14,
+     "reuters": "HRMY.O",
+     "ticker": null,
+     "weight_pct": 3.34
+    },
+    {
+     "isin": "US75383L1026",
+     "key": "RAPP.O",
+     "market_type": "2",
+     "name": "라포르 테라퓨틱스",
+     "rank": 15,
+     "reuters": "RAPP.O",
+     "ticker": null,
+     "weight_pct": 3.2
+    },
+    {
+     "isin": "NL0010696654",
+     "key": "QURE.O",
+     "market_type": "2",
+     "name": "유니큐어",
+     "rank": 16,
+     "reuters": "QURE.O",
+     "ticker": null,
+     "weight_pct": 2.95
+    },
+    {
+     "isin": "US50180M1080",
+     "key": "LBRX.O",
+     "market_type": "2",
+     "name": "LB 파마슈티컬스",
+     "rank": 17,
+     "reuters": "LBRX.O",
+     "ticker": null,
+     "weight_pct": 2.93
+    },
+    {
+     "isin": "KRD010010001",
+     "key": "KRD010010001",
+     "market_type": "0",
+     "name": "원화현금",
+     "rank": 18,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 1.47
+    },
+    {
+     "isin": "US04280A1007",
+     "key": "ARWR.O",
+     "market_type": "2",
+     "name": "애로우헤드 파마슈티컬스",
+     "rank": 19,
+     "reuters": "ARWR.O",
+     "ticker": null,
+     "weight_pct": 0.95
+    },
+    {
+     "isin": "US45579U1097",
+     "key": "SUPN.O",
+     "market_type": "2",
+     "name": "슈퍼누스",
+     "rank": 20,
+     "reuters": "SUPN.O",
+     "ticker": null,
+     "weight_pct": 0.81
+    },
+    {
+     "isin": "CA24477V1058",
+     "key": "DFTX.O",
+     "market_type": "2",
+     "name": "데피니움 테라퓨틱스",
+     "rank": 21,
+     "reuters": "DFTX.O",
+     "ticker": null,
+     "weight_pct": 0.55
+    },
+    {
+     "isin": "US2528281080",
+     "key": "DNTH.O",
+     "market_type": "2",
+     "name": "다이안서스 테라퓨틱스",
+     "rank": 22,
+     "reuters": "DNTH.O",
+     "ticker": null,
+     "weight_pct": 0.5
+    }
+   ],
+   "source": "naver_stock_etf_component"
+  },
+  "494840": {
+   "asof": "2026-11-13",
+   "rows": [
+    {
+     "isin": "US5398301094",
+     "key": "LMT",
+     "market_type": "2",
+     "name": "록히드 마틴",
+     "rank": 1,
+     "reuters": "LMT",
+     "ticker": null,
+     "weight_pct": 22.39
+    },
+    {
+     "isin": "US75513E1010",
+     "key": "RTX",
+     "market_type": "2",
+     "name": "RTX",
+     "rank": 2,
+     "reuters": "RTX",
+     "ticker": null,
+     "weight_pct": 21.91
+    },
+    {
+     "isin": "US3695501086",
+     "key": "GD",
+     "market_type": "2",
+     "name": "제너럴 다이내믹스",
+     "rank": 3,
+     "reuters": "GD",
+     "ticker": null,
+     "weight_pct": 18.02
+    },
+    {
+     "isin": "US6668071029",
+     "key": "NOC",
+     "market_type": "2",
+     "name": "노스롭 그루만",
+     "rank": 4,
+     "reuters": "NOC",
+     "ticker": null,
+     "weight_pct": 13.83
+    },
+    {
+     "isin": "US0970231058",
+     "key": "BA",
+     "market_type": "2",
+     "name": "보잉",
+     "rank": 5,
+     "reuters": "BA",
+     "ticker": null,
+     "weight_pct": 8.98
+    },
+    {
+     "isin": "US5024311095",
+     "key": "LHX",
+     "market_type": "2",
+     "name": "L3 해리스 테크놀러지스",
+     "rank": 6,
+     "reuters": "LHX",
+     "ticker": null,
+     "weight_pct": 6.13
+    },
+    {
+     "isin": "US4464131063",
+     "key": "HII",
+     "market_type": "2",
+     "name": "헌팅턴 잉걸스 인더스트리즈",
+     "rank": 7,
+     "reuters": "HII",
+     "ticker": null,
+     "weight_pct": 4.91
+    },
+    {
+     "isin": "IL0010811243",
+     "key": "ESLT.O",
+     "market_type": "2",
+     "name": "엘빗 시스템즈",
+     "rank": 8,
+     "reuters": "ESLT.O",
+     "ticker": null,
+     "weight_pct": 2.85
+    },
+    {
+     "isin": "US0080731088",
+     "key": "AVAV.O",
+     "market_type": "2",
+     "name": "에어로바이런먼트",
+     "rank": 9,
+     "reuters": "AVAV.O",
+     "ticker": null,
+     "weight_pct": 0.5
+    },
+    {
+     "isin": "US5893781089",
+     "key": "MRCY.O",
+     "market_type": "2",
+     "name": "머큐리 시스템즈",
+     "rank": 10,
+     "reuters": "MRCY.O",
+     "ticker": null,
+     "weight_pct": 0.35
+    },
+    {
+     "isin": "KRD010010001",
+     "key": "KRD010010001",
+     "market_type": "0",
+     "name": "원화현금",
+     "rank": 11,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 0.07
+    }
+   ],
+   "source": "naver_stock_etf_component"
+  },
+  "497510": {
+   "asof": "2026-11-13",
+   "rows": [
+    {
+     "isin": "US5324571083",
+     "key": "LLY",
+     "market_type": "2",
+     "name": "일라이 릴리",
+     "rank": 1,
+     "reuters": "LLY",
+     "ticker": null,
+     "weight_pct": 21.54
+    },
+    {
+     "isin": "US4781601046",
+     "key": "JNJ",
+     "market_type": "2",
+     "name": "존슨앤드존슨",
+     "rank": 2,
+     "reuters": "JNJ",
+     "ticker": null,
+     "weight_pct": 14.71
+    },
+    {
+     "isin": "US00287Y1091",
+     "key": "ABBV.K",
+     "market_type": "2",
+     "name": "애브비",
+     "rank": 3,
+     "reuters": "ABBV.K",
+     "ticker": null,
+     "weight_pct": 11.49
+    },
+    {
+     "isin": "US58933Y1055",
+     "key": "MRK",
+     "market_type": "2",
+     "name": "머크 앤 코",
+     "rank": 4,
+     "reuters": "MRK",
+     "ticker": null,
+     "weight_pct": 7.45
+    },
+    {
+     "isin": "CH1499059983",
+     "key": "CH1499059983",
+     "market_type": "2",
+     "name": "Roche Holding AG",
+     "rank": 5,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 6.8
+    },
+    {
+     "isin": "US66987V1098",
+     "key": "NVS",
+     "market_type": "2",
+     "name": "노바티스 ADR",
+     "rank": 6,
+     "reuters": "NVS",
+     "ticker": null,
+     "weight_pct": 6.8
+    },
+    {
+     "isin": "GB0009895292",
+     "key": "AZN",
+     "market_type": "2",
+     "name": "아스트라제네카",
+     "rank": 7,
+     "reuters": "AZN",
+     "ticker": null,
+     "weight_pct": 5.74
+    },
+    {
+     "isin": "US0311621009",
+     "key": "AMGN.O",
+     "market_type": "2",
+     "name": "암젠",
+     "rank": 8,
+     "reuters": "AMGN.O",
+     "ticker": null,
+     "weight_pct": 4.98
+    },
+    {
+     "isin": "US3755581036",
+     "key": "GILD.O",
+     "market_type": "2",
+     "name": "길리어드 사이언시스",
+     "rank": 9,
+     "reuters": "GILD.O",
+     "ticker": null,
+     "weight_pct": 4.46
+    },
+    {
+     "isin": "US92532F1003",
+     "key": "VRTX.O",
+     "market_type": "2",
+     "name": "버텍스 파마슈티컬",
+     "rank": 10,
+     "reuters": "VRTX.O",
+     "ticker": null,
+     "weight_pct": 3.23
+    },
+    {
+     "isin": "US7170811035",
+     "key": "PFE",
+     "market_type": "2",
+     "name": "화이자",
+     "rank": 11,
+     "reuters": "PFE",
+     "ticker": null,
+     "weight_pct": 3.1
+    },
+    {
+     "isin": "US6701002056",
+     "key": "NVO",
+     "market_type": "2",
+     "name": "노보 노디스크 ADR",
+     "rank": 12,
+     "reuters": "NVO",
+     "ticker": null,
+     "weight_pct": 2.77
+    },
+    {
+     "isin": "US80105N1054",
+     "key": "SNY.O",
+     "market_type": "2",
+     "name": "사노피 ADR",
+     "rank": 13,
+     "reuters": "SNY.O",
+     "ticker": null,
+     "weight_pct": 2.48
+    },
+    {
+     "isin": "US37733W2044",
+     "key": "GSK",
+     "market_type": "2",
+     "name": "GSK",
+     "rank": 14,
+     "reuters": "GSK",
+     "ticker": null,
+     "weight_pct": 2.08
+    },
+    {
+     "isin": "US1101221083",
+     "key": "BMY",
+     "market_type": "2",
+     "name": "브리스톨-마이어스 스큅",
+     "rank": 15,
+     "reuters": "BMY",
+     "ticker": null,
+     "weight_pct": 2.07
+    },
+    {
+     "isin": "KRD010010001",
+     "key": "KRD010010001",
+     "market_type": "0",
+     "name": "원화현금",
+     "rank": 16,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 0.22
+    }
+   ],
+   "source": "naver_stock_etf_component"
+  },
+  "497520": {
+   "asof": "2026-11-13",
+   "rows": [
+    {
+     "isin": "US5324571083",
+     "key": "LLY",
+     "market_type": "2",
+     "name": "일라이 릴리",
+     "rank": 1,
+     "reuters": "LLY",
+     "ticker": null,
+     "weight_pct": 28.81
+    },
+    {
+     "isin": "CH0013841017",
+     "key": "CH0013841017",
+     "market_type": "2",
+     "name": "Lonza Group AG",
+     "rank": 2,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 9.9
+    },
+    {
+     "isin": "JP3519400000",
+     "key": "4519.T",
+     "market_type": "2",
+     "name": "주가이제약",
+     "rank": 3,
+     "reuters": "4519.T",
+     "ticker": null,
+     "weight_pct": 8.19
+    },
+    {
+     "isin": "US8835561023",
+     "key": "TMO",
+     "market_type": "2",
+     "name": "써모 피셔 사이언티픽",
+     "rank": 4,
+     "reuters": "TMO",
+     "ticker": null,
+     "weight_pct": 7.99
+    },
+    {
+     "isin": "KR7068270008",
+     "key": "068270",
+     "market_type": "0",
+     "name": "셀트리온",
+     "rank": 5,
+     "reuters": null,
+     "ticker": "068270",
+     "weight_pct": 7.83
+    },
+    {
+     "isin": "US91307C1027",
+     "key": "UTHR.O",
+     "market_type": "2",
+     "name": "유나이티드 테라퓨틱스",
+     "rank": 6,
+     "reuters": "UTHR.O",
+     "ticker": null,
+     "weight_pct": 7.51
+    },
+    {
+     "isin": "US45337C1027",
+     "key": "INCY.O",
+     "market_type": "2",
+     "name": "인사이트",
+     "rank": 7,
+     "reuters": "INCY.O",
+     "ticker": null,
+     "weight_pct": 7.26
+    },
+    {
+     "isin": "KR7207940008",
+     "key": "207940",
+     "market_type": "0",
+     "name": "삼성바이오로직스",
+     "rank": 8,
+     "reuters": null,
+     "ticker": "207940",
+     "weight_pct": 7.07
+    },
+    {
+     "isin": "JP3347200002",
+     "key": "4507.T",
+     "market_type": "2",
+     "name": "시오노기제약",
+     "rank": 9,
+     "reuters": "4507.T",
+     "ticker": null,
+     "weight_pct": 6.93
+    },
+    {
+     "isin": "US03209R1032",
+     "key": "AMPH.O",
+     "market_type": "2",
+     "name": "앰퍼스타 파마슈티컬스",
+     "rank": 10,
+     "reuters": "AMPH.O",
+     "ticker": null,
+     "weight_pct": 6.18
+    },
+    {
+     "isin": "US9224751084",
+     "key": "VEEV.K",
+     "market_type": "2",
+     "name": "비바 시스템즈",
+     "rank": 11,
+     "reuters": "VEEV.K",
+     "ticker": null,
+     "weight_pct": 1.35
+    },
+    {
+     "isin": "KRD010010001",
+     "key": "KRD010010001",
+     "market_type": "0",
+     "name": "원화현금",
+     "rank": 12,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 0.83
+    },
+    {
+     "isin": "US80810D1037",
+     "key": "SDGR.O",
+     "market_type": "2",
+     "name": "슈뢰딩거",
+     "rank": 13,
+     "reuters": "SDGR.O",
+     "ticker": null,
+     "weight_pct": 0.05
+    },
+    {
+     "isin": "CH0013396012",
+     "key": "CH0013396012",
+     "market_type": "2",
+     "name": "SKAN Group AG",
+     "rank": 14,
+     "reuters": null,
+     "ticker": null,
+     "weight_pct": 0.03
+    }
+   ],
+   "source": "naver_stock_etf_component"
+  }
+ },
+ "end_date": "2026-11-13",
+ "etf_tickers_among_constituents": [],
+ "etfs": [
+  {
+   "index_name": "코스피 200 헬스케어",
+   "name": "TIGER 200 헬스케어",
+   "rank": 1,
+   "strategy": false,
+   "ticker": "227540"
+  },
+  {
+   "index_name": "Indxx US ETF Industry Top10 Index(Price Return)",
+   "name": "KODEX 미국ETF산업Top10 Indxx",
+   "rank": 2,
+   "strategy": false,
+   "ticker": "428560"
+  },
+  {
+   "index_name": "Solactive Eli Lilly Value Chain Index(PR)",
+   "name": "ACE 일라이릴리밸류체인",
+   "rank": 3,
+   "strategy": false,
+   "ticker": "497520"
+  },
+  {
+   "index_name": "iSelect 글로벌 비만치료제TOP2 Plus 지수(PR)",
+   "name": "KODEX 글로벌비만치료제TOP2 Plus",
+   "rank": 4,
+   "strategy": false,
+   "ticker": "476070"
+  },
+  {
+   "index_name": "KEDI 글로벌 비만 산업 Top2+ 지수(Price Return)",
+   "name": "RISE 글로벌비만산업TOP2+",
+   "rank": 5,
+   "strategy": false,
+   "ticker": "476310"
+  },
+  {
+   "index_name": "FnGuide 의료AI 지수",
+   "name": "KIWOOM 의료AI",
+   "rank": 6,
+   "strategy": false,
+   "ticker": "483020"
+  },
+  {
+   "index_name": "Solactive Global Big Pharma Index (Price Return)",
+   "name": "ACE 글로벌빅파마",
+   "rank": 7,
+   "strategy": false,
+   "ticker": "497510"
+  },
+  {
+   "index_name": "Indxx Global Obesity Treatment Top 2 Plus 지수 (시장가격)",
+   "name": "TIGER 글로벌비만치료제TOP2Plus",
+   "rank": 8,
+   "strategy": false,
+   "ticker": "476690"
+  },
+  {
+   "index_name": "Nifty 50 Index",
+   "name": "KODEX 인도Nifty50",
+   "rank": 9,
+   "strategy": false,
+   "ticker": "453810"
+  },
+  {
+   "index_name": "Nifty 50 Index",
+   "name": "TIGER 인도니프티50",
+   "rank": 10,
+   "strategy": false,
+   "ticker": "453870"
+  },
+  {
+   "index_name": "Solactive Blockbuster Biotech Drugs Index(PR)",
+   "name": "KIWOOM 미국블록버스터바이오테크의약품+",
+   "rank": 11,
+   "strategy": false,
+   "ticker": "483030"
+  },
+  {
+   "index_name": "S&P Health Care Select Sector Index(Price Return)",
+   "name": "KODEX 미국S&P500헬스케어",
+   "rank": 12,
+   "strategy": false,
+   "ticker": "453640"
+  },
+  {
+   "index_name": "Solactive China Humanoid Robotics Index (CNH) (Price Return)",
+   "name": "KODEX 차이나휴머노이드로봇",
+   "rank": 13,
+   "strategy": false,
+   "ticker": "0048K0"
+  },
+  {
+   "index_name": "Mirae Asset US Defense Top 10 Index(PR)",
+   "name": "TIGER 미국방산TOP10",
+   "rank": 14,
+   "strategy": false,
+   "ticker": "494840"
+  },
+  {
+   "index_name": "Solactive 미국뇌질환치료제 PR 지수",
+   "name": "KoAct 미국치매&뇌질환치료제액티브",
+   "rank": 15,
+   "strategy": false,
+   "ticker": "490330"
+  },
+  {
+   "index_name": "Indxx India Big 5 Conglomerates Index (Price Return)",
+   "name": "ACE 인도시장대표BIG5그룹액티브",
+   "rank": 16,
+   "strategy": false,
+   "ticker": "487920"
+  },
+  {
+   "index_name": "Mirae Asset China Humanoid Robot 지수(PR)",
+   "name": "TIGER 차이나휴머노이드로봇",
+   "rank": 17,
+   "strategy": false,
+   "ticker": "0053L0"
+  },
+  {
+   "index_name": "Indxx India Super Consumption Index (Price Return)",
+   "name": "ACE 인도컨슈머파워액티브",
+   "rank": 18,
+   "strategy": false,
+   "ticker": "487910"
+  },
+  {
+   "index_name": "Mirae Asset India Billion Consumer 지수(PR)",
+   "name": "TIGER 인도빌리언컨슈머",
+   "rank": 19,
+   "strategy": false,
+   "ticker": "479730"
+  },
+  {
+   "index_name": "S&P 500 Dividend Aristocrats 지수 (Price Return)",
+   "name": "TIGER 미국S&P500배당귀족",
+   "rank": 20,
+   "strategy": false,
+   "ticker": "429000"
+  },
+  {
+   "index_name": "Dow Jones U.S. Dividend 100 10% Premium Covered Call Index(Total Return)",
+   "name": "KODEX 미국배당다우존스타겟커버드콜",
+   "rank": 21,
+   "strategy": true,
+   "ticker": "483290"
+  },
+  {
+   "index_name": "DowJones U.S. Dividend 100 7% Premium Covered Call 지수 (TR)",
+   "name": "TIGER 미국배당다우존스타겟커버드콜2호",
+   "rank": 22,
+   "strategy": true,
+   "ticker": "458760"
+  },
+  {
+   "index_name": "KIS STRIP 30Y Index(총수익지수)",
+   "name": "TIGER 국고채30년스트립액티브",
+   "rank": 23,
+   "strategy": false,
+   "ticker": "451530"
+  },
+  {
+   "index_name": "Nifty India Corporate Group Index - Tata Group 25% Cap(PR)",
+   "name": "KODEX 인도타타그룹",
+   "rank": 24,
+   "strategy": false,
+   "ticker": "477730"
+  },
+  {
+   "index_name": "S&P Consumer Staples Select Sector Index(Price Return)",
+   "name": "KODEX 미국S&P500필수소비재",
+   "rank": 25,
+   "strategy": false,
+   "ticker": "453630"
+  },
+  {
+   "index_name": "Dow Jones U.S. High Dividend 10 Index",
+   "name": "RISE 미국고배당다우존스TOP10",
+   "rank": 26,
+   "strategy": false,
+   "ticker": "0115C0"
+  },
+  {
+   "index_name": "DowJones U.S. Dividend 100 3% Premium Covered Call 지수 (TR)",
+   "name": "TIGER 미국배당다우존스타겟커버드콜1호",
+   "rank": 27,
+   "strategy": true,
+   "ticker": "458750"
+  },
+  {
+   "index_name": "Dow Jones U.S. Dividend 100 Price Return Index",
+   "name": "SOL 미국배당다우존스",
+   "rank": 28,
+   "strategy": false,
+   "ticker": "446720"
+  },
+  {
+   "index_name": "Solactive U.S. Dividend TOP 30 Index PR",
+   "name": "1Q 미국배당TOP30",
+   "rank": 29,
+   "strategy": false,
+   "ticker": "0004G0"
+  },
+  {
+   "index_name": "S&P Dividend Monarchs Index(Price Return)",
+   "name": "RISE 미국S&P배당킹",
+   "rank": 30,
+   "strategy": false,
+   "ticker": "460660"
+  }
+ ]
+}

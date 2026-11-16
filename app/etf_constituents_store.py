@@ -14,14 +14,44 @@ Decision Evidence DB 와는 분리.
 
 from __future__ import annotations
 
+import hashlib
+import json
 import sqlite3
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Optional
+from typing import Any, Iterable, Optional, Sequence
 
 from app.market_data_store import DEFAULT_DB_PATH
+
+# ── POC6-31 원천일 확인 표시(내용 지문) — 쓰는 쪽(저장)과 읽는 쪽(상태 · 분석)이 같은 정의를 쓰게 이 아래층에 둔다 ──
+# 'ok' 기록 문구 머리 + ':' + 저장한 행(DB 에서 다시 읽은 표현)의 내용 지문.
+SOURCE_CONFIRMED = "source_date_confirmed"
+CONFIRM_PREFIX = SOURCE_CONFIRMED + ":"
+# POC6-31 STEP 4(검토 지적 backend#0) — 확인 기록 끝 표시: 저장 행이 원천이 준 전체(요청 깊이보다 적게 받았고 버린 항목
+# 없음). 없는 기록(이 표시 전 기록 · 30행 · 버린 항목 있음)은 원천 전체인지 모름 — 읽는 쪽은 지문 부분만 대조한다.
+COMPLETE_SUFFIX = ";source_complete"
+# 지문 칸 순서(저장 행 · 읽은 행 공통)
+ROW_SQL = (
+    "rank, constituent_ticker, constituent_name, weight_pct, etf_name, "
+    "constituent_key, constituent_isin, constituent_reuters_code, market_type"
+)
+
+
+def _norm_cell(v: Any) -> Any:
+    # 검증자 r3 F7 — 부동소수 -0.0 은 SQLite REAL 을 거치면 0.0 으로 읽힌다. 같은 값으로 맞춘다.
+    if isinstance(v, float) and v == 0.0:
+        return 0.0
+    return v
+
+
+def fingerprint(rows: Iterable[Sequence[Any]]) -> str:
+    """구성 행 내용 지문(순위순 · 칸 순서 `ROW_SQL`) — 같은 내용이면 같은 값."""
+    norm = sorted(([_norm_cell(v) for v in r] for r in rows), key=lambda r: r[0])
+    raw = json.dumps(norm, ensure_ascii=False, separators=(",", ":"))
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:24]
+
 
 ETF_CONSTITUENTS_DDL = """
 CREATE TABLE IF NOT EXISTS etf_constituents (
@@ -207,11 +237,114 @@ def upsert_constituents(
     return len(payload)
 
 
+def replace_constituents_snapshot(
+    rows: Iterable[ConstituentRow],
+    *,
+    log_status: str,
+    log_message: Optional[str] = None,
+    confirm: bool = False,
+    complete: bool = False,
+    db_path: Path = DEFAULT_DB_PATH,
+) -> int:
+    """(etf_ticker, asof, source) 구성 한 벌을 통째로 바꾸고 확인 기록 한 줄을 **같은 트랜잭션**에 쓴다.
+
+    POC6-31 검증자 r1 F1 — 같은 날짜에 다시 받은 응답이 더 적어도 예전 순위 행이 남지 않게(행 단위 upsert 와 다름).
+    행과 기록이 함께 들어가거나 함께 실패한다(잠김이면 아무것도 바뀌지 않음). 행 · 기록의 `created_at` 은 같은 시각이다.
+    기존 `upsert_constituents`(수동 수집 경로 · 얕은 재수집이 깊은 구성을 줄이지 않는 계약)는 그대로 둔다.
+
+    confirm=True — 확인 기록 문구 = `source_date_confirmed:<지문>` 이고, 지문은 **같은 트랜잭션에서 방금 저장한 행을
+    DB 에서 다시 읽어** 계산한다(검증자 r3 F7 — 저장 전 값과 DB 표현이 달라도 읽는 쪽과 같은 지문).
+    """
+    rows = list(rows)
+    if not rows:
+        raise ValueError("replace_constituents_snapshot: rows must not be empty")
+    keys = {(r.etf_ticker, r.asof, r.source) for r in rows}
+    if len(keys) != 1:
+        raise ValueError("replace_constituents_snapshot: rows must share one snapshot")
+    etf_ticker, asof, source = next(iter(keys))
+    now = _utcnow_iso()
+    payload = [
+        (
+            r.etf_ticker,
+            r.asof,
+            r.source,
+            int(r.rank),
+            r.constituent_ticker,
+            r.constituent_name,
+            r.weight_pct,
+            r.etf_name,
+            r.constituent_key,
+            r.constituent_isin,
+            r.constituent_reuters_code,
+            r.market_type,
+            now,
+        )
+        for r in rows
+    ]
+    with _connection(db_path) as con:
+        con.execute(
+            "DELETE FROM etf_constituents WHERE etf_ticker = ? AND asof = ? AND source = ?",
+            (etf_ticker, asof, source),
+        )
+        con.executemany(
+            "INSERT INTO etf_constituents "
+            "(etf_ticker, asof, source, rank, constituent_ticker, constituent_name, "
+            "weight_pct, etf_name, constituent_key, constituent_isin, "
+            "constituent_reuters_code, market_type, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            payload,
+        )
+        if confirm:
+            back = con.execute(
+                f"SELECT {ROW_SQL} FROM etf_constituents "
+                "WHERE etf_ticker = ? AND asof = ? AND source = ? ORDER BY rank ASC",
+                (etf_ticker, asof, source),
+            ).fetchall()
+            log_message = (
+                CONFIRM_PREFIX
+                + fingerprint(back)
+                + (COMPLETE_SUFFIX if complete else "")
+            )
+        con.execute(
+            "INSERT INTO etf_constituent_refresh_log "
+            "(etf_ticker, asof, status, source, message, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (etf_ticker, asof, log_status, source, log_message, now),
+        )
+    return len(payload)
+
+
 _FETCH_COLUMNS = (
     "etf_ticker, asof, source, rank, constituent_ticker, constituent_name, "
     "weight_pct, etf_name, constituent_key, constituent_isin, "
     "constituent_reuters_code, market_type"
 )
+
+
+def read_rows(
+    con: sqlite3.Connection,
+    *,
+    etf_ticker: str,
+    asof: str,
+    source: Optional[str] = None,
+) -> list[ConstituentRow]:
+    """주어진 연결로 (ticker, asof) 구성 행 — rank ASC · source None 이면 모든 source.
+
+    `fetch_constituents` 와 같은 결과(한 읽기 트랜잭션 안에서 쓰게 연결을 받음).
+    """
+    if source is None:
+        cur = con.execute(
+            f"SELECT {_FETCH_COLUMNS} FROM etf_constituents "
+            "WHERE etf_ticker = ? AND asof = ? ORDER BY rank ASC",
+            (etf_ticker, asof),
+        )
+    else:
+        cur = con.execute(
+            f"SELECT {_FETCH_COLUMNS} FROM etf_constituents "
+            "WHERE etf_ticker = ? AND asof = ? AND source = ? ORDER BY rank ASC",
+            (etf_ticker, asof, source),
+        )
+    return [ConstituentRow(*r) for r in cur.fetchall()]
 
 
 def fetch_constituents(

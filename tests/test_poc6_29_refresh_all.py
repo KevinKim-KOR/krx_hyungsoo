@@ -25,7 +25,7 @@ from fastapi.testclient import TestClient
 
 from app import api as api_module
 from app import api_market_topn, market_cache, market_naver, pc_quick_quotes
-from app import pc_prevday_fill, pc_refresh_all
+from app import holdings_constituents_refresh, pc_prevday_fill, pc_refresh_all
 from app import holdings_quote_refresh as hq
 from app.reentry_review import models as reentry_models
 from tests._helpers import _VALID_HOLDINGS
@@ -214,6 +214,23 @@ PREVDAY_STUB = {"status": "done", "reason": None, "id": "prevday_stub", "items":
 def _stub_prevday(monkeypatch: pytest.MonkeyPatch) -> None:
     """보완 2차 — ② 가 대기인 시험에서 ③ 기본 실행(실제 시장 DB · KRX · OCI)을 부르지 않게(③ 자체는 별도 시험)."""
     monkeypatch.setattr(pc_prevday_fill, "run_prevday_fill", lambda: dict(PREVDAY_STUB))
+
+
+CONSTITUENTS_STUB = {"status": "done", "reason": None, "items": []}
+
+
+@pytest.fixture(autouse=True)
+def _stub_constituents(monkeypatch: pytest.MonkeyPatch) -> None:
+    """POC6-31 — 보유 구성종목 기본 실행(실제 보유 · 시장 DB · 네이버)을 부르지 않게(단계 자체는 별도 시험)."""
+    monkeypatch.setattr(
+        holdings_constituents_refresh,
+        "constituents_step",
+        lambda **_: dict(CONSTITUENTS_STUB),
+    )
+    # 작업 시작 때 대상 고정(검증자 r1 F3)도 실제 보유 · 시장 DB 를 읽지 않게
+    monkeypatch.setattr(
+        holdings_constituents_refresh, "plan_step", lambda **_: {"stub": True}
+    )
 
 
 def test_job_runs_holdings_then_market_and_records_results(
@@ -510,7 +527,13 @@ def test_endpoints_use_single_flight_quotes_and_market_starter(
         "job_id": None,
         "started_at": None,
         "finished_at": None,
-        "steps": {"quick": None, "holdings": None, "market": None, "prevday": None},
+        "steps": {
+            "quick": None,
+            "holdings": None,
+            "market": None,
+            "prevday": None,
+            "constituents": None,
+        },
     }
     res = client.post("/refresh/all")
     assert res.status_code == 200 and res.json()["status"] in ("accepted", "running")
@@ -568,6 +591,7 @@ def test_quick_runs_first_then_holdings_then_market(client: TestClient) -> None:
         "holdings": {"status": "pending"},
         "market": {"status": "pending"},
         "prevday": {"status": "pending"},
+        "constituents": {"status": "pending"},
     }
     assert seen["during_holdings"]["quick"] == result
     assert seen["during_holdings"]["holdings"] == {"status": "running"}

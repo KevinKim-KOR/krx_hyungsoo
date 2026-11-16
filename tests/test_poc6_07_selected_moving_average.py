@@ -731,7 +731,8 @@ def test_endpoint_text_equals_field_and_independent_sql(
     secs = body["preview_text"].split("\n\n")
     assert secs[-2] == "[AI에게 요청]\n" + "\n".join(f"- {x}" for x in AI_REQUEST)
     assert secs[-1] == "[검토 질문]\n" + "\n".join(f"- {x}" for x in REVIEW_QUESTIONS)
-    assert len(secs) == 11  # POC6-24 [보유 · 자금 기준] 묶음 포함
+    # POC6-24 [보유 · 자금 기준] 묶음 포함 · POC6-31 C26 후보만 [구성종목 비교] 하나 더
+    assert len(secs) == (12 if kind == "candidate" else 11)
 
 
 def test_endpoint_existing_holding_flow_lines_unchanged(

@@ -18,6 +18,14 @@ import type {
   HoldingsMarketEvidenceResponse,
 } from "@/lib/api";
 
+// POC6-31 사용자 지시(2026-11-16 · 화면 글자는 쉬운 한국어) — 서버 상태 코드를 그대로 보이지 않는다(모르는 값은 그대로).
+const OVERLAP_STATUS_TEXT: Record<string, string> = {
+  ok: "비교함",
+  constituents_unavailable: "보유 ETF 구성 자료 없음",
+  market_core_unavailable: "비교할 시장 기준 자료 없음",
+  unavailable: "확인 못 함",
+};
+
 export type BridgeState = "not_loaded" | "loading" | "ok" | "unavailable";
 
 interface Props {
@@ -70,17 +78,17 @@ function HoldingsRow({
         <span className="evidence-holding-ticker">{h.ticker}</span>
         {overlapsWithCandidate ? (
           <span className="evidence-topn-badge evidence-topn-matched">
-            현재 ETF Exposure 후보군 포함
+            이 목록에 있음
           </span>
         ) : (
           <span className="evidence-topn-badge evidence-topn-unknown">
-            후보군 외
+            이 목록에 없음
           </span>
         )}
       </div>
       <ul className="evidence-notes-list">
         <li>
-          구성종목 겹침 상태: <strong>{h.constituents_overlap.status}</strong>
+          구성종목 겹침 상태: <strong>{OVERLAP_STATUS_TEXT[h.constituents_overlap.status] ?? h.constituents_overlap.status}</strong>
         </li>
         {overlapItems.length > 0 ? (
           overlapItems.slice(0, 5).map((item, i) => {
@@ -124,10 +132,10 @@ export default function HoldingsOverlapBridgeCard({
       <h2>
         보유 ETF 겹침 정보 <BridgeStatusBadge state={state} />
       </h2>
+      {/* POC6-31 사용자 지시(2026-11-16 · 화면 글자는 쉬운 한국어) — 개발 문구는 아래 '자세히' 안으로. */}
       <p className="helper" style={{ marginBottom: 8 }}>
-        본 카드는 ETF Exposure 화면 컨테이너가 명시 호출했을 때만 기존 read-only
-        API <code>GET /holdings/market-evidence/latest</code> 를 호출합니다. 페이지
-        진입 시 자동 호출 X, Holdings 화면과의 결합은 State Bridge 만으로 유지합니다.
+        보유 ETF와 이 목록 ETF의 구성종목 겹침을 [보유 ETF 겹침 불러오기]를 누를 때 한 번 읽습니다(화면을 열 때 자동으로
+        읽지 않음).
       </p>
 
       {state === "not_loaded" && (
@@ -137,7 +145,7 @@ export default function HoldingsOverlapBridgeCard({
             ETF의 구성종목 겹침을 1회 조회합니다.
           </div>
           <div className="btn-row">
-            <button type="button" onClick={onLoad}>
+            <button type="button" className="wb-btn btn-md" onClick={onLoad}>
               보유 ETF 겹침 불러오기
             </button>
           </div>
@@ -155,7 +163,7 @@ export default function HoldingsOverlapBridgeCard({
             {errorMessage ? ` (${errorMessage})` : ""}
           </div>
           <div className="btn-row">
-            <button type="button" onClick={onLoad}>
+            <button type="button" className="wb-btn btn-md" onClick={onLoad}>
               다시 불러오기
             </button>
           </div>
@@ -166,7 +174,7 @@ export default function HoldingsOverlapBridgeCard({
         <>
           {data.summary.total_holdings_count === 0 ? (
             <div className="message info">
-              저장된 보유 종목이 없습니다. Holdings 화면에서 보유 ETF를 입력·저장한
+              저장된 보유 종목이 없습니다. 「종목 관리」에서 보유 ETF를 입력 · 저장한
               뒤 다시 시도하세요.
             </div>
           ) : (
@@ -189,14 +197,11 @@ export default function HoldingsOverlapBridgeCard({
                   />
                 ))}
               </div>
-              <p
-                className="helper"
-                style={{ marginTop: 6, fontSize: "0.78rem" }}
-              >
-                evidence_source: <code>GET /holdings/market-evidence/latest</code>{" "}
-                · market_asof {data.market_asof ?? "-"} · holdings_asof{" "}
-                {data.holdings_asof ?? "-"}
-              </p>
+              <details className="helper" style={{ marginTop: 6, fontSize: "0.78rem" }}>
+                <summary>자세히</summary>
+                읽은 곳: <code>GET /holdings/market-evidence/latest</code> · 시장 기준일 {data.market_asof ?? "-"} ·
+                보유 기준일 {data.holdings_asof ?? "-"}
+              </details>
             </>
           )}
         </>

@@ -16,6 +16,7 @@ import {
   type DecisionSessionSummary,
 } from "@/lib/api";
 import { isSelectedPreviewRecord, kstDateTimeLabel } from "@/lib/aiSessionsDraft";
+import { constituentDatesText } from "@/lib/pairExposureText";
 
 interface Props {
   // 부모 (AISessionsView) 가 저장 직후 reload 트리거할 수 있도록 buster 사용.
@@ -155,6 +156,7 @@ function DetailCard({
             <div className="helper">
               {sp.target_kind === "holding" ? "보유" : "후보"} · 미리보기 생성{" "}
               {kstDateTimeLabel(sp.generated_at)} · 가격 기준일 {priceDate ?? "미확인"} ·{" "}
+              {constituentDatesText(sp.evidence_as_of) ? `${constituentDatesText(sp.evidence_as_of)} · ` : ""}
               {edited ? "아래 AI 질문은 저장 때 편집됨" : "아래 AI 질문과 같은 글"}
             </div>
             {edited ? <pre className="decision-pre">{sp.preview_text}</pre> : null}

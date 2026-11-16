@@ -7,8 +7,8 @@
   그 종목의 첫 항목(같은 종목 여러 계좌는 시장 값이 같다) · 국면 · PC 비교 기준일.
 - 후보 = 화면(「요즘 잘 오르는 ETF」)이 쓰는 `get_market_topn_latest(화면과 같은 목록 조건)` 응답에서 그 종목.
   화면에 없는 거래량 · 가격 흔들림은 선택 1종목의 저장 창만 읽어 POC5-09 · 16 함수 그대로 만든다(판정 Q2 (a)).
-- 후보 ↔ 보유 ETF 구성종목 중복 = 「ETF 구성종목」 분석의 쌍 계산(`compute_pair_overlap`) · 종목마다 마지막
-  저장 구성종목(판정 Q3 (b) · §2). 자료 없는 쌍은 계산하지 않는다(0% 아님).
+- 후보의 직접 보유 여부만 여기서 읽는다. 후보 ↔ 보유 구성종목 비교는 POC6-31 STEP 5(PLAN C26 · 판정 Q14 (b))부터
+  '[구성종목 비교]' 묶음(`app/constituents_pair_exposure.py` · API 가 읽어 넘김)이 예전 쌍별 중복률 줄을 대신한다.
 
 외부 조회 · 저장 · 수집 없음. 공유 builder · 두 화면 API 의 출력은 바꾸지 않는다(부르기만 한다).
 """
@@ -21,11 +21,7 @@ from typing import Any, Optional
 
 from app.api_holdings_market_evidence import get_holdings_market_evidence_latest
 from app.api_market_topn import get_market_topn_latest
-from app.etf_constituents_analysis import (
-    DEFAULT_TOP_K_FOR_OVERLAP,
-    compute_pair_overlap,
-)
-from app.etf_constituents_store import fetch_constituents, latest_constituent_asof
+from app.etf_constituents_store import latest_constituent_asof
 from app.holdings import HoldingsValidationError, load as load_holdings
 from app.market_data_store import DEFAULT_DB_PATH, list_etf_tickers
 from app.market_topn import DEFAULT_BASIS, DEFAULT_N, DEFAULT_ORDER
@@ -109,43 +105,6 @@ def load_holding_bundle(
     }
 
 
-def _candidate_overlap(
-    candidate: str,
-    held_etfs: list[tuple[str, Optional[str]]],
-    *,
-    db_path: Path,
-) -> dict[str, Any]:
-    """후보 ↔ 보유 ETF 쌍마다 「ETF 구성종목」 분석과 같은 중복 계산(상위 10건 · 저장 자료만)."""
-    c_asof = latest_constituent_asof(candidate, db_path=db_path)
-    c_rows = (
-        fetch_constituents(etf_ticker=candidate, asof=c_asof, db_path=db_path)
-        if c_asof
-        else []
-    )
-    out: dict[str, Any] = {
-        "candidate_asof": c_asof if c_rows else None,
-        "candidate_available": bool(c_rows),
-        "held_etf_count": len(held_etfs),
-        "pairs": [],
-        "missing": [],
-    }
-    if not c_rows:
-        return out  # 후보 자료가 없으면 어떤 쌍도 계산하지 않는다(보유 쪽도 읽지 않음).
-    for tk, name in held_etfs:
-        h_asof = latest_constituent_asof(tk, db_path=db_path)
-        h_rows = (
-            fetch_constituents(etf_ticker=tk, asof=h_asof, db_path=db_path)
-            if h_asof
-            else []
-        )
-        if not h_rows:
-            out["missing"].append({"ticker": tk, "name": name})
-            continue
-        pair = compute_pair_overlap(c_rows, h_rows, top_k=DEFAULT_TOP_K_FOR_OVERLAP)
-        out["pairs"].append({"ticker": tk, "name": name, "asof": h_asof, **pair})
-    return out
-
-
 def load_candidate_bundle(
     ticker: str,
     query: CandidateListQuery,
@@ -182,7 +141,7 @@ def load_candidate_bundle(
 def selected_extras(
     ticker: str, cand_dump: dict[str, Any], *, db_path: Path = DEFAULT_DB_PATH
 ) -> dict[str, Any]:
-    """선택 1종목 추가 읽기(거래량 · 흔들림 · 이동평균 · 직접 보유 · 중복) — 두 후보 경로 공통(POC6-29)."""
+    """선택 1종목 추가 읽기(거래량 · 흔들림 · 이동평균 · 직접 보유) — 두 후보 경로 공통(POC6-29)."""
     # 「확인 근거」와 같은 읽기 · 같은 날짜 정의(pc_price_basis: 같은 읽기의 첫 행 = 끝 날짜).
     rows = load_recent_price_rows([ticker], db_path=db_path)
     mine = rows[ticker]
@@ -195,22 +154,16 @@ def selected_extras(
     )[ticker]
 
     direct: Optional[dict[str, Any]] = None
-    overlap: Optional[dict[str, Any]] = None
     try:
         holdings = load_holdings()
     except (OSError, ValueError, HoldingsValidationError):
-        # 보유 파일 손상 — 직접 보유 · 중복만 '확인 불가'로 두고 나머지 묶음은 제공한다(빈 보유로 보지 않음).
+        # 보유 파일 손상 — 직접 보유만 '확인 불가'로 두고 나머지 묶음은 제공한다(빈 보유로 보지 않음).
         holdings = None
     if holdings is not None:
-        etfs = _etf_tickers(db_path)
         names: dict[str, Optional[str]] = {}
         for h in holdings:
             names.setdefault(h.ticker, h.name)
         direct = {"held": ticker in names, "name": names.get(ticker)}
-        held_etfs = [
-            (tk, nm) for tk, nm in names.items() if tk in etfs and tk != ticker
-        ]
-        overlap = _candidate_overlap(ticker, held_etfs, db_path=db_path)
 
     return {
         "reference_date": reference_date,
@@ -222,5 +175,4 @@ def selected_extras(
             ticker, cand_dump.get("short_term_momentum"), mine, db_path=db_path
         ).model_dump(),
         "direct_holding": direct,
-        "overlap": overlap,
     }

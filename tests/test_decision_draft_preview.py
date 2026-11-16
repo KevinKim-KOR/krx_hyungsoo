@@ -166,13 +166,6 @@ def _candidate_evidence(**cand_over: Any) -> dict[str, Any]:
         "stored_volume": None,
         "price_volatility": None,
         "direct_holding": {"held": False, "name": None},
-        "overlap": {
-            "candidate_asof": None,
-            "candidate_available": False,
-            "held_etf_count": 3,
-            "pairs": [],
-            "missing": [],
-        },
     }
 
 
@@ -221,7 +214,14 @@ def test_build_preview_text_candidate(tmp_db: Path) -> None:
     assert "후보 ETF · 현재 목록 3위(1개월 기준)" in text
     # REJECT 종료된 참고점수 · 폐기 스냅샷 고점 대비는 글에 넣지 않는다(POC5-23 판정 Q4 (a)).
     assert "78.4" not in text and "참고점수" not in text and "고점 대비" not in text
-    assert "보유 ETF 와 구성종목 중복: 비교하지 않음" in text
+    # POC6-31 STEP 5(C26) — 쌍별 중복률 줄 대신 [중복 · 자료 상태] 앞 [구성종목 비교] 묶음 · 직접 보유 줄만 남김.
+    # 줄을 넘기지 않으면 '만들지 못함' 한 줄(겹침 없음으로 읽히지 않게).
+    assert "보유 ETF 와 구성종목 중복" not in text
+    assert "[구성종목 비교]\n- 구성종목 비교를 만들지 못했습니다" in text
+    assert text.index("[구성종목 비교]") < text.index(
+        "[중복 · 자료 상태]\n- 직접 보유: 없음"
+    )
+    assert res.evidence_as_of.exposure_asof is None
 
 
 def test_preview_forbidden_phrases_absent(tmp_db: Path) -> None:

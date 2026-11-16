@@ -4184,3 +4184,61 @@ button.help-pop-btn[aria-expanded="true"] .help-pop-dot, button.help-pop-btn:hov
 .tc-src-left[open] { display: block; margin-left: 0; margin-top: 4px; }
 .tc-src-left .tc-src-pop { position: static; display: block; width: auto; max-width: 100%; margin-top: 4px; box-shadow: none; font-weight: 400; }
 .ec-table.tc-ev-table td { min-width: 90px; }
+/* POC6-31 사용자 직접 지시(2026-11-16) — 「ETF 구성종목」 머리 아래 상태 묶음(수집 상태 · 고른 후보 · 안내 · 탭과 상관없이 보임). */
+.exp-top { display: flex; flex-direction: column; gap: 6px; margin: 8px 0 12px; }
+.exp-picked { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; font-size: 14px; }
+/* POC6-31(형수님 화면 의견 · 목업 확인 2026-11-16) — 고른 후보 줄: 화면을 내려도 위에 붙음 · 고르면 파란 줄 */
+.exp-picked {
+  position: sticky; top: 0; z-index: 5; margin: 8px 0; padding: 10px 14px;
+  border: 1px solid var(--border); border-radius: 10px; background: var(--card);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+.exp-picked-on { background: #eff6ff; border-color: var(--accent); }
+.exp-picked-who { font-size: 15px; }
+.exp-picked-who b { font-size: 16px; }
+.exp-go { background: var(--accent); color: #fff; }
+/* 「ETF 구성종목」 '여러 지수 계열이 함께 담은 주식' — 한 줄 요약 목록 · 줄을 눌러 펼침 · ETF 줄을 눌러 고름 */
+.cf-list { display: grid; gap: 6px; }
+.cf-stock { border: 1px solid var(--border-soft, #e8ebf0); border-radius: 10px; overflow: hidden; }
+.cf-srow {
+  display: grid; grid-template-columns: 22px minmax(150px, 240px) 1fr; gap: 10px; align-items: center;
+  width: 100%; padding: 10px 12px; border: 0; background: var(--card); color: var(--fg);
+  font: inherit; text-align: left; cursor: pointer;
+}
+.cf-srow:hover { background: #f9fafb; }
+.cf-chev { color: var(--muted); font-size: 12px; }
+.cf-sname { font-weight: 700; font-size: 15px; }
+.cf-facts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; font-size: 13px; }
+.cf-pill { display: inline-block; padding: 1px 8px; border-radius: 999px; background: #f1f3f6; font-size: 12px; color: #374151; }
+.cf-pill-on { background: var(--accent); color: #fff; }
+.cf-etfs { display: grid; gap: 6px; padding: 6px; border-top: 1px solid var(--border-soft, #e8ebf0); background: #fafbfc; }
+.cf-ehead, .cf-etf {
+  display: grid; grid-template-columns: 24px minmax(220px, 1.2fr) minmax(140px, 0.8fr) 90px 120px; gap: 10px; align-items: center;
+}
+.cf-ehead { padding: 2px 10px; color: var(--muted); font-size: 12px; }
+.cf-etf {
+  width: 100%; padding: 9px 10px; border: 1px solid var(--border-soft, #e8ebf0); border-radius: 8px;
+  background: var(--card); color: var(--fg); font: inherit; text-align: left; cursor: pointer;
+}
+.cf-etf:hover { border-color: #93c5fd; }
+.cf-etf-on { border: 2px solid var(--accent); background: #eff6ff; padding: 8px 9px; }
+.cf-radio { width: 18px; height: 18px; border-radius: 50%; border: 2px solid #9ca3af; box-sizing: border-box; }
+.cf-etf-on .cf-radio { border-color: var(--accent); background: radial-gradient(var(--accent) 45%, #fff 50%); }
+.cf-ename-box { display: grid; min-width: 0; }
+.cf-ename { font-weight: 600; }
+.cf-idx { color: var(--muted); font-size: 12px; }
+.cf-num { text-align: right; font-variant-numeric: tabular-nums; }
+.cf-badge { justify-self: end; }
+.cf-etf-on .cf-badge { font-size: 12px; font-weight: 700; color: #fff; background: var(--accent); padding: 3px 10px; border-radius: 999px; }
+@media (max-width: 760px) {
+  .cf-srow { grid-template-columns: 22px 1fr; }
+  .cf-facts { grid-column: 2; }
+  .cf-ehead, .cf-etf { grid-template-columns: 24px 1fr 1fr; }
+}
+
+/* POC6-31 STEP 4 — 「보유와 후보 비교 › 종목별 근거」 구성종목 비교(예전 '구성종목 겹침' 자리) */
+.pe-wrap { display: grid; gap: 6px; min-width: 0; }
+.pe-title { font-size: 14px; font-weight: 700; }
+.pe-block { display: grid; gap: 8px; min-width: 0; font-size: 13px; }
+.pe-scope { display: grid; gap: 4px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); min-width: 0; }
+.pe-scope-t { font-weight: 700; }

@@ -12,7 +12,6 @@ PLAN `docs/ai_plan/POC6/POC6_30_SECTOR_SUMMARY_CONSTITUENTS_PLAN_V1.md` §3 S4 �
 
 from __future__ import annotations
 
-import re
 import sqlite3
 from collections import defaultdict
 from typing import Any, Mapping, Optional, Sequence
@@ -26,37 +25,30 @@ from app.pc_etf_compare_groups import (
     constituent_key,
     side_overview,
 )
+
+# 행 종류 판정은 운영 공통 모듈로 옮겼다(POC6-31 PLAN 판정 Q8 (a)) — 이 연구 모듈은 그것을 가져다 쓴다.
+from app.constituent_row_kind import (  # noqa: F401 — 연구 스크립트 · 시험이 C.<이름> 으로 쓴다
+    BOND,
+    CASH,
+    CASH_ISIN,
+    DERIVATIVE,
+    DOMESTIC_ETF,
+    DOMESTIC_STOCK,
+    ETF_WORD,
+    FOREIGN_ETF,
+    FOREIGN_STOCK,
+    FUND_WORDS,
+    ISIN_SHAPE,
+    KIND_LABEL,
+    STOCK_KINDS,
+    UNKNOWN,
+    row_kind,
+)
 from app.pc_etf_compare_summary import _read_constituents
 
 TOP_ROWS = (
     TOP_CONSTITUENTS  # 판정 Q4 '원본 순위 1 ~ 10행' = 기존 공통 구성종목 범위와 같은 값
 )
-CASH_ISIN = "KRD010010001"
-# ISIN 칸 모양 — 12자리 · 앞 2자리 영문(검증 숫자는 보지 않음: 원천에 끝자리가 영문인 실제 주식 행이 있다).
-# 모양이 아니면(예: 선물 약호 5자리) 주식인지 가를 수 없다(독립 검토 1 · 453640 선물 행).
-ISIN_SHAPE = re.compile(r"^[A-Z]{2}[A-Z0-9]{10}$")
-ETF_WORD = re.compile(
-    r"\bETF\b", re.IGNORECASE
-)  # 이름이 스스로 ETF 라고 밝힘 → 해외 ETF
-FUND_WORDS = re.compile(
-    r"\b(Fund|Trust|SPDR|iShares)\b", re.IGNORECASE
-)  # 기업 이름에도 쓰여 종류를 가를 수 없음
-
-CASH, DERIVATIVE, DOMESTIC_ETF = "cash", "derivative", "domestic_etf"
-BOND, FOREIGN_ETF = "bond", "foreign_etf"
-DOMESTIC_STOCK, FOREIGN_STOCK, UNKNOWN = "domestic_stock", "foreign_stock", "unknown"
-STOCK_KINDS = frozenset({DOMESTIC_STOCK, FOREIGN_STOCK})
-KIND_LABEL = {
-    CASH: "원화현금",
-    DERIVATIVE: "선물 · 옵션",
-    DOMESTIC_ETF: "국내 ETF",
-    BOND: "채권",
-    FOREIGN_ETF: "해외 ETF",
-    DOMESTIC_STOCK: "국내 주식",
-    FOREIGN_STOCK: "해외 주식",
-    UNKNOWN: "종류 미확인",
-}
-
 # 판정 Q2 — 이 표본에서만 합치는 계열(같은 기초지수를 쓴다는 근거를 판정이 확인한 것만).
 SAMPLE_FAMILIES: dict[str, str] = {
     "446720": "Dow Jones U.S. Dividend 100 계열",
@@ -64,36 +56,6 @@ SAMPLE_FAMILIES: dict[str, str] = {
     "458760": "Dow Jones U.S. Dividend 100 계열",
     "458750": "Dow Jones U.S. Dividend 100 계열",
 }
-
-
-def row_kind(row: Mapping[str, Any], etf_tickers: set[str]) -> str:
-    """구성 행 하나의 종류 — PLAN §3 S4 표의 순서 그대로(앞에서 걸리면 끝)."""
-    isin = (row.get("isin") or "").strip()
-    mt = (row.get("market_type") or "").strip()
-    tk = (row.get("ticker") or "").strip()
-    name = row.get("name") or ""
-    if isin == CASH_ISIN:
-        return CASH
-    if mt == "4":
-        return DERIVATIVE
-    if tk and tk in etf_tickers:
-        return DOMESTIC_ETF
-    if mt == "3" and "채권" in name:
-        return BOND
-    if (
-        mt in ("0", "1")
-        and isin.startswith("KR7")
-        and ISIN_SHAPE.match(isin)
-        and len(tk) == 6
-    ):
-        return DOMESTIC_STOCK
-    if mt == "2" and not ISIN_SHAPE.match(isin):
-        return UNKNOWN
-    if mt == "2":
-        if ETF_WORD.search(name):
-            return FOREIGN_ETF
-        return UNKNOWN if FUND_WORDS.search(name) else FOREIGN_STOCK
-    return UNKNOWN
 
 
 def family_of(ticker: str, index_name: Optional[str]) -> Optional[str]:

@@ -62,6 +62,7 @@ def _job(market_status: str, filler) -> dict:
             market_status, 600 if market_status == "skipped_cooldown" else 0
         ),
         prevday_filler=filler,
+        constituents_runner=lambda _p: {"status": "done", "items": []},
         thread_runner=lambda fn: fn(),
     )
     return ra.snapshot()

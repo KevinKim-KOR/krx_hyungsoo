@@ -17,6 +17,10 @@
 POC6-24 — [대상] 다음 [보유 · 자금 기준] 묶음(호출자가 `app/holdings_capital.preview_lines` 로 만든 줄 · 보유 ·
 후보 공통) · 보유 [대상]의 평가비중은 그 묶음으로 옮김(판정 Q2 · 손익률 뜻 · 집계 불변).
 
+POC6-31 STEP 5(PLAN C26 · 판정 Q14 (b)) — 후보는 [중복 · 자료 상태] 앞에 [구성종목 비교] 묶음(호출자가
+`app/constituents_pair_exposure_text.preview_lines` 로 만든 줄 · 수치 · 날짜 · 확인 범위 · 금액 없음)을 넣고,
+예전 보유 ETF 와의 쌍별 중복률 줄은 이 묶음으로 대체(직접 보유 줄만 남김). 근거 날짜에 역할별 기준일 세 칸(선택 · 없으면 None).
+
 POC6-07 — 가격 흐름 묶음의 '변화율 …' 줄 다음(없으면 묶음 끝)에 종목 이동평균 세 줄
 (`app/pc_selected_moving_average.py` · 값은 자료 모으기가 만든 객체 그대로 · 응답 선택 필드와 같은 객체) ·
 끝에 [검토 질문] 묶음(판정 Q3 (a)).
@@ -35,8 +39,8 @@ from app.decision_preview_lines import (
     AI_REQUEST,
     BASIS_LABEL,
     REVIEW_QUESTIONS,
+    candidate_direct_line,
     candidate_flow_lines,
-    candidate_overlap_lines,
     daily_check_line,
     fmt_pct,
     holding_flow_lines,
@@ -48,6 +52,8 @@ from app.decision_preview_lines import (
     volatility_lines,
     volume_lines,
 )
+from app.constituents_pair_exposure_text import SECTION_TITLE as PAIR_SECTION_TITLE
+from app.constituents_pair_exposure_text import UNBUILT_LINE as PAIR_UNBUILT_LINE
 from app.holdings_capital import preview_lines as capital_preview_lines
 from app.market_data_store import DEFAULT_DB_PATH
 from app.pc_selected_moving_average import ETF_UNKNOWN_REASON, moving_average_lines
@@ -67,6 +73,10 @@ class EvidenceAsOfPayload:
     target_as_of_date: Optional[str] = None
     kodex200_as_of_date: Optional[str] = None
     vix_as_of_date: Optional[str] = None
+    # POC6-31 STEP 5(PLAN C26) — 역할별 기준일(후보 구성일 · 고른 보유 구성일 · 노출 합계 기준일 · 선택 칸).
+    candidate_constituents_asof: Optional[str] = None
+    holding_constituents_asof: Optional[str] = None
+    exposure_asof: Optional[str] = None
 
 
 @dataclass
@@ -219,7 +229,7 @@ def _candidate_sections(ev: dict[str, Any], db_path: Path) -> Sections:
         + place
     ]
     dq = cand.get("data_quality") or {}
-    status_lines = candidate_overlap_lines(ev.get("direct_holding"), ev.get("overlap"))
+    status_lines = [candidate_direct_line(ev.get("direct_holding"))]
     status_lines.append(nav_line(dq.get("nav_discount")))
     status_lines.append(daily_check_line(dq.get("daily_return_check")))
     ma = ev.get("moving_average")
@@ -258,12 +268,16 @@ def build_preview_text(
     generated_at: Optional[datetime] = None,
     flow_period: str = "6M",
     capital_lines: Optional[list[str]] = None,
+    pair_lines: Optional[list[str]] = None,
+    pair_dates: Optional[dict[str, Optional[str]]] = None,
 ) -> PreviewResult:
     """선택 종목 하나의 preview_text 를 결정적으로 조립(부작용 없음).
 
     target_evidence: 보유 = {ticker, name, market_weight_pct, pnl_rate_pct, bundle} ·
     후보 = `load_candidate_bundle` 결과(`app/decision_preview_sources.py`).
     capital_lines: [보유 · 자금 기준] 줄(없으면 '확인 불가' 한 줄 · 0원으로 채우지 않음).
+    pair_lines · pair_dates: 후보만 — [구성종목 비교] 줄(없으면 '만들지 못함' 한 줄)과 역할별 기준일
+    (`constituents_pair_exposure` 결과의 `dates` · candidate / holding / exposure).
     """
     if target_kind not in ALLOWED_TARGET_KINDS or not ticker:
         return PreviewResult(status="error", message=_FAILURE)
@@ -301,6 +315,13 @@ def build_preview_text(
     )
     # POC6-01 — '시장' 바로 다음에 시장 흐름(화면에서 고른 기간 · 서버 공통 글).
     sections.insert(3, _market_flow_section(db_path, flow_period))
+    dates = pair_dates or {}
+    if target_kind == TARGET_KIND_CANDIDATE:
+        # [중복 · 자료 상태](지금 마지막 묶음) 바로 앞 — 예전 쌍별 중복률 줄이 있던 자리.
+        sections.insert(
+            len(sections) - 1,
+            _section(PAIR_SECTION_TITLE, pair_lines or [PAIR_UNBUILT_LINE]),
+        )
     sections.append(_section("AI에게 요청", AI_REQUEST))
     sections.append(_section("검토 질문", REVIEW_QUESTIONS))
     return PreviewResult(
@@ -312,6 +333,9 @@ def build_preview_text(
             target_as_of_date=asof["target"],
             kodex200_as_of_date=asof["kodex200"],
             vix_as_of_date=asof["vix"],
+            candidate_constituents_asof=dates.get("candidate"),
+            holding_constituents_asof=dates.get("holding"),
+            exposure_asof=dates.get("exposure"),
         ),
         generated_at=gen.isoformat(timespec="seconds"),
         moving_average=ma,

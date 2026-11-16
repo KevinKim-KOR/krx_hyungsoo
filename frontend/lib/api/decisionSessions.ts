@@ -52,6 +52,10 @@ export interface SelectedPreviewSnapshot {
     target_as_of_date: string | null;
     kodex200_as_of_date: string | null;
     vix_as_of_date: string | null;
+    // POC6-31 C26 — 역할별 기준일(선택 칸 · 예전 기록에는 없음).
+    candidate_constituents_asof?: string | null;
+    holding_constituents_asof?: string | null;
+    exposure_asof?: string | null;
   } | null;
   preview_text: string;
 }

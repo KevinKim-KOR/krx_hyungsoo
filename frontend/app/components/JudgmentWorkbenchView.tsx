@@ -22,6 +22,7 @@ import {
 } from "./workbench/CompareHead";
 import { invalidateQueries } from "@/lib/api/queryCache";
 import { ETF_DETAIL_KEY_PREFIX, PRICE_SERIES_KEY_PREFIX } from "@/lib/api/dashboardKeys";
+import { takeOneTimeCondition } from "@/lib/etfCompareCondition";
 import RankingList from "./workbench/RankingList";
 
 interface Props {
@@ -29,7 +30,9 @@ interface Props {
 }
 
 export default function JudgmentWorkbenchView({ onNavigate }: Props) {
-  const { cond, q } = useEtfCompareSummary("candidates");
+  // POC6-31(판정 Q17 (b) 제한) — 「섹터요약」에서 넘긴 조건은 이 화면이 떠 있는 동안만(화면 조건 · 저장값 그대로).
+  const [once] = useState(() => takeOneTimeCondition("candidates"));
+  const { cond, q } = useEtfCompareSummary("candidates", once);
   const [panel, setPanel] = useState(false);
   // [다시 불러오기] = 열린 행을 닫고(다시 그림) 차트 · 상세 수치 캐시를 지운다 — 다음에 행을 열 때 새 값을 읽게 한다.
   const [nonce, setNonce] = useState(0);
@@ -66,6 +69,11 @@ export default function JudgmentWorkbenchView({ onNavigate }: Props) {
         />
       )}
       <BasisSaveRow screen="candidates" basis={cond.basis} />
+      {once && cond === once.cond ? (
+        <p className="ec-small" data-testid="wb-once-condition">
+          「섹터요약」에서 넘긴 조건으로 열었습니다 — 이 화면을 떠났다 다시 들어오면 원래 조건으로 보입니다
+        </p>
+      ) : null}
 
       <SummaryStatus q={q} />
       {s && (

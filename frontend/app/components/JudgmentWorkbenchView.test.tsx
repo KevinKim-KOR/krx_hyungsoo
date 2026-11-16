@@ -262,10 +262,11 @@ describe("「이 목록으로 할 일」(판정 Q5)", () => {
     expect(q).not.toContain("Market Discovery");
     expect(q).not.toContain("시장 전체 상승에 따라간");
     expect(q).toContain("동일 기간 KODEX200 대비 3개월: +10.20%p");
-    // NAV 칸은 넘기지 않는다 — '갱신하면 재수집'이 아니라 볼 곳을 알린다.
-    renderEl(<NavDiscountPlaceholderCard candidates={draft!.market_candidates} />);
-    expect(screen.getByTestId("nav-not-carried")).toHaveTextContent("「후보리스트」 [표] 또는 행 상세");
-    expect(screen.getByTestId("nav-not-carried")).not.toHaveTextContent("최신 자료 갱신");
+    // NAV 칸은 넘기지 않는다 — 보일 값이 없으므로 NAV / 괴리율 카드를 그리지 않는다(POC6-31 형수님 직접 지시 2026-11-16 ·
+    // 예전 '갱신하면 재수집' 안내도 · '볼 곳' 안내도 없음).
+    const { container } = renderEl(<NavDiscountPlaceholderCard candidates={draft!.market_candidates} />);
+    expect(container).toBeEmptyDOMElement();
+    expect(screen.queryByText("NAV / 괴리율 상태")).toBeNull();
   });
 
   it("저장하지 않은 AI 세션 초안이 있으면 바꾸기 전에 묻는다", async () => {
@@ -350,5 +351,47 @@ describe("[검증자 r1 F3] 상·하위에 함께 든 같은 ETF 를 공통으�
     expect(r).toHaveTextContent("상·하위 공통");
     openRow(0);
     expect(await within(r).findByTestId("ec-etf-detail")).toHaveTextContent("상위 1위 · 하위 1위(상·하위 공통)");
+  });
+});
+
+describe("POC6-31 「섹터요약」에서 넘긴 조건(이동 한 번 · 판정 Q17 · 검토 지적 frontend#6)", () => {
+  it("넘긴 조건으로 조회 · 안내 · 화면을 떠났다 다시 들어오면 원래 화면 조건", async () => {
+    const { presetOneTimeCondition } = await import("@/lib/etfCompareCondition");
+    const cond = { basis: "three_month" as const, filters: { ...getScreenCondition("candidates").filters } };
+    presetOneTimeCondition("candidates", cond);
+    const first = renderView();
+    await waitFor(() => expect(fetchEtfCompareSummary).toHaveBeenCalled());
+    expect(fetchEtfCompareSummary.mock.calls[0][0]).toEqual(cond);
+    expect(screen.getByTestId("wb-once-condition").textContent).toContain("「섹터요약」에서 넘긴 조건으로 열었습니다");
+    first.unmount();
+    fetchEtfCompareSummary.mockClear();
+    renderView();
+    await waitFor(() => expect(fetchEtfCompareSummary).toHaveBeenCalled());
+    expect(fetchEtfCompareSummary.mock.calls[0][0]).toEqual(getScreenCondition("candidates"));
+    expect(screen.queryByTestId("wb-once-condition")).toBeNull();
+  });
+});
+
+
+describe("「이 목록으로 할 일」 위치(2026-11-16 사용자 직접 지시 — 목록 맨 아래 → 상위 · 하위 선택 바로 아래)", () => {
+  it("넘기기 · 복사 버튼이 순위 목록보다 위에 있다 · 버튼 모양은 그대로(중간)", async () => {
+    renderView();
+    const box = await screen.findByTestId("ec-transfer");
+    const list = screen.getByTestId("ec-rank-list");
+    expect(box.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(box.compareDocumentPosition(screen.getByTestId("ec-sort-line")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const names = ["이 목록을 AI 투자 세션으로 넘기기", "이 목록을 ETF 구성종목에서 보기", "이 목록 전체를 AI 질문용으로 복사"];
+    const btns = names.map((name) => within(box).getByRole("button", { name }));
+    for (const b of btns) expect(b.className).toBe("wb-btn btn-md");
+    // 세 버튼이 한 버튼 줄 안에(2026-11-16 사용자 지시 '한 줄로')
+    expect(new Set(btns.map((b) => b.parentElement)).size).toBe(1);
+    expect(btns[0].parentElement?.className).toBe("ec-btn-row");
+  });
+
+  it("같은 줄의 [복사]도 그대로 동작한다 — 복사가 막히면 결과 줄 · 직접 고를 글을 버튼 줄 아래에", async () => {
+    renderView();
+    const box = await screen.findByTestId("ec-transfer");
+    fireEvent.click(within(box).getByRole("button", { name: "이 목록 전체를 AI 질문용으로 복사" }));
+    await waitFor(() => expect(within(box).getByRole("status").textContent).toMatch(/복사(했습니다|하지 못했습니다)/));
   });
 });

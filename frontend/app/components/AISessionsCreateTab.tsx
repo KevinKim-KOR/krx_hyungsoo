@@ -21,6 +21,7 @@ import {
   type DecisionUserVerdict,
 } from "@/lib/api";
 import { fetchMlBaselineEvidenceSnapshot } from "@/lib/api/mlBaselineV0";
+import { constituentDatesText } from "@/lib/pairExposureText";
 import {
   clearAISessionsDraft,
   isSelectedPreviewRecord,
@@ -107,6 +108,13 @@ function SelectedTarget({ draft }: { draft: AISessionsDraft }) {
         <span className="k"> · VIX </span>
         {sp?.evidence_as_of?.vix_as_of_date ?? "-"}(미국 날짜)
       </div>
+      {constituentDatesText(sp?.evidence_as_of) ? (
+        // POC6-31 C26 — 구성종목 비교의 역할별 기준일(후보 구성 · 고른 보유 구성 · 노출 합계 · 없는 기록은 줄 없음).
+        <div data-testid="ais-cons-dates">
+          <span className="k">구성종목 비교 기준일 </span>
+          {constituentDatesText(sp?.evidence_as_of)}
+        </div>
+      ) : null}
       {priceDate ? null : (
         <div>
           <span className="k">기록 기준일 </span>

@@ -714,3 +714,48 @@ describe("POC6-07 — 이동평균 줄 · 검토 질문이 든 원문", () => {
     expect(calls.some((c) => c.path.startsWith("/decision-draft"))).toBe(false); // 다시 만들지 않음
   });
 });
+
+// POC6-31 STEP 5(PLAN C26) — 역할별 기준일(후보 구성일 · 고른 보유 구성일 · 노출 합계 기준일 · 선택 칸).
+describe("POC6-31 — 구성종목 비교 기준일(작성 · 다시 열기)", () => {
+  const dates = {
+    target_as_of_date: "2026-11-13",
+    kodex200_as_of_date: "2026-11-13",
+    vix_as_of_date: "2026-11-12",
+    candidate_constituents_asof: "2026-11-13",
+    holding_constituents_asof: "2026-11-12",
+    exposure_asof: "2026-11-13",
+  };
+
+  it("작성 화면 — 세 기준일 줄 · 저장 본문은 넘겨받은 날짜 그대로", async () => {
+    routes["POST /decision/sessions"] = { status: "ok", id: "decision_d", created_at: "t" };
+    const d = selectedDraft({ asof: "2026-11-13" }, { evidence_as_of: dates });
+    const onSaved = vi.fn();
+    const { container } = render(<AISessionsCreateTab draft={d} onSaved={onSaved} />);
+    expect(screen.getByTestId("ais-cons-dates")).toHaveTextContent(
+      "구성종목 비교 기준일 구성: 후보 2026-11-13 · 고른 보유 2026-11-12 · 노출 합계 2026-11-13",
+    );
+    fireEvent.change(container.querySelector("#ais-gpt")!, { target: { value: "GPT 답변" } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "기록 저장" }));
+    });
+    await waitFor(() => expect(onSaved).toHaveBeenCalled());
+    const post = calls.find((c) => c.method === "POST" && c.path === "/decision/sessions")!;
+    const snap = (post.body as { candidate_snapshot: { selected_preview: { evidence_as_of: unknown } }[] }).candidate_snapshot;
+    expect(snap[0].selected_preview.evidence_as_of).toEqual(dates);
+  });
+
+  it("작성 화면 — 세 칸이 없는 예전 초안은 그 줄 없음", () => {
+    render(<AISessionsCreateTab draft={selectedDraft()} onSaved={() => {}} />);
+    expect(screen.queryByTestId("ais-cons-dates")).toBeNull();
+  });
+
+  it("다시 열기 — 저장 당시 세 기준일을 원문 설명 줄에 · 지금 값을 다시 읽지 않음", async () => {
+    const rec = record({ id: "decision_cd" }, { evidence_as_of: dates });
+    const { container } = await openList(rec, [row("decision_cd")]);
+    const t = container.querySelector(".decision-detail-card")!.textContent ?? "";
+    expect(t).toContain(
+      "가격 기준일 2026-11-13 · 구성: 후보 2026-11-13 · 고른 보유 2026-11-12 · 노출 합계 2026-11-13 · 아래 AI 질문과 같은 글",
+    );
+    expect(calls.some((c) => c.path.startsWith("/market/constituents"))).toBe(false);
+  });
+});

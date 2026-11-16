@@ -189,3 +189,52 @@ describe("POC6-07 — 도움말(?) 문단", () => {
     }
   });
 });
+
+// POC6-31 STEP 5(PLAN C25) — 「보유와 후보 비교」 후보 미리보기: 고른 보유 · 근거 지문을 싣고, 지문이 없으면 만들지 않는다.
+describe("POC6-31 — 같은 근거로만 미리보기", () => {
+  it("요청에 고른 보유 · 근거 지문(후보만) · 결과 날짜 줄에 역할별 기준일", async () => {
+    render(
+      <DecisionDraftPreviewCard
+        targetKind="candidate"
+        ticker="333333"
+        listQuery={{ basis: "one_month" }}
+        pair={{ holding: "111111", fingerprint: "fp1" }}
+      />,
+    );
+    await generate();
+    expect(pending[0].body).toMatchObject({ pair_holding: "111111", pair_fingerprint: "fp1" });
+    await answer(0, {
+      ...okBody(),
+      evidence_as_of: {
+        ...okBody().evidence_as_of,
+        candidate_constituents_asof: "2026-11-13",
+        holding_constituents_asof: "2026-11-12",
+        exposure_asof: "2026-11-13",
+      },
+    });
+    expect(screen.getByText(/구성: 후보 2026-11-13 · 고른 보유 2026-11-12 · 노출 합계 2026-11-13/)).toBeInTheDocument();
+  });
+
+  it("근거 지문을 아직 못 받았으면 버튼을 막고 그 이유", () => {
+    render(
+      <DecisionDraftPreviewCard targetKind="candidate" ticker="333333" pair={{ holding: "111111", fingerprint: null }} />,
+    );
+    expect(screen.getByRole("button", { name: /판단 근거 미리보기 생성/ })).toBeDisabled();
+    expect(screen.getByTestId("ddp-pair-pending")).toHaveTextContent("구성종목 비교를 읽은 뒤");
+    fireEvent.click(screen.getByRole("button", { name: /판단 근거 미리보기 생성/ }));
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("고른 보유가 없는 화면(pair 없음)은 예전 요청 그대로 — 대조 칸 없음", async () => {
+    render(<DecisionDraftPreviewCard targetKind="candidate" ticker="333333" listQuery={{ basis: "one_month" }} />);
+    await generate();
+    expect(pending[0].body).not.toHaveProperty("pair_fingerprint");
+    expect(pending[0].body).not.toHaveProperty("pair_holding");
+  });
+
+  it("보유 미리보기에는 pair 를 넘겨도 싣지 않는다", async () => {
+    render(<DecisionDraftPreviewCard targetKind="holding" ticker="111111" pair={{ holding: "111111", fingerprint: "fp" }} />);
+    await generate();
+    expect(pending[0].body).not.toHaveProperty("pair_fingerprint");
+  });
+});

@@ -6,16 +6,24 @@
 // - 「보유」 행의 [보유와 후보 비교에서 보기 →]가 넘긴 보유를 먼저 고른다.
 // - 후보 판단 근거는 이 화면의 공통 기간 목록(쪽 · 순위 · 날짜 · 가격 시점)으로 요청한다.
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
+import { act, render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { __resetQueryCache } from "@/lib/api/queryCache";
-import { __resetEtfCompareCondition, getScreenCondition, setScreenCondition } from "@/lib/etfCompareCondition";
+import {
+  __resetEtfCompareCondition,
+  getScreenCondition,
+  presetOneTimeCondition,
+  setScreenCondition,
+} from "@/lib/etfCompareCondition";
 import type { EtfDetailItem } from "@/lib/api/etfDetail";
 import { detailItem, detailResponse, period, summaryOk } from "@/lib/etfCompareTestFixtures";
+import { pairOk } from "@/lib/pairExposureTestFixtures";
+import type { PairQuery } from "@/lib/api/pairExposure";
 
 const fetchEtfCompareSummary = vi.fn();
 const fetchEtfDetail = vi.fn();
 const fetchEnrichedHoldings = vi.fn();
 const postDecisionDraftPreview = vi.fn();
+const fetchPairExposure = vi.fn();
 
 vi.mock("@/lib/api/etfCompare", async (orig) => ({
   ...(await orig<typeof import("@/lib/api/etfCompare")>()),
@@ -25,13 +33,17 @@ vi.mock("@/lib/api/etfDetail", async (orig) => ({
   ...(await orig<typeof import("@/lib/api/etfDetail")>()),
   fetchEtfDetail: (...a: unknown[]) => fetchEtfDetail(...a),
 }));
+vi.mock("@/lib/api/pairExposure", async (orig) => ({
+  ...(await orig<typeof import("@/lib/api/pairExposure")>()),
+  fetchPairExposure: (...a: unknown[]) => fetchPairExposure(...a),
+}));
 vi.mock("@/lib/api", () => ({
   fetchEnrichedHoldings: (...a: unknown[]) => fetchEnrichedHoldings(...a),
   postDecisionDraftPreview: (...a: unknown[]) => postDecisionDraftPreview(...a),
 }));
 
 import HoldingCandidateCompareView from "./HoldingCandidateCompareView";
-import { presetCompareHolding } from "./workbench/compareSelection";
+import { presetCompareCandidate, presetCompareHolding } from "./workbench/compareSelection";
 
 function item(ticker: string, name: string, weight: number | null) {
   return { ticker, name, quantity: 1, current_price: 100, eval_amount: 1000, market_weight_pct: weight, price_missing: false };
@@ -42,7 +54,9 @@ beforeEach(() => {
   __resetQueryCache();
   __resetEtfCompareCondition();
   window.sessionStorage.clear();
-  for (const f of [fetchEtfCompareSummary, fetchEtfDetail, fetchEnrichedHoldings, postDecisionDraftPreview, nav]) f.mockReset();
+  for (const f of [fetchEtfCompareSummary, fetchEtfDetail, fetchEnrichedHoldings, postDecisionDraftPreview, fetchPairExposure, nav])
+    f.mockReset();
+  fetchPairExposure.mockImplementation((q: PairQuery) => Promise.resolve(pairOk(q)));
   fetchEtfCompareSummary.mockResolvedValue(summaryOk());
   fetchEtfDetail.mockImplementation((ts: string[]) => Promise.resolve(detailResponse(ts)));
   // 같은 종목 두 계좌(10 + 15 = 25) > 다른 종목 20 — 비중 큰 순 첫째 = B00001.
@@ -132,9 +146,25 @@ describe("「보유와 후보 비교」", () => {
     await waitFor(() => expect(fetchEtfDetail).toHaveBeenCalled());
     const b1 = summaryOk().bottom[1];
     fireEvent.change(screen.getByTestId("hcc-candidate"), { target: { value: `bottom:${b1.ticker}` } });
+    // POC6-31 C25 — 그 후보 · 고른 보유 · 이 화면 조건의 구성종목 비교를 읽은 뒤에 만들 수 있다.
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "판단 근거 미리보기 생성" })).not.toBeDisabled(),
+    );
+    expect(fetchPairExposure).toHaveBeenLastCalledWith({
+      candidate: b1.ticker,
+      holding: "B00001",
+      screen: "holding_candidate_compare",
+      basis: "one_month",
+      side: "bottom",
+      rank: b1.rank,
+      start_date: b1.basis_return.start,
+      end_date: b1.basis_return.end,
+      filters: summaryOk().filters,
+    });
     fireEvent.click(screen.getByRole("button", { name: "판단 근거 미리보기 생성" }));
     await waitFor(() => expect(postDecisionDraftPreview).toHaveBeenCalledTimes(1));
-    const [kind, ticker, q, flowPeriod] = postDecisionDraftPreview.mock.calls[0];
+    const [kind, ticker, q, flowPeriod, pair] = postDecisionDraftPreview.mock.calls[0];
+    expect(pair).toEqual({ holding: "B00001", fingerprint: `fp-${b1.ticker}-B00001` });
     expect(kind).toBe("candidate");
     expect(ticker).toBe(b1.ticker);
     expect(q).toMatchObject({
@@ -447,7 +477,11 @@ describe("「보유와 후보 비교」", () => {
   it("종목별 근거 = 후보 · 보유 탭 하나 · 접기 없음 · 시장가 · NAV · 괴리율 · 6 · 12개월 · 20구간 KODEX 200 차이 · 하락 판정 · 구성종목 겹침", async () => {
     await renderLoaded();
     const ev = screen.getByTestId("hcc-evidence");
-    expect(ev.querySelector("details")).toBeNull();
+    // 값 칸은 접지 않는다(POC6-29). 펼치기는 구성종목 비교의 계산 입력 · ETF별 저장 행뿐(POC6-31 C22 '같은 자리에서 펼쳐 읽음').
+    await waitFor(() => expect(screen.getByTestId("pe-block")).toBeInTheDocument());
+    for (const d of Array.from(ev.querySelectorAll("details"))) {
+      expect(screen.getByTestId("pe-block").contains(d)).toBe(true);
+    }
     expect(screen.queryByTestId("hcc-fold-long")).toBeNull();
     // 처음 = 후보 탭.
     expect(tid("hcc-ev-who")).toBe(`후보 · ${summaryOk().top[0].name}`);
@@ -456,14 +490,18 @@ describe("「보유와 후보 비교」", () => {
     expect(tid("hcc-e-m12")).toBe("+30.10% (2025-11-10 → 11/9)");
     expect(tid("hcc-e-excess")).toBe("+6.10%p (이 종목 -8.40% · KODEX 200 -14.50% · 같은 10/13 → 11/9)");
     expect(tid("hcc-e-decline")).toBe("보유 종목만 판정합니다");
-    expect(tid("hcc-e-cons")).toBe("구성 자료 없음");
+    // POC6-31 C22 — 예전 '구성종목 겹침' 자리 = 구성종목 비교(확인 범위 먼저 · 후보 · 고른 보유 · 내 보유 전체).
+    await waitFor(() => expect(tid("hcc-e-cons")).toContain("확인 범위(먼저 읽기)"));
+    const cons = tid("hcc-e-cons");
+    expect(cons).toContain("구성종목 비교 — 후보 주요 주식과 내 보유");
+    expect(cons).not.toContain("구성종목 겹침");
     expect(within(ev).getByRole("button", { name: "판단 근거 미리보기 생성" })).toBeInTheDocument();
-    // 보유 탭 = 보유 종목의 근거(하락 판정 · 구성종목 겹침은 요약의 보유 연결).
+    // 보유 탭 = 보유 종목의 근거(하락 판정) · 구성종목 비교는 고른 두 종목의 비교라 두 탭이 같다.
     fireEvent.click(within(ev).getByRole("button", { name: "보유 판단 근거" }));
     expect(within(ev).getByRole("button", { name: "보유 판단 근거" })).toHaveAttribute("aria-pressed", "true");
     expect(tid("hcc-ev-who")).toBe("보유 · 반도체 전공정");
     expect(tid("hcc-e-decline")).toBe("하락 구간 아님");
-    expect(tid("hcc-e-cons")).toContain("노출 확인: 주성엔지니어링(1)");
+    expect(tid("hcc-e-cons")).toBe(cons);
     expect(tid("hcc-e-nav")).toBe("10,000원 · 10,010원 · -0.10% · 11/9 자료");
     expect(within(ev).getByRole("button", { name: "판단 근거 미리보기 생성" })).toBeInTheDocument();
   });
@@ -504,9 +542,212 @@ describe("「보유와 후보 비교」", () => {
     }
     // 미리보기 카드는 종목별 근거 안 한 곳(따로 떨어진 카드 없음).
     expect(screen.getAllByRole("button", { name: "판단 근거 미리보기 생성" })).toHaveLength(1);
+    // 구성종목 비교는 종목별 근거 값 칸 뒤 · 미리보기 앞.
+    await waitFor(() => expect(screen.getByTestId("pe-scope")).toBeInTheDocument());
+    expect(
+      screen.getByTestId("hcc-e-nav").compareDocumentPosition(screen.getByTestId("hcc-e-cons")) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      screen.getByTestId("hcc-e-cons").compareDocumentPosition(screen.getByTestId("hcc-preview")) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "판단 근거 미리보기 생성" }));
     fireEvent.click(await within(ev).findByRole("button", { name: "AI 세션에서 검토" }));
     expect(screen.getAllByRole("button", { name: "AI 세션에서 검토" })).toHaveLength(1);
     expect(nav).toHaveBeenCalledWith("ai_sessions");
+  });
+});
+
+// POC6-31(판정 Q10 · PLAN C18 · C23) — 「ETF 구성종목」에서 고른 후보 한 건과 그 목록 조건으로 열기.
+describe("「ETF 구성종목」에서 넘어온 후보", () => {
+  const cond = { basis: "three_month" as const, filters: { exclude_inverse: true, exclude_leveraged: true, exclude_synthetic: true, exclude_futures: false } };
+  // 보내는 쪽(ETFExposureView.goCompare)과 같게 — 후보 + 이동 한 번 조건
+  const send = (p: Partial<Parameters<typeof presetCompareCandidate>[0]> = {}) => {
+    const c = { ticker: "T00003", name: "헬스케어", side: "top" as const, condition: cond, start: "2026-10-12", end: "2026-11-09", ...p };
+    presetCompareCandidate(c);
+    if (c.condition) presetOneTimeCondition("compare", c.condition);
+  };
+
+  it("후보 · 조건을 이번 이동에 쓴다(화면 조건 · 저장된 기본값과 별개) · 그 후보를 첫 선택으로 · 목록 날짜 같음", async () => {
+    const before = getScreenCondition("compare");
+    send();
+    render(<HoldingCandidateCompareView onNavigate={nav} />);
+    await waitFor(() => expect(fetchEtfCompareSummary).toHaveBeenCalled());
+    expect(fetchEtfCompareSummary.mock.calls[0][0]).toEqual(cond);
+    expect(window.localStorage.getItem("krx.screenBasis.compare.v1")).toBeNull(); // 저장된 기본값은 그대로
+    expect(getScreenCondition("compare")).toBe(before); // 화면 조건 메모리도 그대로(지적 frontend#6)
+    await waitFor(() => expect((screen.getByTestId("hcc-candidate") as HTMLSelectElement).value).toBe("top:T00003"));
+    expect(tid("hcc-preset-candidate")).toBe(
+      "「ETF 구성종목」에서 고른 후보로 열렸습니다 · 이번 이동 조건 = 3개월 상위(넘긴 목록 조건 · 이 화면을 떠나면 원래 조건) · 목록 날짜 10/12 → 11/9 같음",
+    );
+  });
+
+  it("넘긴 목록의 시작일 · 끝일이 이 화면 목록과 다르면 이유로 보인다(지적 frontend#5)", async () => {
+    send({ start: "2026-10-14", end: "2026-11-13" });
+    render(<HoldingCandidateCompareView onNavigate={nav} />);
+    await waitFor(() =>
+      expect(tid("hcc-preset-candidate")).toContain(
+        "넘긴 목록(10/14 → 11/13)과 이 화면 목록(10/12 → 11/9)의 날짜가 다릅니다 — 순위 · 수익률은 이 화면 목록 기준입니다",
+      ),
+    );
+    expect(screen.getByTestId("hcc-preset-candidate").className).toContain("wb-warn");
+  });
+
+  it("넘긴 조건이 없으면(예전 초안) '넘겨받은 조건 없음 — 이 화면 조건'", async () => {
+    send({ condition: null, start: null, end: null });
+    render(<HoldingCandidateCompareView onNavigate={nav} />);
+    await waitFor(() => expect(tid("hcc-preset-candidate")).toContain("넘겨받은 조건 없음 — 이 화면 조건(1개월 상위)으로 찾았습니다"));
+    expect(fetchEtfCompareSummary.mock.calls[0][0]).toEqual(getScreenCondition("compare"));
+  });
+
+  it("화면을 떠났다 메뉴로 다시 들어오면 원래 화면 조건(이동 한 번 · 지적 frontend#6)", async () => {
+    send();
+    const { unmount } = render(<HoldingCandidateCompareView onNavigate={nav} />);
+    await waitFor(() => expect(fetchEtfCompareSummary).toHaveBeenCalled());
+    unmount();
+    fetchEtfCompareSummary.mockClear();
+    render(<HoldingCandidateCompareView onNavigate={nav} />);
+    await waitFor(() => expect(fetchEtfCompareSummary).toHaveBeenCalled());
+    expect(fetchEtfCompareSummary.mock.calls[0][0]).toEqual(getScreenCondition("compare"));
+    expect(screen.queryByTestId("hcc-preset-candidate")).toBeNull();
+  });
+
+  it("이 화면에서 조건을 정하면 사용자 값이 이긴다(넘긴 조건을 내림)", async () => {
+    send();
+    render(<HoldingCandidateCompareView onNavigate={nav} />);
+    await waitFor(() => expect(fetchEtfCompareSummary).toHaveBeenCalled());
+    const base = getScreenCondition("compare");
+    await act(async () => setScreenCondition("compare", base)); // 같은 값이어도 '정함'
+    await waitFor(() => expect(fetchEtfCompareSummary.mock.calls.at(-1)?.[0]).toEqual(base));
+  });
+
+  it("그 조건 목록에 없으면 이유를 보이고 다른 종목으로 바꾸지 않는다 · 다른 후보를 고르면 안내를 내린다", async () => {
+    presetCompareCandidate({ ticker: "ZZZ999", name: "목록 밖", side: "top", condition: null });
+    render(<HoldingCandidateCompareView onNavigate={nav} />);
+    await waitFor(() => expect(tid("hcc-preset-candidate")).toContain("이 조건 목록에 없습니다"));
+    expect((screen.getByTestId("hcc-candidate") as HTMLSelectElement).value).toBe("");
+    // 고르면 그 후보로 바뀐다(넘겨받은 후보가 아니므로 안내 사라짐)
+    fireEvent.change(screen.getByTestId("hcc-candidate"), { target: { value: "top:T00002" } });
+    await waitFor(() => expect(screen.queryByTestId("hcc-preset-candidate")).toBeNull());
+  });
+});
+
+// POC6-31 STEP 4 ~ 5(PLAN C21 ~ C25 · 판정 Q12 · Q13) — 구성종목 비교 · 같은 근거로만 미리보기 · 고른 종목 유지.
+describe("「보유와 후보 비교」 구성종목 비교 · 같은 근거", () => {
+  const okPreview = (ticker: string) => ({
+    status: "ok",
+    target_kind: "candidate",
+    ticker,
+    preview_text: "[대상]\n- 시험 후보",
+    generated_at: "2026-11-16T13:20:00+09:00",
+    evidence_as_of: {
+      target_as_of_date: "2026-11-13",
+      kodex200_as_of_date: "2026-11-13",
+      vix_as_of_date: "2026-11-12",
+      candidate_constituents_asof: "2026-11-13",
+      holding_constituents_asof: "2026-11-13",
+      exposure_asof: "2026-11-13",
+    },
+  });
+
+  it("고른 보유를 바꾸면 그 보유로 다시 읽는다 · 확인 범위가 표보다 먼저", async () => {
+    await renderLoaded();
+    await waitFor(() => expect(screen.getByTestId("pe-table")).toBeInTheDocument());
+    expect(
+      screen.getByTestId("pe-scope").compareDocumentPosition(screen.getByTestId("pe-table")) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    fireEvent.change(screen.getByTestId("hcc-holding"), { target: { value: "H00002" } });
+    await waitFor(() => expect(fetchPairExposure).toHaveBeenLastCalledWith(expect.objectContaining({ holding: "H00002" })));
+  });
+
+  it("비교를 못 읽으면 미리보기를 만들지 않는다(같은 근거로만) · [다시 불러오기]가 비교도 다시 읽는다", async () => {
+    fetchPairExposure.mockRejectedValue(new Error("down"));
+    await renderLoaded();
+    await waitFor(() => expect(screen.getByTestId("pe-error")).toBeInTheDocument());
+    expect(screen.getByRole("button", { name: "판단 근거 미리보기 생성" })).toBeDisabled();
+    expect(screen.getByTestId("ddp-pair-pending")).toBeInTheDocument();
+    const calls = fetchPairExposure.mock.calls.length;
+    fetchPairExposure.mockImplementation((q: PairQuery) => Promise.resolve(pairOk(q)));
+    fireEvent.click(screen.getByRole("button", { name: "다시 불러오기" }));
+    await waitFor(() => expect(fetchPairExposure.mock.calls.length).toBeGreaterThan(calls));
+    await waitFor(() => expect(screen.getByRole("button", { name: "판단 근거 미리보기 생성" })).not.toBeDisabled());
+  });
+
+  it("서버가 '자료가 바뀌었습니다'면 그 안내 · 고른 보유 · 후보는 그대로", async () => {
+    const msg = "자료가 바뀌었습니다 — [다시 불러오기]를 누르세요. 고른 보유 · 후보는 그대로 둡니다.";
+    postDecisionDraftPreview.mockResolvedValue({ status: "error", message: msg });
+    await renderLoaded();
+    const b1 = summaryOk().bottom[1];
+    fireEvent.change(screen.getByTestId("hcc-candidate"), { target: { value: `bottom:${b1.ticker}` } });
+    fireEvent.change(screen.getByTestId("hcc-holding"), { target: { value: "H00002" } });
+    await waitFor(() => expect(screen.getByRole("button", { name: "판단 근거 미리보기 생성" })).not.toBeDisabled());
+    fireEvent.click(screen.getByRole("button", { name: "판단 근거 미리보기 생성" }));
+    expect(await screen.findByText(msg)).toBeInTheDocument();
+    expect((screen.getByTestId("hcc-candidate") as HTMLSelectElement).value).toBe(`bottom:${b1.ticker}`);
+    expect((screen.getByTestId("hcc-holding") as HTMLSelectElement).value).toBe("H00002");
+  });
+
+  it("만든 뒤 근거가 바뀌면([다시 불러오기]) [AI 세션에서 검토] 때 다시 만들지 먼저 묻는다(이동 안 함) · [다시 만들기] = 새 근거로", async () => {
+    const t0 = summaryOk().top[0].ticker;
+    postDecisionDraftPreview.mockResolvedValue(okPreview(t0));
+    await renderLoaded();
+    await waitFor(() => expect(screen.getByRole("button", { name: "판단 근거 미리보기 생성" })).not.toBeDisabled());
+    fireEvent.click(screen.getByRole("button", { name: "판단 근거 미리보기 생성" }));
+    await screen.findByRole("button", { name: "AI 세션에서 검토" });
+    // 역할별 기준일이 미리보기 날짜 줄에 보인다(C26).
+    expect(screen.getByText(/구성: 후보 2026-11-13 · 고른 보유 2026-11-13 · 노출 합계 2026-11-13/)).toBeInTheDocument();
+    // 그사이 구성종목 수집 · 시세가 바뀌어 [다시 불러오기]가 새 근거 지문을 받음(같은 후보 · 같은 보유 · 미리보기는 그대로 남음)
+    fetchPairExposure.mockImplementation((q: PairQuery) => Promise.resolve(pairOk(q, { fingerprint: "fp-new" })));
+    fireEvent.click(screen.getByRole("button", { name: "다시 불러오기" }));
+    await waitFor(() => expect(fetchPairExposure.mock.calls.length).toBeGreaterThan(1));
+    await waitFor(() => expect(screen.getByRole("button", { name: "다시 생성" })).not.toBeDisabled());
+    fireEvent.click(screen.getByRole("button", { name: "AI 세션에서 검토" }));
+    expect(await screen.findByTestId("ddp-pair-differs")).toHaveTextContent("지금 화면과 미리보기가 다릅니다");
+    expect(nav).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "다시 만들기" }));
+    await waitFor(() => expect(postDecisionDraftPreview).toHaveBeenCalledTimes(2));
+    expect(postDecisionDraftPreview.mock.calls[1][4]).toEqual({ holding: "B00001", fingerprint: "fp-new" });
+    fireEvent.click(await screen.findByRole("button", { name: "AI 세션에서 검토" }));
+    expect(nav).toHaveBeenCalledWith("ai_sessions");
+  });
+
+  it("[다시 불러오기] 뒤 고른 후보 · 보유가 목록에 없으면 첫 종목으로 바꾸지 않고 다시 고르라고 보인다", async () => {
+    await renderLoaded();
+    const b1 = summaryOk().bottom[1];
+    fireEvent.change(screen.getByTestId("hcc-candidate"), { target: { value: `bottom:${b1.ticker}` } });
+    fireEvent.change(screen.getByTestId("hcc-holding"), { target: { value: "H00002" } });
+    const s2 = summaryOk();
+    fetchEtfCompareSummary.mockResolvedValue({ ...s2, bottom: s2.bottom.filter((r) => r.ticker !== b1.ticker) });
+    fetchEnrichedHoldings.mockResolvedValue({ items: [item("B00001", "반도체 전공정", 10)] });
+    fireEvent.click(screen.getByRole("button", { name: "다시 불러오기" }));
+    await waitFor(() => expect(screen.getByTestId("hcc-pick-missing")).toBeInTheDocument());
+    expect(screen.getByTestId("hcc-holding-missing")).toBeInTheDocument();
+    expect((screen.getByTestId("hcc-candidate") as HTMLSelectElement).value).toBe("");
+    expect((screen.getByTestId("hcc-holding") as HTMLSelectElement).value).toBe("");
+    // 다시 고르면 안내가 내려간다
+    fireEvent.change(screen.getByTestId("hcc-candidate"), { target: { value: `top:${s2.top[0].ticker}` } });
+    fireEvent.change(screen.getByTestId("hcc-holding"), { target: { value: "B00001" } });
+    await waitFor(() => expect(screen.queryByTestId("hcc-pick-missing")).toBeNull());
+    expect(screen.queryByTestId("hcc-holding-missing")).toBeNull();
+  });
+
+  it("고르지 않고 보던 첫 후보 · 첫 보유도 [다시 불러오기] 뒤 다른 종목으로 넘어가지 않는다(검토 지적 frontend#0)", async () => {
+    await renderLoaded();
+    const s1 = summaryOk();
+    const t0 = s1.top[0].ticker;
+    expect((screen.getByTestId("hcc-candidate") as HTMLSelectElement).value).toBe(`top:${t0}`);
+    expect((screen.getByTestId("hcc-holding") as HTMLSelectElement).value).toBe("B00001");
+    // 다시 읽은 목록 · 보유에서 순위 · 비중이 바뀜(보던 첫 후보는 빠지고 다른 보유가 더 큼)
+    fetchEtfCompareSummary.mockResolvedValue({ ...s1, top: s1.top.filter((r) => r.ticker !== t0) });
+    fetchEnrichedHoldings.mockResolvedValue({
+      items: [item("H00002", "분산 ETF", 90), item("B00001", "반도체 전공정", 10)],
+    });
+    fireEvent.click(screen.getByRole("button", { name: "다시 불러오기" }));
+    await waitFor(() => expect(screen.getByTestId("hcc-pick-missing")).toBeInTheDocument());
+    expect((screen.getByTestId("hcc-candidate") as HTMLSelectElement).value).toBe("");
+    // 보유는 그대로(목록에 있음 · 비중 순서가 바뀌어도 첫 보유로 바꾸지 않음)
+    expect((screen.getByTestId("hcc-holding") as HTMLSelectElement).value).toBe("B00001");
   });
 });

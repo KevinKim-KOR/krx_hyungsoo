@@ -53,6 +53,14 @@ def _sp(**override) -> dict:
     return sp
 
 
+# POC6-31 STEP 5(PLAN C26) — 역할별 기준일(후보 구성일 · 고른 보유 구성일 · 노출 합계 기준일 · 선택 칸).
+ROLE_DATES_NONE = {
+    "candidate_constituents_asof": None,
+    "holding_constituents_asof": None,
+    "exposure_asof": None,
+}
+
+
 def _payload(*, candidate: dict | None = None, **override) -> dict:
     base = dict(
         asof="2026-10-14",
@@ -122,9 +130,10 @@ def test_holding_round_trip_keeps_preview_exactly(client: TestClient) -> None:
     assert len(rec["candidate_snapshot"]) == 1
     c = rec["candidate_snapshot"][0]
     assert c["rank"] is None and c["ticker"] == "395160"
-    assert (
-        c["selected_preview"] == _sp()
-    )  # 원문 · 대상 종류 · 생성 시각 · 근거 날짜 3개 그대로
+    # 원문 · 대상 종류 · 생성 시각 · 근거 날짜 3개 그대로 · POC6-31 역할별 기준일 3칸은 선택 칸(넘기지 않으면 null).
+    assert c["selected_preview"] == _sp(
+        evidence_as_of={**_sp()["evidence_as_of"], **ROLE_DATES_NONE}
+    )
     assert rec["question_text"] == PREVIEW_TEXT
     assert rec["gpt_answer_text"] == "① 함께 확인되는 사실 …"
     assert rec["user_verdict"] == "needs_market_compare"
@@ -180,6 +189,56 @@ def test_raw_stored_json_holds_preview_inside_candidate_snapshot(
         con.close()
     assert not any("selected" in c or "preview" in c for c in cols)  # 새 열 없음
     assert json.loads(raw)[0]["selected_preview"]["preview_text"] == PREVIEW_TEXT
+
+
+def test_role_dates_round_trip_in_record(client: TestClient) -> None:
+    # POC6-31 C26 — 후보 미리보기의 역할별 기준일 3칸이 저장 · 다시 열기에 그대로(원문 글도 그대로).
+    dates = {
+        "candidate_constituents_asof": "2026-11-13",
+        "holding_constituents_asof": "2026-11-12",
+        "exposure_asof": "2026-11-13",
+    }
+    sp = _sp(
+        target_kind="candidate",
+        evidence_as_of={**_sp()["evidence_as_of"], **dates},
+    )
+    cand = {"rank": 4, "ticker": "475300", "name": "SOL", "tags": []}
+    rid = _save(client, _payload(candidate={**cand, "selected_preview": sp}))
+    got = _detail(client, rid)["candidate_snapshot"][0]["selected_preview"]
+    assert got == sp
+
+
+def test_old_record_without_role_date_keys_reopens(client: TestClient) -> None:
+    # 이 칸이 생기기 전에 저장된 기록(원문 JSON 에 세 칸 없음)도 그대로 열린다 — 다른 값은 바뀌지 않는다.
+    rid = _save(client, _payload())
+    con = sqlite3.connect(str(decision_evidence_store.DEFAULT_DB_PATH))
+    try:
+        raw = json.loads(
+            con.execute(
+                "SELECT candidate_snapshot_json FROM ai_session_records WHERE id = ?",
+                (rid,),
+            ).fetchone()[0]
+        )
+        for k in ROLE_DATES_NONE:
+            raw[0]["selected_preview"]["evidence_as_of"].pop(k, None)
+        con.execute(
+            "UPDATE ai_session_records SET candidate_snapshot_json = ? WHERE id = ?",
+            (json.dumps(raw, ensure_ascii=False), rid),
+        )
+        con.commit()
+    finally:
+        con.close()
+    assert set(raw[0]["selected_preview"]["evidence_as_of"]) == {
+        "target_as_of_date",
+        "kodex200_as_of_date",
+        "vix_as_of_date",
+    }
+    rec = _detail(client, rid)
+    assert rec["candidate_snapshot"][0]["selected_preview"] == _sp(
+        evidence_as_of={**_sp()["evidence_as_of"], **ROLE_DATES_NONE}
+    )
+    assert rec["question_text"] == PREVIEW_TEXT
+    assert _rows(client)[rid]["target_label"] == "KODEX AI반도체TOP2플러스(395160)"
 
 
 # ── 가격 기준일 없음 · 기록 기준일 ──────────────────────────────────────

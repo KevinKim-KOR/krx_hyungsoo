@@ -23,7 +23,6 @@ from app import api_decision_draft_preview, api_market_topn, decision_preview_so
 from app.decision_preview_lines import (
     HOLDING_OVERLAP_LIMIT,
     HOLDING_OVERLAP_SCOPE,
-    OVERLAP_LIMIT,
     SAME_PERIOD_LIMIT,
     SHORT_NOTE_CANDIDATE,
     SHORT_NOTE_HOLDING,
@@ -359,44 +358,68 @@ def test_candidate_preview_carries_market_response_and_one_ticker_reads(
     assert "참고점수" not in text and "고점 대비" not in text
 
 
-def test_candidate_overlap_compares_real_etf_constituents(seeded: TestClient) -> None:
+def test_candidate_pair_overlap_lines_replaced_by_constituents_compare(
+    seeded: TestClient,
+) -> None:
+    # POC6-31 STEP 5(C26 · 판정 Q14 (b)) — 보유 ETF 와의 쌍별 중복률 줄은 [구성종목 비교] 묶음으로 대체 ·
+    # [중복 · 자료 상태]에는 직접 보유 줄만 남는다. 계산 값 자체는 `test_poc6_31_pair_exposure.py`.
     text = _preview(seeded, "candidate", CAND, **LIST_PARAMS)["preview_text"]
-    assert "직접 보유: 없음" in text
-    # 보유 ETF 3개(개별 종목 제외) 중 구성종목 있는 2개만 비교 · 기준일 양쪽.
-    assert (
-        "보유 ETF 와 구성종목 중복(Top 10 기준): 비교 가능 2/3개 · 후보 구성종목 2026-10-02"
-        in text
-    )
-    # 공통 = 삼성전자 · SK하이닉스 → min(25,20) + min(5,10) = 25.00%.
-    assert (
-        f"보유 반도체 ETF({HELD_ETF} · 2026-06-22): 공통 2종목 · 비중 중복률 25.00%"
-        in text
-    )
-    # 공통 종목이 없는 쌍은 그 쌍의 결과로만 적는다(전체 '중복 없음' 아님 · 0% 로 쓰지 않음).
-    assert "상위 10 공통 종목이 없는 쌍: 1개(그 쌍만의 결과)" in text
-    assert "보유 해외 ETF(" not in text
-    assert "구성종목 자료가 없는 보유 ETF 1개는 비교하지 않음" in text
-    assert OVERLAP_LIMIT in text
-    assert "중복 없음" not in text
+    assert "보유 ETF 와 구성종목 중복" not in text and "비중 중복률" not in text
+    assert "\n[중복 · 자료 상태]\n- 직접 보유: 없음\n" in text
+    assert text.index("[구성종목 비교]") < text.index("[중복 · 자료 상태]")
+    pair = text.split("[구성종목 비교]\n")[1].split("\n\n")[0]
+    # 이 시험의 시세 캐시는 비어 분모(현금 제외 보유 평가액)가 없다 — 0 으로 채우지 않는다 · 짝 칸(편입 비중)만 적는
+    # 묶음(POC6-31 검토 지적 frontend#2) · 이 시험의 후보 구성은 네이버 확인 자료가 없어 '구성 자료 없음'.
+    assert pair.split("\n") == [
+        "- 기준일: 후보 구성 확인 불가 · 고른 보유 없음 · 노출 합계 구성 자료 없음(직접 보유만) · "
+        "보유 평가 확인 불가 · 현금 제외 · 부분 평가액 기준",
+        "- 비중 확인 불가 — 시세가 확인된 보유가 없어 분모(현금 제외 보유 평가액)를 정하지 못했습니다 · "
+        "후보와 고른 보유의 편입 비중만 적음.",
+        "- 후보 구성: 구성 자료 없음 — 비교하지 않음(겹침 없음이라는 뜻 아님).",
+    ]
 
 
-def test_candidate_without_constituents_is_not_compared(seeded: TestClient) -> None:
-    text = _preview(seeded, "candidate", CAND_NO_CONS, **LIST_PARAMS)["preview_text"]
+def test_candidate_constituents_compare_states_without_confirmed_data(
+    seeded: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # 시세가 있으면 분모가 생긴다. 후보 구성이 없거나 원천일 확인 기록 없이 저장된 네이버 자료(원천 기준일 미확인)면
+    # 비교하지 않고 그 사유를 적는다(예전 '비교하지 않음 — 저장돼 있지 않음'과 같은 뜻 · 겹침 없음 아님).
+    # 이 시험의 다른 구성 자료는 출처가 네이버가 아니라(`_cons` · source="src") 구성 비교에 쓰지 않는다(STEP 1 ~ 3 규칙).
+    from app import market_cache
+    from app.etf_constituents_fetcher import NAVER_STOCK_SOURCE
+    from app.market_cache import MarketQuote
+
+    rows = _cons(CAND, "2026-10-02", [("005930", "삼성전자", 25.0)])
+    for r in rows:
+        r.source = NAVER_STOCK_SOURCE
+    upsert_constituents(rows, db_path=api_market_topn.DEFAULT_DB_PATH)
+
+    quotes = {
+        t: MarketQuote(t, None, 100.0, "2026-10-14T15:30:00+09:00")
+        for t in (HELD_ETF, HELD_ETF_NO_CONS, STOCK, HELD_ETF_OTHER)
+    }
+    monkeypatch.setattr(market_cache, "get_all", lambda: dict(quotes))
+    no_cons = _preview(seeded, "candidate", CAND_NO_CONS, **LIST_PARAMS)["preview_text"]
     assert (
-        "보유 ETF 와 구성종목 중복: 비교하지 않음 — 이 후보의 구성종목 자료가 저장돼 있지 않습니다(중복 없음이라는 뜻 아님)."
-        in text
+        "- 후보 구성: 구성 자료 없음 — 비교하지 않음(겹침 없음이라는 뜻 아님)."
+        in no_cons
     )
-    assert "비교 가능" not in text
+    stored = _preview(seeded, "candidate", CAND, **LIST_PARAMS)["preview_text"]
+    assert (
+        "- 후보 구성: 원천 기준일 미확인(2026-10-02 보존 자료) — 비교하지 않음(겹침 없음이라는 뜻 아님)."
+        in stored
+    )
+    # 보유 4종목 시세 확인 · 보유 ETF 3개 모두 원천일 미확인 · 구성 자료 없음 → 계산에 들어간 ETF 0 · 직접 보유 1.
+    assert "확인 범위: 보유 ETF 0개(평가액의 0.00%) + 직접 보유 1개(" in stored
 
 
 def test_candidate_directly_held_is_separate_from_overlap(seeded: TestClient) -> None:
     market = seeded.get("/market/topn/latest", params=LIST_PARAMS).json()
     assert HELD_ETF in [c["ticker"] for c in market["candidates"]]
     text = _preview(seeded, "candidate", HELD_ETF, **LIST_PARAMS)["preview_text"]
-    assert "직접 보유: 있음(이미 보유 중)" in text
-    # 자기 자신과는 비교하지 않는다 → 나머지 보유 ETF 2개(구성종목 없음 1 · 공통 없음 1).
-    assert "보유 ETF 와 구성종목 중복(Top 10 기준): 비교 가능 1/2개" in text
-    assert "상위 10 공통 종목이 없는 쌍: 1개(그 쌍만의 결과)" in text
+    assert "\n[중복 · 자료 상태]\n- 직접 보유: 있음(이미 보유 중)\n" in text
+    # 보유 ETF 와의 비교는 [구성종목 비교] 묶음 하나(쌍별 줄 없음 · POC6-31 C26).
+    assert "[구성종목 비교]" in text and "비교 가능" not in text
 
 
 def test_candidate_late_last_date_hides_volatility_and_keeps_own_volume_date(
@@ -513,13 +536,15 @@ def test_real_previews_have_ten_bundles_and_regime_from_each_screen(
         "[AI에게 요청]",
         "[검토 질문]",  # POC6-07 판정 Q3 (a) — 기존 9개 + 검토 질문 = 10개 · POC6-24 자금 = 11개
     ]
+    # POC6-31 C26 — 후보만 [중복 · 자료 상태] 앞에 [구성종목 비교](12개).
+    cand_titles = titles[:7] + ["[구성종목 비교]"] + titles[7:]
     h = _preview(seeded, "holding", HELD_ETF)["preview_text"]
     c = _preview(seeded, "candidate", CAND, **LIST_PARAMS)["preview_text"]
     # POC6-01 — '시장' 다음에 시장 흐름 묶음(서버 공통 글 · 기본 6개월 · 제목 줄에 기간 · 날짜).
-    for text in (h, c):
+    for text, want in ((h, titles), (c, cand_titles)):
         secs = _sections(text)
         assert secs[3].startswith("[시장 흐름 — 수급 · 환율 · 유가 · 기간 6개월")
-        assert secs[:3] + secs[4:] == titles
+        assert secs[:3] + secs[4:] == want
     # 국면 = 각 화면 응답 그대로 · 날짜 = KODEX200 최신 저장일(보유 = PC 비교 기준일).
     mp = ev["judgment_summary"]["market_position"]
     ref = ev["price_basis"]["reference_date"]
@@ -757,7 +782,7 @@ def test_huge_stored_volume_keeps_the_preview(seeded: TestClient) -> None:
         PREVIEW,
         json={"target_kind": "candidate", "ticker": CAND_NO_CONS, **LIST_PARAMS},
     )
-    for res in (h, c):
+    for res, n in ((h, 11), (c, 12)):
         assert res.status_code == 200
         body = res.json()
         assert body["status"] == "ok"
@@ -765,7 +790,8 @@ def test_huge_stored_volume_keeps_the_preview(seeded: TestClient) -> None:
             "2026-10-14 거래량 10,000,000,000,000,000,000,000주" in body["preview_text"]
         )
         # POC6-01 시장 흐름 묶음 · POC6-07 검토 질문 묶음 · POC6-24 보유 · 자금 기준 묶음
-        assert len(body["preview_text"].split("\n\n")) == 11
+        # · POC6-31 C26 후보만 [구성종목 비교]
+        assert len(body["preview_text"].split("\n\n")) == n
 
 
 def test_negative_zero_decline_value_matches_screen() -> None:

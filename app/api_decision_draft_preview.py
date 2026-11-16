@@ -19,6 +19,13 @@ POC6-24 — [보유 · 자금 기준] 줄은 `_load_capital_lines`(보유 · 후
 POC6-29(판정 Q4-2) — 후보 요청에 `list_source = "common_period"` 가 오면 그 화면의 공통 기간 목록에서 찾고
 화면이 본 쪽 · 선정 순위 · 실제 날짜 · 끝일 가격 시점을 대조한다(`app/decision_preview_common_period.py`).
 다르면 미리보기 없이 다시 읽기 안내. 새 필드가 없으면 기존 동작 그대로.
+
+POC6-31 STEP 5(PLAN C25 · C26 · 판정 §2 넷째 · Q13 · Q14 (b)) — 후보 미리보기는 [구성종목 비교] 묶음을
+`constituents_pair_exposure_io.load`(「보유와 후보 비교」 화면 GET 과 같은 함수)로 만든다. 요청에 `pair_fingerprint`
+(화면이 받은 근거 지문)가 오면 고른 보유(`pair_holding`) · 선정 조건으로 다시 계산해 지문이 같을 때만 미리보기를 만들고,
+다르면 미리보기 없이 '자료가 바뀌었습니다' 안내(같은 날 수치만 바뀐 경우도 지문이 다르다). 비교 화면 요청 · 고른 보유를 실은
+요청에 지문이 없으면 만들지 않는다(검증자 r1 F11). 지문이 없는 다른 화면의 후보 미리보기는 고른 보유 없이 묶음을
+만든다 — 그 묶음만 실패하면 실패 한 줄(미리보기는 그대로 · 보유 · 자금 기준 묶음과 같음).
 """
 
 from __future__ import annotations
@@ -28,6 +35,11 @@ from typing import Any, Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from app import (
+    constituents_pair_exposure,
+    constituents_pair_exposure_io,
+    constituents_pair_exposure_text,
+)
 from app.decision_draft_preview_service import (
     ALLOWED_TARGET_KINDS,
     TARGET_KIND_CANDIDATE,
@@ -60,6 +72,14 @@ _FAILURE_MESSAGE = "판단 근거 미리보기를 생성하지 못했습니다. 
 _NOT_IN_LIST_MESSAGE = (
     "현재 목록 조건에서 이 후보를 찾지 못했습니다. 목록을 다시 불러온 뒤 시도하세요."
 )
+# POC6-31 C25 — 화면이 받은 구성종목 비교의 근거 지문과 지금 다시 계산한 지문이 다름(고른 종목은 화면이 그대로 둔다).
+PAIR_CHANGED_MESSAGE = "자료가 바뀌었습니다 — [다시 불러오기]를 누르세요. 고른 보유 · 후보는 그대로 둡니다."
+# 검증자 STEP 4~5 r1 F11 — 「보유와 후보 비교」 후보 요청 · 고른 보유를 실은 요청은 화면이 받은 근거 지문이 있어야 한다
+# (지문 없이 다른 화면 경로로 대조 없이 만들지 않음).
+PAIR_REQUIRED_MESSAGE = (
+    "구성종목 비교를 읽은 뒤 만들 수 있습니다 — [다시 불러오기]를 누르세요."
+)
+COMPARE_SCREEN = "holding_candidate_compare"
 
 
 class PreviewRequest(BaseModel):
@@ -86,6 +106,9 @@ class PreviewRequest(BaseModel):
     end_price_state: Optional[str] = None  # intraday / after_close / unknown
     # 화면이 본 선정 기간 수익률(가격만 바뀐 같은 날 재저장도 '목록이 바뀜' · 없으면 대조 안 함).
     basis_value: Optional[float] = None
+    # POC6-31 C25 — 후보만 · 「보유와 후보 비교」에서 고른 보유와 화면이 받은 구성종목 비교의 근거 지문.
+    pair_holding: Optional[str] = None
+    pair_fingerprint: Optional[str] = None
 
 
 FLOW_PERIODS = ("1M", "3M", "6M", "YTD")
@@ -95,6 +118,10 @@ class PreviewEvidenceAsOf(BaseModel):
     target_as_of_date: Optional[str] = None
     kodex200_as_of_date: Optional[str] = None
     vix_as_of_date: Optional[str] = None
+    # POC6-31 C26 — 역할별 기준일(선택 칸 · 이 칸이 없는 예전 AI 세션 기록도 그대로 열림).
+    candidate_constituents_asof: Optional[str] = None
+    holding_constituents_asof: Optional[str] = None
+    exposure_asof: Optional[str] = None
 
 
 class PreviewResponse(BaseModel):
@@ -333,6 +360,36 @@ def _list_query(req: PreviewRequest) -> CandidateListQuery:
     )
 
 
+def _pair_condition(req: PreviewRequest, query: CandidateListQuery) -> dict[str, Any]:
+    """구성종목 비교의 선정 조건 — 화면 GET(`/market/constituents/pair-exposure`)과 같은 함수 · 같은 칸."""
+    return constituents_pair_exposure.condition_of(
+        screen=req.screen,
+        basis=query.basis,
+        side=req.side,
+        rank=req.rank,
+        start_date=req.start_date,
+        end_date=req.end_date,
+        filters={k: getattr(query, k) for k in FILTER_KEYS},
+    )
+
+
+def _pair_body(
+    req: PreviewRequest, ticker: str, query: CandidateListQuery
+) -> Optional[dict[str, Any]]:
+    """지문 없는 요청 — 고른 보유 없이 묶음을 만든다(실패하면 None = 실패 한 줄 · 미리보기는 그대로)."""
+    import logging
+
+    try:
+        return constituents_pair_exposure_io.load(
+            ticker, None, _pair_condition(req, query), db_path=DEFAULT_DB_PATH
+        )
+    except Exception:  # noqa: BLE001 — 이 묶음만 실패로 적는다(B-4 와 같음)
+        logging.getLogger(__name__).exception(
+            "decision-draft/preview: pair exposure failed"
+        )
+        return None
+
+
 def _common_pick(req: PreviewRequest, query: CandidateListQuery) -> CommonPeriodPick:
     """POC6-29 — 공통 기간 목록 요청의 조건 · 화면이 본 행(기간 · 제외는 기존 필드 · 없으면 기본 조건)."""
     return CommonPeriodPick(
@@ -374,6 +431,12 @@ def post_decision_draft_preview(req: PreviewRequest) -> PreviewResponse:
     flow_period = req.flow_period or "6M"
     if flow_period not in FLOW_PERIODS:
         return PreviewResponse(status="error", message=_FAILURE_MESSAGE)
+    if (
+        req.target_kind != TARGET_KIND_HOLDING
+        and req.pair_fingerprint is None
+        and ((req.screen or "") == COMPARE_SCREEN or req.pair_holding is not None)
+    ):
+        return PreviewResponse(status="error", message=PAIR_REQUIRED_MESSAGE)
     # POC6-29 — 후보 + 목록 출처가 오면 공통 기간 목록 경로.
     pick: Optional[CommonPeriodPick] = None
     if req.target_kind != TARGET_KIND_HOLDING and req.list_source is not None:
@@ -410,6 +473,24 @@ def post_decision_draft_preview(req: PreviewRequest) -> PreviewResponse:
             if target_evidence is None:
                 return PreviewResponse(status="error", message=_NOT_IN_LIST_MESSAGE)
         capital_lines = _load_capital_lines(ticker, req.target_kind)
+        pair: Optional[dict[str, Any]] = None
+        if req.target_kind != TARGET_KIND_HOLDING:
+            if req.pair_fingerprint is not None:
+                # 화면 근거와 대조 — 같은 함수로 다시 계산(읽기 실패는 아래 일반 실패 · 지문이 다르면 다시 읽기 안내).
+                pair = constituents_pair_exposure_io.load(
+                    ticker,
+                    (req.pair_holding or "").strip() or None,
+                    _pair_condition(req, query),
+                    db_path=DEFAULT_DB_PATH,
+                )
+                if pair["fingerprint"] != req.pair_fingerprint:
+                    _preview_logger.info(
+                        "decision-draft/preview: pair evidence changed (ticker=%s)",
+                        ticker,
+                    )
+                    return PreviewResponse(status="error", message=PAIR_CHANGED_MESSAGE)
+            else:
+                pair = _pair_body(req, ticker, query)
     except ListChanged as exc:
         # 화면이 본 목록(쪽 · 순위 · 날짜 · 가격 시점)과 지금 목록이 다름 — 미리보기 없이 다시 읽기 안내.
         _preview_logger.info("decision-draft/preview: common list changed (%s)", exc)
@@ -444,6 +525,12 @@ def post_decision_draft_preview(req: PreviewRequest) -> PreviewResponse:
             db_path=DEFAULT_DB_PATH,
             flow_period=flow_period,
             capital_lines=capital_lines,
+            pair_lines=(
+                constituents_pair_exposure_text.preview_lines(pair)
+                if req.target_kind != TARGET_KIND_HOLDING
+                else None
+            ),
+            pair_dates=pair["dates"] if pair is not None else None,
         )
     except Exception as exc:  # noqa: BLE001 — endpoint 경계 응답 계약 유지
         _preview_logger.error(
@@ -477,6 +564,19 @@ def post_decision_draft_preview(req: PreviewRequest) -> PreviewResponse:
             ),
             vix_as_of_date=(
                 result.evidence_as_of.vix_as_of_date if result.evidence_as_of else None
+            ),
+            candidate_constituents_asof=(
+                result.evidence_as_of.candidate_constituents_asof
+                if result.evidence_as_of
+                else None
+            ),
+            holding_constituents_asof=(
+                result.evidence_as_of.holding_constituents_asof
+                if result.evidence_as_of
+                else None
+            ),
+            exposure_asof=(
+                result.evidence_as_of.exposure_asof if result.evidence_as_of else None
             ),
         ),
         moving_average=(

@@ -20,6 +20,7 @@ status 로 변환).
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import Callable, Optional
 
@@ -50,10 +51,15 @@ class FetchResult:
     constituents: list[FetchedConstituent]
     etf_name: Optional[str] = None
     message: Optional[str] = None
-    # 2026-05-31 — 응답이 명시한 기준일 (예: Naver referenceDate). service 가
-    # 입력 asof 대신 이 값으로 저장 + cache check 수행한다. None 이면 입력
-    # asof 그대로 사용 (기존 pykrx 동작 호환).
+    # 2026-05-31 — 응답이 명시한 기준일 (예: Naver referenceDate). 기존 service
+    # (`refresh_constituents`)는 이 값으로 **저장**하지만, 이미 있는지 확인(cache check)은
+    # **입력 asof** 로 한다(두 날짜가 다르면 다시 받음 · POC6-31 PLAN §2-2 실측). None 이면
+    # 입력 asof 로 저장 (기존 pykrx 동작 호환). POC6-31 수집 작업(`etf_constituents_batch`)은
+    # 이 값이 유효한 날짜일 때만 저장하고, 재사용은 원천일이 확인된 저장 구성으로 판정한다.
     effective_asof: Optional[str] = None
+    # POC6-31 STEP 4(검토 지적 backend#0) — 원천 응답 항목 수(버린 항목 포함 · 네이버만). 저장 행이 원천이 준 전체인지
+    # (요청 깊이보다 적게 받았고 버린 항목이 없음) 수집 작업이 판정해 확인 기록에 남긴다. None = 모름.
+    source_count: Optional[int] = None
 
 
 def _asof_to_yyyymmdd(asof: str) -> str:
@@ -217,18 +223,18 @@ def _coerce_weight_string(raw) -> Optional[float]:
     if isinstance(raw, (int, float)):
         try:
             f = float(raw)
-            if f != f:  # NaN
-                return None
-            return f
         except (TypeError, ValueError):
             return None
+        # NaN · 무한대 = 비중 아님(POC6-31 검증자 STEP 4~5 r1 F10 — 문자열 'NaN' 도 같은 규칙)
+        return f if math.isfinite(f) else None
     s = str(raw).strip()
     if not s or s == "-":
         return None
     try:
-        return float(s)
+        f = float(s)
     except (TypeError, ValueError):
         return None
+    return f if math.isfinite(f) else None
 
 
 def _build_constituent_key(
@@ -261,8 +267,8 @@ def naver_stock_etf_component_fetcher(
             ?startIdx=0&pageSize=20
 
     응답은 top-level array (list[dict]). weight 는 string → float 변환,
-    referenceDate 는 effective_asof 로 노출 (service 가 저장 + cache key 에
-    그 값을 사용).
+    referenceDate 는 effective_asof 로 노출 (기존 service 는 그 값으로 저장 ·
+    이미 있는지 확인은 입력 asof 로 함 — 위 FetchResult 주석).
     """
     # 2026-08-19 — pageSize 를 요청 깊이(top_k)에 맞춘다. 같은 endpoint 를 **한 번**
     # 부르고, 응답이 top_k 보다 적으면 그게 그 ETF 의 전부다(페이지 추가 호출 없음).
@@ -389,4 +395,5 @@ def naver_stock_etf_component_fetcher(
         constituents=constituents,
         etf_name=None,
         effective_asof=effective_asof,
+        source_count=len(data),
     )

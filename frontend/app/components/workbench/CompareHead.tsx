@@ -23,13 +23,19 @@ import {
   setScreenCondition,
   useSavedBasisRead,
   useScreenCondition,
+  useScreenSetCount,
+  type OneTimeCondition,
   type SavedBasisStatus,
   type ScreenId,
 } from "@/lib/etfCompareCondition";
 import { BASIS_LABEL, basisLine, filtersText, priceStateLine, regimeView } from "@/lib/etfCompare";
 
-export function useEtfCompareSummary(screen: ScreenId) {
-  const cond = useScreenCondition(screen);
+// POC6-31(판정 Q10 · Q17) — once = 받는 화면이 처음 그릴 때 꺼낸 '이동 한 번' 조건. 그 뒤 사용자가 이 화면 조건을
+// 정하면(적용 · 기본 등) 화면 조건을 쓴다.
+export function useEtfCompareSummary(screen: ScreenId, once: OneTimeCondition | null = null) {
+  const base = useScreenCondition(screen);
+  const sets = useScreenSetCount(screen);
+  const cond = once && sets === once.at ? once.cond : base;
   const q = useSharedQuery<CompareSummary>(etfCompareKey(cond), () => fetchEtfCompareSummary(cond));
   return { cond, q };
 }
@@ -90,7 +96,7 @@ export function BasisSaveRow({ screen, basis }: { screen: ScreenId; basis: Compa
         type="button"
         className="ec-more"
         disabled={same}
-        onClick={() => setFailedBasis(saveScreenBasis(screen) ? null : basis)}
+        onClick={() => setFailedBasis(saveScreenBasis(screen, basis) ? null : basis)}
       >
         {same ? "이미 기본" : `이 기준을 기본으로(${BASIS_LABEL[basis]})`}
       </button>

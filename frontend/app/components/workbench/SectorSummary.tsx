@@ -21,6 +21,7 @@ import {
 import { directionColor } from "./helpers";
 import EtfRowDetail from "./EtfRowDetail";
 import CopyListButton from "./CopyListButton";
+import { presetOneTimeCondition } from "@/lib/etfCompareCondition";
 import type { MenuKey } from "../LeftSidebar";
 
 const SHOW_FIRST = 5;
@@ -173,6 +174,7 @@ function SideCard({
   const unclassified = others.filter((g) => g.kind === "unclassified").reduce((n, g) => n + g.etf_count, 0);
   const vals = rows.map((r) => r.basis_return.value);
   const [othersOpen, setOthersOpen] = useState(false);
+  const nav = useContext(NavContext);
   const title = side === "top" ? "상위권에 모인 업종 · 테마" : "하위권에 모인 업종 · 테마";
   return (
     <section className="card ec-card" data-testid={`ec-card-${side}`}>
@@ -222,6 +224,20 @@ function SideCard({
         </div>
       )}
       <CopyListButton s={s} side={side} />
+      {/* POC6-31(판정 Q17 (b) 제한) — 이 조건 그대로 「후보리스트」를 연다(저장된 기본 조회 기준은 바꾸지 않음 · 이 이동 한 번) */}
+      {side === "top" && nav && (
+        <button
+          type="button"
+          className="wb-btn btn-md"
+          data-testid="ec-to-candidates"
+          onClick={() => {
+            presetOneTimeCondition("candidates", { basis: s.basis, filters: { ...s.filters } });
+            nav("workbench");
+          }}
+        >
+          이 조건의 후보리스트 보기 →
+        </button>
+      )}
     </section>
   );
 }

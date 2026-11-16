@@ -69,10 +69,6 @@ HOLDING_OVERLAP_LIMIT = (
     "후보 구성종목이 저장된 경우만 비교한 Top 10 기준 값이며 "
     "내 보유 ETF 사이의 중복이나 ETF 전체 구성종목을 조사한 값이 아닙니다."
 )
-OVERLAP_LIMIT = (
-    "각 ETF 저장 구성종목 상위 10건끼리 비교한 값(Top 10 기준)이며 "
-    "ETF 전체 구성종목을 조사한 값이 아닙니다."
-)
 AI_REQUEST = [
     "위 관측값을 ① 함께 확인되는 사실 ② 가능한 다른 해석 ③ 추가로 확인할 사항으로 나눠 정리해 주세요.",
     "날짜가 다른 값은 그 차이를 함께 짚고, 매수 · 매도 결론이나 위험 등급은 만들지 말아 주세요.",
@@ -421,71 +417,11 @@ def holding_overlap_lines(
     return ["구성종목 겹침: 확인 불가"]
 
 
-def candidate_overlap_lines(
-    direct: Optional[dict[str, Any]], ov: Optional[dict[str, Any]]
-) -> list[str]:
-    lines: list[str] = []
+def candidate_direct_line(direct: Optional[dict[str, Any]]) -> str:
+    """후보의 직접 보유 여부(POC6-31 STEP 5 — 보유 ETF 와의 쌍별 중복률 줄은 '[구성종목 비교]' 묶음이 대신함)."""
     if direct is None:
-        lines.append("직접 보유: 확인 불가 — 보유 목록을 읽지 못했습니다.")
-    else:
-        lines.append(
-            "직접 보유: 있음(이미 보유 중)" if direct.get("held") else "직접 보유: 없음"
-        )
-    if ov is None:
-        lines.append(
-            "보유 ETF 와 구성종목 중복: 확인 불가 — 보유 목록을 읽지 못했습니다."
-        )
-        return lines
-    head = "보유 ETF 와 구성종목 중복"
-    if not ov.get("candidate_available"):
-        lines.append(
-            f"{head}: 비교하지 않음 — 이 후보의 구성종목 자료가 저장돼 있지 않습니다(중복 없음이라는 뜻 아님)."
-        )
-        return lines
-    held = ov.get("held_etf_count") or 0
-    if held == 0:
-        lines.append(
-            f"{head}: 비교할 보유 ETF 없음 (후보 구성종목 {ov.get('candidate_asof')})"
-        )
-        return lines
-    pairs = ov.get("pairs") or []
-    lines.append(
-        f"{head}(Top 10 기준): 비교 가능 {len(pairs)}/{held}개 · 후보 구성종목 {ov.get('candidate_asof')}"
-    )
-    hit = [p for p in pairs if (p.get("common_count_top10") or 0) > 0]
-    hit.sort(
-        key=lambda p: (
-            -(
-                p.get("weighted_overlap_pct")
-                if p.get("weighted_overlap_pct") is not None
-                else -1.0
-            ),
-            -(p.get("common_count_top10") or 0),
-        )
-    )
-    for p in hit:
-        rate = p.get("weighted_overlap_pct")
-        rate_s = (
-            f"비중 중복률 {to_fixed(rate, 2)}%"
-            if rate is not None
-            else "비중 중복률 확인 불가"
-        )
-        common = ", ".join(
-            one_line(h.get("name") or h.get("ticker") or "이름 없음")
-            for h in p.get("common_holdings") or []
-        )
-        lines.append(
-            f"{one_line(p.get('name') or p['ticker'])}({p['ticker']} · {p.get('asof')}): "
-            f"공통 {p.get('common_count_top10')}종목 · {rate_s} — {common}"
-        )
-    zero = len(pairs) - len(hit)
-    if zero:
-        lines.append(f"상위 10 공통 종목이 없는 쌍: {zero}개(그 쌍만의 결과)")
-    missing = ov.get("missing") or []
-    if missing:
-        lines.append(f"구성종목 자료가 없는 보유 ETF {len(missing)}개는 비교하지 않음")
-    lines.append(OVERLAP_LIMIT)
-    return lines
+        return "직접 보유: 확인 불가 — 보유 목록을 읽지 못했습니다."
+    return "직접 보유: 있음(이미 보유 중)" if direct.get("held") else "직접 보유: 없음"
 
 
 def daily_check_line(d: Optional[dict[str, Any]]) -> str:

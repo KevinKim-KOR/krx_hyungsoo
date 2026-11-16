@@ -1,28 +1,38 @@
 "use client";
 
-// ETF Exposure / 구성종목 탭 (POC2 — 2026-05-27).
+// 「ETF 구성종목」 / 구성종목 탭 (POC2 — 2026-05-27 · POC6-31 STEP 3).
 //
 // 책임:
-// - draft 의 후보 ETF 목록을 표시 + 수집 버튼.
-// - POST /market/constituents/refresh 호출 (1회 최대 10개 — service-level cap).
-// - GET /market/constituents/analysis 호출 → 상위 holdings + 집중도 표시.
+// - draft 의 후보 ETF 목록 + [구성종목 수집].
+// - POC6-31(판정 Q6 (b) · §1) — 수집은 서버 작업(POST /market/constituents/collect)이 필요한 ETF만 10개씩 받는다.
+//   진행 따라가기는 탭이 바뀌어도 이어지도록 화면(ETFExposureView)이 useCandidateCollect 로 들고, 이 탭은 보여 주기만 한다.
+//   상태는 이 목록으로 읽는다(GET .../collect/status?tickers=) — 같은 목록의 작업이 없으면 저장 기록으로 ETF별 상태
+//   (서버를 다시 켜도 같은 상태 · 판정 §1 넷째). 다른 목록의 작업이 돌면 그 작업을 이 목록 결과로 쓰지 않는다.
+//   읽기만으로 수집이 시작되지 않는다. 보유 구성종목 단계와 겹친 ETF는 서버가 한 번만 부른다.
+// - GET /market/constituents/analysis → ETF별 실제 구성일 · 상위 구성종목 + 집중도.
 //
-// AI Sessions 로 넘기는 흐름은 별도 TransferToAISessionsFromExposureCard 가 담당.
+// AI Sessions 로 넘기는 흐름은 별도 카드가 담당.
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ApiConfigError,
   ApiRequestError,
   CONSTITUENTS_TOP_K,
   type ConstituentItem,
   type ConstituentsAnalysisResponse,
-  fetchConstituentsAnalysis,
-  refreshConstituents,
-  type RefreshConstituentsItem,
 } from "@/lib/api";
+import {
+  fetchConstituentsCollectStatus,
+  postConstituentsCollect,
+  type ConstituentsCollectJob,
+} from "@/lib/api/constituentsStatus";
+import { TARGET_RULE_TEXT, countsText, itemReason, unloggedText } from "@/lib/constituentsText";
+import { md } from "@/lib/etfCompare";
 import type { ETFExposureDraft } from "@/lib/etfExposureDraft";
 
 const DASH = "-";
+const POLL_MS = 1500;
+const POLL_MAX = 240; // 6분 — 3묶음 · 묶음마다 30초 예산 + 요청 대기를 넉넉히 넘김
 
 function describeError(e: unknown): string {
   if (e instanceof ApiConfigError) return `구성 오류: ${e.message}`;
@@ -37,19 +47,207 @@ function fmtPct(value: number | null | undefined): string {
   return `${value.toFixed(2)}%`;
 }
 
-// 2026-08-19 — 다른 화면과 같은 배지를 쓴다(`.wb-hb` + 상태 변형). 이전에는 이
-// 화면만 테두리 있는 알약(`.constituent-status-badge`)이라 형태가 달랐다.
-function statusBadge(status: string): string {
-  switch (status) {
-    case "ok":
-      return "ok";
-    case "unavailable":
-      return "mute";
-    case "skipped_timeout":
-      return "warn";
-    default:
-      return "mute";
+// 구성일 표시(판정 §1 첫째) — 순위 끝날과 같으면 'M/D 기준 구성', 끝날보다 새면 '현재 편입 참고'.
+export function asofLabel(c: ConstituentItem, listEnd: string | null | undefined): string {
+  const base =
+    listEnd && c.asof > listEnd ? `${md(c.asof)} 구성 · 현재 편입 참고` : `${md(c.asof)} 기준 구성`;
+  return c.asof_confirmed === false ? `${base} · 원천 기준일 미확인` : base;
+}
+
+// 이 목록의 수집 상태 한 줄 — 진행 중 · 끝(이번 작업 결과) · 저장 기록 기준 상태(작업 없음).
+export function collectLine(job: ConstituentsCollectJob): string {
+  const target = job.target_date ? `목표일 ${md(job.target_date)}` : null;
+  if (job.state === "running") {
+    const head = job.batch_total
+      ? `${job.batch_index ?? 0}/${job.batch_total} 묶음 받는 중 — 받을 ETF ${job.total ?? 0}개 중 ${job.done ?? 0}개 끝`
+      : "구성종목 받는 중...";
+    return target ? `${head} · ${target}` : head;
   }
+  if (job.stored) {
+    if (job.stored_status === "read_failed") return `구성 상태 — ${job.reason ?? "읽지 못했습니다"}`;
+    const need = job.needs_check ?? 0;
+    return `저장 기록 기준 상태${target ? `(${target})` : ""} — ${countsText(job.counts, job.total ?? job.items.length, {
+      subject: "후보",
+      statusMode: true,
+    })}${need > 0 ? ` · 다시 확인 필요 ${need} — [구성종목 수집]으로 받습니다` : ""}`;
+  }
+  const tail = job.reason ? ` · ${job.reason}` : "";
+  const unlogged = unloggedText(job.unlogged_logs);
+  return `수집 끝 — ${target ? `${target} · ` : ""}${countsText(job.counts, job.total ?? job.items.length, {
+    subject: "후보",
+    calls: job.calls,
+    shared: job.shared,
+  })}${tail}${unlogged ? ` · ${unlogged}` : ""}`;
+}
+
+export interface CandidateCollect {
+  job: ConstituentsCollectJob | null; // 이 목록의 상태(작업 또는 저장 기록)
+  other: { total: number; done: number } | null; // 다른 목록의 작업이 도는 중
+  error: string | null;
+  running: boolean;
+  start: () => void;
+}
+
+// 후보 수집 상태 따라가기(화면이 들고 탭은 보여 주기만) — 탭을 바꿔도 이어지고, 이 목록의 작업이 끝나면 onDone(분석 다시 읽기).
+export function useCandidateCollect(tickers: string[], onDone: () => void): CandidateCollect {
+  const [job, setJob] = useState<ConstituentsCollectJob | null>(null);
+  const [other, setOther] = useState<{ total: number; done: number } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const ticks = useRef(0);
+  const busy = useRef(false);
+  const mine = useRef(false); // 이 목록의 작업을 따라가는 중(끝나면 onDone)
+  const alive = useRef(true);
+  const doneRef = useRef(onDone);
+  doneRef.current = onDone;
+  const key = tickers.join(",");
+  const tickersRef = useRef(tickers);
+  tickersRef.current = tickers;
+  // 검증자 r1 F4(같은 뿌리) — 상태 읽기 · 수집 시작 응답에 순번 · 가장 최근 요청의 응답만 반영(늦은 이전 응답이
+  // 진행 중 작업을 '끝남'처럼 덮어 따라가기를 멈추지 않게).
+  const reqSeq = useRef(0);
+  const issue = () => {
+    const my = ++reqSeq.current;
+    return () => my === reqSeq.current;
+  };
+
+  const stop = useCallback(() => {
+    if (timer.current !== null) clearInterval(timer.current);
+    timer.current = null;
+    ticks.current = 0;
+  }, []);
+
+  // 받은 상태 반영 — 더 따라갈지(true) 돌려준다.
+  const apply = useCallback((j: ConstituentsCollectJob): boolean => {
+    if (j.other_list) {
+      // POST 가 다른 목록의 작업을 돌려줌 — 그 작업을 이 목록 결과로 쓰지 않는다.
+      setOther({ total: j.total ?? 0, done: j.done ?? 0 });
+      return true;
+    }
+    setJob(j);
+    setOther(j.stored && j.other_job ? { total: j.other_job.total, done: j.other_job.done } : null);
+    if (!j.stored && j.state === "running") {
+      mine.current = true;
+      return true;
+    }
+    if (mine.current) {
+      mine.current = false;
+      doneRef.current();
+    }
+    return !!(j.stored && j.other_job);
+  }, []);
+
+  const follow = useCallback(() => {
+    stop();
+    timer.current = setInterval(async () => {
+      if (busy.current) return;
+      ticks.current += 1;
+      if (ticks.current > POLL_MAX) {
+        stop();
+        setError("상태 확인 시간이 너무 길어졌습니다. 잠시 뒤 이 화면을 다시 열면 이 목록의 상태를 다시 읽습니다.");
+        return;
+      }
+      busy.current = true;
+      const latest = issue();
+      try {
+        const j = await fetchConstituentsCollectStatus(tickersRef.current);
+        if (!alive.current || !latest()) return;
+        if (!apply(j)) stop();
+      } catch (e) {
+        if (!alive.current || !latest()) return;
+        stop();
+        setError(describeError(e));
+      } finally {
+        busy.current = false;
+      }
+    }, POLL_MS);
+  }, [apply, stop]);
+
+  // 목록이 정해지면(화면을 열 때) 이 목록의 상태를 한 번 읽는다 — 작업이 돌면 이어서 따라간다(읽기만).
+  useEffect(() => {
+    alive.current = true;
+    if (!key) return;
+    const latest = issue();
+    fetchConstituentsCollectStatus(tickersRef.current)
+      .then((j) => {
+        if (alive.current && latest() && apply(j)) follow();
+      })
+      .catch((e) => {
+        if (alive.current && latest()) setError(describeError(e));
+      });
+    return () => {
+      alive.current = false;
+      stop();
+    };
+  }, [key, apply, follow, stop]);
+
+  const start = useCallback(async () => {
+    setError(null);
+    const latest = issue();
+    try {
+      const j = await postConstituentsCollect(tickersRef.current);
+      if (!alive.current || !latest()) return;
+      // 이 목록의 작업(돌고 있거나 바로 끝남)이면 끝날 때 분석을 다시 읽는다 · 다른 목록 작업이면 그 작업이 끝날 때까지 안내만.
+      if (!j.other_list) mine.current = true;
+      if (apply(j)) follow();
+    } catch (e) {
+      if (latest()) setError(describeError(e));
+    }
+  }, [apply, follow]);
+
+  const running = !!job && !job.stored && job.state === "running";
+  return { job, other, error, running, start: () => void start() };
+}
+
+// POC6-31 사용자 직접 지시(2026-11-16) — [구성종목 수집] 버튼은 화면 제목 줄(ETFExposureView 머리 · 형제 화면과 같은 중간 버튼),
+// 수집 상태 줄은 탭과 상관없이 그 아래에 둔다. 탭 안의 예전 '후보 ETF 구성종목 수집' 카드는 없앴다.
+export function CollectButton({ collect, count }: { collect: CandidateCollect; count: number }) {
+  return (
+    <button
+      type="button"
+      className="wb-btn btn-md"
+      onClick={collect.start}
+      disabled={collect.running || !!collect.other || count === 0}
+      data-testid="cst-collect-btn"
+    >
+      {collect.running ? "수집 중..." : "구성종목 수집"}
+    </button>
+  );
+}
+
+export function CollectStatus({ collect }: { collect: CandidateCollect }) {
+  const { job, other, error } = collect;
+  return (
+    <>
+      {other ? (
+        <div className="message info" data-testid="cst-other-list">
+          다른 목록({other.total}개)을 받는 중({other.done}개 끝) — 끝난 뒤 이 목록의 [구성종목 수집]을 누르세요
+        </div>
+      ) : null}
+      {job && (job.state !== "idle" || job.stored) ? (
+        <div className="message info" data-testid="cst-collect-line">
+          {collectLine(job)}
+          {job.reason_detail ? (
+            <details className="tc-small">
+              <summary>자세히</summary>
+              {job.reason_detail}
+            </details>
+          ) : null}
+        </div>
+      ) : null}
+      {error ? <div className="message error">{error}</div> : null}
+    </>
+  );
+}
+
+// 수집 설명(상태 · 고른 후보 줄 아래 — 결론 → 버튼 → 설명 순서)
+export function CollectHelp() {
+  return (
+    <p className="helper" style={{ margin: 0 }} data-testid="cst-collect-help">
+      구성종목은 ETF마다 비중 상위 {CONSTITUENTS_TOP_K}개까지 받습니다(서버가 필요한 ETF만 10개씩 · 원천 기준일이 확인된
+      목표일 이상 구성은 다시 부르지 않음) · {TARGET_RULE_TEXT}.
+    </p>
+  );
 }
 
 interface Props {
@@ -59,104 +257,22 @@ interface Props {
   nameByTicker?: Record<string, string>;
   draft: ETFExposureDraft;
   analysis: ConstituentsAnalysisResponse | null;
-  setAnalysis: (a: ConstituentsAnalysisResponse | null) => void;
+  collect: CandidateCollect;
+  onPick?: (ticker: string, name: string | null) => void;
 }
 
-export default function ConstituentsTab({
-  draft,
-  analysis,
-  setAnalysis,
-  nameByTicker,
-}: Props) {
-  const [refreshing, setRefreshing] = useState<boolean>(false);
-  const [refreshItems, setRefreshItems] = useState<RefreshConstituentsItem[]>([]);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
-
-  const tickers = draft.candidate_snapshot
-    .map((c) => c.ticker)
-    .filter((t): t is string => !!t);
-
-  const handleRefresh = useCallback(async () => {
-    setRefreshing(true);
-    setErrorMessage(null);
-    setStatusMessage(null);
-    try {
-      const r = await refreshConstituents({
-        asof: draft.asof,
-        tickers,
-        top_k: CONSTITUENTS_TOP_K,
-        force: false,
-      });
-      setRefreshItems(r.items);
-      if (r.status === "rejected") {
-        setErrorMessage(r.message ?? "수집이 거부되었습니다.");
-      } else {
-        setStatusMessage(
-          `수집 완료: 성공 ${r.success_count} / 실패 ${r.fail_count} / 캐시 ${r.cached_count} / skip ${r.skipped_count}`,
-        );
-        // 수집 직후 analysis 재호출.
-        // 2026-06-01 FIX (검증자 A-1 NOTE 반영) — asof 는 omit. 백엔드가
-        // latest_constituent_asof MAX 를 사용 → Naver 의 referenceDate (예:
-        // 2026-06-01) 와 draft.asof (예: 2026-05-28) 불일치로 인한 0건 회피.
-        const a = await fetchConstituentsAnalysis(
-          tickers,
-          null,
-          CONSTITUENTS_TOP_K,
-        );
-        setAnalysis(a);
-      }
-    } catch (e) {
-      setErrorMessage(describeError(e));
-    } finally {
-      setRefreshing(false);
-    }
-  }, [draft.asof, tickers, setAnalysis]);
-
-  const refreshByTicker: Record<string, RefreshConstituentsItem> = {};
-  for (const it of refreshItems) {
-    refreshByTicker[it.ticker] = it;
-  }
+export default function ConstituentsTab({ draft, analysis, nameByTicker, collect, onPick }: Props) {
+  const listEnd = draft.list_condition?.end ?? draft.asof;
+  const itemByTicker = new Map((collect.job?.items ?? []).map((i) => [i.ticker, i]));
 
   return (
     <>
-      <div className="card">
-        <h2>후보 ETF 구성종목 수집</h2>
-        <p className="helper" style={{ marginBottom: 8 }}>
-          Naver Stock ETFComponent 기준 구성종목 데이터에서 후보 ETF 의 상위{" "}
-          {CONSTITUENTS_TOP_K}개 구성종목 + 비중을 수집합니다. 1회 최대 10개
-          후보까지 가능. 캐시가 있으면 외부 호출 없이 기존 데이터를 사용합니다.
-        </p>
-        <ul className="dashboard-status-list">
-          <li>기준일 (asof): <strong>{draft.asof}</strong></li>
-          <li>대상 ticker: <strong>{tickers.length}</strong>개</li>
-        </ul>
-        <div className="btn-row">
-          <button type="button" onClick={handleRefresh} disabled={refreshing || tickers.length === 0}>
-            {refreshing ? "수집 중..." : "구성종목 수집"}
-          </button>
-        </div>
-        {statusMessage ? (
-          <div className="message info" style={{ marginTop: 8 }}>
-            {statusMessage}
-          </div>
-        ) : null}
-        {errorMessage ? (
-          <div className="message error" style={{ marginTop: 8 }}>
-            {errorMessage}
-          </div>
-        ) : null}
-      </div>
-
       {analysis ? (
         <div className="card">
           <h2>상위 구성종목</h2>
           <p className="helper" style={{ marginBottom: 8 }}>
-            가용 {analysis.coverage.available_count} / 요청{" "}
-            {analysis.coverage.requested_count} · asof {analysis.asof}. ETF별
-            상위 구성종목이 접히지 않고 바로 보입니다 — 후보 ETF 간 종목 비교용.
-            중복률은 이 표시 깊이와 무관하게 상위{" "}
-            {analysis.overlap_top_k}건 기준으로 계산합니다.
+            구성 자료 {analysis.coverage.available_count}/{analysis.coverage.requested_count} · ETF마다 실제
+            구성일을 머리에 적습니다. 중복률은 이 표시 깊이와 무관하게 상위 {analysis.overlap_top_k}건 기준입니다.
           </p>
           {/* 2026-06-06 ETF Exposure Data Unfolding 1차 (지시문 §5.2 / AC-2) —
               구성종목 details 를 자동 펼침(open) 으로 표시. ETF별 종목이 한눈에
@@ -181,20 +297,31 @@ export default function ConstituentsTab({
                 <b className="cst-name">
                   {c.etf_name ?? nameByTicker?.[c.etf_ticker] ?? c.etf_ticker}
                 </b>
-                <span className={`wb-hb ${statusBadge(c.status)}`}>{c.status}</span>
+                <span className={`wb-hb ${c.status === "ok" ? "ok" : "mute"}`}>
+                  {c.status === "ok" ? asofLabel(c, listEnd) : "구성 자료 없음"}
+                </span>
                 <code className="cst-tk">{c.etf_ticker}</code>
-                {refreshByTicker[c.etf_ticker]?.from_cache ? (
-                  <span className="cst-cache">캐시</span>
+                {itemByTicker.get(c.etf_ticker) ? (
+                  <span className="cst-cache">{itemByTicker.get(c.etf_ticker)?.label}</span>
+                ) : null}
+                {onPick && c.status === "ok" ? (
+                  <button
+                    type="button"
+                    className="wb-btn btn-md"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      onPick(c.etf_ticker, nameByTicker?.[c.etf_ticker] ?? null);
+                    }}
+                  >
+                    후보로 고르기
+                  </button>
                 ) : null}
               </summary>
               {c.status === "ok" ? (
                 <>
                   {/* summary 줄에서 뺀 source 를 여기 남긴다 — 어디서 온 값인지는
                       필요할 때 확인할 수 있어야 한다. */}
-                  <div className="cst-src">
-                    {c.source ?? DASH}
-                    {c.asof ? ` · asof ${c.asof}` : ""}
-                  </div>
+                  <div className="cst-src">출처: 네이버 구성종목 · 구성일 {md(c.asof)}</div>
                   <ul className="dashboard-status-list" style={{ marginTop: 6 }}>
                     <li>Top 1 집중도: <strong>{fmtPct(c.concentration.top1_weight_pct)}</strong></li>
                     <li>Top 3 집중도: <strong>{fmtPct(c.concentration.top3_weight_pct)}</strong></li>
@@ -265,8 +392,8 @@ export default function ConstituentsTab({
                 </>
               ) : (
                 <div className="helper" style={{ marginTop: 6 }}>
-                  구성종목 데이터가 없습니다 (unavailable). 외부 source 가 응답하지
-                  않았거나 데이터가 없습니다.
+                  구성 자료가 없습니다 — 위 [구성종목 수집]으로 받습니다.
+                  {itemByTicker.get(c.etf_ticker) ? ` (${itemReason(itemByTicker.get(c.etf_ticker)!)})` : ""}
                 </div>
               )}
             </details>

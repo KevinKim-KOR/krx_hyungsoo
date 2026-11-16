@@ -39,6 +39,33 @@ vi.mock("@/lib/api/refreshAll", async (importOriginal) => ({
   fetchRefreshAllStatus: (...a: unknown[]) => fetchRefreshAllStatus(...a),
 }));
 
+// POC6-31 — 보유 ETF 구성 상태(저장 자료만). 기본 = 다시 확인할 보유 ETF 없음.
+const fetchHoldingsConstituentsStatus = vi.fn();
+vi.mock("@/lib/api/constituentsStatus", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  fetchHoldingsConstituentsStatus: (...a: unknown[]) => fetchHoldingsConstituentsStatus(...a),
+}));
+const consStatus = (needs = 0) => ({
+  status: "ok",
+  reason: null,
+  target_date: "2026-11-13",
+  running: false,
+  total: 2 + needs,
+  needs_check: needs,
+  counts: { existing: 2, not_checked: needs },
+  items: Array.from({ length: needs }, (_, i) => ({
+    ticker: `E${i}`,
+    name: `보유 ETF ${i}`,
+    result: "not_checked",
+    label: "아직 확인 안 함",
+    reason: "구성 자료 없음 — [최신 자료 갱신]에서 받습니다",
+    source_asof: null,
+    kept_asof: null,
+    kept_confirmed: false,
+    needs_check: true,
+  })),
+});
+
 vi.mock("@/lib/api", () => ({
   fetchMarketTopnLatest: (...a: unknown[]) => fetchMarketTopnLatest(...a),
   fetchEnrichedHoldings: (...a: unknown[]) => fetchEnrichedHoldings(...a),
@@ -233,6 +260,7 @@ beforeEach(() => {
   __resetQueryCache();
   vi.clearAllMocks();
   primeAll();
+  fetchHoldingsConstituentsStatus.mockResolvedValue(consStatus());
 });
 
 // POC5-UI-03 — 접기(시장 수치와 거래량 · 수치 더보기 · 현재 제공 범위와 남은 기능 · 모두 보기)를
@@ -442,6 +470,7 @@ describe("TodayInvestmentCheckView", () => {
   });
 
   it("AC-4/AC-5 큐 분리: 정비 항목이 '오늘 내가 확인할 것' 안에 없다", async () => {
+    fetchHoldingsConstituentsStatus.mockResolvedValue(consStatus(2));
     await renderView();
     for (const label of ["보유 점검", "잘 오르는 ETF"]) {
       const judgment = screen.getByLabelText(label);
@@ -450,24 +479,29 @@ describe("TodayInvestmentCheckView", () => {
       expect(within(judgment).queryByText(/오래되었습니다/)).toBeNull();
       expect(within(judgment).queryByText(/지금 다시 불러오기/)).toBeNull();
     }
-    // POC6-27 판정 Q2 — 구성종목 등 정비 항목은 「자료 확인」 펼침의 정비 목록에 있다(구성종목 미수집 2건 fixture).
+    // POC6-27 판정 Q2 — 구성종목 등 정비 항목은 「자료 확인」 펼침의 정비 목록에 있다.
+    // POC6-31(판정 Q16) — 보유 ETF 를 종목 단위로 센 '다시 확인 필요' 2개(보유 구성 상태 응답).
     const maint = screen.getByLabelText("자료 업데이트 목록");
     expect(
-      within(maint).getByText(/ETF가 담고 있는 종목 자료가 없습니다/),
+      within(maint).getByText(/구성종목 자료가 없거나 목표일\(11\/13\)에 못 미친 보유 ETF 2개 — \[최신 자료 갱신\]에서 받습니다/),
     ).toBeInTheDocument();
   });
 
   it("판정 Q2: 바로 조치할 일(보유 현재가)은 맨 위 카드 · 버튼, 기존 정비 항목은 「자료 확인」 목록의 이동 버튼", async () => {
-    // fixture: constituents_unavailable(heavy) + 기본 holdings price_missing(light).
+    // fixture: 보유 구성종목 다시 확인 1(heavy · POC6-31) + 기본 holdings price_missing(light).
     fetchHoldingsMarketEvidence.mockResolvedValue(
       evidenceOk({ evidence_unavailable_count: 2, constituents_unavailable_count: 1 }),
     );
+    fetchHoldingsConstituentsStatus.mockResolvedValue(consStatus(1));
     await renderView();
     const top = screen.getByLabelText("자료 최신화 필요");
     expect(within(top).getByText(/보유 종목 현재가를 불러오지 못했습니다/)).toBeInTheDocument();
     expect(within(top).getByRole("button", { name: "최신 자료 갱신" })).toBeInTheDocument();
     const list = screen.getByLabelText("자료 업데이트 목록");
-    expect(within(list).getByRole("button", { name: "구성종목 업데이트로" })).toBeInTheDocument();
+    // POC6-31 — 보유 근거의 예전 구성종목 개수(constituents_unavailable_count)는 더 쓰지 않는다 · 구성종목 항목은 [최신 자료 갱신]
+    expect(within(list).queryByText(/ETF가 담고 있는 종목 자료가 없습니다/)).toBeNull();
+    expect(within(list).getByText(/못 미친 보유 ETF 1개/)).toBeInTheDocument();
+    expect(within(list).getAllByRole("button", { name: "최신 자료 갱신" }).length).toBeGreaterThan(0);
     // 경량(현재가) 항목은 목록에 다시 나오지 않는다(같은 항목 두 곳 없음).
     expect(within(list).queryByText(/보유 종목 현재가를 불러오지 못했습니다/)).toBeNull();
   });
@@ -608,10 +642,22 @@ describe("TodayInvestmentCheckView", () => {
     expect(onNavigate).not.toHaveBeenCalledWith("oci_status");
   });
 
-  it("AC-14 정비 이동: 항목별 직접 라우팅 (구성종목 → etf_exposure)", async () => {
+  it("AC-14 · POC6-31 Q16 — 구성종목 항목은 이동 대신 이 화면 [최신 자료 갱신]을 실행(「ETF 구성종목」으로 보내지 않음)", async () => {
+    fetchHoldingsConstituentsStatus.mockResolvedValue(consStatus(1));
+    postRefreshAll.mockResolvedValue({
+      status: "accepted",
+      state: "running",
+      job_id: "j1",
+      started_at: null,
+      finished_at: null,
+      steps: { holdings: { status: "pending" }, market: { status: "pending" } },
+    });
     const { onNavigate } = await renderView();
-    fireEvent.click(within(screen.getByLabelText("자료 업데이트 목록")).getByRole("button", { name: "구성종목 업데이트로" }));
-    expect(onNavigate).toHaveBeenCalledWith("etf_exposure");
+    const list = screen.getByLabelText("자료 업데이트 목록");
+    const item = within(list).getByText(/못 미친 보유 ETF 1개/).closest("li") as HTMLElement;
+    fireEvent.click(within(item).getByRole("button", { name: "최신 자료 갱신" }));
+    await waitFor(() => expect(postRefreshAll).toHaveBeenCalledTimes(1));
+    expect(onNavigate).not.toHaveBeenCalledWith("etf_exposure");
   });
 
   // ── POC6-29 판정 Q7 — [최신 자료 갱신] 한 번(PC 서버 묶음 작업 · 보유 현재가 → 시장 자료) ──
@@ -1108,5 +1154,40 @@ describe("POC5-UI-03 「오늘의 투자 점검」 기본 화면 · 아래 묶�
     await renderFolded();
     await waitFor(() => expect(screen.queryByLabelText("자료 최신화 필요")).toBeNull());
     expect(screen.getByRole("button", { name: "최신 자료 갱신" })).toBeInTheDocument();
+  });
+});
+
+describe("POC6-31 보유 구성 상태 — 읽지 못함 · 화면 재진입(검토 지적 frontend#3 · #4)", () => {
+  it("상태 요청이 실패하면 「자료 확인」 줄이 '갱신 필요 없음'이 아니라 확인 못한 원천으로 적는다", async () => {
+    fetchHoldingsConstituentsStatus.mockRejectedValue(new Error("down"));
+    await renderView();
+    const dataArea = () => screen.getAllByLabelText("자료 · 연구 상태").map((e) => e.textContent ?? "").join(" ");
+    await waitFor(() => expect(dataArea()).toContain("보유 구성종목 자료를 불러오지 못해 확인하지 못했습니다"));
+  });
+
+  it("저장소 잠김(read_failed)도 확인 못한 원천으로 적는다", async () => {
+    fetchHoldingsConstituentsStatus.mockResolvedValue({
+      ...consStatus(),
+      status: "read_failed",
+      reason: "자료 저장소가 잠겨 구성 상태를 읽지 못했습니다 — 잠시 뒤 다시 읽어 주세요",
+      items: [],
+      total: 0,
+    });
+    await renderView();
+    const dataArea = screen.getAllByLabelText("자료 · 연구 상태").map((e) => e.textContent ?? "").join(" ");
+    expect(dataArea).toContain("보유 구성종목 자료를 불러오지 못해 확인하지 못했습니다");
+    expect(screen.getByTestId("tc-constituents-result").textContent).toContain("자료 저장소가 잠겨");
+  });
+
+  it("다른 메뉴에 갔다 돌아오면 보유 구성 상태를 다시 읽는다(자리를 비운 사이 끝난 수집 반영 · PLAN C11)", async () => {
+    const onNavigate = vi.fn();
+    const first = render(<TodayInvestmentCheckView onNavigate={onNavigate} />);
+    await waitFor(() => expect(fetchHoldingsConstituentsStatus).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getByTestId("tc-constituents-result")).toBeInTheDocument());
+    first.unmount();
+    fetchHoldingsConstituentsStatus.mockResolvedValue(consStatus(2));
+    render(<TodayInvestmentCheckView onNavigate={onNavigate} />);
+    await waitFor(() => expect(fetchHoldingsConstituentsStatus).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.getByTestId("tc-constituents-result").textContent).toContain("다시 확인 필요 2"));
   });
 });

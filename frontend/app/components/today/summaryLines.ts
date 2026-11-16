@@ -143,13 +143,16 @@ export function dataRow(
   nav?: QueryState<NavDiscountLatestResponse>,
   evidence?: QueryState<HoldingsMarketEvidenceResponse>,
   unknownSources: string[] = [],
+  constituents?: QueryState<unknown>,
 ): SummaryRow {
   // POC6-27 — 정비 목록은 이 줄 바로 아래 펼침(「자료 업데이트 목록」)이라 스크롤 버튼이 없다.
   const actions: SummaryAction[] = [];
   // 정비 항목을 만든 원천 중 다시 읽기에 실패해 이전 값을 쓰는 것(그 값을 받은 시각 · 검토 지적 3)
+  // POC6-31 — 보유 구성종목 상태(구성종목 할 일의 출처)도 같은 규칙.
   const stale = joinStale(
     nav ? staleOf("ETF 기준가", nav) : null,
     evidence ? staleOf("보유 근거", evidence) : null,
+    constituents ? staleOf("보유 구성종목", constituents) : null,
   );
   if (loading) {
     return { id: "data", area: "자료 확인", tone: "muted", badge: "확인 중", text: "자료 상태를 확인하는 중입니다", basis: null, staleNote: stale, actions };
@@ -270,16 +273,21 @@ export function summaryTasks(
     const dates = [kospiDate ? `KOSPI ${kospiDate}` : null, etfDate ? `ETF 가격 ${etfDate}` : null]
       .filter(Boolean)
       .join(" · ");
+    // POC6-31 — 보유 구성종목만 남았으면 시장 자료가 아니라 구성종목 안내(같은 [최신 자료 갱신]으로 해소).
+    const consOnly = !flowReason && marketItems.length > 0 && marketItems.every((it) => it.source === "constituents");
+    const hasCons = marketItems.some((it) => it.source === "constituents");
     tasks.push({
       id: "market_refresh",
-      title: "시장 자료 갱신이 필요합니다.",
+      title: consOnly ? "보유 ETF 구성종목을 받아야 합니다." : "시장 자료 갱신이 필요합니다.",
       reasons: [
-        dates ? `지금 PC에 저장된 시장 자료: ${dates}` : null,
+        dates && !consOnly ? `지금 PC에 저장된 시장 자료: ${dates}` : null,
         ...marketItems.map((it) => it.text),
         flowReason,
       ].filter((x): x is string => !!x),
       doText:
-        "[최신 자료 갱신]을 눌러 주세요(맨 위 버튼과 같은 작업 · 보유 현재가 → 시장 자료). 갱신해도 다른 자료 항목이 모두 해결되는 것은 아닙니다." +
+        "[최신 자료 갱신]을 눌러 주세요(맨 위 버튼과 같은 작업 · 보유 현재가 → 시장 자료" +
+        (hasCons ? " → 보유 구성종목" : "") +
+        "). 갱신해도 다른 자료 항목이 모두 해결되는 것은 아닙니다." +
         (flowReason ? " 수급은 OCI가 모은 자료를 이 버튼으로 PC에 반영합니다(자동 실행은 보관본만 받습니다)." : ""),
       action: { label: "최신 자료 갱신", target: { kind: "market_refresh" }, primary: true },
     });

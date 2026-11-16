@@ -68,6 +68,7 @@ import type { MenuKey } from "./LeftSidebar";
 import HelpPopover from "./holdings_risk_evidence/HelpPopover";
 import KospiDetailSection from "./today/KospiDetailSection";
 import MaintenanceQueueSection from "./today/MaintenanceQueueSection";
+import HoldingsConstituentsResult from "./today/HoldingsConstituentsResult";
 import InDevelopmentSection from "./today/InDevelopmentSection";
 import MarketFlowBlock from "./today/MarketFlowBlock";
 import MarketEvidenceFold from "./today/MarketEvidenceFold";
@@ -78,6 +79,11 @@ import { CandidatesCheckCard, HoldingsCheckCard, SUMMARY_SOURCE_LABEL } from "./
 import { collectMaintenance } from "./today/maintenanceQueue";
 import { useLightRefreshState } from "./today/useLightRefreshState";
 import { useTodayRefresh } from "./today/useTodayRefresh";
+import {
+  fetchHoldingsConstituentsStatus,
+  HOLDINGS_CONSTITUENTS_KEY,
+  type HoldingsConstituentsStatus,
+} from "@/lib/api/constituentsStatus";
 import { KOSPI_SERIES_KEY } from "./today/KospiChart";
 import { useMarketFlowContext } from "./marketflow/useMarketFlowContext";
 import SummarySection from "./today/SummarySection";
@@ -198,6 +204,18 @@ export default function TodayInvestmentCheckView({ onNavigate }: Props) {
   // POC6-29 보완 2차 — 아침 요약 기준(준비 상태 · 아침 판정) · 수급 5거래일(저장값만)
   const morning = useSharedQuery<MorningBasisResponse>(MORNING_BASIS_KEY, () => fetchMorningBasis());
   const short = useSharedQuery<ShortFlowsResponse>(SHORT_FLOWS_KEY, () => fetchShortFlows());
+  // POC6-31 — 보유 ETF 구성 상태(저장 자료만 · 할 일 개수 · 보유 구성종목 줄)
+  const consStatus = useSharedQuery<HoldingsConstituentsStatus>(HOLDINGS_CONSTITUENTS_KEY, () =>
+    fetchHoldingsConstituentsStatus(),
+  );
+  // PLAN C11 — 화면에 들어올 때마다 다시 읽는다(저장 자료만 · 가벼움 · 자리를 비운 사이 끝난 수집도 반영).
+  // 처음 들어올 때(캐시 없음)는 위 조회가 이미 읽으므로 캐시에 값이 있을 때만.
+  const consCachedAtMount = useRef(consStatus.phase === "success");
+  const consReload = useRef(consStatus.reloadAsync);
+  consReload.current = consStatus.reloadAsync;
+  useEffect(() => {
+    if (consCachedAtMount.current) consReload.current().catch(() => undefined);
+  }, []);
 
   const refreshing = useLightRefreshState();
   const [reload, setReload] = useState<ReloadState>({ phase: "idle" });
@@ -260,6 +278,10 @@ export default function TodayInvestmentCheckView({ onNavigate }: Props) {
             warn: true,
           }),
         );
+    },
+    // POC6-31 — 보유 구성종목 단계가 끝나면 저장 자료로 만든 상태를 다시 읽는다(할 일 개수 · ETF별 보기).
+    onConstituentsDone: () => {
+      consStatus.reloadAsync().catch(() => undefined);
     },
     onHoldingsDone: (step) => {
       refreshing.setRunning();
@@ -399,6 +421,8 @@ export default function TodayInvestmentCheckView({ onNavigate }: Props) {
       // POC6-29 보완 2차 — 저장값만(아침 요약 기준 · 수급 5거래일)
       { label: "아침 요약 기준", key: MORNING_BASIS_KEY, run: () => fetchMorningBasis(), q: morning },
       { label: "수급 5거래일", key: SHORT_FLOWS_KEY, run: () => fetchShortFlows(), q: short },
+      // POC6-31 — 저장 자료만(구성종목 외부 조회 없음 · 맨 끝: 앞 항목은 위치 번호로 읽는다)
+      { label: "보유 구성종목", key: HOLDINGS_CONSTITUENTS_KEY, run: () => fetchHoldingsConstituentsStatus(), q: consStatus },
     ];
     const results = await Promise.allSettled(jobs.map((j) => j.run()));
     const at = Date.now();
@@ -478,6 +502,7 @@ export default function TodayInvestmentCheckView({ onNavigate }: Props) {
     quick,
     kodex,
     morning,
+    consStatus,
     short,
   ]);
 
@@ -565,15 +590,23 @@ export default function TodayInvestmentCheckView({ onNavigate }: Props) {
   );
 
   const maintLoading =
-    holdings.phase === "loading" || evidence.phase === "loading" || nav.phase === "loading" || market.phase === "loading";
-  const maintenance = collectMaintenance(holdings, evidence, nav, market);
+    holdings.phase === "loading" ||
+    evidence.phase === "loading" ||
+    nav.phase === "loading" ||
+    market.phase === "loading" ||
+    consStatus.phase === "loading";
+  const maintenance = collectMaintenance(holdings, evidence, nav, market, consStatus);
   const tasks = summaryTasks(maintenance, maintLoading, market, holdings, flow, series, forward);
   const unknownSources = [
     holdings.phase === "error" ? "보유" : null,
     market.phase === "error" ? "시장 판정" : null,
+    // POC6-31 — 보유 구성 상태를 못 읽으면(요청 실패 · 저장소 잠김) 구성종목 할 일이 '없음'으로 보이지 않게
+    consStatus.phase === "error" || (consStatus.phase === "success" && consStatus.data.status === "read_failed")
+      ? "보유 구성종목"
+      : null,
   ].filter((x): x is string => !!x);
   const dataRows = [
-    dataRow(maintenance, maintLoading, tasks.length > 0, nav, evidence, unknownSources),
+    dataRow(maintenance, maintLoading, tasks.length > 0, nav, evidence, unknownSources, consStatus),
     researchRow(forward),
   ];
   const freshRows = needsAttention(freshnessRows(sourcesNow(), "reload"));
@@ -692,6 +725,7 @@ export default function TodayInvestmentCheckView({ onNavigate }: Props) {
             {pdLine.text}
           </p>
         ) : null}
+        <HoldingsConstituentsResult step={allStatus?.steps.constituents} status={consStatus} />
         {basisResult ? (
           <p className={basisResult.warn ? "tc-warn tc-small" : "tc-small"} data-testid="tc-basis-result">
             {basisResult.text}

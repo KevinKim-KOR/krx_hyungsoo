@@ -19,7 +19,7 @@ from __future__ import annotations
 import re
 from itertools import combinations
 from pathlib import Path
-from typing import Optional
+from typing import Mapping, Optional
 
 from app.etf_constituents_store import (
     ConstituentRow,
@@ -174,12 +174,59 @@ def compute_repeated_core_holdings(
     return out
 
 
+PAIR_SAME_DATE = "same_date"
+PAIR_DIFFERENT_DATE = "different_date"
+PAIR_UNCONFIRMED = "unconfirmed"
+PAIR_NO_DATA = "no_data"
+
+
+def _pair_scope(
+    left_tk: str,
+    right_tk: str,
+    has_left: bool,
+    has_right: bool,
+    dates: Mapping[str, str],
+    confirmed: Mapping[str, bool],
+    default_asof: str,
+) -> dict:
+    """쌍의 범위(POC6-31 판정 Q7 · §1 셋째 · PLAN §8-1).
+
+    - 한쪽이라도 자료가 없으면 'no_data'(없는 쪽 날짜는 비움 · 같은 날짜 쌍으로 세지 않음).
+    - 양쪽 원천 기준일이 확인되고 날짜가 같을 때만 'same_date'. 확인 안 된 쪽이 있으면(확인 정보를 받지 못한 경우
+      포함 · 검증자 r1 F2 — 날짜 지정 호출도 같은 기준) 'unconfirmed', 둘 다 확인됐지만 날짜가 다르면
+      'different_date'(둘 다 참고).
+    - 날짜 = ETF별 날짜(`dates`) · 없으면 읽은 날짜(`default_asof`).
+    """
+    if not has_left or not has_right:
+        return {
+            "left_asof": dates.get(left_tk, default_asof) if has_left else None,
+            "right_asof": dates.get(right_tk, default_asof) if has_right else None,
+            "same_date": None,
+            "pair_scope": PAIR_NO_DATA,
+        }
+    la, ra = dates.get(left_tk, default_asof), dates.get(right_tk, default_asof)
+    if not (la and ra and confirmed.get(left_tk) and confirmed.get(right_tk)):
+        scope = PAIR_UNCONFIRMED
+    elif la == ra:
+        scope = PAIR_SAME_DATE
+    else:
+        scope = PAIR_DIFFERENT_DATE
+    return {
+        "left_asof": la,
+        "right_asof": ra,
+        "same_date": scope == PAIR_SAME_DATE,
+        "pair_scope": scope,
+    }
+
+
 def compute_analysis(
     *,
     tickers: list[str],
     asof: str,
     top_k: int = DEFAULT_TOP_K_FOR_OVERLAP,
     db_path: Path = DEFAULT_DB_PATH,
+    asof_by_ticker: Optional[Mapping[str, str]] = None,
+    preloaded: Optional[Mapping[str, tuple[list[ConstituentRow], bool]]] = None,
 ) -> dict:
     """GET /market/constituents/analysis 의 핵심 계산.
 
@@ -190,13 +237,27 @@ def compute_analysis(
     `top_k` 는 `top_holdings` 표시에만 쓰고, **중복률·반복 등장 집계는 언제나
     상위 10건(`DEFAULT_TOP_K_FOR_OVERLAP`)** 으로 계산한다. 화면의 `Top 10 기준`
     문구와 `common_count_top10` 필드명이 계속 사실이어야 하기 때문이다.
+
+    POC6-31(PLAN 판정 Q7) — `asof_by_ticker` 를 주면 ETF마다 그 날짜(ETF별 실제 날짜)로 읽는다. 쌍마다
+    양쪽 날짜와 범위(`pair_scope` · `same_date`)를 붙인다 — 같은 구성일은 양쪽 원천일이 확인된 같은 날짜뿐이다.
+    `preloaded` = 한 읽기 트랜잭션에서 읽은 ETF별 (행, 원천일 확인)(`etf_constituents_status.read_analysis_rows` ·
+    검증자 r3 F8). 주지 않으면 행만 읽고 원천일은 미확인(검증자 r1 F2 · r2 F5 · F6).
     """
+    dates = dict(asof_by_ticker or {})
+    confirmed: dict[str, bool] = {}
     per_ticker_rows: dict[str, list[ConstituentRow]] = {}
     constituents_out: list[dict] = []
     available_count = 0
     unavailable_count = 0
     for tk in tickers:
-        rows = fetch_constituents(etf_ticker=tk, asof=asof, db_path=db_path)
+        tk_asof = dates.get(tk, asof)
+        if preloaded is not None:
+            # 검증자 r3 F8 — 날짜 · 행 · 원천일 확인을 한 읽기 트랜잭션에서 읽은 것(`read_analysis_rows`)을 그대로 쓴다.
+            rows, confirmed[tk] = preloaded.get(tk, ([], False))
+        else:
+            # 확인 정보를 받지 못한 호출(날짜만) — 행만 읽고 원천일은 미확인(검증자 r1 F2 · B-1).
+            rows = fetch_constituents(etf_ticker=tk, asof=tk_asof, db_path=db_path)
+            confirmed[tk] = False
         per_ticker_rows[tk] = rows
         if not rows:
             unavailable_count += 1
@@ -206,7 +267,8 @@ def compute_analysis(
                     "etf_name": None,
                     "status": "unavailable",
                     "source": None,
-                    "asof": asof,
+                    "asof": tk_asof,
+                    "asof_confirmed": None,  # 자료 없음
                     "top_holdings": [],
                     "concentration": {
                         "top1_weight_pct": None,
@@ -240,7 +302,8 @@ def compute_analysis(
                 "etf_name": etf_name,
                 "status": "ok",
                 "source": source,
-                "asof": asof,
+                "asof": tk_asof,
+                "asof_confirmed": confirmed.get(tk),
                 "top_holdings": top_holdings,
                 "concentration": compute_concentration(rows),
             }
@@ -250,6 +313,15 @@ def compute_analysis(
     for left_tk, right_tk in combinations(tickers, 2):
         left_rows = per_ticker_rows.get(left_tk, [])
         right_rows = per_ticker_rows.get(right_tk, [])
+        when = _pair_scope(
+            left_tk,
+            right_tk,
+            bool(left_rows),
+            bool(right_rows),
+            dates,
+            confirmed,
+            asof,
+        )
         if not left_rows or not right_rows:
             # 한쪽이 unavailable 이면 의미 없는 0 0 0 결과 — 표시는 하되 null.
             overlap_matrix.append(
@@ -259,6 +331,7 @@ def compute_analysis(
                     "common_count_top10": 0,
                     "weighted_overlap_pct": None,
                     "common_holdings": [],
+                    **when,
                 }
             )
             continue
@@ -271,6 +344,7 @@ def compute_analysis(
                 "left_ticker": left_tk,
                 "right_ticker": right_tk,
                 **pair,
+                **when,
             }
         )
 

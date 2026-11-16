@@ -10,7 +10,10 @@ import type {
   MarketTopNResponse,
   NavDiscountLatestResponse,
 } from "@/lib/api";
+import type { HoldingsConstituentsStatus } from "@/lib/api/constituentsStatus";
+import { md } from "@/lib/etfCompare";
 import { kospiStatusText, kospiStatusView } from "@/lib/kospiStatus";
+import { kstMdHm } from "@/lib/marketNowText";
 import { vixFreshnessNotice } from "@/lib/vixFreshness";
 import type { MenuKey } from "../LeftSidebar";
 
@@ -42,7 +45,8 @@ export type MaintenanceItem = {
   // 정비 큐 판정 근거의 정식 표준은 후속 설계에서 확정 (임시 문구).
   reason?: string;
   // POC6-27 — 위 「자료 최신화 필요」의 코스피 줄과 같은 항목(「자료 확인」 목록에서는 겹치지 않게 뺀다).
-  source?: "kospi";
+  // POC6-31 — constituents = 보유 ETF 구성종목(같은 [최신 자료 갱신]으로 해소 · 「지금 할 일」 문장을 나눠 쓴다).
+  source?: "kospi" | "constituents";
 };
 
 export function collectMaintenance(
@@ -50,6 +54,8 @@ export function collectMaintenance(
   evidence: QueryState<HoldingsMarketEvidenceResponse>,
   nav: QueryState<NavDiscountLatestResponse>,
   market: QueryState<MarketTopNResponse>,
+  // POC6-31(판정 Q16) — 보유 ETF 구성 상태. 없으면(예전 호출) 구성종목 항목을 만들지 않는다.
+  constituents?: QueryState<HoldingsConstituentsStatus>,
 ): MaintenanceItem[] {
   const list: MaintenanceItem[] = [];
 
@@ -117,21 +123,43 @@ export function collectMaintenance(
     }
   }
 
+  // POC6-31(판정 Q16) — 보유 ETF 구성종목: 보유 ETF 를 종목 단위로 센 '다시 확인 필요' 수
+  // (직접 보유 주식 · 계좌 행 · 시장 후보 자료 상태 뺌) · 해소 = 이 화면 [최신 자료 갱신](보유 구성종목 단계).
+  if (constituents?.phase === "success" && constituents.data.status === "ok" && constituents.data.needs_check > 0) {
+    const c = constituents.data;
+    const by = (k: string) => c.items.filter((i) => i.result === k).length;
+    const parts = [
+      ["not_checked", "아직 확인 안 함"],
+      ["target_wait", "목표일 자료 대기"],
+      ["failed", "받기 실패"],
+      ["timeout", "시간 초과로 조회 안 함"],
+      ["locked", "저장 잠김"],
+      ["no_source_date", "원천 기준일 미확인"],
+    ]
+      .filter(([k]) => by(k) > 0)
+      .map(([k, label]) => `${label} ${by(k)}`);
+    // PLAN C13 — 마지막 시도 시각(다시 확인이 필요한 보유 ETF 의 마지막 확인 기록 중 가장 늦은 것 · 없으면 '없음')
+    const lastTried = c.items
+      .filter((i) => i.needs_check && i.last_checked_at)
+      .map((i) => i.last_checked_at as string)
+      .sort()
+      .pop();
+    list.push({
+      task: "market_refresh",
+      text: `구성종목 자료가 없거나 목표일(${md(c.target_date)})에 못 미친 보유 ETF ${c.needs_check}개 — [최신 자료 갱신]에서 받습니다 · ${
+        lastTried ? `마지막 시도 ${kstMdHm(lastTried)}` : "마지막 시도 없음"
+      }`,
+      kind: "heavy",
+      target: "today_check",
+      actionLabel: "최신 자료 갱신",
+      reason: `보유 ETF ${c.total}개 중 ${parts.join(" · ")} · ETF별 사유는 위 '보유 구성종목' 줄의 [ETF별 보기]에서 봅니다.`,
+      source: "constituents",
+    });
+  }
+
   // 보유 ETF 관련 자료 상태.
   if (evidence.phase === "success") {
     const s = evidence.data.summary;
-    if (s.constituents_unavailable_count > 0) {
-      // 구성종목 수집은 대량 작업 → heavy (상세 화면).
-      list.push({
-        task: "other",
-        text: `ETF가 담고 있는 종목 자료가 없습니다 (${s.constituents_unavailable_count}건)`,
-        kind: "heavy",
-        target: "etf_exposure",
-        actionLabel: "구성종목 업데이트로",
-        reason:
-          "이 ETF가 담고 있는 종목·비중(구성종목) 자료가 아직 수집되지 않았습니다. 구성종목 화면에서 수집합니다.",
-      });
-    }
     if (s.evidence_unavailable_count > 0) {
       // 시장 비교 evidence 는 시장 자료 갱신이 필요 → 경량 갱신(현재가)으로 해소
       // 안 됨 → heavy (상세 화면). (2026-07-30 재분류: light→heavy)

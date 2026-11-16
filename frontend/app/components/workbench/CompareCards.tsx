@@ -236,8 +236,7 @@ export function CompareEvidence({
   holdHead,
   candHead,
   holdingDecline,
-  holdingExposure,
-  candidateExposure,
+  cons,
   children,
 }: {
   focus: CompareRole;
@@ -247,8 +246,8 @@ export function CompareEvidence({
   holdHead: CompareHeadInfo;
   candHead: CompareHeadInfo;
   holdingDecline: string;
-  holdingExposure: string;
-  candidateExposure: string;
+  // POC6-31 STEP 4(C22) — 예전 '구성종목 겹침' 자리의 구성종목 비교(후보 · 보유 탭 공통 · 고른 두 종목의 비교).
+  cons: ReactNode;
   children: ReactNode;
 }) {
   const isHolding = focus === "holding";
@@ -292,9 +291,11 @@ export function CompareEvidence({
         </dd>
         <dt>하락 판정(20저장일)</dt>
         <dd data-testid="hcc-e-decline">{isHolding ? holdingDecline : "보유 종목만 판정합니다"}</dd>
-        <dt>구성종목 겹침</dt>
-        <dd data-testid="hcc-e-cons">{isHolding ? holdingExposure : candidateExposure}</dd>
       </dl>
+      <div className="pe-wrap" data-testid="hcc-e-cons">
+        <div className="pe-title">구성종목 비교 — 후보 주요 주식과 내 보유</div>
+        {cons}
+      </div>
       <div className="ec-small">거래량 · 가격 흔들림은 아래 판단 근거 미리보기에서 봅니다.</div>
       <div className="hcc-preview" data-testid="hcc-preview">
         {children}

@@ -83,6 +83,9 @@ export default function RankingList({ s, onNavigate }: { s: CompareSummaryOk; on
         </span>
         <span className="ec-small">이 화면 조건의 공통 기간 목록 · 정렬은 이 목록 안의 표시 순서만 바꿉니다</span>
       </div>
+      {/* POC6-31 사용자 직접 지시(2026-11-16) — 목록 맨 아래에 있던 '이 목록으로 할 일'(AI 넘기기 · ETF 구성종목 · 복사)을
+          상위 · 하위 선택 바로 아래로 올린다('이 목록' = 위에서 고른 상위 · 하위). 내용 · 동작은 그대로. */}
+      <ListTransfer s={s} side={side} onNavigate={onNavigate} />
       <div className="holdings-sortbar">
         <span className="holdings-sortbar-label">정렬</span>
         <span className="holdings-sort-seg">
@@ -148,7 +151,6 @@ export default function RankingList({ s, onNavigate }: { s: CompareSummaryOk; on
         })}
       </div>
       )}
-      <ListTransfer s={s} side={side} onNavigate={onNavigate} />
     </div>
   );
 }

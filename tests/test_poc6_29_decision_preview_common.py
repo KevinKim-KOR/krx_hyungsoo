@@ -106,6 +106,30 @@ def _post(c: TestClient, body: dict[str, Any]) -> dict[str, Any]:
     return res.json()
 
 
+def _with_pair(c: TestClient, body: dict[str, Any]) -> dict[str, Any]:
+    """「보유와 후보 비교」 후보 요청 = 화면처럼 먼저 구성종목 비교의 근거 지문을 받아 싣는다(POC6-31 검증자 STEP 4~5 r1 F11 —
+    비교 화면 요청은 지문이 있어야 만듦). 제외 4종은 요청에 없으면 서버 기본값(모두 제외)과 같게."""
+    q = {
+        "candidate": body["ticker"],
+        **{
+            k: body[k]
+            for k in ("screen", "basis", "side", "rank", "start_date", "end_date")
+        },
+        **{
+            k: str(body.get(k, True)).lower()
+            for k in (
+                "exclude_inverse",
+                "exclude_leveraged",
+                "exclude_synthetic",
+                "exclude_futures",
+            )
+        },
+    }
+    res = c.get("/market/constituents/pair-exposure", params=q)
+    assert res.status_code == 200
+    return {**body, "pair_fingerprint": res.json()["fingerprint"]}
+
+
 def _target_line(text: str) -> str:
     return text.split("\n")[1]  # [대상] 다음 첫 줄
 
@@ -180,9 +204,10 @@ def test_rank_between_11_and_30(seeded: TestClient) -> None:
 def test_bottom_row(seeded: TestClient) -> None:
     s = _summary(seeded, "one_month")
     row = s["bottom"][1]
-    body = _post(
-        seeded, _pick(row, "bottom", "one_month", screen="holding_candidate_compare")
-    )
+    pick = _pick(row, "bottom", "one_month", screen="holding_candidate_compare")
+    # 비교 화면 요청은 근거 지문 없이 만들지 않는다(POC6-31 F11)
+    assert _post(seeded, pick)["status"] == "error"
+    body = _post(seeded, _with_pair(seeded, pick))
     assert body["status"] == "ok"
     line = _target_line(body["preview_text"])
     assert "「보유와 후보 비교」 1개월 하위 2위 · 공통 기간" in line

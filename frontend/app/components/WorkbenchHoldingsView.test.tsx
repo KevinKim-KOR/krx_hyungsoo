@@ -270,7 +270,7 @@ describe("「보유」 행 상세 — 이름을 나눈 근거(판정 §4)", () =
     expect(rowOf("개별 주식 A")).not.toHaveTextContent("PC 20저장일 하락");
   });
 
-  it("개별 주식 = NAV · ETF 구성종목 해당 없음 · 구성 자료 없는 ETF = 기존 「ETF 구성종목」 경로", async () => {
+  it("개별 주식 = NAV · ETF 구성종목 해당 없음 · 구성 자료 없는 ETF = 「오늘의 투자 점검」 [최신 자료 갱신](POC6-31 Q16)", async () => {
     render(<WorkbenchHoldingsView onNavigate={nav} />);
     await screen.findAllByTestId("ec-hold-row");
     fireEvent.click(rowOf("개별 주식 A"));
@@ -278,8 +278,8 @@ describe("「보유」 행 상세 — 이름을 나눈 근거(판정 §4)", () =
     fireEvent.click(rowOf("분산 ETF"));
     const exp = await screen.findByTestId("ec-hold-exposure");
     expect(exp).toHaveTextContent("구성종목 자료 없음 — 노출을 비교할 수 없음");
-    fireEvent.click(within(exp).getByRole("button", { name: "ETF 구성종목에서 확인 →" }));
-    expect(nav).toHaveBeenCalledWith("etf_exposure");
+    fireEvent.click(within(exp).getByRole("button", { name: "[최신 자료 갱신]에서 받기 →" }));
+    expect(nav).toHaveBeenCalledWith("today_check");
   });
 
   // POC6-29(판정 Q4-1) — 예전 '월간 수익률(보유 근거)' 줄 대신 종목 상세 수치(후보 화면과 같은 응답 · 같은 정의).

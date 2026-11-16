@@ -32,6 +32,33 @@ const fetchEtfCompareSummary = vi.fn();
 const postRefreshAll = vi.fn();
 const fetchRefreshAllStatus = vi.fn();
 
+// POC6-31 — 보유 ETF 구성 상태(저장 자료만). 기본 = 다시 확인할 보유 ETF 없음.
+const fetchHoldingsConstituentsStatus = vi.fn();
+vi.mock("@/lib/api/constituentsStatus", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  fetchHoldingsConstituentsStatus: (...a: unknown[]) => fetchHoldingsConstituentsStatus(...a),
+}));
+const consStatus = (needs = 0) => ({
+  status: "ok",
+  reason: null,
+  target_date: "2026-11-13",
+  running: false,
+  total: 2 + needs,
+  needs_check: needs,
+  counts: { existing: 2, not_checked: needs },
+  items: Array.from({ length: needs }, (_, i) => ({
+    ticker: `E${i}`,
+    name: `보유 ETF ${i}`,
+    result: "not_checked",
+    label: "아직 확인 안 함",
+    reason: "구성 자료 없음 — [최신 자료 갱신]에서 받습니다",
+    source_asof: null,
+    kept_asof: null,
+    kept_confirmed: false,
+    needs_check: true,
+  })),
+});
+
 vi.mock("@/lib/api", () => ({
   fetchMarketTopnLatest: (...a: unknown[]) => fetchMarketTopnLatest(...a),
   fetchEnrichedHoldings: (...a: unknown[]) => fetchEnrichedHoldings(...a),
@@ -245,6 +272,7 @@ beforeEach(() => {
   __resetQueryCache();
   vi.clearAllMocks();
   prime();
+  fetchHoldingsConstituentsStatus.mockResolvedValue(consStatus());
 });
 
 const summary = () => screen.getByLabelText("지금 확인할 내용");
@@ -617,7 +645,8 @@ describe("POC6-16 · POC6-27 지금 확인할 내용", () => {
   ] as const)("조회 실패 조합 — %s", async (_n, fns, realMissing) => {
     prime("ok");
     if (realMissing) {
-      fetchHoldingsMarketEvidence.mockResolvedValue({ ...EVIDENCE, summary: { ...EVIDENCE.summary, constituents_unavailable_count: 25 } });
+      // POC6-31 — 실제 구성종목 결측은 보유 구성 상태(다시 확인 필요 25)로 만든다.
+      fetchHoldingsConstituentsStatus.mockResolvedValue(consStatus(25));
     }
     for (const f of fns) f.mockRejectedValue(new Error("x"));
     render(<TodayInvestmentCheckView onNavigate={vi.fn()} />);
