@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>POC6-31 PLAN 목업</title>
+<style>
+:root {
+  --bg: #f5f7fa; --fg: #1a1d23; --muted: #6b7280; --card: #ffffff; --border: #d1d5db; --soft: #e8ebf0; --tile: #f3f6fb;
+  --accent: #2563eb; --warn-bg: #fff7ed; --warn-bd: #fdba74; --warn-fg: #9a3412; --info-bg: #eaf1fe; --info-fg: #1e40af;
+  --up: #d92d20; --down: #1570ef; --q: #a21caf; --new-bg: #dcfce7; --new-fg: #166534; --chg-bg: #fef9c3; --chg-fg: #854d0e;
+  --gone-bg: #fee2e2; --gone-fg: #991b1b;
+}
+* { box-sizing: border-box; }
+code, .qlist div, .note-top div { overflow-wrap: anywhere; }
+.inner, .mbox, .flowtext, .res, .diffl, .evt, .preview, .detail, .panel, .hrow, .rk, .qlist, .steps, .rnote, .snote, .note-top, .basis { grid-template-columns: minmax(0, 1fr); }
+body { margin: 0; background: var(--bg); color: var(--fg); line-height: 1.5; font-size: 14px;
+  font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", Roboto, sans-serif; }
+.shell { display: grid; grid-template-columns: 250px minmax(0, 1fr); min-height: 100vh; }
+@media (max-width: 800px) { .shell { grid-template-columns: minmax(0, 1fr); } aside { position: static !important; height: auto !important; } }
+aside { background: #fff; border-right: 1px solid var(--soft); padding: 16px 12px; display: grid; align-content: start; gap: 3px;
+  position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+aside .grp { font-size: 12px; color: var(--muted); font-weight: 700; margin: 12px 8px 4px; }
+aside .grp.new { color: var(--new-fg); }
+aside a { display: block; padding: 6px 10px; border-radius: 8px; color: var(--fg); text-decoration: none; }
+aside a:hover { background: var(--tile); }
+aside a.sub { padding-left: 24px; font-size: 12.5px; color: var(--muted); }
+aside .gone { padding: 4px 10px; border-radius: 8px; color: var(--gone-fg); background: var(--gone-bg); text-decoration: line-through; font-size: 12.5px; }
+aside .static { padding: 6px 10px; color: var(--muted); font-size: 13px; }
+main { padding: 16px 20px 80px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; max-width: 1020px; min-width: 0; }
+.note-top { font-size: 12.5px; border: 1px dashed var(--border); border-radius: 10px; padding: 10px 14px; background: #fff; display: grid; gap: 4px; }
+.screen { border: 2px solid #9ca3af; border-radius: 16px; background: var(--bg); padding: 14px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; min-width: 0; }
+.screen > .label { font-size: 12px; font-weight: 700; color: #fff; background: #4b5563; border-radius: 999px; padding: 2px 10px; justify-self: start; }
+h1 { font-size: 21px; margin: 0; } h2 { font-size: 16px; margin: 0; } h3 { font-size: 14px; margin: 0; }
+.head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.head h1 { margin-right: auto; }
+button { font: inherit; border-radius: 8px; min-height: 40px; padding: 0 12px; cursor: pointer; }
+.ghost { background: #fff; color: var(--fg); border: 1px solid var(--border); font-weight: 600; }
+.primary { background: var(--accent); color: #fff; border: none; font-weight: 600; }
+.link { background: none; border: none; color: var(--accent); font-weight: 600; padding: 0; min-height: 0; }
+.small { font-size: 12px; } .muted { color: var(--muted); }
+.card { background: var(--card); border: 1px solid var(--soft); border-radius: 12px; padding: 14px 16px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; min-width: 0; }
+.card.fold { padding: 10px 16px; }
+.two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 700px) { .two { grid-template-columns: 1fr; } }
+.tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 560px) { .tiles { grid-template-columns: 1fr; } }
+.tile { background: var(--tile); border-radius: 10px; padding: 8px 10px; display: grid; gap: 2px; }
+.tile .k { font-size: 12px; color: var(--muted); } .tile .v { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.badge { display: inline-block; font-size: 12px; font-weight: 700; border-radius: 999px; padding: 1px 9px; }
+.b-bear { background: #ffedd5; color: var(--warn-fg); } .b-info { background: var(--info-bg); color: var(--info-fg); } .b-gray { background: #f3f4f6; color: #374151; }
+.b-ok { background: var(--new-bg); color: var(--new-fg); }
+.tag { display: inline-block; font-size: 11px; font-weight: 700; border-radius: 6px; padding: 0 6px; margin-left: 4px; vertical-align: 1px; }
+.t-new { background: var(--new-bg); color: var(--new-fg); } .t-chg { background: var(--chg-bg); color: var(--chg-fg); }
+.t-q { color: var(--q); border: 1px solid #f0abfc; background: #fff; } .t-gone { background: var(--gone-bg); color: var(--gone-fg); }
+.up { color: var(--up); font-weight: 600; } .down { color: var(--down); font-weight: 600; }
+.num { font-variant-numeric: tabular-nums; }
+.line { font-size: 13px; }
+.basis { font-size: 13px; color: var(--muted); background: #fff; border: 1px solid var(--soft); border-radius: 10px; padding: 8px 12px; display: grid; gap: 2px; }
+.regime { background: var(--warn-bg); border: 1px solid var(--warn-bd); border-radius: 10px; padding: 8px 12px; font-size: 13px; }
+.chart { border: 1px solid var(--soft); border-radius: 8px; background: linear-gradient(180deg, #fff, #f7f9fc); padding: 4px 6px; min-width: 0; }
+.chart svg { width: 100%; height: 110px; display: block; }
+.chart .cap { font-size: 12px; color: var(--muted); }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; }
+.legend i { display: inline-block; width: 10px; height: 3px; vertical-align: middle; margin-right: 4px; }
+.kv { display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: 5px 12px; font-size: 13px; }
+@media (max-width: 560px) { .kv { grid-template-columns: 1fr; } }
+.kv .k { color: var(--muted); }
+.rk { display: grid; gap: 2px; }
+.rrow { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 8px; align-items: baseline; padding: 6px 8px; border-radius: 8px; border: 1px solid transparent; }
+.rrow.sel { background: var(--info-bg); border-color: #bfdbfe; }
+.rrow .nm { min-width: 0; } .rrow .rk2 { font-size: 11px; color: var(--muted); }
+.detail { border-left: 3px solid var(--accent); background: #fbfcff; border-radius: 0 10px 10px 0; padding: 10px 14px; display: grid; gap: 8px; margin: 0 0 6px 8px; min-width: 0; }
+.preview { background: #fff; border: 1px solid #c7d2fe; border-radius: 10px; padding: 10px 12px; display: grid; gap: 6px; min-width: 0; }
+.preview pre { margin: 0; white-space: pre-wrap; word-break: break-word; font-family: inherit; font-size: 12.5px; background: #f8fafc; border-radius: 8px; padding: 8px 10px; max-height: 360px; overflow-y: auto; }
+.seg { display: inline-flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.seg span { border: 1px solid var(--border); background: #fff; font-weight: 600; font-size: 12.5px; border-radius: 8px; padding: 4px 10px; cursor: pointer; }
+.seg span.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+.seg span.static { cursor: default; }
+.tabs { display: inline-flex; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.tabs span { padding: 7px 14px; background: #fff; font-weight: 600; cursor: pointer; }
+.tabs span.on { background: var(--fg); color: #fff; }
+.panel { background: #fff; border: 2px solid var(--accent); border-radius: 12px; padding: 12px 14px; display: grid; gap: 8px; }
+.filters { display: flex; flex-wrap: wrap; gap: 6px; }
+.filters span { border: 1px solid var(--border); border-radius: 999px; padding: 4px 12px; font-size: 13px; background: #fff; }
+.filters span.on { background: var(--fg); color: #fff; border-color: var(--fg); }
+.hrow { border: 1px solid var(--soft); border-radius: 10px; padding: 10px 12px; display: grid; gap: 6px; background: #fff; min-width: 0; }
+.mask { color: var(--muted); font-style: italic; }
+.tbl-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; font-variant-numeric: tabular-nums; }
+th, td { border-bottom: 1px solid var(--soft); padding: 6px 8px; text-align: left; vertical-align: top; }
+th { background: var(--tile); font-size: 12px; color: #374151; white-space: nowrap; }
+table.wide { min-width: 900px; }
+.ok { color: #15803d; font-weight: 700; } .ng { color: var(--gone-fg); font-weight: 700; }
+details.fold-sec { background: #fff; border: 1px solid var(--soft); border-radius: 12px; padding: 10px 16px; }
+details.fold-sec > summary { cursor: pointer; font-weight: 700; font-size: 15px; }
+details.fold-sec[open] > summary { margin-bottom: 10px; }
+.inner { display: grid; gap: 12px; }
+.qlist { display: grid; gap: 6px; font-size: 13px; }
+.qlist div { background: #fff; border: 1px solid #f0abfc; border-radius: 8px; padding: 6px 10px; }
+.evt { font-size: 13px; display: grid; gap: 2px; }
+.mini { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 700px) { .mini { grid-template-columns: 1fr; } }
+.steps { display: grid; gap: 3px; font-size: 13px; }
+.steps div { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 6px; }
+.pick { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 700px) { .pick { grid-template-columns: 1fr; } }
+.pick .box { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; display: grid; gap: 6px; }
+.sel-fake { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; background: #fff; display: flex; justify-content: space-between; gap: 8px; }
+/* 보완 R1 ~ R4(RESULT PARTIAL · 2026-11-12) */
+.rnote { border: 2px solid #7c3aed; background: #faf5ff; border-radius: 12px; padding: 10px 14px; font-size: 12.5px; display: grid; gap: 4px; }
+.screen.r { border-color: #7c3aed; } .screen.r > .label { background: #7c3aed; }
+.t-r { background: #ede9fe; color: #5b21b6; }
+.qt3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 640px) { .qt3 { grid-template-columns: 1fr; } }
+.qt { background: var(--tile); border-radius: 10px; padding: 8px 10px; display: grid; gap: 2px; }
+.qt .k { font-size: 12px; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+.qt .v { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.qt .t { font-size: 12px; color: var(--muted); }
+.flowtext { display: grid; gap: 4px; font-size: 14px; line-height: 1.6; }
+.flowtext .d { color: var(--muted); font-size: 12px; }
+.stale { background: #fff7ed; color: var(--warn-fg); border: 1px solid var(--warn-bd); }
+.res { font-size: 13px; display: grid; gap: 3px; background: #fff; border: 1px solid var(--soft); border-radius: 10px; padding: 8px 12px; }
+.res .n { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 6px; }
+.cmpc { background: #fff; border: 1px solid var(--soft); border-radius: 16px; padding: 14px 16px; display: grid; gap: 8px; min-width: 0; }
+.cmpc .who { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.big2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.big2 .qt .v { font-size: 22px; }
+.diffl { background: #fff; border: 1px solid var(--soft); border-radius: 10px; padding: 8px 12px; font-size: 13.5px; display: grid; gap: 3px; }
+.ex { color: #6b7280; font-style: italic; font-size: 11px; }
+.side { background: #fff; border: 1px solid var(--soft); border-radius: 10px; padding: 8px; font-size: 13px; display: grid; gap: 2px; max-width: 260px; }
+.side .f { font-weight: 700; padding: 4px 8px; } .side .s { padding: 3px 8px 3px 22px; } .side .s.on { background: var(--info-bg); border-radius: 8px; font-weight: 700; }
+/* 보완 2차 S1 ~ S3(RESULT 재판정 PARTIAL 유지 · 판정서 V2 · 2026-11-12) */
+.snote { border: 2px solid #0f766e; background: #f0fdfa; border-radius: 12px; padding: 10px 14px; font-size: 12.5px; display: grid; gap: 4px; }
+.screen.s { border-color: #0f766e; } .screen.s > .label { background: #0f766e; }
+.t-s { background: #ccfbf1; color: #115e59; }
+.mbox { border: 1px solid var(--soft); border-radius: 12px; background: #fff; padding: 10px 14px; display: grid; gap: 6px; }
+.mbox .hd { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
+.mbox .hd b { font-size: 15px; } .mbox .hd .muted { font-size: 12.5px; }
+.miss { background: var(--warn-bg); border: 1px solid var(--warn-bd); color: var(--warn-fg); border-radius: 8px; padding: 6px 10px; font-size: 13.5px; font-weight: 600; }
+.okline { background: var(--new-bg); color: var(--new-fg); border-radius: 8px; padding: 6px 10px; font-size: 13.5px; font-weight: 600; }
+.cmpt th, .cmpt td { white-space: nowrap; } .cmpt td.why { white-space: normal; min-width: 220px; }
+details.src { display: inline-block; position: relative; margin-left: 4px; vertical-align: middle; }
+details.src > summary { list-style: none; cursor: pointer; width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--border); background: #fff; color: var(--muted); font-size: 12px; font-weight: 700; display: inline-grid; place-items: center; }
+details.src > summary::-webkit-details-marker { display: none; }
+details.src .pop { position: absolute; right: 0; top: 24px; z-index: 5; width: max-content; max-width: 240px; background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; font-size: 12px; color: var(--fg); box-shadow: 0 4px 12px rgba(0,0,0,.08); }
+.ev3 td:nth-child(3), .ev3 td:nth-child(4) { font-size: 12.5px; }
+/* POC6-31 PLAN V1 목업(판정 반영) */
+.screen.p { border-color: #b45309; } .screen.p > .label { background: #b45309; }
+.pnote { border: 2px solid #b45309; background: #fffbeb; border-radius: 12px; padding: 10px 14px; font-size: 12.5px; display: grid; gap: 4px; }
+.keep { border: 1px dashed var(--border); border-radius: 12px; background: #fff; padding: 10px 14px; font-size: 13px; color: var(--muted); display: block; }
+.keep b { color: var(--fg); }
+.strike { text-decoration: line-through; color: var(--muted); }
+.newbox { border: 2px solid #16a34a; border-radius: 12px; background: #fff; padding: 12px 14px; display: grid; gap: 8px; min-width: 0; }
+.chgbox { border: 2px solid #ca8a04; border-radius: 12px; background: #fff; padding: 12px 14px; display: grid; gap: 8px; min-width: 0; }
+.bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: var(--info-bg); border-radius: 10px; padding: 8px 12px; font-size: 13px; }
+.sel-row { background: var(--info-bg); }
+.ta { border: 1px solid var(--border); border-radius: 8px; background: #fff; padding: 8px 10px; font-size: 13px; min-height: 44px; }
+.field { display: grid; gap: 4px; }
+.field .k { font-size: 12px; color: var(--muted); font-weight: 700; }
+.wait { color: #92400e; font-weight: 700; }
+.scope { background: #f8fafc; border: 1px solid var(--soft); border-radius: 10px; padding: 8px 12px; font-size: 13px; display: grid; gap: 3px; }
+.scope .t { font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="shell">
+<aside aria-label="목업 차례">
+  <div class="grp" style="color:#92400e">POC6-31 목업 · 판정 반영</div>
+  <a href="#guide">읽는 법</a>
+  <a href="#m1">M1 오늘의 투자 점검 · [최신 자료 갱신]</a>
+  <a href="#m2s">M2 섹터요약 → 후보리스트</a>
+  <a href="#m2b">M2 ETF 구성종목 · 함께 담은 주식</a>
+  <a href="#m3">M3 보유와 후보 비교</a>
+  <a href="#m4">M4 판단 근거 미리보기 · AI 투자 세션</a>
+  <div class="grp">메뉴(왼쪽 이름 그대로 · 바뀌지 않음)</div>
+  <div class="static">오늘의 투자 점검</div>
+  <div class="static">보유 · 섹터요약 · 후보리스트</div>
+  <div class="static">보유와 후보 비교 · ETF 구성종목 · AI 투자 세션</div>
+</aside>
+<main>
+
+  <section class="pnote" id="guide" aria-label="읽는 법">
+    <b>읽는 법</b>
+    <div>설계자 PLAN 판정(2026-11-15 · PASS_WITH_REQUIRED_CORRECTIONS)을 반영한 화면입니다.</div>
+    <div>예시 상황: <b>2026-11-14(토) 15:07</b>에 누름 · 토요일(휴장)이라 수집 목표일 = 직전 거래일 <b>11/13(금)</b> · 평일이면 15:30 이후 그날, 그 전이면 직전 거래일.</div>
+    <div>후보 ETF 이름 · 비중은 POC6-30 공개 대조표의 11/13 기준 구성(실제 값)입니다. <b>보유 ETF 이름 · 금액은 가렸고, 보유 쪽 수치 · 개수와 '가상 진행 사례'는 모두 예시</b>입니다(<span class="ex">예시</span> 표시).</div>
+    <div><span class="tag t-new">새</span> = 이번에 생김 · <span class="tag t-chg">바뀜</span> = 이번에 바뀜 · 점선 상자 = 지금 화면 그대로(자리만 보임) · <span class="tag t-q">Qn</span> = 판정 질문 번호</div>
+  </section>
+
+  <!-- ================= M1 ================= -->
+  <section class="screen p" id="m1" aria-label="M1 오늘의 투자 점검 최신 자료 갱신">
+    <span class="label">M1 · 「오늘의 투자 점검」 — [최신 자료 갱신] 끝에 '보유 구성종목' 결과 줄 (STEP 2)</span>
+    <div class="head"><h1>오늘의 투자 점검</h1><button class="primary" type="button">요약 다시 읽기</button><button class="ghost" type="button">최신 자료 갱신</button></div>
+
+    <div class="small"><b>누르는 중</b> — 시세 · 시장 자료를 먼저 하고, 보유 구성종목은 그 뒤에 따로 진행을 보입니다(Q5 (b))</div>
+    <div class="res">
+      <div class="n"><span>⓪</span><span>빠른 시세 받음 · 11/14 15:07</span></div>
+      <div class="n"><span>①</span><span>보유 현재가 업데이트 완료 29건 · 시세 시각 11/14 15:07</span></div>
+      <div class="n"><span>②</span><span>ETF 전체 가격 받는 중 — 기존 줄 그대로(별도 작업 · 끝나면 따로 완료 표시)</span></div>
+      <div class="n"><span>③</span><span>전일 자료 — ② 가 대기일 때만(기존 그대로)</span></div>
+      <div class="n"><span>·</span><span><b>보유 구성종목 받는 중 — 2/3 묶음 · 받을 ETF 22개 중 10개 끝</b> <span class="tag t-new">새</span> <span class="tag t-q">Q20 번호 없음</span></span></div>
+    </div>
+
+    <div class="small"><b>끝난 뒤</b> — 보유 구성종목 줄은 사라지지 않습니다</div>
+    <div class="res">
+      <div class="n"><span>⓪</span><span>빠른 시세 받음 · 11/14 15:07</span></div>
+      <div class="n"><span>①</span><span>보유 현재가 업데이트 완료 29건 · 시세 시각 11/14 15:07</span></div>
+      <div class="n"><span>②</span><span>ETF 전체 가격 — 기존 줄 그대로</span></div>
+      <div class="n"><span>③</span><span>전일 자료 — 기존 줄 그대로</span></div>
+      <div class="n"><span>·</span><span><b>보유 구성종목 — 보유 ETF 26개 · 기존 자료 4 · 새로 받음 19 · <span class="wait">목표일 자료 대기 1</span> · <span class="ng">갱신 실패 2</span></b>(받기 실패 1 · 시간 초과로 조회 안 함 1) · 실제 호출 21회 <span class="tag t-new">새</span> <span class="ex">개수 예시</span></span></div>
+      <div class="n"><span></span><span class="small muted">받을 것 22 = 새로 받음 19 + 목표일 자료 대기 1 + 받기 실패 1 + 시간 초과로 조회 안 함 1 · 실제 호출 21 = 22 − 조회 전 시간 초과 1</span></div>
+    </div>
+
+    <details class="fold-sec" open>
+      <summary>보유 구성종목 · ETF별 보기 <span class="tag t-new">새</span></summary>
+      <div class="inner">
+        <div class="small muted">수집 목표일 <b>11/13</b> — 11/14 은 토요일(휴장)이라 직전 거래일. 원천(네이버)은 날짜를 골라 받을 수 없고, 그때 가진 최신 구성과 그 날짜를 줍니다. 목표일 이상이고 원천 날짜가 확인된 자료는 다시 부르지 않습니다.</div>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th>보유 ETF</th><th>결과</th><th>실제 구성일</th><th>확인 시각</th><th>이유 · 다음</th></tr></thead>
+          <tbody>
+            <tr><td class="mask">보유 ETF ㄱ</td><td>새로 받음</td><td>11/13</td><td>11/14 15:07</td><td>이전 자료 6/22(원천 기준일 미확인) → 새로 받음</td></tr>
+            <tr><td class="mask">보유 ETF ㄴ</td><td>새로 받음</td><td>11/13</td><td>11/14 15:07</td><td>자료 없음 → 새로 받음</td></tr>
+            <tr><td class="mask">보유 ETF ㄷ</td><td>기존 자료</td><td>11/13</td><td>11/14 09:12</td><td>오늘 아침 받은 목표일 자료 그대로 · 이번 호출 없음</td></tr>
+            <tr><td class="mask">보유 ETF ㄹ</td><td class="wait">목표일 자료 대기</td><td>11/12</td><td>11/14 15:07</td><td>원천이 아직 11/12 구성을 줌 · 다음 [최신 자료 갱신] 때 다시 확인</td></tr>
+            <tr><td class="mask">보유 ETF ㅁ</td><td class="ng">갱신 실패 · 받기 실패</td><td>6/22(마지막 보존 · 원천 기준일 미확인)</td><td>11/14 15:07</td><td>원천 응답 없음 · 다음 갱신 때 다시 확인</td></tr>
+            <tr><td class="mask">보유 ETF ㅂ</td><td class="ng">갱신 실패 · 시간 초과로 조회 안 함</td><td>없음</td><td>—</td><td>이번 묶음 시간 예산이 끝나 부르지 않음 · 다음 갱신 때 다시 확인</td></tr>
+            <tr><td colspan="5" class="muted">… 20개 더(ETF 이름 순)</td></tr>
+          </tbody>
+        </table></div>
+        <div class="small muted">이 목록은 저장된 구성 · 수집 기록에서 다시 읽습니다. [요약 다시 읽기] · 서버를 다시 켠 뒤에도 '목표일 자료 대기 · 받기 실패 · 시간 초과로 조회 안 함 · 저장 잠김 · 원천 기준일 미확인'이 구별돼 남습니다. 버튼을 연달아 눌러도 같은 작업의 진행 · 결과를 보입니다.</div>
+      </div>
+    </details>
+
+    <div class="keep"><b>자료 최신화 · OCI 수집 일정</b> 두 카드(기본 접힘) — 지금 그대로</div>
+    <div class="keep"><b>지금 확인할 내용</b> — 시장 흐름 · 보유 점검 · 후보 점검 · 시장 근거 — 지금 그대로</div>
+    <div class="chgbox">
+      <b>자료 확인 — 할 일 <span class="tag t-chg">바뀜</span> <span class="tag t-q">Q16</span></b>
+      <div class="small strike">ETF가 담고 있는 종목 자료가 없습니다 (N건) — 구성종목 화면에서 수집합니다 [구성종목 업데이트로]</div>
+      <div>구성종목 자료가 목표일(11/13)에 못 미친 보유 ETF 3개 — <b>[최신 자료 갱신]에서 다시 확인합니다</b> · 목표일 자료 대기 1 · 받기 실패 1 · 시간 초과로 조회 안 함 1 · 마지막 시도 11/14 15:07</div>
+      <div class="small muted">개수 = 보유 ETF 종목 단위(직접 보유 주식 · 계좌 행 · 시장 후보 자료 상태는 세지 않음). 「보유」 행 상세의 'ETF 구성종목에서 확인 →' 안내도 같은 문장으로 바꿉니다.</div>
+    </div>
+    <div class="keep"><b>제공 범위</b> 카드 — 지금 그대로</div>
+  </section>
+
+  <!-- ================= M2 섹터요약 · 후보리스트 ================= -->
+  <section class="screen p" id="m2s" aria-label="M2 섹터요약에서 후보리스트로">
+    <span class="label">M2 · 「섹터요약」 → 「후보리스트」 → [이 목록을 ETF 구성종목에서 보기] (STEP 3)</span>
+    <div class="keep"><b>섹터요약</b> 머리 · 조회 기준 · 카드들 — 지금 그대로(이 화면 안의 새 분석은 더하지 않음 · POC6-30 AC4 보류)</div>
+    <div class="chgbox">
+      <b>상위권 카드 아래 <span class="tag t-new">새</span> <span class="tag t-q">Q17 (b)</span></b>
+      <div class="head"><span class="small">1개월 · 10/14 → 11/13 · 4종 제외 · 상위 30</span><button class="ghost" type="button">이 조건의 후보리스트 보기 →</button></div>
+      <div class="small muted">조회 조건은 이 이동 한 번에만 넘깁니다. 「후보리스트」에 저장된 기본 조회 기준은 바뀌지 않습니다.</div>
+    </div>
+    <div class="card">
+      <h2>「후보리스트」 · 이 목록으로 할 일</h2>
+      <div class="small">넘기는 범위: 「후보리스트」 1개월 상위 30 · 10/14 → 11/13 · 인버스 · 레버리지 · 합성 · 선물 제외</div>
+      <div class="head"><button class="ghost" type="button">이 목록을 AI 투자 세션으로 넘기기</button><button class="ghost" type="button">이 목록을 ETF 구성종목에서 보기</button></div>
+      <div class="small muted">넘길 때 선정 기간 · 상위/하위 · 시작일 · 끝일 · 제외 조건을 칸으로 함께 넘깁니다 <span class="tag t-chg">바뀜</span></div>
+    </div>
+  </section>
+
+  <!-- ================= M2 ETF 구성종목 ================= -->
+  <section class="screen p" id="m2b" aria-label="M2 ETF 구성종목">
+    <span class="label">M2 · 「ETF 구성종목」 — 30개 [수집] 서버 작업 · 여러 지수 계열이 함께 담은 주식 · 후보 고르기 (STEP 3)</span>
+    <div class="head"><h1>ETF 구성종목</h1><span class="tag t-chg">바뀜 · 제목 Q18</span></div>
+    <div class="tabs"><span class="on">구성종목</span><span>중복률</span></div>
+
+    <div class="chgbox">
+      <b>후보 ETF 구성종목 수집 <span class="tag t-chg">바뀜</span> <span class="tag t-q">Q6 (b)</span></b>
+      <div class="small">넘겨받은 목록: 「후보리스트」 1개월 상위 30 · 10/14 → 11/13(순위 끝날) · 수집 목표일 11/13(보유와 같은 규칙)</div>
+      <div class="head"><button class="primary" type="button">구성종목 수집</button><span class="small muted">서버 작업이 필요한 ETF만 10개씩 받습니다 · 다른 화면에 다녀오면 같은 작업의 상태를 다시 읽습니다 · 보유 구성종목과 겹친 ETF는 한 번만 부릅니다</span></div>
+      <div class="small"><b>가상 진행 사례</b> <span class="ex">예시 — 아래 공통 주식 카드의 실제 값과 별개</span></div>
+      <div class="res">
+        <div class="n"><span>…</span><span>2/3 묶음 받는 중 — 받을 ETF 30개 중 20개 끝</span></div>
+        <div class="n"><span>=</span><span><b>30개 중 받을 것 30 — 새로 받음 29 · <span class="ng">갱신 실패 1(받기 실패)</span></b> · 실제 호출 30회 · 구성 자료 29/30(11/13 29개)</span></div>
+        <div class="n"><span></span><span class="small muted">이 사례처럼 같은 날짜 자료가 29개면 중복률 쌍은 최대 406쌍입니다(30개면 435쌍).</span></div>
+      </div>
+      <div class="small strike">수집 완료: 성공 n / 실패 n / 캐시 n / skip n</div>
+      <div class="small muted">지금은 11개 이상이면 '1회 최대 10개'로 거절되고 화면이 구성 표를 조용히 비웁니다(PLAN §2-3 · 기존 결함).</div>
+    </div>
+
+    <div class="keep"><b>상위 구성종목</b> 표 — ETF마다 머리에 실제 구성일('11/13 기준 구성' · 순위 끝날보다 새면 '현재 편입 참고')을 더함 <span class="tag t-chg">바뀜</span></div>
+
+    <div class="newbox">
+      <b>여러 지수 계열이 함께 담은 주식 <span class="tag t-new">새 · 기존 '반복 핵심 종목' 자리</span> <span class="tag t-q">Q9 · Q21</span></b>
+      <div class="scope">
+        <div class="t">확인 범위 · 비교 성립 — POC6-30 실제 대조 결과(구성 자료 30/30)로 그린 값</div>
+        <div>구성 자료 30/30 · 최신 구성일 11/13 에 같은 날짜 30 · 계열 확인 30 · ETF마다 원본 비중 1 ~ 10행 중 식별 가능한 주식 행만(현금 · 채권 · 파생 · 종류 미확인은 가림 · 행 수는 '자세히')</div>
+        <div>계열 = 공식 지수명이 같으면 한 계열 · 이름이 다른 지수는 확인된 사례만(다우존스 배당 가격형 1 + 커버드콜 3) · <b>비교 성립</b> → 서로 다른 계열 2개 이상에 든 주식 40종목 · 근거 138건</div>
+      </div>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>주식</th><th>계열</th><th>ETF</th><th>가장 큰 비중</th><th></th></tr></thead>
+        <tbody>
+          <tr><td>암젠</td><td class="num">9</td><td class="num">12</td><td>11.98% · RISE 미국고배당다우존스TOP10 1위</td><td><button class="link" type="button">ETF 보기</button></td></tr>
+          <tr class="sel-row"><td><b>일라이 릴리</b></td><td class="num">8</td><td class="num">8</td><td>30.22% · RISE 글로벌비만산업TOP2+ 1위</td><td><button class="link" type="button">접기</button></td></tr>
+          <tr><td colspan="5">
+            <div class="tbl-wrap"><table>
+              <thead><tr><th>ETF</th><th>공식 지수명</th><th>비중 · 순위</th><th>1개월</th><th></th></tr></thead>
+              <tbody>
+                <tr><td>RISE 글로벌비만산업TOP2+</td><td>KEDI 글로벌 비만 산업 Top2+ 지수(Price Return)</td><td>30.22% · 1위</td><td class="up">+12.96%</td><td><button class="link" type="button">후보로 고르기</button></td></tr>
+                <tr class="sel-row"><td><b>KODEX 글로벌비만치료제TOP2 Plus</b></td><td>iSelect 글로벌 비만치료제TOP2 Plus 지수(PR)</td><td>29.98% · 1위</td><td class="up">+14.67%</td><td><b>고름</b></td></tr>
+                <tr><td>ACE 일라이릴리밸류체인</td><td>Solactive Eli Lilly Value Chain Index(PR)</td><td>28.81% · 1위</td><td class="up">+14.74%</td><td><button class="link" type="button">후보로 고르기</button></td></tr>
+                <tr><td>TIGER 글로벌비만치료제TOP2Plus</td><td>Indxx Global Obesity Treatment Top 2 Plus 지수 (시장가격)</td><td>28.43% · 1위</td><td class="up">+12.33%</td><td><button class="link" type="button">후보로 고르기</button></td></tr>
+                <tr><td colspan="5" class="muted">… 4개 더(ACE 글로벌빅파마 21.54% · KODEX 미국S&amp;P500헬스케어 16.05% · KoAct 미국치매&amp;뇌질환치료제액티브 15.07% · KIWOOM 미국블록버스터바이오테크의약품+ 10.84%)</td></tr>
+              </tbody>
+            </table></div>
+          </td></tr>
+          <tr><td>머크 앤 코</td><td class="num">5</td><td class="num">5</td><td>11.54% · RISE 미국고배당다우존스TOP10 3위</td><td><button class="link" type="button">ETF 보기</button></td></tr>
+          <tr><td>애브비</td><td class="num">5</td><td class="num">5</td><td>11.49% · ACE 글로벌빅파마 3위</td><td><button class="link" type="button">ETF 보기</button></td></tr>
+          <tr><td>노보 노디스크 ADR</td><td class="num">4</td><td class="num">4</td><td>26.42% · RISE 글로벌비만산업TOP2+ 2위</td><td><button class="link" type="button">ETF 보기</button></td></tr>
+          <tr><td>코카콜라</td><td class="num">3</td><td class="num">6</td><td>11.54% · RISE 미국고배당다우존스TOP10 2위 · 그중 전략형 3</td><td><button class="link" type="button">ETF 보기</button></td></tr>
+          <tr><td colspan="5" class="muted">… 34종목 더 · 정렬 = 계열 수 → ETF 수 → 가장 큰 비중(새 기준값 없음)</td></tr>
+        </tbody>
+      </table></div>
+      <div class="small muted">비교가 성립하지 않으면(같은 날짜 계열 2개 미만) '비교 못 함', 성립하고 공통 주식이 없으면 '0종목'. 이전 구성일 자료끼리의 대조는 그 날짜의 참고로 따로 둡니다. 주식 자체의 업종 자료는 없어, 업종은 「섹터요약」 · 수익률과 함께 읽는 가설입니다.</div>
+      <div class="bar"><span>고른 후보: <b>KODEX 글로벌비만치료제TOP2 Plus</b> · 1개월 상위 4위 · +14.67%</span><button class="primary" type="button">보유와 후보 비교에서 보기 →</button><span class="tag t-new">새</span><span class="tag t-q">Q10</span></div>
+    </div>
+
+    <div class="chgbox">
+      <b>중복률 탭(30개일 때) <span class="tag t-chg">바뀜</span> <span class="tag t-q">Q7</span></b>
+      <div class="small">같은 날짜(11/13) 쌍 435개 중 중복률 높은 10쌍 · 나머지 425쌍 [펼쳐 보기] · 날짜가 다른 쌍 0(있으면 참고로 따로)</div>
+      <div class="small muted">AI Sessions 전달 · 복사 글에는 '같은 날짜 상위 10쌍 · 남은 425쌍 · ETF별 구성일'처럼 보낸 범위와 날짜를 적습니다.</div>
+    </div>
+    <div class="keep"><b>보유 ETF 겹침 불러오기</b> 카드 · <b>AI Sessions 전달</b> 카드 — 자리 그대로</div>
+  </section>
+
+  <!-- ================= M3 ================= -->
+  <section class="screen p" id="m3" aria-label="M3 보유와 후보 비교">
+    <span class="label">M3 · 「보유와 후보 비교」 — 화면 전체 · 「종목별 근거」의 구성종목 비교 (STEP 4)</span>
+    <div class="head"><h1>보유와 후보 비교</h1><button class="ghost" type="button">조회 기준</button><button class="ghost" type="button">다시 불러오기</button></div>
+    <div class="okline">「ETF 구성종목」에서 고른 후보로 열렸습니다 · 이번 이동 조건 = 1개월 · 상위 · 10/14 → 11/13 · 4종 제외(이 화면의 저장된 기본값과 별개) <span class="tag t-new">새</span></div>
+    <div class="small muted">그 조건 목록에 후보가 없으면 '이 조건 목록에 없음 — 후보를 다시 고르세요'를 보이고 다른 종목으로 바꾸지 않습니다.</div>
+    <div class="basis"><div>10/14 → 11/13 · 인버스 · 레버리지 · 합성 · 선물 제외 · 비교한 ETF 963개 · 상·하위 30</div><div>가격: 11/13 마감 뒤 저장</div></div>
+    <div class="pick">
+      <div class="box"><span class="small muted">보유에서 고르기 · 비중 큰 순</span><span class="sel-fake"><span class="mask">보유 ETF ㄱ(가림) · 비중 —</span><span>▾</span></span></div>
+      <div class="box"><span class="small muted">후보에서 고르기 · 이 화면 조건의 상·하위 30</span><span class="sel-fake"><span>상위 4위 · KODEX 글로벌비만치료제TOP2 Plus · +14.67%</span><span>▾</span></span></div>
+    </div>
+    <div class="keep"><b>기본 비교</b> — 같은 기간 성과(1 · 3개월 · KODEX 200 대비) · 최근 움직임(5 · 20일) · 고점 대비 · 가격 시점 — 지금 그대로</div>
+
+    <div class="card">
+      <div class="head"><h2>종목별 근거</h2><div class="tabs"><span class="on">후보 판단 근거</span><span>보유 판단 근거</span></div></div>
+      <div class="keep">시장가 · 기준가 · 괴리율 / 6개월 / 12개월 / 20구간 KODEX 200 차이 / 하락 판정 — 지금 그대로</div>
+
+      <div class="chgbox">
+        <b>구성종목 비교 — 후보 주요 주식과 내 보유 <span class="tag t-chg">바뀜 · 기존 '구성종목 겹침' 자리</span> <span class="tag t-q">Q11 · Q12</span></b>
+        <div class="scope">
+          <div class="t">확인 범위(먼저 읽기)</div>
+          <div>기준일: 후보 구성 11/13 · 고른 보유 구성 11/13 · <b>노출 합계 11/13</b>(보유에서 확인된 가장 최근 실제 구성일) · 보유 평가 11/13 마감 · 현금 제외 보유 평가액 기준</div>
+          <div>계산에 들어감: 보유 ETF 23개 = 평가액의 85.0% · 직접 보유 주식 3개 = 6.2% <span class="ex">예시</span></div>
+          <div>빠짐 8.8%: 다른 구성일 ETF 1개 3.1%(11/12 · 아래 참고) · 원천 기준일 미확인 ETF 1개 3.2%(6/22 보존 자료) · 구성 자료 없음 ETF 1개 2.5% <span class="ex">예시</span></div>
+          <div class="small muted">85.0 + 6.2 + 8.8 = 100.0% · 보유 ETF별 저장 행: 30행 18개 · 11 ~ 29행(원천 전체) 5개 [펼쳐 보기]</div>
+        </div>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th>후보 주요 주식(원본 1 ~ 10행)</th><th>후보 비중</th><th>고른 보유 비중</th><th>내 보유 전체의 확인된 노출</th></tr></thead>
+          <tbody>
+            <tr><td>일라이 릴리</td><td class="num">29.98%</td><td class="num">3.12% <span class="ex">예시</span></td><td class="num"><b>1.85%</b> <span class="ex">예시</span></td></tr>
+            <tr><td>노보 노디스크 ADR</td><td class="num">20.92%</td><td class="muted">저장 범위에서 미확인(30행 · 97.4%) <span class="ex">예시</span></td><td class="num">0.41% <span class="ex">예시</span></td></tr>
+            <tr><td>암젠</td><td class="num">6.37%</td><td class="num">1.05% <span class="ex">예시</span></td><td class="num">0.22% <span class="ex">예시</span></td></tr>
+            <tr><td colspan="4" class="muted">… 7종목 더(비중 순)</td></tr>
+          </tbody>
+        </table></div>
+        <div class="small muted">'0(확인)' = 원천이 준 전체 구성(30행 미만으로 다 받음)에 없음 · '저장 범위에서 미확인' = 30행까지만 받아 그 밖은 모름.</div>
+        <div class="res">
+          <div class="n"><span>참</span><span>다른 구성일 참고(합계에 넣지 않음): <span class="mask">보유 ETF ㄹ</span> 11/12 — 일라이 릴리 2.10% 담음 <span class="ex">예시</span></span></div>
+          <div class="n"><span>·</span><span>후보를 이미 보유 중이면 노출에 넣고 표시합니다 · 지금은 보유하지 않음</span></div>
+        </div>
+        <details class="fold-sec">
+          <summary>계산 입력 펼쳐 보기 <span class="tag t-new">새</span></summary>
+          <div class="inner">
+            <div class="small">일라이 릴리 = <span class="mask">보유 ETF ㄱ</span> 평가 비중 12.0% × 편입 3.12% (0.3744%) + <span class="mask">보유 ETF ㄷ</span> 8.5% × 9.80% (0.833%) + <span class="mask">보유 ETF ㅂ</span> 6.4% × 10.0% (0.64%) + 직접 보유 0% = 1.8474% → 합계에서 반올림 1.85% <span class="ex">예시</span></div>
+            <div class="small muted">계산에 쓴 자릿수 그대로 보입니다. 금액은 보이지 않습니다(POC6-24 규칙). 평가액이 일부만 확인되면 '부분 평가액 기준', 분모가 없으면 '비중 확인 불가'. 고른 보유가 개별 주식이면 '그 주식 자체'와 '전체 보유에서 차지하는 평가 비중'을 나눠 보입니다.</div>
+          </div>
+        </details>
+        <div class="small muted">후보를 더 샀을 때의 예상 비중은 추가 금액과 자금 출처가 있어야 볼 수 있습니다(Q19).</div>
+      </div>
+      <div class="small muted">「보유」 화면의 '노출 확인'(하위 30 목록과 비교)은 바꾸지 않습니다.</div>
+    </div>
+
+    <div class="card">
+      <div class="head"><h2>판단 근거 미리보기</h2><button class="primary" type="button">판단 근거 미리보기 생성</button><button class="ghost" type="button">복사</button><button class="ghost" type="button">AI 세션에서 검토</button></div>
+      <div class="small muted">위 구성종목 비교와 같은 선택 · 선정 조건 · 날짜 · 상태 · 확인 범위 · 계산 입력일 때만 서버가 미리보기를 만듭니다(Q13) <span class="tag t-chg">바뀜</span></div>
+      <div class="miss">자료가 바뀌었습니다 — [다시 불러오기]를 누르세요. 고른 보유 · 후보는 그대로 둡니다. <span class="small">(예: 그사이 [구성종목 수집]이 돌았거나, 같은 날 보유 현재가가 바뀌어 % 만 달라진 경우)</span> <span class="tag t-new">새</span></div>
+      <div class="small muted">미리보기를 만든 뒤 위에서 보유 · 후보를 바꾸면, [AI 세션에서 검토]를 누를 때 '지금 화면과 미리보기가 다릅니다 — 다시 만들까요?'를 먼저 묻습니다.</div>
+    </div>
+  </section>
+
+  <!-- ================= M4 ================= -->
+  <section class="screen p" id="m4" aria-label="M4 미리보기와 AI 투자 세션">
+    <span class="label">M4 · 판단 근거 미리보기 '[구성종목 비교]' → 「AI 투자 세션」 작성 · 다시 열기 (STEP 5)</span>
+    <div class="preview">
+      <b>판단 근거 미리보기 — 생성 11/14 15:12 · 가격 기준일 11/13 · KODEX200 11/13 · VIX 11/12 · <span class="tag t-new">구성: 후보 11/13 · 고른 보유 11/13 · 노출 합계 11/13</span></b>
+      <pre>[대상] … (기존 그대로)
+
+[보유 · 자금 기준] … (기존 그대로)
+
+[구성종목 비교]
+기준일: 후보 구성 11/13 · 고른 보유(보유 ETF ㄱ) 구성 11/13 · 노출 합계 11/13 · 보유 평가 11/13 마감 · 현금 제외 보유 평가액 기준
+확인 범위: 보유 ETF 23개(평가액의 85.0%) + 직접 보유 3개(6.2%) 계산 · 빠짐 8.8%(다른 구성일 1개 3.1% · 원천 기준일 미확인 1개 3.2% · 구성 자료 없음 1개 2.5%)
+- 일라이 릴리: 후보 29.98% · 고른 보유 3.12% · 내 보유 전체 1.85%
+- 노보 노디스크 ADR: 후보 20.92% · 고른 보유 저장 범위에서 미확인 · 내 보유 전체 0.41%
+- 암젠: 후보 6.37% · 고른 보유 1.05% · 내 보유 전체 0.22%
+- … 7종목 더
+다른 구성일 참고: 보유 ETF ㄹ 11/12 — 일라이 릴리 2.10%(합계 밖)
+
+[중복 · 자료 상태] 직접 보유 줄만 남김 · 후보와 보유 ETF의 쌍별 중복률 줄은 위 [구성종목 비교]로 대체
+
+[AI에게 요청] … (기존 그대로)</pre>
+      <div class="small muted">'[구성종목 비교]' 묶음이 새로 생깁니다(Q14 (b)) <span class="tag t-new">새</span>. 보유 이름은 실제 화면에서는 보이고, 이 목업에서만 가렸습니다. 보유 쪽 수치는 <span class="ex">예시</span>. 금액은 넣지 않습니다.</div>
+    </div>
+
+    <div class="card">
+      <div class="head"><h2>AI 투자 세션 — 작성</h2></div>
+      <div class="kv">
+        <div class="k">선택 근거</div><div>KODEX 글로벌비만치료제TOP2 Plus(후보) · 생성 11/14 15:12 · 가격 11/13 · KODEX200 11/13 · VIX 11/12 · <b>구성: 후보 11/13 · 고른 보유 11/13 · 노출 합계 11/13</b> <span class="tag t-new">새 · 선택 칸</span></div>
+      </div>
+      <div class="keep"><b>질문 글</b>(= 미리보기 원문) · <b>AI 답변</b> 칸(1개 이상 필요) — 지금 그대로</div>
+      <div class="field"><span class="k">메모 — 남기거나 보류한 이유 한 문장(Q15)</span><div class="ta">보류 — 두 비만치료제 주식(일라이 릴리 1.85% · 노보 노디스크 0.41%)의 확인된 노출은 합 2.26%이지만, 미확인 ETF 두 개(평가액 5.7%)의 구성을 보충해 다시 비교. <span class="ex">예시</span></div></div>
+      <div class="field"><span class="k">판단(기존 값 그대로)</span><div class="seg"><span>쓸 만함</span><span>구성 종목 필요</span><span>시장 비교 필요</span><span class="on">보류</span></div></div>
+      <div class="field"><span class="k">다음 확인 항목(한 줄 = 한 항목)</span><div class="ta">미확인 ETF 두 개 구성 보충 뒤 다시 비교<br>11/12 구성 ETF 한 개의 목표일 자료 확인 <span class="ex">예시</span></div></div>
+    </div>
+
+    <div class="card">
+      <div class="head"><h2>AI 투자 세션 — 다시 열기</h2></div>
+      <div class="small">저장한 글을 그대로 보입니다 · 지금 값을 다시 읽지 않습니다(기존 동작 · 시험으로 고정). 날짜 칸이 없는 예전 기록도 그대로 열립니다.</div>
+      <div class="kv">
+        <div class="k">선택 근거</div><div>KODEX 글로벌비만치료제TOP2 Plus · 구성: 후보 11/13 · 고른 보유 11/13 · 노출 합계 11/13 · 가격 11/13</div>
+        <div class="k">원문 중</div><div>[구성종목 비교] 확인 범위 85.0% + 6.2% · 빠짐 8.8% · 일라이 릴리 1.85% · 노보 노디스크 ADR 0.41% …</div>
+        <div class="k">메모</div><div>보류 — 두 비만치료제 주식의 확인된 노출은 합 2.26%이지만, 미확인 ETF 두 개(평가액 5.7%)의 구성을 보충해 다시 비교. <span class="ex">예시</span></div>
+        <div class="k">다음 확인</div><div>미확인 ETF 두 개 구성 보충 뒤 다시 비교 · 11/12 구성 ETF 한 개의 목표일 자료 확인</div>
+      </div>
+    </div>
+  </section>
+
+</main>
+</div>
+</body>
+</html>
