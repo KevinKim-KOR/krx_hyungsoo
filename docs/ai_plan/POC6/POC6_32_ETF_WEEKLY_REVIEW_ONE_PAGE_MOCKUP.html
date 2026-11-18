@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>주간 ETF 점검 목업 V2 확정</title>
+<style>
+  :root { --fg:#1a1d23; --muted:#6b7280; --card:#fff; --soft:#e8ebf0; --border:#d1d5db; --accent:#2563eb; --bg:#f5f6f8; --old:#f3f4f6; --warn:#8a5a00; --warnbg:#fffbe6; --up:#dc2626; --down:#2563eb; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.55 -apple-system, "Apple SD Gothic Neo", "Pretendard", sans-serif; }
+  .page { max-width:1180px; margin:0 auto; padding:16px; display:grid; gap:16px; }
+  .note { background:var(--warnbg); border:1px solid #f1d98a; border-radius:10px; padding:10px 14px; font-size:13px; }
+  .note b { color:var(--warn); }
+  .frame { display:grid; grid-template-columns:220px minmax(0,1fr); gap:14px; align-items:start; }
+  @media (max-width:820px) { .frame { grid-template-columns:minmax(0,1fr); } }
+  .side { background:#fff; border:1px solid var(--border); border-radius:12px; padding:10px 12px; font-size:13px; display:grid; gap:4px; }
+  .side .g { color:var(--muted); font-size:12px; margin-top:6px; }
+  .side .i { padding:4px 8px; border-radius:6px; }
+  .side .on { background:var(--accent); color:#fff; }
+  .side .new { outline:2px solid var(--accent); }
+  .side .gone { color:#9ca3af; text-decoration:line-through; }
+  .screen { display:grid; gap:12px; min-width:0; }
+  h1 { margin:0; font-size:21px; }
+  h2.part { margin:8px 0 0; font-size:16px; }
+  .btn { min-height:40px; padding:0 14px; border:1px solid var(--accent); color:var(--accent); background:#fff; border-radius:8px; font-size:14px; }
+  .btn.primary { background:var(--accent); color:#fff; }
+  .btn.sm { min-height:40px; padding:0 12px; font-size:14px; } /* 화면 중간 버튼 기준 40px(POC5-UI-01) — 11/17 형수님 의견으로 32px 에서 바로잡음 */
+  .picked-mark { display:inline-flex; align-items:center; gap:4px; min-height:40px; padding:0 14px; border:1px solid var(--accent); border-radius:8px; background:var(--accent); color:#fff; font-size:14px; font-weight:700; white-space:nowrap; }
+  tr.picked td { background:#eff6ff; }
+  tr.grp td { border-bottom:none; }
+  tr.mem td { border-bottom:none; padding-top:2px; padding-bottom:4px; font-size:13px; }
+  tr.mem td:first-child { padding-left:14px; }
+  tr.mem + tr:not(.mem) td { border-top:1px solid var(--soft); }
+  tr.picked td:first-child { box-shadow:inset 4px 0 0 var(--accent); }
+  .row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  .muted { color:var(--muted); }
+  .small { font-size:12px; }
+  .old { background:var(--old); border:1px dashed var(--border); border-radius:12px; padding:10px 14px; color:#4b5563; }
+  .tag { display:inline-block; font-size:11px; font-weight:700; border-radius:999px; padding:1px 8px; margin-left:6px; background:#e5e7eb; color:#6b7280; }
+  .tag.new { background:var(--accent); color:#fff; }
+  .card { background:var(--card); border:2px solid var(--accent); border-radius:12px; padding:14px 16px; display:grid; gap:10px; min-width:0; }
+  .sec { border:1px solid var(--soft); border-radius:10px; padding:10px 12px; display:grid; gap:4px; min-width:0; }
+  .sec b.t { font-weight:700; }
+  .warnline { color:var(--warn); font-size:13px; }
+  .wrap { overflow-x:auto; }
+  table { border-collapse:collapse; width:100%; font-size:13px; }
+  th, td { border-bottom:1px solid var(--soft); padding:7px 6px; text-align:left; vertical-align:top; }
+  th { color:var(--muted); font-weight:600; font-size:12px; }
+  .num { text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .pill { display:inline-block; padding:1px 8px; border-radius:999px; background:#f1f3f6; font-size:12px; white-space:nowrap; }
+  .pill.on { background:var(--accent); color:#fff; }
+  .pill.wait { background:#fef3c7; color:#92400e; }
+  .same { color:#047857; font-weight:600; }
+  .diff { color:#b45309; font-weight:600; }
+  pre { white-space:pre-wrap; font:12px/1.5 ui-monospace, Menlo, monospace; background:#f8fafc; border:1px solid var(--soft); border-radius:8px; padding:10px; margin:0; }
+  details > summary { cursor:pointer; font-weight:600; }
+  .ex { border:1px dashed #c7d2fe; background:#f8faff; border-radius:8px; padding:8px 10px; }
+  .q { display:grid; grid-template-columns:150px minmax(0,1fr); gap:6px 12px; padding:8px 0; border-top:1px solid var(--soft); }
+  .q:first-of-type { border-top:none; }
+  .q > b { font-size:14px; }
+  @media (max-width:640px) { .q { grid-template-columns:minmax(0,1fr); } }
+  .nw { white-space:nowrap; }
+  .lack { display:inline-block; margin-top:4px; padding:1px 8px; border-radius:999px; background:#fef3c7; color:#92400e; font-size:12px; }
+  .state { display:inline-block; padding:2px 10px; border-radius:8px; font-weight:700; font-size:13px; }
+  .state.same-i { background:#dcfce7; color:#166534; } .state.diff-i { background:#fee2e2; color:#991b1b; } .state.unk-i { background:#f1f3f6; color:#374151; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="note">
+    <b>목업 V2 확정 — PLAN 판정 V2(CONDITIONAL_PASS) 반영(2026-11-17)</b><br />
+    주간 ③ = 「선택한 후보 검토」(어떤 상품인가 · 실제로 올랐나 · 더 확인할 것 · 내 보유 겹침 · 보유 한 종목 고르는 단계 없음) · [비교 상세] = 두 상품 직접 고름 · 같은 공식 기초지수일 때만 차이 요약.<br />
+    「오늘의 투자 점검」 = 일일 시장 확인 · 「주간 ETF 점검」 = 독립 화면 · 「ETF 구성종목」 · 「보유와 후보 비교」 = 메뉴에서 빼고 상세 화면(PLAN Q1 원안).<br />
+    11/17 형수님 의견 반영: 고른 표시 = [고르기] 버튼과 같은 크기(40px) · 파란 바탕 · ✓ · 굵게 + 행 왼쪽 파란 줄(작은 알약 → 쪼그라들어 보이던 문제).<br />
+    숫자는 11/16 저장 자료 실제 값(시세 11/16 · 코스피 · 수급 · 환율 · 유가 · VIX 11/13). <b>○</b> = 이번에 실측하지 않은 칸 · AI 답 · 기록은 모양을 보이기 위한 예시. 보유 이름 · 금액 없음.
+  </div>
+
+  <!-- 1. 오늘의 투자 점검 -->
+  <h2 class="part">① 「오늘의 투자 점검」(일일 시장 확인)</h2>
+  <div class="frame">
+    <div class="side">
+      <div class="g">오늘 확인</div>
+      <div class="i on">오늘의 투자 점검</div>
+      <div class="i new">주간 ETF 점검 <span class="small">(새로)</span></div>
+      <div class="g">ETF보유 및 후보 선정</div>
+      <div class="i">보유</div><div class="i">섹터요약</div><div class="i">후보리스트</div>
+      <div class="i gone">보유와 후보 비교</div><div class="i gone">ETF 구성종목</div>
+      <div class="i">AI 투자 세션</div>
+      <div class="small muted" style="margin-top:6px">줄 그은 두 메뉴 = 메뉴에서 빠지고 상세 화면으로(주간 ETF 점검 · 후보리스트 · 보유에서 엶)</div>
+    </div>
+    <div class="screen">
+      <div class="row"><h1>오늘의 투자 점검</h1><button class="btn">요약 다시 읽기</button><button class="btn primary">최신 자료 갱신</button></div>
+      <div class="old"><b>▶ 자료 최신화 필요 · ▶ OCI 운영 스케줄 확인</b><span class="tag">기존 · 접힘</span></div>
+      <div class="old">
+        <b>시장 흐름</b><span class="tag">기존 배치 그대로</span>
+        <div class="row" style="margin-top:6px"><button class="btn sm primary">AI용 시장 정보 복사</button><span class="small">개정 — 최신 공개 자료 확인 질문 + 판정 근거 · 기간 시작 · 끝 · VIX · 오늘 시세 참고 · 다섯 줄 답(아래 글 예시)</span></div>
+        <div class="small" style="margin-top:4px">아침 요약 · 오늘 시장 변화 · 판정 근거 표 · 코스피 공식 종가 · 차트 — 지금 그대로</div>
+      </div>
+      <div class="old"><b>보유 점검</b><span class="tag">기존 그대로</span></div>
+      <div class="card" style="border-width:1px">
+        <div class="row" style="justify-content:space-between"><b>주간 ETF 점검</b><button class="btn sm">주간 ETF 점검 열기 →</button></div>
+        <div class="small muted">후보 고르기 · 보유와 겹침 · AI 의견 · 검토 기록은 주간 화면에서(이 화면은 주간 자료를 읽지 않음)</div>
+      </div>
+      <div class="old"><b>▶ 시장 근거와 다른 변화 보기 · 자료 · 연구 상태 · ▶ 현재 제공 범위</b><span class="tag">기존</span></div>
+      <details open>
+        <summary>[AI용 시장 정보 복사] 개정 글 예시(일일 · 공통 시장 근거)</summary>
+<pre>답변 전에 판단에 사용하는 항목의 최신 공개 자료를 확인해 주세요. 공식 출처를 우선하고, 국내 종가·수급과 해외 지표는 각 자료의 거래일과 공표 시점을 기준으로 확인해 주세요. 확인 결과에는 값·기준일·출처 링크를 적어 주세요. 저장값과 같으면 그 사실을, 더 최신 값이나 같은 날짜의 정정값이 있으면 어느 해석이 달라지는지 적어 주세요. 최신 공개 자료를 확인할 수 없으면 '최신 자료 확인 불가'라고 쓰고 제공된 저장 자료의 기준일을 밝혀 설명해 주세요.
+
+다섯 줄로 답해 주세요. ① 최신 확인 결과와 시장 판정 ② 코스피 방향 ③ 외국인 매도·매수 방향과 속도 ④ 환율·유가·VIX 관측 ⑤ 다음 확인 한 가지. 줄마다 근거와 실제 날짜를 쓰고, 비교 기간이 다르면 따로 써 주세요. 못 읽은 자료는 '확인 불가'. 해석에 추가 자료가 필요하면 그 항목을 마지막 줄에 적어 주세요.
+
+[시장 판정] KODEX 200 하락장 · 27거래일째 · 판정 가격 11/16 마감 뒤 저장(아침 · 당일 같은 근거)
+  - 20거래일 -11.03%(10/19 → 11/16) · 60거래일 -26.29%(8/18 → 11/16) · 20일선 아래(거리 ○%) · 60일선 아래(거리 ○%)
+[코스피 공식 종가] 5,290.53 · 11/13 · 11/12 대비 -52.20pt(-0.98%) · 기대 거래일 11/16 종가 확인 불가
+  - 1개월 -12.34%(10/13 6,035.35 → 11/13 5,290.53) · 3개월 -22.35%(8/13 6,813.34 → 11/13) · 6개월 -32.55%(5/13 7,844.01 → 11/13 · 시작 종가 출처 FDR)
+[수급] 외국인 6개월 누적 순매도 145.4조원(5/14 ~ 11/13 · 124/124일)
+  - 외국인 직전 20거래일 9/15 ~ 10/16 순매도 31.9조원(일평균 1.6조원) → 최근 20거래일 10/19 ~ 11/13 순매도 11.0조원(일평균 5,479억원)
+  - 60거래일 8/18 ~ 11/13(60일) 외국인 -61.0조원 · 개인 -7.5조원 · 기관계 +10.1조원 · 기타법인 +58.3조원 · 내국인대우외국인 -94억원
+    (외국인 = 내국인대우외국인 제외 · 기관계 = 금융투자 등 세부 7 합 · 세부는 따로 더하지 않음 · 국가 · 지자체는 따로 적지 않음)
+[원/달러] 1,333.78원 · 11/13(런던 날짜) · 직전 대비 ○ · 5개 관측 ○ · 6개월 1,492.99 → 1,333.78(-10.66% · 5/13 → 11/13)
+[WTI] 88.56달러 · 11/13(뉴욕 날짜) · 직전 대비 ○ · 6개월 101.02 → 88.56(-12.33% · 5/13 → 11/13)
+[VIX] 19.30 · 11/13(미국 날짜) · 11/12 18.70 대비 +3.21% · 5개 관측 ○ · 6개월 17.87 → 19.30(+8.00% · 5/13 → 11/13)
+[가능한 해석(6개월 · 확정 아님)] 코스피 하락 · 외국인 순매도 · 원/달러 하락 / 유가 하락 · VIX 상승 — VIX 17.87 → 19.30(+8.00% · 5/13 → 11/13 미국 날짜)
+[오늘 시세 참고] 코스피 ○ · 코스닥 ○ · KODEX 200 ○ · ○/○ 장중|마감 · 네이버 원천 시각 ○(오늘 저장 시세가 있고 마지막 상태가 성공일 때만 · 공식 종가 · 수급 통계 아님)
+[최근 큰 변화] 11/9 코스피 종가 5,018.85가 11/6 저점 5,059.69를 밑돌았습니다(종가 기준) …
+[자료 상태] 코스피 · 수급 11/13(기대 11/16) · … · 오늘 시세 미확보(없을 때만)</pre>
+      </details>
+    </div>
+  </div>
+
+  <!-- 2. 주간 ETF 점검 -->
+  <h2 class="part">② 「주간 ETF 점검」(독립 화면 · 열 때 주간 자료를 읽음)</h2>
+  <div class="frame">
+    <div class="side">
+      <div class="g">오늘 확인</div>
+      <div class="i">오늘의 투자 점검</div>
+      <div class="i on">주간 ETF 점검</div>
+      <div class="g">ETF보유 및 후보 선정</div>
+      <div class="i">보유</div><div class="i">섹터요약</div><div class="i">후보리스트</div><div class="i">AI 투자 세션</div>
+    </div>
+    <div class="screen">
+      <div class="row"><h1>주간 ETF 점검</h1><button class="btn">다시 읽기</button></div>
+      <div class="small muted">「후보리스트」 기본 조건과 같은 1개월 상위 30개(선정 순서) · 10/19 → 11/16 · 인버스 · 레버리지 · 합성 · 선물 제외 · 11/16 가격 = 마감 뒤 저장 · 3개월 공통 기간 8/18 → 11/16</div>
+      <div class="row"><button class="btn primary">AI용 주간 검토 복사</button><button class="btn">AI 투자 세션으로 넘기기</button></div>
+
+      <div class="sec">
+        <b class="t">① 시장 한 줄</b> <span class="small muted">(일일 복사와 같은 공통 시장 근거)</span>
+        <div>KODEX 200 하락장 · 27거래일째(11/16 · 20거래일 -11.03% · 60거래일 -26.29% · 20 · 60일선 아래) · 외국인 최근 20거래일 순매도 11.0조원(10/19 ~ 11/13 · 직전 31.9조원)</div>
+        <div class="small muted">자료 기준일: ETF 시세 11/16 · 코스피 · 수급 · 원/달러 · WTI 11/13 · VIX 미국 11/13</div>
+      </div>
+
+      <div class="sec">
+        <b class="t">② ETF 흐름</b> <span class="small muted">같은 공식 기초지수만 한 묶음 · 대표 순위 순 · 첫 3행</span>
+        <div class="wrap"><table>
+          <thead><tr><th>흐름</th><th>순위</th><th class="num">1개월</th><th class="num">3개월</th><th>함께 읽을 내용</th><th></th></tr></thead>
+          <tbody>
+            <tr><td><b>KODEX 미국ETF산업Top10 Indxx</b><div class="small muted">428560 · 단독</div></td><td>1</td><td class="num">+12.55%</td><td class="num">+9.86%</td><td class="small">기초지수 Indxx US ETF Industry Top10</td><td><button class="btn sm">고르기</button></td></tr>
+            <tr class="picked"><td><b>KODEX 글로벌비만치료제TOP2 Plus</b><div class="small muted">476070 · 단독</div></td><td>2</td><td class="num">+11.77%</td><td class="num">-0.62%</td><td class="small">기초지수 iSelect 글로벌 비만치료제TOP2 Plus</td><td><span class="picked-mark">✓ 고른 후보</span></td></tr>
+            <tr class="grp"><td><b>Nifty 50 Index</b><div class="small muted">같은 공식 기초지수 2개 · 아래 줄에서 하나를 고름</div></td><td>3 · 4</td><td class="num">각 +10.80%</td><td class="num">+0.01% · -0.64%</td><td class="small">같은 지수를 따르는 2개 상품</td><td></td></tr>
+            <tr class="mem"><td>└ KODEX 인도Nifty50 <span class="small muted">453810</span></td><td>3</td><td class="num">+10.80%</td><td class="num">+0.01%</td><td></td><td><button class="btn sm">고르기</button></td></tr>
+            <tr class="mem"><td>└ TIGER 인도니프티50 <span class="small muted">453870</span></td><td>4</td><td class="num">+10.80%</td><td class="num">-0.64%</td><td></td><td><button class="btn sm">고르기</button></td></tr>
+            <tr><td colspan="6" class="small muted">예시(기간 다름일 때): 3개월 <b>+4.20%</b> · 기간 다름(8/25 → 11/16 · 공통 8/18 → 11/16) — '확인 불가'로 쓰지 않음 · 행 아래 <span class="lack">자료 부족: 3개월 기간 다름</span> / 공식 기준정보에 없는 ETF 는 <span class="lack">자료 부족: 공식 기준정보 없음</span> · 충분한 행은 표시 없음</td></tr>
+          </tbody>
+        </table></div>
+        <details><summary>나머지 흐름 펼치기 · 23행 · 5위부터</summary><div class="small muted">묶음 안 ETF 마다 [고르기]</div></details>
+      </div>
+
+      <div class="sec">
+        <b class="t">③ 선택한 후보 검토</b> <span class="small muted">후보를 고르면 · 보유 한 종목을 고르는 단계 없음 · 시스템이 정하는 것 = 가격 방향과 비교 가능 범위 · 쓸 만한지는 직접 기록</span>
+        <div><b>KODEX 글로벌비만치료제TOP2 Plus(476070)</b> · 1개월 상위 2위</div>
+        <div class="q"><b>어떤 상품인가</b><div>
+          <div>공식 기초지수 <b>iSelect 글로벌 비만치료제TOP2 Plus 지수(PR)</b> · 지수산출기관 NH투자증권 · 투자 대상 <b>해외 · 주식</b> · 상품 구조 추적배수 일반 · 실물(패시브) · 총보수 0.45% <span class="small muted">(KRX 공식 기준정보 2026-09-27 파일)</span></div>
+          <div>주요 편입(주식) 일라이 릴리 30.07% · 노보 노디스크 ADR 20.90% · 리제네론 파마슈티컬스 6.88% → <b>상위 3개 합 57.85%</b></div>
+          <div class="small">구성 기준일 11/16 · 저장 11행(주식 10 · 원화현금 1) · <b>전체 확인</b>(원천 항목 11개를 모두 받음) <span class="muted">· 상태는 미수집 · 원천 기준일 미확인 · 상위 N행만 확인 · 전체 확인 넷</span></div>
+        </div></div>
+        <div class="q"><b>실제로 올랐나</b><div>
+          <div class="wrap"><table>
+            <thead><tr><th class="nw">기간</th><th class="num">가격 관측</th><th class="nw">실제 기간</th><th class="nw">방향</th><th>같은 기간 국내시장(KODEX 200) 대비</th></tr></thead>
+            <tbody>
+              <tr><td class="nw">1개월</td><td class="num">+11.77%</td><td class="nw">10/19 → 11/16</td><td class="nw">올랐음</td><td>국내시장 -11.03% · <b>올랐고 국내시장보다 22.80%p 높음</b></td></tr>
+              <tr><td class="nw">3개월</td><td class="num">-0.62%</td><td class="nw">8/18 → 11/16</td><td class="nw">내렸음</td><td>국내시장 -26.29% · <b>내렸지만 국내시장보다 25.67%p 덜 내림</b></td></tr>
+            </tbody>
+          </table></div>
+          <div class="small muted">가격 = 11/16 마감 뒤 저장 · 시작 · 끝 · 가격 상태가 KODEX 200 과 같을 때만 대비를 씀(둘 다 장중이면 '잠정') · 기간 다름이면 값 + 실제 기간 + '기간 다름 · 국내시장 대비 안 함'</div>
+        </div></div>
+        <div class="q"><b>더 확인할 것</b><div>
+          <div class="warnline">보유 평가액의 44.71%(보유 ETF 13개)는 구성 30행 밖이 미확인 — 아래 겹침이 작아도 '겹침 없음'이 아닙니다</div>
+          <div class="small">공식 기준정보 파일 2026-09-27(51일 전 · 그 뒤 바뀐 상품 정보는 확인 불가) · 이동평균 · 거래량 · 흔들림 등 상세 근거는 [판단 근거 보기]</div>
+          <div class="row" style="margin-top:4px"><button class="btn sm">판단 근거 보기 ▾</button><span class="small muted">기존 판단 근거 미리보기를 여기서 펼침 · 화면에서만(주간 복사 · 넘기기에 넣지 않음)</span></div>
+        </div></div>
+        <div class="q"><b>내 보유에 무엇이 겹치나</b><div>
+          <div>확보된 행으로 계산한 주요 주식별 보유 노출 0.00% ~ 0.16%(주식 10개 · 주식마다 미확인 몫 35.38% ~ 44.71%)</div>
+          <div class="small">분모 = 현금 제외 보유 평가액 · 원천 전체 구성이 확인된 ETF 와 직접 보유의 평가 비중 55.29% · 기준일 11/16 · <span class="muted">후보끼리 중복률과 다른 값(이건 내 보유 기준)</span></div>
+        </div></div>
+        <div class="row"><button class="btn sm">비교 상세 →</button><button class="btn sm">구성종목 보기 →</button><span class="small muted">[비교 상세] = 보유를 바꿀 상품을 볼 때(이 후보 한쪽만 채움) · [구성종목 보기] = 이 ETF 하나</span></div>
+      </div>
+
+      <div class="sec">
+        <b class="t">④ AI 의견 요약</b> <span class="small muted">최근 검토 기록의 답 · AI 의견이며 결정이 아닙니다 · 원문은 기록 상세</span>
+        <div class="ex">
+          <div class="small" style="margin-bottom:6px">최신 확인: GPT <span class="pill">같음</span> · Claude <span class="pill wait">새 값 있음</span> — 항목 코스피 종가 · 값 ○ · 기준일 11/16 · 출처 KRX ○ · 확인 시각 <span class="pill wait">확인 시각 미기재</span> → '코스피 방향' 해석 달라짐 <span class="muted">(AI 가 적은 확인 시각 · 저장 시각과 따로)</span></div>
+          <div class="wrap"><table>
+            <thead><tr><th>ETF</th><th>GPT</th><th>Claude</th><th>대조</th></tr></thead>
+            <tbody>
+              <tr><td>476070</td><td>추가 확인 · 근거 6, 9<div class="small">이유: 30행 밖 보유 구성 미확인 · 다음: 보유 ETF 구성 더 받기</div></td><td>추가 확인 · 근거 6, 10<div class="small">이유: 3개월 흐름 약함 · 다음: 3개월 KODEX 대비 확인</div></td><td><span class="same">상태 같음</span><div class="small">같은 번호 6 · 다른 번호 GPT 9 / Claude 10</div></td></tr>
+              <tr><td>428560</td><td>근거 확인 · 근거 2, 5</td><td class="muted">답 없음</td><td class="muted">한 의견</td></tr>
+            </tbody>
+          </table></div>
+        </div>
+      </div>
+
+      <div class="sec">
+        <b class="t">⑤ 최근 검토 기록</b> <span class="small muted">이 화면에서 넘겨 저장한 기록 중 가장 최근 1건</span>
+        <div class="ex">저장 11/17 21:05 · 원자료 기준일 11/16 · 고른 후보 476070 · 사용자 판단 <b>보류(직접 고름)</b> · 메모 · 다음 확인 비어 있어도 유효 · AI 답 2개</div>
+        <div class="small muted">새 주간 기록은 판단 '미기록'에서 시작하고 그대로 저장 가능 · 주간이 아닌 예전 기록의 '보류'는 '보류 · 사용자 판단 미확인'</div>
+        <div><button class="btn sm">기록 열기 →</button> <span class="small muted">「AI 투자 세션」 그 기록 상세를 바로 엶</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. 상세 · 기록 -->
+  <h2 class="part">③ 상세 화면 · 기록 다시 열기 <span class="small muted">(메뉴에 없음 · 보낸 화면은 숨겨 두고 [← 보낸 화면으로]로 돌아가면 선택 · 조건 그대로 · 메뉴 강조 = 처음 보낸 화면)</span></h2>
+  <div class="screen">
+    <div class="card" style="border-width:1px">
+      <div class="row" style="justify-content:space-between"><b>「보유와 후보 비교」 상세 — [비교 상세]</b><button class="btn sm">← 보낸 화면으로</button></div>
+      <div class="small muted">「주간 ETF 점검」에서 고른 후보로 열렸습니다 · 두 칸 모두 빈 선택에서 시작하고 넘겨받은 쪽만 채움(기본 짝 없음) · 같은 종목을 두 칸에 고르면 '같은 종목입니다'</div>
+      <div class="row"><span class="small">보유에서 고르기</span><button class="btn sm">보유 ETF(예시) ▾</button><span class="small">후보</span><button class="btn sm">KODEX 글로벌비만치료제TOP2 Plus(476070) ▾</button></div>
+      <b>상품 확인</b>
+      <div class="wrap"><table>
+        <thead><tr><th></th><th>보유 ETF(예시)</th><th>후보 476070</th></tr></thead>
+        <tbody>
+          <tr><td>공식 기초지수</td><td>○</td><td>iSelect 글로벌 비만치료제TOP2 Plus 지수(PR)</td></tr>
+          <tr><td>투자 대상</td><td>국내 · 주식</td><td>해외 · 주식</td></tr>
+          <tr><td>상품 구조</td><td>일반 · 실물(패시브) · 총보수 ○</td><td>일반 · 실물(패시브) · 총보수 0.45%</td></tr>
+          <tr><td>과세유형</td><td>○</td><td>배당소득세(보유기간과세)</td></tr>
+        </tbody>
+      </table></div>
+      <div class="small muted">KRX 공식 기준정보 2026-09-27 파일 · 공식 기준정보에 없거나 개별 주식이면 '기준 미확인'</div>
+      <div><span class="state diff-i">다른 지수</span> <span class="small">두 상품의 공식 기초지수가 다릅니다 — 수익률 차이 요약을 쓰지 않고 각 ETF 값만 보입니다</span></div>
+      <div class="wrap"><table>
+        <thead><tr><th>항목</th><th class="num">보유 ETF(예시)</th><th class="num">후보</th><th>차이(해당 기간 가격 성과)</th></tr></thead>
+        <tbody>
+          <tr><td>1개월</td><td class="num">○</td><td class="num">+11.77%</td><td class="muted">지수 다름 · 차이 요약 안 함</td></tr>
+          <tr><td>3개월</td><td class="num">○</td><td class="num">-0.62%</td><td class="muted">지수 다름 · 차이 요약 안 함</td></tr>
+          <tr><td>최근 5 · 20구간 · 고점 대비</td><td class="num">○</td><td class="num">○</td><td class="muted">지수 다름 · 차이 요약 안 함</td></tr>
+        </tbody>
+      </table></div>
+      <div class="ex small">다른 상태 예시 — <span class="state same-i">같은 공식 기초지수</span> 기간 · 가격 상태가 맞으면 '1개월: 후보가 x.xx%p 높음' 등 차이 요약 + 구조가 다르면 '구조 다름: 추적배수 일반 ↔ 2X 레버리지' / <span class="state diff-i">다른 지수 · 같은 계열</span> 차이 요약 없음 / <span class="state unk-i">기준 미확인</span> '개별 주식 · 기초지수 해당 없음' 또는 '공식 기준정보에 없음' · 차이 요약 없음 / 같은 지수라도 기간 다름 · 가격 상태 다름이면 그 줄은 '비교하지 않음 · 사유'</div>
+      <div class="small muted">아래 종목별 근거 · 구성종목 비교 · 판단 근거 미리보기는 지금 그대로</div>
+    </div>
+    <div class="card" style="border-width:1px">
+      <div class="row" style="justify-content:space-between"><b>「ETF 구성종목」 상세 — 한 ETF([구성종목 보기])</b><button class="btn sm">← 보낸 화면으로</button></div>
+      <div class="small muted">「주간 ETF 점검」에서 고른 ETF 하나를 보여 줍니다 · 저장 자료를 먼저 읽고 수집은 [구성종목 수집]을 누를 때만(이 ETF 하나)</div>
+      <div><b>KODEX 글로벌비만치료제TOP2 Plus(476070)</b> · 구성 기준일 11/16 · 저장 11행 · <b>전체 확인</b> · 집중 Top1 30.07% · Top3 57.85% · Top5 71.41% · Top10 99.79% <button class="btn sm">구성종목 수집</button></div>
+      <div class="wrap"><table>
+        <thead><tr><th>순위</th><th>종목</th><th class="num">비중</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>일라이 릴리</td><td class="num">30.07%</td></tr>
+          <tr><td>2</td><td>노보 노디스크 ADR</td><td class="num">20.90%</td></tr>
+          <tr><td>3</td><td>리제네론 파마슈티컬스</td><td class="num">6.88%</td></tr>
+          <tr><td colspan="3" class="small muted">… 11행까지(원화현금 0.15% 포함)</td></tr>
+        </tbody>
+      </table></div>
+      <div class="small muted">목록 모드(「후보리스트」 [이 목록을 ETF 구성종목에서 보기])는 지금처럼 구성종목 · 중복률 탭 · 여러 지수가 함께 담은 주식 · 머리에 넘겨받은 목록(조건 · 기간 · 개수) · 보유 겹침 카드 = '1개월 상위 10개 기준 · 시작 ○ ~ ○ → 끝 ○' · 상태 글자 한국어</div>
+    </div>
+    <div class="card" style="border-width:1px">
+      <b>「AI 투자 세션」 기록 상세 — 주간 기록이면 '당시 검토'(저장 값만 · 다시 계산 없음 · [기록 열기]로 바로 엶)</b>
+      <div class="small">저장 11/17 21:05 · 원자료 기준일 11/16 · 1개월 상위 30개 · 제외 4종 · 후보 30(순위 · 1 · 3개월 · 같은 기간 KODEX 200 실제 기간 · 기간 다름) · 고른 후보 476070 · 상품 · 구성 요약 · 겹침 · 확인 범위 · 인용 근거(저장한 근거 목록) · AI 별 최신 확인 · 확인 시각(없으면 '확인 시각 미기재') · 상태 · 이유 · 다음 확인 · 사용자 판단(미기록 / 직접 고름 / 사용자 판단 미확인)</div>
+      <div class="small muted">질문 원문 · 답 원문 · 시장 근거 칸은 접힌 칸 · 오늘 시세 · 수집 시각은 기록에 남은 값만 · 이후 자료 갱신은 이 기록을 바꾸지 않음</div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
