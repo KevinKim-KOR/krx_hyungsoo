@@ -39,10 +39,18 @@ from app.supply_fx_oil_calc import (
     price_events,
     short_term,
     signed,
+    vix_evidence,
     window,
     won,
 )
-from app.supply_fx_oil_fields import flow_obs, keyed, line, price_obs, windows_fields
+from app.supply_fx_oil_fields import (
+    flow_obs,
+    keyed,
+    line,
+    price_obs,
+    vix_basis,
+    windows_fields,
+)
 from app.supply_fx_oil_store import (
     USDKRW,
     WTI,
@@ -118,6 +126,9 @@ def build_market_flow_context(
         "interpretation": {},
         "limits": LIMITS,
         "status": [],
+        "vix_basis": vix_basis(
+            vix, read_benchmark_collected_at("VIX", db_path=db_path)
+        ),
         "today_lines": [],
         "ai_text": {},
     }
@@ -226,14 +237,15 @@ def build_market_flow_context(
             "investors": inv,
             "usdkrw": moves["usdkrw"],
             "wti": moves["wti"],
+            "vix": change_over(
+                vix, b, D
+            ),  # POC6-32 Q9 — 해석에 쓰는 VIX 기간 근거(미국 날짜)
             "lines": lines,
         }
 
     _windows(out, flows, kdates, D)
     _short(out, series, flows, kdates, D)
-    out["interpretation"] = {
-        code: _interpret(out, vix, code, D) for code, _, _ in PERIODS
-    }
+    out["interpretation"] = {code: _interpret(out, code) for code, _, _ in PERIODS}
     out["status"] = [
         {
             "key": k,
@@ -415,7 +427,7 @@ def _short(out: dict, series: dict, flows: dict, kdates: list[str], D: str) -> N
     }
 
 
-def _interpret(out: dict, vix: list, code: str, D: str) -> dict:
+def _interpret(out: dict, code: str) -> dict:
     """{"rows": [[관측, 가능성, 다른 설명]], "notes": [문장]} — 입력이 없거나 부분이면 '확인 못 한 조합'."""
     p = out["periods"][code]
     kd = p["kospi"]["pct"] if p["kospi"] else None
@@ -474,17 +486,17 @@ def _interpret(out: dict, vix: list, code: str, D: str) -> dict:
     elif oilp >= 0:
         evaluated += 1
     else:
-        vc = change_over(vix, p["boundary"], D)
+        vc = p["vix"]
         if not vc or vc["pct"] is None:
             notes.append(
-                "확인 못 한 조합: 유가 하락 · VIX — VIX 기간 변화 계산 불가(기간을 덮는 저장 값 없음)"
+                "확인 못 한 조합: 유가 하락 · VIX — VIX 기간 변화 미확인(기간을 덮는 저장 값 없음)"
             )
         else:
             evaluated += 1
             if vc["pct"] > 0:
                 rows.append(
                     [
-                        "유가 하락 · VIX 상승(글로벌 위험 회피)",
+                        f"유가 하락 · VIX 상승(글로벌 위험 회피) — {vix_evidence(vc)}",
                         "수요 둔화 가능성 검토",
                         "공급 확대 · 공급 차질 완화도 유가를 낮출 수 있음 · 원인 확정 불가",
                     ]
@@ -492,7 +504,7 @@ def _interpret(out: dict, vix: list, code: str, D: str) -> dict:
             elif vc["pct"] < 0:  # 변화 0 = 표의 어느 조합도 아님(만들지 않음)
                 rows.append(
                     [
-                        "유가 하락 · VIX 하락(글로벌 시장 견조)",
+                        f"유가 하락 · VIX 하락(글로벌 시장 견조) — {vix_evidence(vc)}",
                         "비용 부담 완화 가능성 검토",
                         "업종별 영향이 다르고 공급 원인은 따로 확인 필요",
                     ]
@@ -579,7 +591,7 @@ def ai_text(out: dict, code: str) -> str:
         "[자료 기준일] "
         + " · ".join(
             f"{s['label']} {s['E'] or '없음'}(수집 {kst_stamp(s['collected_at'])})"
-            for s in out["status"]
+            for s in [*out["status"], out["vix_basis"]]
         )
     )
     L.append("[한계] " + " ".join(out["limits"]))

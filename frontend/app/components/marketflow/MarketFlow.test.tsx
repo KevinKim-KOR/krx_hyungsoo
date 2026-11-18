@@ -200,6 +200,23 @@ describe("「요즘 잘 오르는 ETF」 시장 흐름 카드", () => {
     expect(status.textContent).toContain("원/달러 10/16(수집 10/16 18:00)"); // UTC 09:00 → 한국 18:00
   });
 
+  it("POC6-32 판정 Q9 — [자료 기준일]에 VIX(미국 날짜) · 국내 '늦음' 판정에는 넣지 않음 · 옛 서버(칸 없음)는 그대로", async () => {
+    serve(ctx({ vix_basis: { label: "VIX(미국 날짜)", E: "2026-10-14", collected_at: "2026-10-15T13:00:00Z" } }));
+    const { container, unmount } = render(<MarketFlowCard />);
+    await screen.findByText("6개월 요약 줄(6M)");
+    const status = container.querySelector(".mf-status") as HTMLElement;
+    expect(status.textContent).toContain("WTI 10/15(수집 10/16 18:00) · VIX(미국 날짜) 10/14(수집 10/15 22:00)");
+    // D 10/16 보다 이른 미국 날짜여도 '늦음'에 넣지 않음(WTI 만)
+    expect(status.textContent).toContain("늦음: WTI 10/15(D 10/16 보다 이전)");
+    expect(status.textContent).not.toContain("늦음: WTI 10/15 · VIX");
+    unmount();
+    __resetQueryCache();
+    serve(ctx());
+    const again = render(<MarketFlowCard />);
+    await screen.findByText("6개월 요약 줄(6M)");
+    expect((again.container.querySelector(".mf-status") as HTMLElement).textContent).not.toContain("VIX");
+  });
+
   it("사건 표시 점은 기간 경계 뒤만 · 1개월로 줄이면 8/3 수급 · 경계일(9/16) 코스피 사건 점은 사라진다", async () => {
     const edge = { date: "2026-09-16", series: "코스피", kind: "range", text: "9/16 코스피 범위 아래" };
     serve(ctx({ events: [...ctx().events, edge] }));

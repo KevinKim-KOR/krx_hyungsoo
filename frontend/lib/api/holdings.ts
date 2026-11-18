@@ -417,7 +417,20 @@ export interface HoldingsMarketEvidenceResponse {
   judgment_summary?: JudgmentSummary | null;
   // POC5-09 — PC 비교 기준일 · 기준일이 달라 현재 비교에서 뺀 종목.
   price_basis?: PriceBasis | null;
+  // POC6-32 V2(PLAN §9 I-22) — 보유 겹침 비교에 쓴 서버 상위 목록 기준과 실제 기간(칸 없음 = 예전 서버).
+  topn_basis?: HoldingsTopnBasis | null;
   warnings: string[];
+}
+
+// 시작일은 ETF 마다 '끝일 − 기간 이후 첫 저장일'이라 다를 수 있어 최소 ~ 최대. 결과가 없으면 날짜 칸 null.
+export interface HoldingsTopnBasis {
+  basis: string | null;
+  n: number | null;
+  count: number;
+  filters: Record<string, boolean> | null;
+  start_min: string | null;
+  start_max: string | null;
+  end: string | null;
 }
 
 export function fetchHoldingsMarketEvidence(): Promise<HoldingsMarketEvidenceResponse> {

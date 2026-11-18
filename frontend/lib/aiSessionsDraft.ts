@@ -8,6 +8,12 @@
 // draft 는 "전달 중인 임시 컨텍스트" 의미. AI Sessions 의 새 기록 저장 탭에
 // 도착하면 store 호출 후 명시 clear.
 
+import { WEEKLY_REVIEW_SOURCE } from "@/lib/api/weeklyReview";
+import {
+  DECISION_VERDICT_LABEL,
+  UNRECORDED_DECISION_VERDICT,
+  type DecisionUserVerdict,
+} from "@/lib/api/decisionSessions";
 import type {
   DecisionCandidateSnapshot,
   DecisionFilters,
@@ -62,16 +68,46 @@ export function isSelectedPreviewRecord(
   );
 }
 
+const HOLD: DecisionUserVerdict = "hold";
+
+// 주간 기록 출처(`today_weekly_review` · V2 메뉴 「주간 ETF 점검」)인가.
+export function isWeeklyRecord(sourceScreen: string | null | undefined): boolean {
+  return sourceScreen === WEEKLY_REVIEW_SOURCE;
+}
+
+// POC6-32 V2(PLAN §4-4 · §9 I-12) — 사용자 판단 표시 글자(저장값은 바꾸지 않음 · 표시만).
+// - 주간 기록: 'unrecorded' = '미기록' · 그 밖의 아는 값 = '<이름>(직접 고름)'(주간 저장 화면은 '미기록'에서 시작하므로
+//   다른 값은 사용자가 고른 것).
+// - 주간이 아닌 기록: 'hold' = '보류 · 사용자 판단 미확인'(그 화면 기본값이 '보류'라 직접 고른 것과 구별 불가) ·
+//   그 밖의 아는 값 = 이름 그대로(기본값과 달라 직접 고른 값).
+// - 모르는 값 = 저장 글자 그대로 · 값 없음 = '-'.
+export function verdictText(
+  sourceScreen: string | null | undefined,
+  verdict: string | null | undefined,
+): string {
+  if (!verdict) return "-";
+  const label = (DECISION_VERDICT_LABEL as Record<string, string | undefined>)[verdict];
+  if (label === undefined) return verdict;
+  if (isWeeklyRecord(sourceScreen)) {
+    return verdict === UNRECORDED_DECISION_VERDICT ? label : `${label}(직접 고름)`;
+  }
+  return verdict === HOLD ? `${label} · 사용자 판단 미확인` : label;
+}
+
 // 지금 남아 있는 초안이 어디서 왔는지 한 줄(덮어쓰기 확인용 · 판단 없음) + 넘긴 시각(KST · 없으면 생략).
 // 「ETF 구성종목」 초안은 구성종목 · 중복 칸을 늘 넣는다(분석 전이면 null) · 목록 넘기기 초안(「후보리스트」 · 예전
-// 「요즘 잘 오르는 ETF」)에는 그 칸이 없다.
-export function describeDraftOrigin(d: AISessionsDraft): string {
+// 「요즘 잘 오르는 ETF」)에는 그 칸이 없다. POC6-32 — 주간 초안(V2 메뉴 「주간 ETF 점검」)은 출처 값으로 가른다
+// (주간 초안도 구성 · 겹침 칸을 실을 수 있어 그 갈래보다 먼저 본다).
+// countWord = 「ETF 구성종목」 초안의 개수 낱말(주간 화면은 'ETF' · AC-7 · POC6-32 검토 F4).
+export function describeDraftOrigin(d: AISessionsDraft, countWord: "후보" | "ETF" = "후보"): string {
   let origin: string;
   if (isSelectedPreviewRecord(d.source_screen, d.candidate_snapshot)) {
     const c = d.candidate_snapshot[0];
     origin = `판단 근거 미리보기 · ${c?.name ?? c?.ticker ?? "-"}`;
+  } else if (isWeeklyRecord(d.source_screen)) {
+    origin = `「주간 ETF 점검」 · 목록 ${d.candidate_snapshot.length}개`;
   } else if ("constituent_snapshot" in d || "overlap_snapshot" in d) {
-    origin = `「ETF 구성종목」 · 후보 ${d.candidate_snapshot.length}개`;
+    origin = `「ETF 구성종목」 · ${countWord} ${d.candidate_snapshot.length}개`;
   } else {
     origin = `「후보리스트」 · 목록 ${d.candidate_snapshot.length}개`;
   }

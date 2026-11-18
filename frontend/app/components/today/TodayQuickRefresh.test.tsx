@@ -52,6 +52,12 @@ vi.mock("@/lib/api/etfCompare", async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
   fetchEtfCompareSummary: (...a: unknown[]) => fetchEtfCompareSummary(...a),
 }));
+// POC6-32 — ETF 주간 검토(「잘 오르는 ETF」 자리) 고정 응답(서버 조립 출력 · 11/16 공개 시장 자료)
+vi.mock("@/lib/api/weeklyReview", async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+  const fx = await import("@/lib/weeklyReviewTestFixtures");
+  return { ...actual, fetchWeeklyReview: vi.fn(async (sel: string | null) => fx.weeklyFor(sel)) };
+});
 vi.mock("@/lib/api/refreshAll", async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
   postRefreshAll: (...a: unknown[]) => postRefreshAll(...a),
@@ -81,6 +87,7 @@ vi.mock("@/lib/api/etfDetail", async (importOriginal) => ({
 }));
 
 import TodayInvestmentCheckView from "../TodayInvestmentCheckView";
+import { fetchWeeklyReview } from "@/lib/api/weeklyReview";
 
 function market() {
   return {
@@ -714,6 +721,8 @@ describe("보완 2차 — 아침 요약 · 오늘 시장 변화 · 근거 표 ·
     );
     expect(fetchMorningBasis.mock.calls.length).toBe(morningCalls + 1);
     expect(fetchMarketFlowContext.mock.calls.length).toBe(flowCalls + 1);
+    // POC6-32 V2(PLAN §2 S2) — 이 화면은 주간 자료를 읽지 않는다(주간 화면은 메뉴로 열 때 새로 읽음).
+    expect(vi.mocked(fetchWeeklyReview)).not.toHaveBeenCalled();
     expect(screen.getByTestId("tc-basis-result").textContent).toBe("아침 요약 기준 11/11 · 필수 자료 모두 준비됨");
     vi.useRealTimers();
   });

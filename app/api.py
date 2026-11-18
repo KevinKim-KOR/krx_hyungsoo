@@ -52,6 +52,7 @@ from app.api_decision_draft_preview import router as decision_draft_preview_rout
 from app.api_decision_ledger import router as decision_ledger_router
 from app.api_etf_compare import router as etf_compare_router  # POC6-28
 from app.api_decision_sessions import router as decision_sessions_router
+from app.api_weekly_review import router as weekly_review_router  # POC6-32
 from app.api_etf_constituents import router as etf_constituents_router
 from app.api_holdings import CapitalViewResponse, router as holdings_router
 from app.api_holdings_history import router as holdings_history_router
@@ -76,6 +77,7 @@ from app.pc_refresh_all import router as refresh_all_router  # POC6-29
 from app.pc_quick_quotes import router as quick_quotes_router  # POC6-29 보완
 from app.pc_morning_basis import router as morning_basis_router  # POC6-29 보완 2차
 from app.pc_short_flows import router as short_flows_router  # POC6-29 보완 2차
+from app.api_market_evidence import router as market_evidence_router  # POC6-32 V2
 from app.holdings import HoldingsValidationError
 from app.models import Run
 from app.state import InvalidTransition, validate_transition
@@ -126,6 +128,7 @@ app.include_router(universe_router)
 app.include_router(market_topn_router)
 app.include_router(etf_compare_router)  # POC6-28 「ETF 비교하기」 요약(PC · 읽기 전용)
 app.include_router(decision_sessions_router)
+app.include_router(weekly_review_router)  # POC6-32 「주간 ETF 점검」(읽기 전용)
 app.include_router(decision_ledger_router)  # POC5-03 받은 알림 기록
 app.include_router(etf_constituents_router)
 # POC2 Holdings × Market Discovery Evidence 1차 (2026-06-03) —
@@ -186,6 +189,7 @@ app.include_router(refresh_all_router)
 app.include_router(quick_quotes_router)
 app.include_router(morning_basis_router)
 app.include_router(short_flows_router)
+app.include_router(market_evidence_router)  # POC6-32 V2 공통 시장 근거 · 공식 기준정보
 # POC2 3-PUSH Message Contract 정렬 (2026-06-12, FIX r2 — 설계자 수용):
 # 신규 PUSH endpoint 신설 금지선 (§3 / §11) 준수.
 # PUSH-1 / PUSH-3 은 기존 POST /runs/generate 의 input_data.push_kind 분기로 통합.

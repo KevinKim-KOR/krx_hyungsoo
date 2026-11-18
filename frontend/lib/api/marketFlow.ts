@@ -184,6 +184,8 @@ export interface MarketFlowContext {
   flow_link?: FlowLink;
   // POC6-27 — 자료별 최신성(서버가 기대 기준일을 정하고 화면은 비교만 · 옛 응답에는 없음)
   freshness?: FlowFreshness;
+  // POC6-32(판정 Q9) — [자료 기준일]의 VIX(미국 날짜 · 국내 '늦음' 판정 status 밖 · 옛 서버는 칸 없음)
+  vix_basis?: { label: string; E: string | null; collected_at: string | null } | null;
 }
 
 export interface FlowEndBasis {

@@ -15,6 +15,7 @@ import {
   HOLDINGS_INVALIDATION_KEYS,
   MARKET_INVALIDATION_KEYS,
 } from "./dashboardKeys";
+import { ETF_OFFICIAL_KEY_PREFIX, etfOfficialKey } from "./etfOfficial";
 
 beforeEach(() => {
   cache.__resetQueryCache();
@@ -115,6 +116,29 @@ describe("무효화 후 재조회", () => {
     // 재마운트 → 재조회.
     const h2 = renderHook(() => cache.useSharedQuery(DASH_KEY_HOLDINGS, fetcher));
     await waitFor(() => expect(h2.result.current.phase).toBe("success"));
+    expect(fetcher).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("POC6-32 V2 — 공식 기준정보(「보유와 후보 비교」 상품 확인)", () => {
+  it("[최신 자료 갱신] 완료 = 앞부분 일치로 받아 둔 공식 기준정보를 지워 다음 조회에서 다시 읽는다 · 보유 저장은 지우지 않음", async () => {
+    expect(MARKET_INVALIDATION_KEYS).toContain(ETF_OFFICIAL_KEY_PREFIX);
+    expect(HOLDINGS_INVALIDATION_KEYS).not.toContain(ETF_OFFICIAL_KEY_PREFIX);
+    const key = etfOfficialKey(["900001", "900002"]);
+    expect(key.startsWith(ETF_OFFICIAL_KEY_PREFIX)).toBe(true);
+    const fetcher = vi.fn(async () => ({ v: 1 }));
+    const { renderHook, waitFor } = await import("@testing-library/react");
+    const mount = async () => {
+      const h = renderHook(() => cache.useSharedQuery(key, fetcher));
+      await waitFor(() => expect(h.result.current.phase).toBe("success"));
+      h.unmount();
+    };
+    await mount();
+    await simulateHoldingsSave(async () => {});
+    await mount();
+    expect(fetcher).toHaveBeenCalledTimes(1); // 보유 저장 뒤에는 받아 둔 값 그대로
+    simulateMarketStatus("completed");
+    await mount();
     expect(fetcher).toHaveBeenCalledTimes(2);
   });
 });

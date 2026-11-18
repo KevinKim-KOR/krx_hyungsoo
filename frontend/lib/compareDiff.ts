@@ -16,10 +16,16 @@
 // 차이 = 화면에 보이는 소수 둘째 자리 값끼리 뺀 값(후보 − 보유). 고점 대비 값은 0 이하라
 // 후보 − 보유 > 0 이면 후보 하락폭이 작다.
 //
+// POC6-32 V2(PLAN §3-2 D4 · §9 I-6 · I-20) — 「보유와 후보 비교」 [비교 상세]는 위 규칙 앞에 지수 상태 조건을 하나 더 둔다
+// (gatedDiffLine). 서버가 정한 지수 상태가 '같은 공식 기초지수'일 때만 위 규칙대로 차이를 적고, 그 밖(다른 지수 · 같은
+// 계열 · 기준 미확인)이면 다섯 줄 모두 차이 요약을 쓰지 않고 지수 사유 + 위 규칙이 찾은 사유(값 없음 · 기간 다름 · 가격
+// 시점 확인 필요 · 가격 상태 다름)를 함께 적는다. 위 규칙(diffLine)의 글 · 순서는 그대로다.
+//
 // 사유 낱말(저장 이력 부족 등)은 화면의 같은 사유 함수를 받아 쓴다(lib 는 화면 파일을 가져오지 않는다).
 
 import type { PriceStateCode } from "@/lib/api/etfCompare";
 import type { DetailPeriod, EtfDetailItem } from "@/lib/api/etfDetail";
+import type { OfficialPairState } from "@/lib/api/etfOfficial";
 import { md } from "@/lib/etfCompare";
 
 export type DiffPeriodKey = "m1" | "m3" | "w5" | "w20" | "drawdown";
@@ -109,19 +115,19 @@ function resultText(key: DiffPeriodKey, d: number): string {
   return d === 0 ? "같음" : `${d > 0 ? "후보" : "보유"}가 ${size} 높음`;
 }
 
-export function diffLine(
-  key: DiffPeriodKey,
-  hold: DiffSide | null,
-  cand: DiffSide | null,
-  reasonText: (code: string | null) => string,
-): DiffLine {
-  const label = DIFF_LABEL[key];
-  const notCompared = (detail: string): DiffLine => ({ kind: "not_compared", text: `${label}: 비교하지 않음 — ${detail}`, diffPctp: null });
+// 위 판정 순서의 결과 하나(글을 만들기 전). diffLine 과 gatedDiffLine 이 같은 판정을 쓴다(순서는 이 함수 한 곳).
+type Verdict =
+  | { t: "no_detail"; detail: string }
+  | { t: "missing"; detail: string }
+  | { t: "period"; h: DiffPeriod; c: DiffPeriod }
+  | { t: "unconfirmed"; range: string; who: string }
+  | { t: "state"; range: string; hs: "intraday" | "after_close"; cs: "intraday" | "after_close" }
+  | { t: "diff"; range: string; d: number; provisional: boolean };
 
+function judge(key: DiffPeriodKey, hold: DiffSide | null, cand: DiffSide | null, reasonText: (code: string | null) => string): Verdict {
   if (!hold || !cand) {
-    return notCompared(
-      [hold ? null : "보유 상세 수치 없음", cand ? null : "후보 상세 수치 없음"].filter((x): x is string => !!x).join(" / "),
-    );
+    const who = [hold ? null : "보유 상세 수치 없음", cand ? null : "후보 상세 수치 없음"].filter((x): x is string => !!x);
+    return { t: "no_detail", detail: who.join(" / ") };
   }
   const sides: [string, DiffSide][] = [
     ["보유", hold],
@@ -130,39 +136,96 @@ export function diffLine(
 
   const missing = sides.filter(([, s]) => isMissing(key, s.period));
   if (missing.length > 0) {
-    return notCompared(missing.map(([who, s]) => `${who} 값 없음 · ${reasonText(s.period.reason)}`).join(" / "));
+    return { t: "missing", detail: missing.map(([who, s]) => `${who} 값 없음 · ${reasonText(s.period.reason)}`).join(" / ") };
   }
 
   const h = hold.period;
   const c = cand.period;
-  if (!samePeriod(key, h, c)) {
-    return {
-      kind: "not_compared",
-      text: `${label}: 기간이 달라 비교하지 않음(보유 ${rangeText(key, h)} · 후보 ${rangeText(key, c)})`,
-      diffPctp: null,
-    };
-  }
+  if (!samePeriod(key, h, c)) return { t: "period", h, c };
 
   const range = rangeText(key, h);
   const hs = confirmedState(hold);
   const cs = confirmedState(cand);
   if (!hs || !cs) {
     const who = sides.filter(([, s]) => !confirmedState(s)).map(([w]) => w);
-    return { kind: "not_compared", text: `${label}(${range}): 비교하지 않음 — 가격 시점 확인 필요(${who.join(" · ")})`, diffPctp: null };
+    return { t: "unconfirmed", range, who: who.join(" · ") };
   }
-  if (hs !== cs) {
-    return {
-      kind: "not_compared",
-      text: `${label}(${range}): 가격 상태가 달라 비교하지 않음(보유 ${STATE_WORD[hs]} · 후보 ${STATE_WORD[cs]})`,
-      diffPctp: null,
-    };
-  }
+  if (hs !== cs) return { t: "state", range, hs, cs };
 
   const d = hundredths(c.value as number) - hundredths(h.value as number);
-  const provisional = hs === "intraday";
+  return { t: "diff", range, d, provisional: hs === "intraday" };
+}
+
+export function diffLine(
+  key: DiffPeriodKey,
+  hold: DiffSide | null,
+  cand: DiffSide | null,
+  reasonText: (code: string | null) => string,
+): DiffLine {
+  const label = DIFF_LABEL[key];
+  const notCompared = (text: string): DiffLine => ({ kind: "not_compared", text, diffPctp: null });
+  const v = judge(key, hold, cand, reasonText);
+  switch (v.t) {
+    case "no_detail":
+    case "missing":
+      return notCompared(`${label}: 비교하지 않음 — ${v.detail}`);
+    case "period":
+      return notCompared(`${label}: 기간이 달라 비교하지 않음(보유 ${rangeText(key, v.h)} · 후보 ${rangeText(key, v.c)})`);
+    case "unconfirmed":
+      return notCompared(`${label}(${v.range}): 비교하지 않음 — 가격 시점 확인 필요(${v.who})`);
+    case "state":
+      return notCompared(`${label}(${v.range}): 가격 상태가 달라 비교하지 않음(보유 ${STATE_WORD[v.hs]} · 후보 ${STATE_WORD[v.cs]})`);
+    case "diff":
+      return {
+        kind: v.provisional ? "provisional" : "compared",
+        text: `${v.provisional ? "잠정 비교 · " : ""}${label}(${v.range} · 같은 기간): ${resultText(key, v.d)}${
+          v.provisional ? "(두 쪽 모두 장중 저장값)" : ""
+        }`,
+        diffPctp: v.d / 100,
+      };
+  }
+}
+
+// ── POC6-32 V2 — 지수 상태 조건(PLAN §3-2 D4 · §9 I-6 · I-20) ─────────────────────────────
+
+// 차이 요약을 쓰지 않는 지수 상태의 짧은 사유(줄마다 · 자세한 사유는 화면의 지수 상태 한 줄).
+export const GATE_WORD: Record<Exclude<OfficialPairState, "same">, string> = {
+  different: "지수 다름",
+  same_family: "지수 다름(같은 계열)",
+  unconfirmed: "기준 미확인",
+};
+
+// 위 규칙이 찾은 사유(지수 사유 뒤에 붙임) · 차이를 적을 수 있었으면 null.
+function ruleReason(key: DiffPeriodKey, v: Verdict): string | null {
+  switch (v.t) {
+    case "no_detail":
+    case "missing":
+      return v.detail;
+    case "period":
+      return `기간 다름(보유 ${rangeText(key, v.h)} · 후보 ${rangeText(key, v.c)})`;
+    case "unconfirmed":
+      return `가격 시점 확인 필요(${v.who})`;
+    case "state":
+      return `가격 상태 다름(보유 ${STATE_WORD[v.hs]} · 후보 ${STATE_WORD[v.cs]})`;
+    case "diff":
+      return null;
+  }
+}
+
+// 지수 상태가 '같은 공식 기초지수'(same)일 때만 diffLine 그대로. 그 밖이면 차이(%p)를 만들지 않고
+// '{항목}: 차이 요약 안 함 — {지수 사유}[ · {위 규칙 사유}]'(5줄 모두 같은 조건 · I-20).
+export function gatedDiffLine(
+  key: DiffPeriodKey,
+  hold: DiffSide | null,
+  cand: DiffSide | null,
+  reasonText: (code: string | null) => string,
+  gate: OfficialPairState,
+): DiffLine {
+  if (gate === "same") return diffLine(key, hold, cand, reasonText);
+  const extra = ruleReason(key, judge(key, hold, cand, reasonText));
   return {
-    kind: provisional ? "provisional" : "compared",
-    text: `${provisional ? "잠정 비교 · " : ""}${label}(${range} · 같은 기간): ${resultText(key, d)}${provisional ? "(두 쪽 모두 장중 저장값)" : ""}`,
-    diffPctp: d / 100,
+    kind: "not_compared",
+    text: `${DIFF_LABEL[key]}: 차이 요약 안 함 — ${GATE_WORD[gate]}${extra ? ` · ${extra}` : ""}`,
+    diffPctp: null,
   };
 }

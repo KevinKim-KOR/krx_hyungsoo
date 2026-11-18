@@ -166,3 +166,44 @@ export function fetchConstituentsAnalysis(
     `/market/constituents/analysis?${params.toString()}`,
   );
 }
+
+// ─── 한 ETF 구성 요약(POC6-32 V2 · PLAN S6 · 읽기 전용 · 수집하지 않음) ──
+// 서버(app/api_weekly_review.py `GET /market/constituents/summary`)가 원천일이 확인된 최신 구성을, 없으면 저장 최신 구성을
+// 돌려준다. 상태 = 미수집 · 원천 기준일 미확인 · 상위 N행만 확인 · 전체 확인 + 읽기 실패(error · '미수집'과 다름).
+export type ConstituentSummaryState = "not_collected" | "source_unconfirmed" | "top_rows" | "full" | "error";
+
+export interface ConstituentSummaryRow {
+  rank: number;
+  name: string | null;
+  weight_pct: number | null;
+  // null = ETF 목록을 읽지 못해 주식 여부를 가를 수 없음
+  is_stock: boolean | null;
+  kind_label: string | null;
+}
+
+// status = missing(시장 자료 파일 없음)이면 아래 구성 칸이 없다.
+export interface ConstituentsSummaryResponse {
+  status: "ok" | "missing" | "error";
+  message: string | null;
+  ticker: string;
+  name: string | null;
+  state?: ConstituentSummaryState;
+  state_label?: string;
+  asof?: string | null;
+  stored_rows?: number;
+  stocks_known?: boolean;
+  stock_rows?: number | null;
+  other_rows?: { label: string; count: number }[];
+  top_n?: number | null;
+  top_stocks?: { name: string | null; weight_pct: number | null }[];
+  top3_sum_pct?: number | null;
+  rows?: ConstituentSummaryRow[];
+  // 기존 집중 정의(저장 행 비중 상위 1 · 3 · 5 · 10 합 · 주식 아닌 행 포함)
+  concentration?: Concentration;
+  line?: string;
+}
+
+export function fetchConstituentsSummary(ticker: string): Promise<ConstituentsSummaryResponse> {
+  const params = new URLSearchParams({ ticker });
+  return request<ConstituentsSummaryResponse>("GET", `/market/constituents/summary?${params.toString()}`);
+}

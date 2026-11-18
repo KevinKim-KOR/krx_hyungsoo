@@ -85,6 +85,11 @@ describe("구성종목 비교 블록", () => {
     expect(screen.getByTestId("pe-no-candidate")).toHaveTextContent(
       "원천 기준일 미확인(2026-06-22 보존 자료) — 비교하지 않음(겹침 없음이라는 뜻 아님)",
     );
+    // POC6-32 V2(검토 F6) — 「ETF 구성종목」은 메뉴가 아니다: 상세 화면을 여는 버튼 경로로 안내
+    expect(screen.getByTestId("pe-no-candidate")).toHaveTextContent(
+      "[구성종목 보기]로 그 ETF 를 연 뒤 [구성종목 수집]을 누르고 다시 불러오세요.",
+    );
+    expect(screen.getByTestId("pe-no-candidate")).not.toHaveTextContent("「ETF 구성종목」에서");
     expect(screen.getByTestId("pe-scope")).toBeInTheDocument();
     expect(screen.queryByTestId("pe-table")).toBeNull();
   });

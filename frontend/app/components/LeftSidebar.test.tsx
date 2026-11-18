@@ -18,23 +18,30 @@
 //   AI 투자 세션을 바로 둔다. 「요즘 잘 오르는 ETF」(market_discovery) 없앰 → 15→16.
 // - 2026-11-12 POC6-29 보완(보완 PLAN 판정 Q-R5 · RESULT 판정 §4): 「진단·상태」 끝(「개발·실험용」 다음)에 폴더
 //   「미사용 기능」 › 「신규 ETF 관찰 점검」(unused_universe_watch) → 16→17.
+// - 2026-11-17 POC6-32 V2(PLAN 판정 V2 Q1 (a) · PLAN §2 S1 · S4 · §9 I-4): 「오늘 확인」에 「주간 ETF 점검」(weekly_etf_check) 추가 ·
+//   「보유와 후보 비교」(holding_candidate_compare) · 「ETF 구성종목」(etf_exposure)은 메뉴에서 뺀 상세 화면(key 는 그대로) →
+//   메뉴 key 16개(정확히 1번) · 상세 key 2개(0번). 상세가 열린 동안 강조 = 넘겨받은 화면의 메뉴(상세 key 그대로면 「주간 ETF 점검」).
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import LeftSidebar, {
+  DETAIL_KEYS,
   MENU_GROUPS,
   MENU_ITEMS,
   groupMenuItems,
+  isDetailKey,
   isMenuFolder,
+  menuKeyOf,
+  screenLabelOf,
   type MenuKey,
 } from "./LeftSidebar";
 
+// 메뉴에 정확히 1번 나오는 key(16개).
 const ALL_KEYS: MenuKey[] = [
   "today_check",
+  "weekly_etf_check",
   "workbench",
   "workbench_holdings",
   "etf_sector",
-  "holding_candidate_compare",
-  "etf_exposure",
   "ai_sessions",
   "holdings",
   "holdings_manage",
@@ -47,6 +54,8 @@ const ALL_KEYS: MenuKey[] = [
   "data_status",
   "unused_universe_watch",
 ];
+// 메뉴에 없는 상세 key(화면 안에서만 엶 · 메뉴에 0번).
+const DETAIL: MenuKey[] = ["etf_exposure", "holding_candidate_compare"];
 
 const GROUP_TITLES = [
   "오늘 확인",
@@ -80,18 +89,26 @@ describe("LeftSidebar 그룹 구조 (POC3-03 · POC3-07 · 5그룹)", () => {
     expect(titles.length).toBe(GROUP_TITLES.length);
   });
 
-  it("AC-2: 17개 key 가 그룹에 정확히 1회씩 귀속(폴더 하위 포함 · 중복·누락·신규 0 · POC6-29 섹터요약 · 보유와 후보 비교 추가 · 요즘 잘 오르는 ETF 없앰 · 보완 신규 ETF 관찰 점검 추가)", () => {
+  it("AC-2: 메뉴 key 16개가 그룹에 정확히 1회씩 귀속(폴더 하위 포함 · 중복·누락·신규 0) · 상세 key 2개는 메뉴에 0번(POC6-32 V2)", () => {
     const keys = MENU_GROUPS.flatMap((g) => groupMenuItems(g).map((i) => i.key));
     expect(keys.sort()).toEqual([...ALL_KEYS].sort());
-    expect(new Set(keys).size).toBe(17);
-    expect(keys.length).toBe(17);
+    expect(new Set(keys).size).toBe(16);
+    expect(keys.length).toBe(16);
     expect(MENU_ITEMS.map((i) => i.key).sort()).toEqual([...ALL_KEYS].sort());
+    expect([...DETAIL_KEYS].sort()).toEqual([...DETAIL].sort());
+    for (const key of DETAIL) expect(keys).not.toContain(key);
   });
 
-  it("B-1: 모든 MenuKey 가 정확히 1개 그룹에 귀속된다 (모듈 invariant — 누락 시 로드 throw)", () => {
+  it("B-1: 메뉴 key 는 정확히 1개 그룹 · 상세 key 는 0개 그룹에 귀속된다 (모듈 invariant — 어기면 로드 throw)", () => {
     for (const key of ALL_KEYS) {
       const owners = MENU_GROUPS.filter((g) => groupMenuItems(g).some((i) => i.key === key));
       expect(owners.length).toBe(1);
+      expect(isDetailKey(key)).toBe(false);
+    }
+    for (const key of DETAIL) {
+      const owners = MENU_GROUPS.filter((g) => groupMenuItems(g).some((i) => i.key === key));
+      expect(owners.length).toBe(0);
+      expect(isDetailKey(key)).toBe(true);
     }
     expect(() =>
       render(<LeftSidebar active="today_check" onSelect={() => {}} />)
@@ -138,8 +155,10 @@ describe("LeftSidebar 그룹 구조 (POC3-03 · POC3-07 · 5그룹)", () => {
     expect(onSelect).toHaveBeenCalledWith("workbench");
     fireEvent.click(screen.getByText("섹터요약"));
     expect(onSelect).toHaveBeenCalledWith("etf_sector");
-    fireEvent.click(screen.getByText("보유와 후보 비교"));
-    expect(onSelect).toHaveBeenCalledWith("holding_candidate_compare");
+    // 2026-11-17 POC6-32 V2 — 「보유와 후보 비교」는 메뉴에 없다(상세) · 「주간 ETF 점검」 = weekly_etf_check.
+    expect(screen.queryByText("보유와 후보 비교")).toBeNull();
+    fireEvent.click(screen.getByText("주간 ETF 점검"));
+    expect(onSelect).toHaveBeenCalledWith("weekly_etf_check");
     expect(onSelect).toHaveBeenCalledTimes(3);
   });
 
@@ -308,15 +327,13 @@ describe("POC6-15 「ML 연구」 폴더", () => {
 // --- POC6-29 「ETF보유 및 후보 선정」(폴더 없이 여섯 메뉴 · 설계 §3 · 판정 Q3 · Q17) ------------------
 
 describe("POC6-29 「ETF보유 및 후보 선정」", () => {
-  it("그룹 메뉴 순서 = 보유 · 섹터요약 · 후보리스트 · 보유와 후보 비교 · ETF 구성종목 · AI 투자 세션 · 폴더 없음", () => {
+  it("그룹 메뉴 순서 = 보유 · 섹터요약 · 후보리스트 · AI 투자 세션 · 폴더 없음(POC6-32 V2 — 보유와 후보 비교 · ETF 구성종목은 상세)", () => {
     const g = MENU_GROUPS.find((x) => x.title === "ETF보유 및 후보 선정")!;
     expect(g.items.some(isMenuFolder)).toBe(false);
     expect(groupMenuItems(g).map((i) => [i.key, i.label])).toEqual([
       ["workbench_holdings", "보유"],
       ["etf_sector", "섹터요약"],
       ["workbench", "후보리스트"],
-      ["holding_candidate_compare", "보유와 후보 비교"],
-      ["etf_exposure", "ETF 구성종목"],
       ["ai_sessions", "AI 투자 세션"],
     ]);
   });
@@ -401,5 +418,66 @@ describe("POC6-29 보완 「미사용 기능」 폴더", () => {
     render(<LeftSidebar active="unused_universe_watch" onSelect={() => {}} />);
     fireEvent.click(folderBtn());
     expect(folderBtn().textContent).toContain("· 신규 ETF 관찰 점검");
+  });
+});
+
+// --- POC6-32 V2 「주간 ETF 점검」 메뉴 · 상세 화면 강조(PLAN 판정 V2 Q1 (a) · PLAN §2 S1 · S4 · §9 I-4) ----------------
+
+describe("POC6-32 V2 「주간 ETF 점검」 · 상세 화면", () => {
+  it("「오늘 확인」 = 오늘의 투자 점검 → 주간 ETF 점검(바로 아래 형제) · 힌트에 '후보' 없음", () => {
+    const today = MENU_GROUPS.find((g) => g.title === "오늘 확인")!;
+    expect(today.items.some(isMenuFolder)).toBe(false);
+    expect(groupMenuItems(today).map((i) => [i.key, i.label])).toEqual([
+      ["today_check", "오늘의 투자 점검"],
+      ["weekly_etf_check", "주간 ETF 점검"],
+    ]);
+    const weekly = MENU_ITEMS.find((i) => i.key === "weekly_etf_check")!;
+    expect(weekly.hint).toBeTruthy();
+    expect(weekly.hint).not.toContain("후보");
+    render(<LeftSidebar active="today_check" onSelect={() => {}} />);
+    const first = screen.getByText("오늘의 투자 점검").closest("li")!;
+    expect(first.nextElementSibling).toBe(screen.getByText("주간 ETF 점검").closest("li"));
+  });
+
+  it("메뉴에 「보유와 후보 비교」 · 「ETF 구성종목」이 없다 · 메뉴의 '후보' = 그룹 이름 · 「후보리스트」 두 곳", () => {
+    const { container } = render(<LeftSidebar active="today_check" onSelect={() => {}} />);
+    const text = container.textContent ?? "";
+    expect(text).not.toContain("보유와 후보 비교");
+    expect(text).not.toContain("ETF 구성종목");
+    expect(text.split("후보").length - 1).toBe(2);
+    expect(MENU_ITEMS.map((i) => i.label)).not.toContain("보유와 후보 비교");
+    expect(MENU_ITEMS.map((i) => i.label)).not.toContain("ETF 구성종목");
+  });
+
+  it("상세 key 가 그대로 오면 「주간 ETF 점검」 하나만 강조 · 「오늘 확인」 그룹 활성 · 접혀 있으면 편다(throw 없음)", () => {
+    for (const key of DETAIL) {
+      const { unmount } = render(<LeftSidebar active={key} onSelect={() => {}} />);
+      const current = screen.getAllByRole("button").filter((b) => b.getAttribute("aria-current") === "page");
+      expect(current).toHaveLength(1);
+      expect(current[0].textContent).toContain("주간 ETF 점검");
+      expect(screen.getByText("오늘 확인").closest(".sidebar-group")?.className).toContain("active-group");
+      unmount();
+    }
+    const { rerender } = render(<LeftSidebar active="workbench" onSelect={() => {}} />);
+    fireEvent.click(screen.getByText("오늘 확인").closest("button")!);
+    expect(screen.queryByText("주간 ETF 점검")).toBeNull();
+    rerender(<LeftSidebar active="holding_candidate_compare" onSelect={() => {}} />);
+    expect(screen.getByText("주간 ETF 점검").closest("button")).toHaveAttribute("aria-current", "page");
+  });
+
+  it("처음 보낸 화면의 key 가 오면 그 메뉴를 강조(MainPanel 이 넘김 · 예: 「후보리스트」)", () => {
+    render(<LeftSidebar active="workbench" onSelect={() => {}} />);
+    const current = screen.getAllByRole("button").filter((b) => b.getAttribute("aria-current") === "page");
+    expect(current.map((b) => b.querySelector(".sidebar-menu-label")?.textContent)).toEqual(["후보리스트"]);
+  });
+
+  it("menuKeyOf · screenLabelOf — 상세 key 는 강조 = 주간 ETF 점검 · 이름 = 상세 화면 이름 · 메뉴 key 는 그대로", () => {
+    expect(menuKeyOf("etf_exposure")).toBe("weekly_etf_check");
+    expect(menuKeyOf("holding_candidate_compare")).toBe("weekly_etf_check");
+    expect(menuKeyOf("workbench")).toBe("workbench");
+    expect(screenLabelOf("etf_exposure")).toBe("ETF 구성종목");
+    expect(screenLabelOf("holding_candidate_compare")).toBe("보유와 후보 비교");
+    expect(screenLabelOf("weekly_etf_check")).toBe("주간 ETF 점검");
+    expect(screenLabelOf("workbench_holdings")).toBe("보유");
   });
 });

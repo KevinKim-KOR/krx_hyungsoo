@@ -25,7 +25,18 @@ def read_etf_master(
         return None
     try:
         with closing(sqlite3.connect(f"file:{p}?mode=ro", uri=True)) as con:
-            rows = con.execute("SELECT ticker, name FROM etf_master").fetchall()
+            return master_in(con)
+    except sqlite3.Error:
+        return None
+
+
+def master_in(
+    con: sqlite3.Connection,
+) -> Optional[tuple[dict[str, Optional[str]], set[str]]]:
+    """`read_etf_master` 의 읽기 본문 — 부르는 쪽이 연 연결(읽기 트랜잭션) 안에서(POC6-32 r1 F1). 표가 없거나 못 읽거나
+    비면 None(빈 목록과 구분)."""
+    try:
+        rows = con.execute("SELECT ticker, name FROM etf_master").fetchall()
     except sqlite3.Error:
         return None
     if not rows:

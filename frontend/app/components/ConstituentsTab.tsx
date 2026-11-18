@@ -10,16 +10,20 @@
 //   (서버를 다시 켜도 같은 상태 · 판정 §1 넷째). 다른 목록의 작업이 돌면 그 작업을 이 목록 결과로 쓰지 않는다.
 //   읽기만으로 수집이 시작되지 않는다. 보유 구성종목 단계와 겹친 ETF는 서버가 한 번만 부른다.
 // - GET /market/constituents/analysis → ETF별 실제 구성일 · 상위 구성종목 + 집중도.
+// - POC6-32 V2(PLAN S6 · §9 I-9 · I-10) — 한 ETF 모드 카드(SingleEtfConstituents): GET /market/constituents/summary 가 준
+//   구성 표 · 저장 행 수 · 구성 기준일 · 상태 넷(미수집 · 원천 기준일 미확인 · 상위 N행만 확인 · 전체 확인) · 기존 집중
+//   (Top 1 · 3 · 5 · 10 합 · 주식 아닌 행 포함). 읽기 실패는 '미수집'과 따로 알린다. 수집 상태 문장은 그 ETF 하나 기준.
 //
 // AI Sessions 로 넘기는 흐름은 별도 카드가 담당.
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import {
   ApiConfigError,
   ApiRequestError,
   CONSTITUENTS_TOP_K,
   type ConstituentItem,
   type ConstituentsAnalysisResponse,
+  type ConstituentsSummaryResponse,
 } from "@/lib/api";
 import {
   fetchConstituentsCollectStatus,
@@ -54,8 +58,12 @@ export function asofLabel(c: ConstituentItem, listEnd: string | null | undefined
   return c.asof_confirmed === false ? `${base} · 원천 기준일 미확인` : base;
 }
 
+// 수집 대상 — 목록(「후보리스트」에서 넘긴 후보들) · 한 ETF(POC6-32 V2 한 ETF 모드).
+export type CollectScope = "list" | "single";
+
 // 이 목록의 수집 상태 한 줄 — 진행 중 · 끝(이번 작업 결과) · 저장 기록 기준 상태(작업 없음).
-export function collectLine(job: ConstituentsCollectJob): string {
+export function collectLine(job: ConstituentsCollectJob, scope: CollectScope = "list"): string {
+  const subject = scope === "single" ? "ETF" : "후보";
   const target = job.target_date ? `목표일 ${md(job.target_date)}` : null;
   if (job.state === "running") {
     const head = job.batch_total
@@ -67,14 +75,14 @@ export function collectLine(job: ConstituentsCollectJob): string {
     if (job.stored_status === "read_failed") return `구성 상태 — ${job.reason ?? "읽지 못했습니다"}`;
     const need = job.needs_check ?? 0;
     return `저장 기록 기준 상태${target ? `(${target})` : ""} — ${countsText(job.counts, job.total ?? job.items.length, {
-      subject: "후보",
+      subject,
       statusMode: true,
     })}${need > 0 ? ` · 다시 확인 필요 ${need} — [구성종목 수집]으로 받습니다` : ""}`;
   }
   const tail = job.reason ? ` · ${job.reason}` : "";
   const unlogged = unloggedText(job.unlogged_logs);
   return `수집 끝 — ${target ? `${target} · ` : ""}${countsText(job.counts, job.total ?? job.items.length, {
-    subject: "후보",
+    subject,
     calls: job.calls,
     shared: job.shared,
   })}${tail}${unlogged ? ` · ${unlogged}` : ""}`;
@@ -215,18 +223,19 @@ export function CollectButton({ collect, count }: { collect: CandidateCollect; c
   );
 }
 
-export function CollectStatus({ collect }: { collect: CandidateCollect }) {
+export function CollectStatus({ collect, scope = "list" }: { collect: CandidateCollect; scope?: CollectScope }) {
   const { job, other, error } = collect;
   return (
     <>
       {other ? (
         <div className="message info" data-testid="cst-other-list">
-          다른 목록({other.total}개)을 받는 중({other.done}개 끝) — 끝난 뒤 이 목록의 [구성종목 수집]을 누르세요
+          다른 목록({other.total}개)을 받는 중({other.done}개 끝) — 끝난 뒤 이 {scope === "single" ? "ETF" : "목록"}의
+          [구성종목 수집]을 누르세요
         </div>
       ) : null}
       {job && (job.state !== "idle" || job.stored) ? (
         <div className="message info" data-testid="cst-collect-line">
-          {collectLine(job)}
+          {collectLine(job, scope)}
           {job.reason_detail ? (
             <details className="tc-small">
               <summary>자세히</summary>
@@ -401,5 +410,115 @@ export default function ConstituentsTab({ draft, analysis, nameByTicker, collect
         </div>
       ) : null}
     </>
+  );
+}
+
+// ── POC6-32 V2(PLAN S6) — 「ETF 구성종목」 한 ETF 모드 카드 ─────────────────────────────────────────────
+// 저장 자료만 보인다(GET /market/constituents/summary · 수집은 위 [구성종목 수집] 때만 · 이 ETF 하나).
+// 상태 배지 = 서버 state_label(미수집 · 원천 기준일 미확인 · 상위 N행만 확인 · 전체 확인). 읽기 실패 · 자료 파일 없음 ·
+// 요청 실패는 '미수집'으로 바꾸지 않고 '읽지 못함'으로 알린다(알 수 없음을 '없음'으로 덮지 않음).
+const SINGLE_STATE_CLASS: Record<string, string> = {
+  full: "ok",
+  top_rows: "hold",
+  source_unconfirmed: "warn",
+  not_collected: "mute",
+};
+
+export function SingleEtfConstituents({
+  ticker,
+  name,
+  data,
+  error,
+}: {
+  ticker: string;
+  name: string;
+  data: ConstituentsSummaryResponse | null;
+  error: string | null;
+}) {
+  const head = (
+    <div className="exs-head" data-testid="single-head">
+      <b className="cst-name">{name || data?.name || ticker}</b>
+      <code className="cst-tk">{ticker}</code>
+      {data?.status === "ok" && data.state && data.state_label ? (
+        <span className={`wb-hb ${SINGLE_STATE_CLASS[data.state] ?? "mute"}`} data-testid="single-state">
+          {data.state_label}
+        </span>
+      ) : null}
+    </div>
+  );
+  let body: ReactNode;
+  if (error) {
+    body = (
+      <div className="message error" data-testid="single-read-error">
+        구성 자료를 읽지 못했습니다(구성이 없다는 뜻이 아님) — {error}
+      </div>
+    );
+  } else if (!data) {
+    body = <div className="message info">구성 자료를 읽는 중...</div>;
+  } else if (data.status === "missing") {
+    body = (
+      <div className="message error" data-testid="single-read-error">
+        시장 자료 파일이 없어 구성 자료를 읽지 못했습니다(구성이 없다는 뜻이 아님).
+      </div>
+    );
+  } else if (data.status === "error" || data.state === "error") {
+    body = (
+      <div className="message error" data-testid="single-read-error">
+        구성 자료를 읽지 못했습니다(구성이 없다는 뜻이 아님) — 화면을 다시 열면 다시 읽습니다.
+      </div>
+    );
+  } else if (data.state === "not_collected") {
+    body = (
+      <div className="message info" data-testid="single-line">
+        저장된 구성 자료가 없습니다(미수집) — 위 [구성종목 수집]을 누르면 이 ETF 하나만 받습니다(화면을 열 때는 받지 않음).
+      </div>
+    );
+  } else {
+    const rows = data.rows ?? [];
+    const c = data.concentration ?? {};
+    const known = rows.filter((r) => r.weight_pct !== null && r.weight_pct !== undefined);
+    const missing = rows.length - known.length;
+    const sum = known.reduce((acc, r) => acc + (r.weight_pct as number), 0);
+    body = (
+      <>
+        <div className="exs-line" data-testid="single-line">
+          {data.line}
+        </div>
+        <p className="helper" style={{ margin: "4px 0" }} data-testid="single-conc">
+          집중(저장 행 비중 상위 합 · 현금 등 주식 아닌 행 포함): Top 1 {fmtPct(c.top1_weight_pct)} · Top 3{" "}
+          {fmtPct(c.top3_weight_pct)} · Top 5 {fmtPct(c.top5_weight_pct)} · Top 10 {fmtPct(c.top10_weight_pct)}
+        </p>
+        <table className="market-topn-table" data-testid="single-table">
+          <thead>
+            <tr>
+              <th style={{ width: 50 }}>순위</th>
+              <th>종목</th>
+              <th style={{ width: 110 }}>구분</th>
+              <th style={{ width: 90, textAlign: "right" }}>비중</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={`${ticker}-${r.rank}`}>
+                <td>{r.rank}</td>
+                <td>{r.name ?? DASH}</td>
+                <td>{r.kind_label ?? DASH}</td>
+                <td style={{ textAlign: "right" }}>{fmtPct(r.weight_pct)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <p className="helper" style={{ marginTop: 4, fontSize: "0.78rem" }}>
+          저장 {rows.length}행 전부 표시 · 비중 합계 {known.length === 0 ? "확인 불가" : fmtPct(sum)}
+          {missing > 0 ? <span style={{ color: "var(--warn)" }}> (비중 미확인 {missing}개 제외)</span> : null}
+        </p>
+      </>
+    );
+  }
+  return (
+    <div className="card" data-testid="single-card">
+      {head}
+      {body}
+    </div>
   );
 }

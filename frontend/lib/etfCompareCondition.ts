@@ -89,6 +89,8 @@ const started = new Map<ScreenId, SavedBasisStatus>();
 const subs = new Set<() => void>();
 // POC6-31 — '이동 한 번' 조건(받는 화면이 꺼낼 때까지) · 화면별 setScreenCondition 횟수(아래 설명)
 const oneTime = new Map<ScreenId, CompareCondition>();
+// POC6-32(검토 F6) — 보낸 화면 이름(받는 화면 안내 글 · 없으면 그 화면의 예전 문구)
+const oneTimeOrigin = new Map<ScreenId, string>();
 const setCount = new Map<ScreenId, number>();
 
 function savedOf(id: ScreenId): SavedBasisRead {
@@ -150,17 +152,22 @@ export function setScreenCondition(id: ScreenId, next: CompareCondition): void {
 
 export interface OneTimeCondition {
   cond: CompareCondition;
+  origin?: string; // 보낸 화면 이름(POC6-32 · 없으면 받는 화면의 예전 문구)
   at: number; // 꺼낼 때의 setScreenCondition 횟수 — 그 뒤 사용자가 정하면 내린다
 }
 
-export function presetOneTimeCondition(id: ScreenId, cond: CompareCondition): void {
+export function presetOneTimeCondition(id: ScreenId, cond: CompareCondition, origin?: string): void {
   oneTime.set(id, copy(cond));
+  if (origin) oneTimeOrigin.set(id, origin);
+  else oneTimeOrigin.delete(id);
 }
 
 export function takeOneTimeCondition(id: ScreenId): OneTimeCondition | null {
   const c = oneTime.get(id);
+  const origin = oneTimeOrigin.get(id);
   oneTime.delete(id);
-  return c ? { cond: c, at: setCount.get(id) ?? 0 } : null;
+  oneTimeOrigin.delete(id);
+  return c ? { cond: c, at: setCount.get(id) ?? 0, ...(origin ? { origin } : {}) } : null;
 }
 
 export function useScreenSetCount(id: ScreenId): number {
@@ -227,6 +234,7 @@ export function __resetEtfCompareCondition(): void {
   saved.clear();
   started.clear();
   oneTime.clear();
+  oneTimeOrigin.clear();
   setCount.clear();
   subs.clear();
   window.removeEventListener("storage", onStorage);

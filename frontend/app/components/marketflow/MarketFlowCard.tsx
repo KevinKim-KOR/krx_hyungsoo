@@ -287,6 +287,10 @@ export default function MarketFlowCard() {
             <div>
               자료 기준일:{" "}
               {data.status.map((s) => `${s.label} ${s.E ? md(s.E) : "없음"}(수집 ${kst(s.collected_at)})`).join(" · ")}
+              {/* POC6-32(판정 Q9) — 해석에 쓴 VIX 의 날짜(미국) · 국내 '늦음' 판정에는 넣지 않음 */}
+              {data.vix_basis
+                ? ` · ${data.vix_basis.label} ${data.vix_basis.E ? md(data.vix_basis.E) : "없음"}(수집 ${kst(data.vix_basis.collected_at)})`
+                : null}
               {stale.length ? (
                 <span className="tc-warn">
                   {" "}

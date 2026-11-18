@@ -1,11 +1,24 @@
 // POC6-27 — 「오늘의 투자 점검」 시장 흐름 · AI 복사 · 목록 조건 공유 · 시장 갱신 이어 보기
 // (설계 §3 · §4 · §6 · 사용자 결정 ① ③ · PLAN 판정 §2 · Q3 · Q7 · Q9 · §4).
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { render, cleanup, screen, fireEvent, waitFor, within, act } from "@testing-library/react";
-import { __resetQueryCache } from "@/lib/api/queryCache";
+import { __resetQueryCache, commitQuery } from "@/lib/api/queryCache";
 import { setStartedRefreshId, getStartedRefreshId } from "@/lib/marketRefreshMemory";
 import { OBS_1106, flowWith } from "@/lib/todayMarketTestFixtures";
-import { TODAY_MARKET_PROMPT } from "@/lib/todayMarketCopyText";
+import {
+  basisDiffs,
+  copyCheck,
+  COPY_BASIS_DIFFERS,
+  COPY_CANCELLED,
+  COPY_DONE,
+  COPY_FAILED,
+  COPY_READ_FAILED,
+  COPY_READING,
+  CopySkipped,
+  MARKET_COMMON_EVIDENCE_KEY,
+  type MarketCommonBasis,
+  type MarketCommonEvidence,
+} from "@/lib/api/marketCommonEvidence";
 import { detailResponse, summaryOk } from "@/lib/etfCompareTestFixtures";
 import { quickOk } from "@/lib/quickQuotesTestFixtures";
 import type { MorningBasisResponse } from "@/lib/api/morningBasis";
@@ -81,6 +94,12 @@ vi.mock("@/lib/api/etfCompare", async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
   fetchEtfCompareSummary: (...a: unknown[]) => fetchEtfCompareSummary(...a),
 }));
+// POC6-32 — ETF 주간 검토(「잘 오르는 ETF」 자리) 고정 응답(서버 조립 출력 · 11/16 공개 시장 자료)
+vi.mock("@/lib/api/weeklyReview", async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+  const fx = await import("@/lib/weeklyReviewTestFixtures");
+  return { ...actual, fetchWeeklyReview: vi.fn(async (sel: string | null) => fx.weeklyFor(sel)) };
+});
 vi.mock("@/lib/api/refreshAll", async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
   postRefreshAll: (...a: unknown[]) => postRefreshAll(...a),
@@ -108,6 +127,37 @@ vi.mock("@/lib/api/etfDetail", async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
   fetchEtfDetail: (...a: unknown[]) => fetchEtfDetail(...a),
 }));
+// POC6-32 V2(PLAN §4-1) — 공통 시장 근거(GET /market/evidence) · [AI용 시장 정보 복사]를 누를 때만 읽는다.
+const fetchMarketCommonEvidence = vi.fn();
+vi.mock("@/lib/api/marketCommonEvidence", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api/marketCommonEvidence")>()),
+  fetchMarketCommonEvidence: (...a: unknown[]) => fetchMarketCommonEvidence(...a),
+}));
+// 서버 글(합성) — 화면은 이 글을 한 글자도 바꾸지 않고 복사한다.
+const DAILY = "답변 전에 판단에 사용하는 항목의 최신 공개 자료를 확인해 주세요. …(합성 서버 글)\n\n[시장 판정] KODEX 200 하락장 · 합성";
+// 기본 기준 = 기본 화면(시장 판정 응답의 하락장 · 11/6 · 코스피 11/6 · 수급 시계열 없음)과 같음.
+function commonEv(basis: Partial<MarketCommonBasis> = {}, over: Partial<MarketCommonEvidence> = {}): MarketCommonEvidence {
+  return {
+    status: "ok",
+    message: null,
+    generated_at: "2026-11-09T09:00:00+09:00",
+    review_date: "2026-11-09",
+    basis: {
+      regime_label: "하락장",
+      regime_price_date: "2026-11-06",
+      regime_price_state: "after_close",
+      kospi_date: "2026-11-06",
+      flow_date: null,
+      common_end_date: "2026-11-05",
+      ...basis,
+    },
+    fields: {},
+    daily_text: DAILY,
+    evidence_items: [],
+    data_status: [],
+    ...over,
+  };
+}
 
 import TodayInvestmentCheckView from "../TodayInvestmentCheckView";
 
@@ -187,6 +237,7 @@ function series(n: number) {
 }
 
 function prime(flowState: "fresh" | "late" = "fresh") {
+  fetchMarketCommonEvidence.mockReset().mockResolvedValue(commonEv());
   fetchQuickQuotes.mockReset().mockResolvedValue(quickOk());
   fetchMorningBasis.mockReset().mockResolvedValue(morningOk());
   fetchShortFlows.mockReset().mockResolvedValue(shortOk());
@@ -310,41 +361,283 @@ describe("시장 흐름 — 11/9 사례(설계 §3 · 판정 §2 · §4)", () =>
   });
 });
 
-describe("[AI용 시장 정보 복사](설계 §6 · 판정 §4)", () => {
-  it("모두 최신이면 바로 복사 · 고정 프롬프트 + 근거", async () => {
+const copyBtn = () => within(flowCard()).getByRole("button", { name: "AI용 시장 정보 복사" });
+const copyMsg = () => screen.getByTestId("tc-copy-message").textContent;
+
+// POC6-32 V2(PLAN §4-1 · §9 I-23) — 누를 때 공통 시장 근거를 새로 읽어 서버 글 그대로 · 기준이 화면과 다르거나 못 읽으면 복사 안 함.
+describe("[AI용 시장 정보 복사](설계 §6 · 판정 §4 · POC6-32 V2 PLAN §4-1)", () => {
+  it("모두 최신이면 바로 복사 · 들어올 때는 읽지 않고 누를 때마다 새로 읽어 서버 글을 그대로", async () => {
     await renderView();
-    fireEvent.click(within(flowCard()).getByRole("button", { name: "AI용 시장 정보 복사" }));
+    expect(fetchMarketCommonEvidence).not.toHaveBeenCalled();
+    fireEvent.click(copyBtn());
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
-    const text = writeText.mock.calls[0][0] as string;
-    expect(text.startsWith(TODAY_MARKET_PROMPT)).toBe(true);
-    expect(text).toContain("[코스피 최신 종가] 5,059.69 · 2026-11-06");
+    expect(writeText.mock.calls[0][0]).toBe(DAILY);
+    expect(fetchMarketCommonEvidence).toHaveBeenCalledTimes(1);
     expect(await screen.findByTestId("tc-copy-message")).toHaveTextContent("AI용 시장 정보를 복사했습니다");
+    // 두 번째 누름 = 앞 응답을 다시 쓰지 않고 새로 읽음(그 사이 서버 글이 바뀌면 새 글)
+    fetchMarketCommonEvidence.mockResolvedValue(commonEv({}, { daily_text: `${DAILY} · 두 번째` }));
+    fireEvent.click(copyBtn());
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(2));
+    expect(fetchMarketCommonEvidence).toHaveBeenCalledTimes(2);
+    expect(writeText.mock.calls[1][0]).toBe(`${DAILY} · 두 번째`);
   });
 
-  it("늦은 핵심 자료가 있으면 먼저 고르기 · 창이 열린 동안 다시 누를 수 없음 · [취소]면 복사 안 함 · [계속]이면 [자료 상태] 줄과 함께 복사", async () => {
+  it("늦은 핵심 자료가 있으면 먼저 고르기 · 창이 열린 동안 다시 누를 수 없음 · [취소]면 복사 안 함 · [계속]이면 서버 글 그대로", async () => {
     prime("late");
     await renderView();
-    const btn = within(flowCard()).getByRole("button", { name: "AI용 시장 정보 복사" });
+    const btn = copyBtn();
     fireEvent.click(btn);
     const dlg = await screen.findByTestId("tc-stale-dialog");
     expect(dlg.querySelector('[data-fresh="flows"]')?.textContent).toContain("1거래일 늦음");
     expect(btn).toBeDisabled();
     expect(screen.getByRole("button", { name: "요약 다시 읽기" })).toBeDisabled();
+    // 검토 F3 — 창이 열리면 '읽는 중' 안내를 내리고 · [취소]면 복사하지 않았다는 안내(클립보드 그대로)
+    expect(screen.queryByTestId("tc-copy-message")).toBeNull();
     fireEvent.click(within(dlg).getByRole("button", { name: "취소" }));
     expect(writeText).not.toHaveBeenCalled();
+    expect(copyMsg()).toBe(COPY_CANCELLED);
     fireEvent.click(btn);
     fireEvent.click(within(await screen.findByTestId("tc-stale-dialog")).getByRole("button", { name: "이 자료로 계속" }));
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
-    expect(writeText.mock.calls[0][0]).toContain("외국인 수급 마지막 2026-11-05 · 기대 2026-11-06(국내 직전 거래일) · 1거래일 늦음");
+    expect(writeText.mock.calls[0][0]).toBe(DAILY);
+    expect(fetchMarketCommonEvidence).toHaveBeenCalledTimes(2); // 누를 때마다 새로 읽음
   });
 
-  it("복사가 실패하면 성공처럼 보이지 않고 글 상자를 펼친다", async () => {
+  it("복사가 실패하면 성공처럼 보이지 않고 글 상자(서버 글)를 펼친다", async () => {
     writeText.mockRejectedValue(new Error("denied"));
     await renderView();
-    fireEvent.click(within(flowCard()).getByRole("button", { name: "AI용 시장 정보 복사" }));
+    fireEvent.click(copyBtn());
     expect(await screen.findByTestId("tc-copy-message")).toHaveTextContent("복사하지 못했습니다 — 아래 글을 직접 선택해 복사하세요.");
     const box = screen.getByRole("textbox", { name: "복사할 시장 정보" }) as HTMLTextAreaElement;
-    expect(box.value.startsWith(TODAY_MARKET_PROMPT)).toBe(true);
+    expect(box.value).toBe(DAILY);
+  });
+
+  it.each<[string, () => void, string]>([
+    ["요청 실패", () => fetchMarketCommonEvidence.mockRejectedValue(new Error("x")), COPY_READ_FAILED],
+    [
+      "서버가 글을 만들지 못함(unavailable)",
+      () => fetchMarketCommonEvidence.mockResolvedValue(commonEv({}, { status: "unavailable", daily_text: null, message: "시장 판정 · 코스피 · 수급 자료를 모두 읽지 못해 시장 근거를 만들지 않았습니다" })),
+      "복사할 시장 근거를 만들지 못해 복사하지 않았습니다 — 시장 판정 · 코스피 · 수급 자료를 모두 읽지 못해 시장 근거를 만들지 않았습니다",
+    ],
+  ])("I-23 — 공통 근거를 못 읽으면(%s) 복사하지 않고 알린다 · 대신할 글 · 글 상자 없음", async (_t, arrange, message) => {
+    arrange();
+    await renderView();
+    fireEvent.click(copyBtn());
+    await waitFor(() => expect(copyMsg()).toBe(message));
+    expect(writeText).not.toHaveBeenCalled();
+    expect(screen.queryByRole("textbox", { name: "복사할 시장 정보" })).toBeNull();
+    expect(screen.queryByTestId("tc-stale-dialog")).toBeNull();
+    expect(copyBtn()).not.toBeDisabled(); // 다시 누를 수 있음
+  });
+
+  it("I-23 — 앞서 읽은 공통 근거가 있어도 이번 읽기가 실패하면 복사하지 않는다(이전 응답으로 대신하지 않음)", async () => {
+    await renderView();
+    fireEvent.click(copyBtn());
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    fetchMarketCommonEvidence.mockRejectedValue(new Error("x"));
+    fireEvent.click(copyBtn());
+    await waitFor(() => expect(copyMsg()).toBe(COPY_READ_FAILED));
+    expect(writeText).toHaveBeenCalledTimes(1);
+  });
+
+  it("읽는 동안 시장 갱신이 끝나면(다시 읽은 자료가 아직 화면에 오지 않아도) 읽은 글을 복사하지 않는다", async () => {
+    setStartedRefreshId("r9");
+    const resolveStatus = holdStatus();
+    await renderView();
+    let resolveEv!: (v: unknown) => void;
+    fetchMarketCommonEvidence.mockImplementationOnce(() => new Promise((r) => (resolveEv = r)));
+    // 갱신 뒤 다시 읽기는 끝나지 않게 둔다 — 새 값이 오기 전에도 멈추는지 본다(지운 키 = 불러오는 중 → 보호가 멈춤 ·
+    // 그 그림 전에 글이 도착하면 갱신 완료 표시로 멈춤 · 어느 쪽이 먼저든 복사는 없음)
+    const never = () => new Promise(() => undefined);
+    for (const f of [fetchMarketTopnLatest, fetchMarketFlowContext, fetchMorningBasis, fetchShortFlows, fetchEtfDetail, fetchBenchmarkSeries])
+      f.mockImplementation(never);
+    fireEvent.click(copyBtn());
+    await act(async () => resolveStatus({ status: "completed", refresh_id: "r9", error_summary: null, cooldown_remaining_seconds: 21600 }));
+    await act(async () => resolveEv(commonEv()));
+    await waitFor(() => expect(copyMsg()).toMatch(/^(복사에 쓰는 시장 자료가 바뀌어|시장 자료를 새로 읽어) 복사를 멈췄습니다 — 다시 눌러 주세요\.$/));
+    expect(writeText).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("tc-stale-dialog")).toBeNull();
+  });
+
+  it.each<[string, Partial<MarketCommonBasis>, string]>([
+    ["코스피 기준일", { kospi_date: "2026-11-09" }, "코스피 기준일"],
+    ["수급 기준일", { flow_date: "2026-11-06" }, "수급 기준일"],
+    ["시장 판정 이름", { regime_label: "보합장" }, "시장 판정"],
+    ["시장 판정 가격 기준일 · 코스피 기준일", { regime_price_date: "2026-11-09", kospi_date: "2026-11-09" }, "시장 판정 가격 기준일 · 코스피 기준일"],
+  ])("응답 기준이 화면과 다르면(%s) 복사하지 않고 [요약 다시 읽기] 안내", async (_t, basis, items) => {
+    fetchMarketCommonEvidence.mockResolvedValue(commonEv(basis));
+    await renderView();
+    fireEvent.click(copyBtn());
+    await waitFor(() => expect(copyMsg()).toBe(`${COPY_BASIS_DIFFERS}(다른 항목: ${items})`));
+    expect(copyMsg()?.startsWith("화면과 복사 근거가 다릅니다 — [요약 다시 읽기] 뒤 다시 누르세요")).toBe(true);
+    expect(writeText).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("tc-stale-dialog")).toBeNull();
+  });
+
+  it("화면 수급 기준일 = 시장 흐름 응답의 수급 시계열 끝(E) — 같으면 복사 · 다르면 안 함", async () => {
+    const flows = { label: "투자자별 순매수", unit: "원", E: "2026-11-06", investors: {}, collected_at: null };
+    fetchMarketFlowContext.mockResolvedValue({ ...flow1109(), series: { flows } });
+    fetchMarketCommonEvidence.mockResolvedValue(commonEv({ flow_date: "2026-11-06" }));
+    await renderView();
+    fireEvent.click(copyBtn());
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    fetchMarketCommonEvidence.mockResolvedValue(commonEv({ flow_date: "2026-11-05" }));
+    fireEvent.click(copyBtn());
+    await waitFor(() => expect(copyMsg()).toBe(`${COPY_BASIS_DIFFERS}(다른 항목: 수급 기준일)`));
+    expect(writeText).toHaveBeenCalledTimes(1);
+  });
+
+  it("읽는 동안 복사 · [요약 다시 읽기] 버튼이 막히고 · 그 사이 화면 판정이 바뀌면(아침 기준 도착) 읽은 글을 복사하지 않는다", async () => {
+    let resolveMorning!: (v: unknown) => void;
+    fetchMorningBasis.mockReset().mockImplementation(() => new Promise((r) => (resolveMorning = r)));
+    let resolveEv!: (v: unknown) => void;
+    fetchMarketCommonEvidence.mockImplementationOnce(() => new Promise((r) => (resolveEv = r)));
+    await renderView();
+    fireEvent.click(copyBtn());
+    expect(copyMsg()).toBe(COPY_READING);
+    expect(copyBtn()).toBeDisabled();
+    expect(screen.getByRole("button", { name: "요약 다시 읽기" })).toBeDisabled();
+    const up = { ...MORNING_CTX, regime_label: "상승장", regime_code: "bull" } as typeof MORNING_CTX;
+    const row = { date: "2026-11-12", close: 84240, state: "after_close" as const, fetched_at_kst: "2026-11-12T15:56:59+09:00" };
+    await act(async () => resolveMorning({ ...morningOk(), today_regime: { status: "ok", basis_date: row.date, reason: null, context: up, basis_row: row } }));
+    await waitFor(() => expect(copyMsg()).toBe("복사에 쓰는 시장 자료가 바뀌어 복사를 멈췄습니다 — 다시 눌러 주세요."));
+    await act(async () => resolveEv(commonEv())); // 누를 때 화면(하락장 11/6)과 같은 기준의 글이 늦게 도착
+    expect(writeText).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("tc-stale-dialog")).toBeNull();
+    expect(copyMsg()).toBe("복사에 쓰는 시장 자료가 바뀌어 복사를 멈췄습니다 — 다시 눌러 주세요.");
+    expect(copyBtn()).not.toBeDisabled();
+  });
+
+  it("확인 창이 열린 동안 받아 둔 공통 근거 응답이 바뀌면(같은 키를 다시 읽음) 복사하지 않고 창을 닫는다", async () => {
+    prime("late");
+    await renderView();
+    fireEvent.click(copyBtn());
+    expect(await screen.findByRole("button", { name: "이 자료로 계속" })).toBeInTheDocument();
+    await act(async () => commitQuery(MARKET_COMMON_EVIDENCE_KEY, commonEv({}, { daily_text: "다른 글" })));
+    expect(screen.queryByTestId("tc-stale-dialog")).toBeNull();
+    expect(copyMsg()).toBe("복사에 쓰는 시장 자료가 바뀌어 복사를 멈췄습니다 — 다시 눌러 주세요.");
+    expect(writeText).not.toHaveBeenCalled();
+  });
+
+  it("대조 규칙(순수 함수) — 판정 가격 상태는 화면이 보일 때만 · 없는 값끼리 같음 · 빈 글 · 기준 칸 없는 응답", () => {
+    const screenB = { regimeLabel: "하락장", regimePriceDate: "2026-11-06", kospiDate: "2026-11-06", flowDate: null };
+    const srv = commonEv().basis;
+    expect(basisDiffs({ ...srv, regime_price_state: "intraday" }, screenB)).toEqual([]);
+    expect(basisDiffs({ ...srv, regime_price_state: "intraday" }, { ...screenB, regimePriceState: "after_close" })).toEqual([
+      "시장 판정 가격 상태(장중 · 마감 뒤)",
+    ]);
+    expect(basisDiffs({ ...srv, regime_label: null }, { ...screenB, regimeLabel: null })).toEqual([]);
+    expect(basisDiffs({}, { regimeLabel: null, regimePriceDate: null, kospiDate: null, flowDate: null })).toEqual([]);
+    expect(copyCheck(commonEv(), screenB)).toEqual({ ok: true, text: DAILY });
+    expect(copyCheck(commonEv({}, { status: "partial" }), screenB)).toEqual({ ok: true, text: DAILY });
+    expect(copyCheck(commonEv({}, { daily_text: "" }), screenB)).toEqual({ ok: false, message: "복사할 시장 근거를 만들지 못해 복사하지 않았습니다 — 사유 확인 불가" });
+    expect(copyCheck({ ...commonEv(), basis: undefined } as unknown as MarketCommonEvidence, screenB)).toEqual({ ok: false, message: COPY_READ_FAILED });
+    expect(copyCheck(null, screenB)).toEqual({ ok: false, message: COPY_READ_FAILED });
+  });
+});
+
+// 검토 F1(PLAN I-30) — 클립보드 쓰기는 누른 순간에 시작한다: 글이 나중에 채워지는 클립보드 항목(ClipboardItem)을 누른
+// 처리 안에서 넘기고, 새로 읽고 대조한 뒤 그 글로 채운다. 확인 창이 필요하거나 막히면 그 항목을 거절(클립보드 그대로 ·
+// '복사하지 못했습니다'를 띄우지 않음). ClipboardItem · clipboard.write 가 없으면 예전처럼 읽은 뒤 writeText.
+class FakeItem {
+  constructor(readonly items: Record<string, Promise<Blob>>) {}
+}
+const write = vi.fn(async (items: FakeItem[]) => {
+  await items[0].items["text/plain"]; // 브라우저처럼 항목 글을 기다림(거절이면 쓰기도 거절)
+});
+const readBlob = (b: Blob) =>
+  new Promise<string>((res) => {
+    const fr = new FileReader();
+    fr.onload = () => res(String(fr.result));
+    fr.readAsText(b);
+  });
+const lastItem = () => (write.mock.calls[write.mock.calls.length - 1][0] as FakeItem[])[0].items["text/plain"];
+
+describe("검토 F1 · F3 — 누른 순간 클립보드 쓰기(ClipboardItem) · 확인 창 안내", () => {
+  beforeEach(() => {
+    write.mockClear();
+    vi.stubGlobal("ClipboardItem", FakeItem);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText, write }, configurable: true });
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("모두 최신 — 누른 처리 안에서(읽기 전) 쓰기를 시작 · 읽은 뒤 항목 글 = 서버 글 그대로 · writeText 안 씀", async () => {
+    await renderView();
+    let resolveEv!: (v: unknown) => void;
+    fetchMarketCommonEvidence.mockImplementationOnce(() => new Promise((r) => (resolveEv = r)));
+    fireEvent.click(copyBtn());
+    expect(write).toHaveBeenCalledTimes(1); // 응답이 오기 전 = 누른 동작 안
+    expect(copyMsg()).toBe(COPY_READING);
+    await act(async () => resolveEv(commonEv()));
+    expect(await readBlob(await lastItem())).toBe(DAILY);
+    await waitFor(() => expect(copyMsg()).toBe(COPY_DONE));
+    expect(writeText).not.toHaveBeenCalled();
+  });
+
+  it("확인 창이 필요하면 항목 거절(확인 창 사유 · 실패 안내 없음) · [취소] 안내 · [이 자료로 계속] = 그 누름 안에서 writeText", async () => {
+    prime("late");
+    await renderView();
+    fireEvent.click(copyBtn());
+    expect(write).toHaveBeenCalledTimes(1);
+    const dlg = await screen.findByTestId("tc-stale-dialog");
+    await expect(lastItem()).rejects.toEqual(new CopySkipped("dialog"));
+    await act(async () => undefined);
+    expect(screen.queryByTestId("tc-copy-message")).toBeNull(); // 읽는 중 안내 내림 · 실패 안내 없음
+    fireEvent.click(within(dlg).getByRole("button", { name: "취소" }));
+    expect(copyMsg()).toBe(COPY_CANCELLED);
+    expect(writeText).not.toHaveBeenCalled();
+    fireEvent.click(copyBtn());
+    fireEvent.click(within(await screen.findByTestId("tc-stale-dialog")).getByRole("button", { name: "이 자료로 계속" }));
+    expect(writeText).toHaveBeenCalledTimes(1); // [이 자료로 계속] 누름 처리 안
+    expect(writeText.mock.calls[0][0]).toBe(DAILY);
+    await waitFor(() => expect(copyMsg()).toBe(COPY_DONE));
+  });
+
+  it("막힘(기준 다름) = 항목 거절(막힘 사유) · 기준 다름 안내 그대로(실패 안내로 덮지 않음)", async () => {
+    fetchMarketCommonEvidence.mockResolvedValue(commonEv({ kospi_date: "2026-11-09" }));
+    await renderView();
+    fireEvent.click(copyBtn());
+    expect(write).toHaveBeenCalledTimes(1);
+    await expect(lastItem()).rejects.toEqual(new CopySkipped("blocked"));
+    await act(async () => undefined);
+    expect(copyMsg()).toBe(`${COPY_BASIS_DIFFERS}(다른 항목: 코스피 기준일)`);
+    expect(writeText).not.toHaveBeenCalled();
+    expect(screen.queryByRole("textbox", { name: "복사할 시장 정보" })).toBeNull();
+  });
+
+  it("브라우저가 쓰기를 거절하면 성공처럼 보이지 않고 글 상자(서버 글)", async () => {
+    write.mockImplementationOnce(async (items: FakeItem[]) => {
+      await items[0].items["text/plain"];
+      throw new Error("denied");
+    });
+    await renderView();
+    fireEvent.click(copyBtn());
+    await waitFor(() => expect(copyMsg()).toBe(COPY_FAILED));
+    expect((screen.getByRole("textbox", { name: "복사할 시장 정보" }) as HTMLTextAreaElement).value).toBe(DAILY);
+  });
+
+  it.each<[string, () => void]>([
+    ["ClipboardItem 없음", () => vi.unstubAllGlobals()],
+    [
+      "약속 값 항목을 못 만듦",
+      () =>
+        vi.stubGlobal(
+          "ClipboardItem",
+          class {
+            constructor() {
+              throw new TypeError("no promise");
+            }
+          },
+        ),
+    ],
+  ])("%s — 예전처럼 읽은 뒤 writeText(서버 글 그대로)", async (_t, arrange) => {
+    arrange();
+    await renderView();
+    fireEvent.click(copyBtn());
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    expect(writeText.mock.calls[0][0]).toBe(DAILY);
+    expect(write).not.toHaveBeenCalled();
+    await waitFor(() => expect(copyMsg()).toBe(COPY_DONE));
   });
 });
 
@@ -584,11 +877,16 @@ describe("설계자 V3 마감 보완 — 점수 · 공통 행 · 복사", () => 
     const box = screen.getByTestId("tc-now-regime").textContent ?? "";
     expect(box).toBe("당일 판정 — 아침과 같은 11/11 마감 뒤 저장값 기준 하락장(24거래일째) · 판정 근거는 위 아침 요약 · 아래 표");
     expect(box).not.toContain("판정 근거:");
-    // §3 — 복사의 시장 판정 줄 = 같은 선택 결과(시장 판정 응답 21거래일째가 아님)
-    fireEvent.click(within(flowCard()).getByRole("button", { name: "AI용 시장 정보 복사" }));
+    // POC6-32 V2 — 복사 대조 = 같은 선택 결과(당일 판정 11/11 마감 뒤 · 시장 판정 응답 11/6 이 아님) · 같으면 서버 글 그대로
+    fetchMarketCommonEvidence.mockResolvedValue(commonEv({ regime_price_date: "2026-11-11", regime_price_state: "after_close" }));
+    fireEvent.click(copyBtn());
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
-    const line = (writeText.mock.calls[0][0] as string).split("\n").find((l) => l.startsWith("[시장 판정]"));
-    expect(line).toBe("[시장 판정] KODEX 200 하락장 · 24거래일째 · 2026-11-11 · KODEX 200 11/11 가격(16:00 마감 뒤 저장)");
+    expect(writeText.mock.calls[0][0]).toBe(DAILY);
+    // 화면이 판정 가격 행(마감 뒤)을 보이면 그 상태도 대조 — 응답이 장중 저장이면 복사하지 않는다
+    fetchMarketCommonEvidence.mockResolvedValue(commonEv({ regime_price_date: "2026-11-11", regime_price_state: "intraday" }));
+    fireEvent.click(copyBtn());
+    await waitFor(() => expect(copyMsg()).toBe(`${COPY_BASIS_DIFFERS}(다른 항목: 시장 판정 가격 상태(장중 · 마감 뒤))`));
+    expect(writeText).toHaveBeenCalledTimes(1);
   });
 
   it.each<[string, () => MorningBasisResponse]>([
@@ -629,7 +927,7 @@ describe("설계자 V3 마감 보완 — 점수 · 공통 행 · 복사", () => 
   });
 
   // 독립 검토 지적(2026-11-13) — 실패 사유 한 곳 · 아침 줄 '불러오는 중' 고착 · 복사 안 두 날짜
-  it("두 응답 모두 못 쓰면 상자 · 표 '당일' 줄 · 복사가 같은 사유 · 아침 줄도 실패를 알림('불러오는 중' 아님)", async () => {
+  it("두 응답 모두 못 쓰면 상자 · 표 '당일' 줄이 같은 사유 · 아침 줄도 실패를 알림 · 복사는 서버 판정이 있으면 '근거 다름'으로 멈춤", async () => {
     fetchMarketTopnLatest.mockRejectedValue(new Error("x"));
     fetchMorningBasis.mockRejectedValue(new Error("x"));
     await renderView();
@@ -637,29 +935,30 @@ describe("설계자 V3 마감 보완 — 점수 · 공통 행 · 복사", () => 
     expect(screen.getByTestId("tc-regime-today").textContent).toContain("당일 판정을 불러오지 못했습니다");
     expect(screen.getByTestId("tc-regime-morning").textContent).toContain("아침 요약 기준을 불러오지 못했습니다");
     expect(screen.getByTestId("tc-score-rule").querySelector(".tc-src-pop")?.textContent).toContain("점수 산식을 불러오지 못했습니다");
-    fireEvent.click(within(flowCard()).getByRole("button", { name: "AI용 시장 정보 복사" }));
-    const cont = await screen.findByRole("button", { name: "이 자료로 계속" });
-    fireEvent.click(cont);
+    // POC6-32 V2 — 화면엔 판정이 없는데 서버 글에는 있음 → 복사하지 않음(화면 사유로 서버 글을 고치지 않음)
+    fireEvent.click(copyBtn());
+    await waitFor(() => expect(copyMsg()).toBe(`${COPY_BASIS_DIFFERS}(다른 항목: 시장 판정 · 시장 판정 가격 기준일)`));
+    expect(writeText).not.toHaveBeenCalled();
+    // 서버도 판정을 확인하지 못했으면(같은 '없음') 기준이 같다 — 확인 창 뒤 서버 글 그대로(판정 '확인 불가'는 서버 글이 적음)
+    fetchMarketCommonEvidence.mockResolvedValue(commonEv({ regime_label: null, regime_price_date: null, regime_price_state: null }));
+    fireEvent.click(copyBtn());
+    fireEvent.click(await screen.findByRole("button", { name: "이 자료로 계속" }));
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
-    const text = writeText.mock.calls[0][0] as string;
-    expect(text.split("\n").find((l) => l.startsWith("[시장 판정]"))).toBe("[시장 판정] 당일 판정을 불러오지 못했습니다");
-    expect(text).toContain("당일 판정을 불러오지 못했습니다");
+    expect(writeText.mock.calls[0][0]).toBe(DAILY);
   });
 
-  it("시장 판정 응답만 실패하고 같은 읽기가 있으면 복사의 시장 판정 줄 · [자료 상태] 줄이 같은 판정 날짜(자료 없음이라 하지 않음)", async () => {
+  it("시장 판정 응답만 실패하고 아침 기준의 당일 판정이 있으면 그 판정(이름 · 가격일 · 상태)으로 대조 · 같으면 서버 글 그대로", async () => {
     fetchMarketTopnLatest.mockRejectedValue(new Error("x"));
     fetchMorningBasis.mockResolvedValue(withToday(ok({ date: "2026-11-06", close: 84240, state: "after_close", fetched_at_kst: "2026-11-06T15:56:59+09:00" })));
     await renderView();
     await waitFor(() => expect(screen.getByTestId("tc-now-regime").textContent).toContain("KODEX 200 11/6 가격(15:56 마감 뒤 저장)"));
-    fireEvent.click(within(flowCard()).getByRole("button", { name: "AI용 시장 정보 복사" }));
-    const cont = screen.queryByRole("button", { name: "이 자료로 계속" });
-    if (cont) fireEvent.click(cont);
+    fireEvent.click(copyBtn());
+    // 시장 판정 응답 실패 = 코스피 행 확인 필요 → 확인 창(그 사이 대조는 이미 통과 · '근거 다름' 안내 없음)
+    const dlg = await screen.findByTestId("tc-stale-dialog");
+    expect(screen.queryByTestId("tc-copy-message")).toBeNull(); // 검토 F3 — 창이 열리면 '읽는 중' 안내를 내림
+    fireEvent.click(within(dlg).getByRole("button", { name: "이 자료로 계속" }));
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
-    const text = writeText.mock.calls[0][0] as string;
-    expect(text.split("\n").find((l) => l.startsWith("[시장 판정]"))).toBe(
-      "[시장 판정] KODEX 200 하락장 · 24거래일째 · 2026-11-06 · KODEX 200 11/6 가격(15:56 마감 뒤 저장)",
-    );
-    expect(text).not.toContain("시장 판정 자료 없음");
+    expect(writeText.mock.calls[0][0]).toBe(DAILY);
   });
 
   it("검증자 F11 — 복사 확인 창이 열린 동안 화면 판정이 바뀌면(아침 기준 도착) 받아 둔 글을 복사하지 않고 창을 닫는다 · 다시 누르면 새 판정", async () => {
@@ -668,7 +967,7 @@ describe("설계자 V3 마감 보완 — 점수 · 공통 행 · 복사", () => 
     fetchMorningBasis.mockReset().mockImplementation(() => new Promise((r) => (resolveMorning = r)));
     await renderView();
     await waitFor(() => expect(screen.getByTestId("tc-now-regime").textContent).toContain("하락장(21거래일째)"));
-    fireEvent.click(within(flowCard()).getByRole("button", { name: "AI용 시장 정보 복사" }));
+    fireEvent.click(copyBtn());
     expect(await screen.findByRole("button", { name: "이 자료로 계속" })).toBeInTheDocument();
     // 창이 열린 사이 아침 기준 도착 — 같은 읽기의 당일 판정(상승장 1거래일째 · 11/12 15:56 마감 뒤)
     const up = { ...MORNING_CTX, regime_label: "상승장", regime_code: "bull", regime_score: 2, regime_streak: { regime_code: "bull", streak_days: 1, at_least: false } } as typeof MORNING_CTX;
@@ -679,12 +978,14 @@ describe("설계자 V3 마감 보완 — 점수 · 공통 행 · 복사", () => 
     expect(screen.queryByRole("button", { name: "이 자료로 계속" })).toBeNull();
     expect(screen.getByTestId("tc-copy-message").textContent).toBe("복사에 쓰는 시장 자료가 바뀌어 복사를 멈췄습니다 — 다시 눌러 주세요.");
     expect(writeText).not.toHaveBeenCalled();
-    // 다시 누르면 지금 화면과 같은 판정이 복사된다
-    fireEvent.click(within(flowCard()).getByRole("button", { name: "AI용 시장 정보 복사" }));
+    // 다시 누르면 새로 읽은 공통 근거가 지금 화면 판정(상승장 · 11/12 마감 뒤)과 대조된다 — 같으면 그 글 그대로
+    fetchMarketCommonEvidence.mockResolvedValue(
+      commonEv({ regime_label: "상승장", regime_price_date: "2026-11-12", regime_price_state: "after_close" }, { daily_text: "상승장 글(합성)" }),
+    );
+    fireEvent.click(copyBtn());
     fireEvent.click(await screen.findByRole("button", { name: "이 자료로 계속" }));
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
-    const line = (writeText.mock.calls[0][0] as string).split("\n").find((l) => l.startsWith("[시장 판정]"));
-    expect(line).toBe("[시장 판정] KODEX 200 상승장 · 1거래일째 · 2026-11-12 · KODEX 200 11/12 가격(15:56 마감 뒤 저장)");
+    expect(writeText.mock.calls[0][0]).toBe("상승장 글(합성)");
   });
 
   // 설계자 정리(2026-11-13 · 마감 뒤) — 아침 요약의 원/달러 · WTI 는 원/달러가 기준일을 채웠을 때만 값 문장(과거 사건 없음)

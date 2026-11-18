@@ -4,24 +4,38 @@
 //
 // 최근 N건 목록 + 상세 보기. 목록에는 GPT / Gemini / Claude 답변 입력 여부가
 // has_* 플래그로 표시되어, 어떤 채널에서 응답을 받았는지 한눈에 본다.
+//
+// POC6-32 V2(PLAN §4-4) — 판정 칸은 출처별 표시 글자(verdictText · 저장값은 그대로) · 주간 기록(「주간 ETF 점검」)
+// 상세는 '당시 검토'(저장 값만 · 다시 계산 · 시장 조회 없음 · ai_sessions/WeeklyReviewSnapshot)를 먼저 보이고
+// 질문 원문 · 저장 칸(JSON)은 접힌 칸에 둔다 · 주간이 아닌 기록 상세는 지금 그대로.
+// openId = 「주간 ETF 점검」 ⑤ [기록 열기]가 넘긴 기록 → 처음 그릴 때 그 상세를 바로 열고 그 카드로 스크롤.
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ApiConfigError,
   ApiRequestError,
-  DECISION_VERDICT_LABEL,
   fetchDecisionSession,
   fetchDecisionSessions,
   type DecisionSessionDetail,
   type DecisionSessionSummary,
 } from "@/lib/api";
-import { isSelectedPreviewRecord, kstDateTimeLabel } from "@/lib/aiSessionsDraft";
+import {
+  isSelectedPreviewRecord,
+  isWeeklyRecord,
+  kstDateTimeLabel,
+  verdictText,
+} from "@/lib/aiSessionsDraft";
 import { constituentDatesText } from "@/lib/pairExposureText";
+import WeeklyReviewSnapshot from "./ai_sessions/WeeklyReviewSnapshot";
 
 interface Props {
   // 부모 (AISessionsView) 가 저장 직후 reload 트리거할 수 있도록 buster 사용.
   reloadTrigger: number;
+  // 처음 그릴 때 바로 열 기록 id(없으면 null · 「주간 ETF 점검」 [기록 열기]).
+  openId?: string | null;
 }
+
+const NOT_FOUND = "기록을 찾을 수 없습니다.";
 
 function describeError(e: unknown): string {
   if (e instanceof ApiConfigError) return `구성 오류: ${e.message}`;
@@ -81,6 +95,24 @@ function DetailCard({
   detail: DecisionSessionDetail;
   onClose: () => void;
 }) {
+  // POC6-32 V2 — 주간 기록은 '당시 검토' + 접힌 원문(질문 · 저장 칸 · AI 답은 '당시 검토' 안에서 AI 별로 접힘).
+  if (isWeeklyRecord(detail.source_screen)) {
+    return (
+      <div className="card decision-card decision-detail-card">
+        <h2>기록 상세 — {detail.id}</h2>
+        <WeeklyReviewSnapshot detail={detail} />
+        <details className="wrs-fold" data-testid="wrs-raw">
+          <summary>원문 펼치기 — 질문 원문 · 저장 칸(시장 근거 · 구성 · 겹침 · 데이터 품질)</summary>
+          <RawSections detail={detail} answers={false} />
+        </details>
+        <div className="btn-row" style={{ marginTop: 12 }}>
+          <button type="button" onClick={onClose}>
+            상세 닫기
+          </button>
+        </div>
+      </div>
+    );
+  }
   // POC5-24 — 선택 근거 모드 기록(「보유와 비교」 판단 근거 미리보기에서 넘김)만 따로 표시.
   const sel = isSelectedPreviewRecord(detail.source_screen, detail.candidate_snapshot);
   const sp = sel ? detail.candidate_snapshot[0].selected_preview : null;
@@ -97,9 +129,7 @@ function DetailCard({
         <li>화면: <strong>{detail.source_screen}</strong></li>
         <li>
           판정:{" "}
-          <strong>
-            {DECISION_VERDICT_LABEL[detail.user_verdict] ?? detail.user_verdict}
-          </strong>
+          <strong>{verdictText(detail.source_screen, detail.user_verdict)}</strong>
         </li>
         <li>후보 수: <strong>{detail.candidate_snapshot.length}</strong></li>
         {detail.linked_market_refresh_id ? (
@@ -163,27 +193,71 @@ function DetailCard({
           </>
         );
       })()}
+      <RawSections detail={detail} answers />
+
+      {detail.user_memo ? (
+        <>
+          <h3>사용자 메모</h3>
+          <pre className="decision-pre">{detail.user_memo}</pre>
+        </>
+      ) : null}
+
+      {detail.next_checks.length > 0 ? (
+        <>
+          <h3>다음 확인 항목</h3>
+          <ul>
+            {detail.next_checks.map((c, idx) => (
+              <li key={idx}>{c}</li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+
+      <div className="btn-row" style={{ marginTop: 12 }}>
+        <button type="button" onClick={onClose}>
+          상세 닫기
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// 질문 원문 · (answers 이면) AI 답 원문 · 저장 칸(JSON) — 주간이 아닌 기록은 펼쳐 둔 그대로 · 주간 기록은 접힌 칸 안에서
+// (주간 기록의 AI 답은 '당시 검토' 안에서 AI 별로 접혀 있으므로 여기서는 빼고 그린다).
+function RawSections({
+  detail,
+  answers,
+}: {
+  detail: DecisionSessionDetail;
+  answers: boolean;
+}) {
+  return (
+    <>
       <h3>AI 질문</h3>
       <pre className="decision-pre">{detail.question_text}</pre>
 
-      {detail.gpt_answer_text ? (
+      {answers ? (
         <>
-          <h3>GPT 답변</h3>
-          <pre className="decision-pre">{detail.gpt_answer_text}</pre>
-        </>
-      ) : null}
+          {detail.gpt_answer_text ? (
+            <>
+              <h3>GPT 답변</h3>
+              <pre className="decision-pre">{detail.gpt_answer_text}</pre>
+            </>
+          ) : null}
 
-      {detail.gemini_answer_text ? (
-        <>
-          <h3>Gemini 답변</h3>
-          <pre className="decision-pre">{detail.gemini_answer_text}</pre>
-        </>
-      ) : null}
+          {detail.gemini_answer_text ? (
+            <>
+              <h3>Gemini 답변</h3>
+              <pre className="decision-pre">{detail.gemini_answer_text}</pre>
+            </>
+          ) : null}
 
-      {detail.claude_answer_text ? (
-        <>
-          <h3>Claude 답변</h3>
-          <pre className="decision-pre">{detail.claude_answer_text}</pre>
+          {detail.claude_answer_text ? (
+            <>
+              <h3>Claude 답변</h3>
+              <pre className="decision-pre">{detail.claude_answer_text}</pre>
+            </>
+          ) : null}
         </>
       ) : null}
 
@@ -236,41 +310,22 @@ function DetailCard({
           </pre>
         </>
       ) : null}
-
-      {detail.user_memo ? (
-        <>
-          <h3>사용자 메모</h3>
-          <pre className="decision-pre">{detail.user_memo}</pre>
-        </>
-      ) : null}
-
-      {detail.next_checks.length > 0 ? (
-        <>
-          <h3>다음 확인 항목</h3>
-          <ul>
-            {detail.next_checks.map((c, idx) => (
-              <li key={idx}>{c}</li>
-            ))}
-          </ul>
-        </>
-      ) : null}
-
-      <div className="btn-row" style={{ marginTop: 12 }}>
-        <button type="button" onClick={onClose}>
-          상세 닫기
-        </button>
-      </div>
-    </div>
+    </>
   );
 }
 
-
-export default function AISessionsListTab({ reloadTrigger }: Props) {
+export default function AISessionsListTab({ reloadTrigger, openId = null }: Props) {
   const [recent, setRecent] = useState<DecisionSessionSummary[]>([]);
   const [listError, setListError] = useState<string | null>(null);
   const [detail, setDetail] = useState<DecisionSessionDetail | null>(null);
   const [detailLoadingId, setDetailLoadingId] = useState<string | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
+  // 마지막에 연 상세 요청만 반영(넘겨받은 기록을 여는 중에 다른 행 [보기]를 누르면 늦게 온 앞 응답을 버림).
+  const detailSeq = useRef(0);
+  // 넘겨받은 기록은 한 번만 연다(Strict Mode 효과 두 번 실행에도) · 그 상세가 그려지면 그 카드로 스크롤.
+  const openedId = useRef<string | null>(null);
+  const scrollToDetail = useRef(false);
+  const detailBox = useRef<HTMLDivElement | null>(null);
 
   const loadRecent = useCallback(() => {
     fetchDecisionSessions(10)
@@ -286,20 +341,43 @@ export default function AISessionsListTab({ reloadTrigger }: Props) {
   }, [loadRecent, reloadTrigger]);
 
   const handleOpenDetail = useCallback((id: string) => {
+    const seq = ++detailSeq.current;
     setDetailLoadingId(id);
     setDetail(null);
     setDetailError(null);
     fetchDecisionSession(id)
       .then((res) => {
+        if (seq !== detailSeq.current) return;
         if (res.status === "ok" && res.record) {
           setDetail(res.record);
         } else {
-          setDetailError(res.message ?? "기록을 찾을 수 없습니다.");
+          // 서버의 '찾지 못함' 안내는 영어라 화면에는 쉬운 한국어 한 줄만.
+          setDetailError(NOT_FOUND);
         }
       })
-      .catch((e) => setDetailError(describeError(e)))
-      .finally(() => setDetailLoadingId(null));
+      .catch((e) => {
+        if (seq === detailSeq.current) setDetailError(describeError(e));
+      })
+      .finally(() => {
+        if (seq === detailSeq.current) setDetailLoadingId(null);
+      });
   }, []);
+
+  // 「주간 ETF 점검」 [기록 열기] — 처음 그릴 때 그 기록 상세를 바로 연다(목록 10건 안에 없어도 id 로 읽음).
+  useEffect(() => {
+    if (!openId || openedId.current === openId) return;
+    openedId.current = openId;
+    scrollToDetail.current = true;
+    handleOpenDetail(openId);
+  }, [openId, handleOpenDetail]);
+
+  // 넘겨받은 기록 상세가 그려지면 그 카드로(목록 아래에 그려져 첫 화면에 안 보일 수 있음 · 화면 이동의 맨 위 규칙은 그대로).
+  useEffect(() => {
+    if (!detail || !scrollToDetail.current) return;
+    scrollToDetail.current = false;
+    const el = detailBox.current;
+    if (el && typeof el.scrollIntoView === "function") el.scrollIntoView({ block: "start" });
+  }, [detail]);
 
   const handleCloseDetail = useCallback(() => setDetail(null), []);
 
@@ -329,9 +407,7 @@ export default function AISessionsListTab({ reloadTrigger }: Props) {
                 <tr key={r.id}>
                   <td>{r.created_at}</td>
                   <td>{r.asof}</td>
-                  <td>
-                    {DECISION_VERDICT_LABEL[r.user_verdict] ?? r.user_verdict}
-                  </td>
+                  <td>{verdictText(r.source_screen, r.user_verdict)}</td>
                   <td style={{ textAlign: "right" }}>{r.candidate_count}</td>
                   <td>
                     <AnswerBadges
@@ -367,7 +443,9 @@ export default function AISessionsListTab({ reloadTrigger }: Props) {
         </div>
       ) : null}
 
-      {detail ? <DetailCard detail={detail} onClose={handleCloseDetail} /> : null}
+      <div ref={detailBox}>
+        {detail ? <DetailCard detail={detail} onClose={handleCloseDetail} /> : null}
+      </div>
     </>
   );
 }

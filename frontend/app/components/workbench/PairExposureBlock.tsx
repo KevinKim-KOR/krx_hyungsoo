@@ -131,7 +131,7 @@ export default function PairExposureBlock({ q, hasPick }: { q: PairPhase; hasPic
         <div className="wb-warn" data-testid="pe-no-candidate">
           후보 구성:{" "}
           {p.candidate.state === "unconfirmed" ? `원천 기준일 미확인(${p.candidate.asof} 보존 자료)` : "구성 자료 없음"} —
-          비교하지 않음(겹침 없음이라는 뜻 아님). 「ETF 구성종목」에서 [구성종목 수집] 뒤 다시 불러오세요.
+          비교하지 않음(겹침 없음이라는 뜻 아님). [구성종목 보기]로 그 ETF 를 연 뒤 [구성종목 수집]을 누르고 다시 불러오세요.
         </div>
       ) : (
         <>

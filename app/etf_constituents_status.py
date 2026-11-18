@@ -181,39 +181,48 @@ def read_analysis_rows(
     원천일 확인 = 읽은 행 전체의 지문이 그 (ETF, 날짜)의 확인 지문 중 하나와 같을 때.
     """
     tks = list(dict.fromkeys(t for t in tickers if t))
-    dates: dict[str, str] = {}
-    out: dict[str, tuple[list[ConstituentRow], bool]] = {}
     con = _ro(db_path) if tks else None
     if con is None:
-        return dates, out
+        return {}, {}
     with closing(con):
         con.execute("BEGIN")
-        if not _has_tables(con):
-            return dates, out
-        if asof:
-            dates = {t: asof for t in tks}
-        else:
-            # ETF마다 네이버 마지막 구성일 · 네이버 자료가 없으면 그 ETF 모든 출처의 마지막 구성일(검증자 r4 F9 —
-            # 예전 출처로만 저장된 ETF도 빠지지 않고 그 날짜로 보이며 원천 기준일 미확인으로 구분된다).
-            naver: dict[str, str] = {}
-            any_src: dict[str, str] = {}
-            for etf, src, d in con.execute(
-                "SELECT etf_ticker, source, MAX(asof) FROM etf_constituents "
-                f"WHERE etf_ticker IN ({_marks(tks)}) GROUP BY etf_ticker, source",
-                tks,
-            ):
-                if src == NAVER_STOCK_SOURCE:
-                    naver[etf] = d
-                if etf not in any_src or d > any_src[etf]:
-                    any_src[etf] = d
-            dates = {t: naver.get(t, any_src[t]) for t in tks if t in any_src}
-        marks = _confirm_marks(con, tks)
-        for t, d in dates.items():
-            rows = read_rows(con, etf_ticker=t, asof=d)
-            if not rows:
-                continue
-            ok = fingerprint(row_tuple(r) for r in rows) in marks.get((t, d), {})
-            out[t] = (rows, ok)
+        return analysis_rows_in(con, tks, asof=asof)
+
+
+def analysis_rows_in(
+    con: sqlite3.Connection, tickers: Iterable[str], *, asof: Optional[str]
+) -> tuple[dict[str, str], dict[str, tuple[list[ConstituentRow], bool]]]:
+    """`read_analysis_rows` 의 읽기 본문 — 부르는 쪽이 연 읽기 트랜잭션 안에서 읽는다(POC6-32 r1 F1 · 한 응답이 구성 ·
+    확인 기록 · ETF 목록을 한 번에 읽게). 돌려줌 · 날짜 규칙은 `read_analysis_rows` 와 같다."""
+    tks = list(dict.fromkeys(t for t in tickers if t))
+    dates: dict[str, str] = {}
+    out: dict[str, tuple[list[ConstituentRow], bool]] = {}
+    if not tks or not _has_tables(con):
+        return dates, out
+    if asof:
+        dates = {t: asof for t in tks}
+    else:
+        # ETF마다 네이버 마지막 구성일 · 네이버 자료가 없으면 그 ETF 모든 출처의 마지막 구성일(검증자 r4 F9 —
+        # 예전 출처로만 저장된 ETF도 빠지지 않고 그 날짜로 보이며 원천 기준일 미확인으로 구분된다).
+        naver: dict[str, str] = {}
+        any_src: dict[str, str] = {}
+        for etf, src, d in con.execute(
+            "SELECT etf_ticker, source, MAX(asof) FROM etf_constituents "
+            f"WHERE etf_ticker IN ({_marks(tks)}) GROUP BY etf_ticker, source",
+            tks,
+        ):
+            if src == NAVER_STOCK_SOURCE:
+                naver[etf] = d
+            if etf not in any_src or d > any_src[etf]:
+                any_src[etf] = d
+        dates = {t: naver.get(t, any_src[t]) for t in tks if t in any_src}
+    marks = _confirm_marks(con, tks)
+    for t, d in dates.items():
+        rows = read_rows(con, etf_ticker=t, asof=d)
+        if not rows:
+            continue
+        ok = fingerprint(row_tuple(r) for r in rows) in marks.get((t, d), {})
+        out[t] = (rows, ok)
     if not asof:
         dates = {t: d for t, d in dates.items() if t in out}
     return dates, out
@@ -231,58 +240,67 @@ def read_snapshots(
     원천일 확인은 모듈 머리 설명(내용 지문 대조 · 한 읽기 트랜잭션 · 검증자 r2 F5).
     """
     tks = sorted({t for t in tickers if t})
-    out: dict[str, dict[str, Any]] = {
-        t: {"confirmed": None, "latest": None, "last_attempt": None} for t in tks
-    }
-    if not tks:
-        return out
-    con = _ro(db_path)
+    con = _ro(db_path) if tks else None
     if con is None:
-        return out
+        return {
+            t: {"confirmed": None, "latest": None, "last_attempt": None} for t in tks
+        }
     with closing(con):
         # 한 읽기 트랜잭션(공유 잠금 유지) — 구성 목록 · 확인 지문 · 행 · 기록을 같은 시점으로 읽는다.
         con.execute("BEGIN")
-        if not _has_tables(con):
-            return out
-        snaps: dict[tuple[str, str], dict[str, Any]] = {}
-        for etf, asof, n, saved in con.execute(
-            "SELECT etf_ticker, asof, COUNT(*), MAX(created_at) FROM etf_constituents "
-            f"WHERE source = ? AND etf_ticker IN ({_marks(tks)}) GROUP BY etf_ticker, asof",
-            (NAVER_STOCK_SOURCE, *tks),
-        ):
-            snaps[(etf, asof)] = {"asof": asof, "rows": int(n), "saved_at": saved}
-        marks = _confirm_marks(con, tks)
-        for (etf, asof), snap in snaps.items():
-            cur = out[etf]
-            if cur["latest"] is None or asof > cur["latest"]["asof"]:
-                cur["latest"] = snap
-        for etf in tks:
-            dates = sorted(
-                (a for (e, a) in snaps if e == etf and (e, a) in marks), reverse=True
-            )
-            for asof in dates:
-                rows = _snapshot_rows(con, etf, asof)
-                fp = fingerprint(rows)
-                if fp in marks[(etf, asof)]:
-                    out[etf]["confirmed"] = {
-                        **snaps[(etf, asof)],
-                        "data": rows,
-                        # 원천이 준 전체(확인 기록 끝 표시) — 없는 주식 = 0(확인) 판정에 씀(STEP 4)
-                        "complete": marks[(etf, asof)][fp],
-                    }
-                    break
-        for etf, asof, status, message, created in con.execute(
-            "SELECT etf_ticker, asof, status, message, created_at "
-            f"FROM etf_constituent_refresh_log WHERE etf_ticker IN ({_marks(tks)}) "
-            "ORDER BY rowid ASC",
-            tks,
-        ):
-            out[etf]["last_attempt"] = {
-                "asof": asof,
-                "status": status,
-                "message": message,
-                "created_at": created,
-            }
+        return snapshots_in(con, tks)
+
+
+def snapshots_in(
+    con: sqlite3.Connection, tickers: Iterable[str]
+) -> dict[str, dict[str, Any]]:
+    """`read_snapshots` 의 읽기 본문 — 부르는 쪽이 연 읽기 트랜잭션 안에서 읽는다(POC6-32 r1 F1 · 한 응답이 구성 ·
+    확인 기록 · ETF 목록을 한 번에 읽게). 돌려줌 모양은 `read_snapshots` 와 같다."""
+    tks = sorted({t for t in tickers if t})
+    out: dict[str, dict[str, Any]] = {
+        t: {"confirmed": None, "latest": None, "last_attempt": None} for t in tks
+    }
+    if not tks or not _has_tables(con):
+        return out
+    snaps: dict[tuple[str, str], dict[str, Any]] = {}
+    for etf, asof, n, saved in con.execute(
+        "SELECT etf_ticker, asof, COUNT(*), MAX(created_at) FROM etf_constituents "
+        f"WHERE source = ? AND etf_ticker IN ({_marks(tks)}) GROUP BY etf_ticker, asof",
+        (NAVER_STOCK_SOURCE, *tks),
+    ):
+        snaps[(etf, asof)] = {"asof": asof, "rows": int(n), "saved_at": saved}
+    marks = _confirm_marks(con, tks)
+    for (etf, asof), snap in snaps.items():
+        cur = out[etf]
+        if cur["latest"] is None or asof > cur["latest"]["asof"]:
+            cur["latest"] = snap
+    for etf in tks:
+        dates = sorted(
+            (a for (e, a) in snaps if e == etf and (e, a) in marks), reverse=True
+        )
+        for asof in dates:
+            rows = _snapshot_rows(con, etf, asof)
+            fp = fingerprint(rows)
+            if fp in marks[(etf, asof)]:
+                out[etf]["confirmed"] = {
+                    **snaps[(etf, asof)],
+                    "data": rows,
+                    # 원천이 준 전체(확인 기록 끝 표시) — 없는 주식 = 0(확인) 판정에 씀(STEP 4)
+                    "complete": marks[(etf, asof)][fp],
+                }
+                break
+    for etf, asof, status, message, created in con.execute(
+        "SELECT etf_ticker, asof, status, message, created_at "
+        f"FROM etf_constituent_refresh_log WHERE etf_ticker IN ({_marks(tks)}) "
+        "ORDER BY rowid ASC",
+        tks,
+    ):
+        out[etf]["last_attempt"] = {
+            "asof": asof,
+            "status": status,
+            "message": message,
+            "created_at": created,
+        }
     return out
 
 

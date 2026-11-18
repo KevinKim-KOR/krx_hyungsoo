@@ -55,6 +55,12 @@ vi.mock("@/lib/api/etfCompare", async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
   fetchEtfCompareSummary: (...a: unknown[]) => fetchEtfCompareSummary(...a),
 }));
+// POC6-32 — ETF 주간 검토(「잘 오르는 ETF」 자리) 고정 응답(서버 조립 출력 · 11/16 공개 시장 자료)
+vi.mock("@/lib/api/weeklyReview", async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+  const fx = await import("@/lib/weeklyReviewTestFixtures");
+  return { ...actual, fetchWeeklyReview: vi.fn(async (sel: string | null) => fx.weeklyFor(sel)) };
+});
 vi.mock("@/lib/api/refreshAll", async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
   postRefreshAll: (...a: unknown[]) => postRefreshAll(...a),
@@ -203,7 +209,7 @@ describe("'VIX 다시 받기'(오늘 점검 ②)", () => {
     // 검토 지적 — 지운 자료를 다시 읽어 '불러오는 중'에 멈추지 않는다 · 버튼이 풀린다.
     expect(holdCard()).toContain("보유 1종목");
     expect(holdCard()).not.toContain("불러오는 중");
-    expect(screen.getByTestId("tc-cand-top")).toBeTruthy();
+    expect(screen.getByTestId("tc-weekly-link")).toBeTruthy(); // POC6-32 V2 — 주간 화면 이동 줄(주간 자료는 읽지 않음)
     expect(allButton()).not.toBeDisabled();
     expect(screen.queryByTestId("tc-market-result")).toBeNull();
   });

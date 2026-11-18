@@ -16,22 +16,24 @@ from __future__ import annotations
 from typing import Literal, Optional
 
 from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.api_decision_draft_preview import PreviewEvidenceAsOf
 from app.api_market_topn_models import SamePeriodKodex200
 from app.decision_evidence_store import (
     ALLOWED_USER_VERDICTS,
     DEFAULT_DB_PATH,
-    DEFAULT_USER_VERDICT,
+    UNRECORDED_SOURCE_SCREENS,
+    UNRECORDED_USER_VERDICT,
     DecisionValidationError,
+    default_user_verdict,
     get_record,
     insert_record,
     list_recent_records,
 )
 
 UserVerdictLiteral = Literal[
-    "useful", "needs_constituents", "needs_market_compare", "hold"
+    "useful", "needs_constituents", "needs_market_compare", "hold", "unrecorded"
 ]
 
 router = APIRouter()
@@ -80,7 +82,9 @@ class CreateDecisionSessionRequest(BaseModel):
     gemini_answer_text: str = ""
     claude_answer_text: str = ""
     user_memo: str = ""
-    user_verdict: UserVerdictLiteral = DEFAULT_USER_VERDICT  # type: ignore[assignment]
+    # POC6-32 V2 Q4 — 빠지면 출처별 값(주간 기록 출처 = 'unrecorded' 미기록 · 그 밖 = 'hold' 지금 그대로) ·
+    # 명시한 null 은 거부 · 'unrecorded' 는 주간 기록 출처에서만(아래 검사 · 저장소도 같은 검사).
+    user_verdict: Optional[UserVerdictLiteral] = None
     next_checks: list[str] = []
     linked_market_refresh_id: Optional[str] = None
     # 2026-05-22 Market Regime & Benchmark Context — 저장 시점 시장 문맥 스냅샷.
@@ -97,6 +101,21 @@ class CreateDecisionSessionRequest(BaseModel):
     # 0건. status / candidate_summary / risk_summary / leakage_summary /
     # limitations / external_context_checklist 포함.
     ml_baseline_evidence_snapshot: Optional[dict] = None
+
+    @model_validator(mode="after")
+    def _verdict_by_source(self) -> "CreateDecisionSessionRequest":
+        if "user_verdict" not in self.model_fields_set:
+            self.user_verdict = default_user_verdict(self.source_screen)  # type: ignore[assignment]
+        elif self.user_verdict is None:
+            raise ValueError("user_verdict must not be null")
+        elif (
+            self.user_verdict == UNRECORDED_USER_VERDICT
+            and self.source_screen not in UNRECORDED_SOURCE_SCREENS
+        ):
+            raise ValueError(
+                f"user_verdict 'unrecorded' is only for source_screen {UNRECORDED_SOURCE_SCREENS}"
+            )
+        return self
 
 
 class CreateDecisionSessionResponse(BaseModel):
@@ -174,7 +193,8 @@ def post_decision_session(
             gemini_answer_text=req.gemini_answer_text,
             claude_answer_text=req.claude_answer_text,
             user_memo=req.user_memo,
-            user_verdict=req.user_verdict,
+            # 요청 검사를 거치지 않은 모델(model_construct 등)도 출처별 값으로 · 출처 검사는 저장소가 다시 함
+            user_verdict=req.user_verdict or default_user_verdict(req.source_screen),
             next_checks=list(req.next_checks),
             linked_market_refresh_id=req.linked_market_refresh_id,
             market_context_snapshot=req.market_context_snapshot,
@@ -195,8 +215,11 @@ def post_decision_session(
 @router.get("/decision/sessions", response_model=ListDecisionSessionsResponse)
 def get_decision_sessions(
     limit: int = Query(default=10, ge=1, le=200),
+    source_screen: Optional[str] = Query(default=None, min_length=1),
 ) -> ListDecisionSessionsResponse:
-    rows = list_recent_records(limit=limit, db_path=DEFAULT_DB_PATH)
+    rows = list_recent_records(
+        limit=limit, db_path=DEFAULT_DB_PATH, source_screen=source_screen
+    )
     return ListDecisionSessionsResponse(
         status="ok",
         records=[DecisionSessionSummary(**r) for r in rows],

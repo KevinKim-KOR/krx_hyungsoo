@@ -51,6 +51,9 @@ interface Props {
   flowPeriod?: string;
   // POC6-31 C25 — 「보유와 후보 비교」 후보만: 고른 보유 · 화면이 받은 구성종목 비교 근거 지문(아직 못 받았으면 null).
   pair?: { holding: string | null; fingerprint: string | null };
+  // POC6-32 V2(PLAN R3 · §9 I-17) — 「주간 ETF 점검」 ③ [판단 근거 보기]: 이 카드의 [AI 세션에서 검토]를 숨긴다(넘기기는 주간
+  //   화면 버튼 줄 하나 · 미리보기 글은 주간 넘기기에 넣지 않음). 없으면(기본) 지금처럼.
+  hideReviewTransfer?: boolean;
 }
 
 // POC5-24 — 지금 보이는 응답 그대로 AI 세션 초안(재생성 · 재계산 없음 · 질문 = 원문).
@@ -129,6 +132,7 @@ export default function DecisionDraftPreviewCard({
   onNavigate,
   flowPeriod,
   pair,
+  hideReviewTransfer = false,
 }: Props) {
   // POC5-24 — 저장 안 한 기존 초안이 있으면 바꾸기 전에 묻는다(Q2 (a)).
   const [pendingReplace, setPendingReplace] = useState<string | null>(null);
@@ -282,7 +286,7 @@ export default function DecisionDraftPreviewCard({
             복사
           </button>
         ) : null}
-        {ok && reviewDraft && onNavigate && !loading ? (
+        {ok && reviewDraft && onNavigate && !loading && !hideReviewTransfer ? (
           <button type="button" className="btn-md" onClick={() => goReview(false)}>
             AI 세션에서 검토
           </button>

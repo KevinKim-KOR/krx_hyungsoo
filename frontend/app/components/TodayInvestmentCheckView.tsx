@@ -10,6 +10,8 @@
 //   1 제목 · [요약 다시 읽기] [?] … · 읽은 시각 · 결과 줄
 //   2 「자료 최신화 필요」(대상 있을 때만) | 3 「OCI 운영 스케줄 확인」 — 기본 접힘 · 함께 펼치고 접음(사용자 결정 ⑤)
 //   4 「지금 확인할 내용」: 시장 흐름 → 보유 점검 | 잘 오르는 ETF → 자료 · 연구 상태 · 7 현재 제공 범위와 남은 기능(접힘).
+//   (2026-11-17 POC6-32 V2 — 「잘 오르는 ETF」 자리 = 「주간 ETF 점검」 한 줄 [주간 ETF 점검 열기 →](today/SummarySection) ·
+//    주간 자료는 이 화면에서 읽지 않음 · 주간 화면 = 메뉴 「주간 ETF 점검」 · 이 화면의 갱신은 주간 화면을 다시 읽게 하지 않음)
 // 2026-11-12 POC6-29(설계 §2 · §5 · PLAN §2-2 · §3-2 · §3-6 · 판정 Q1 · Q2 · Q7 · Q8 · Q10):
 //   - 머리 버튼 = [요약 다시 읽기] [최신 자료 갱신](PC 서버 묶음 작업 한 번 · 보유 현재가 → 시장 자료 · useTodayRefresh).
 //   - 시장 흐름 카드에 시장 판정(KODEX 200) · VIX 한 줄. 보유 점검 · 잘 오르는 ETF 는 각 한 카드(자세히 구역 없음).
@@ -63,7 +65,19 @@ import {
   staleAfterRefreshText,
   type FreshSources,
 } from "@/lib/todayFreshness";
-import { buildTodayMarketCopyText } from "@/lib/todayMarketCopyText";
+import { kospiObs } from "@/lib/todayMarketLines";
+import {
+  COPY_CANCELLED,
+  COPY_DONE,
+  COPY_FAILED,
+  COPY_READING,
+  copyCheck,
+  fetchMarketCommonEvidence,
+  MARKET_COMMON_EVIDENCE_KEY,
+  startGestureCopy,
+  writeCopyText,
+} from "@/lib/api/marketCommonEvidence";
+import type { CopyDecision, MarketCommonEvidence } from "@/lib/api/marketCommonEvidence";
 import type { MenuKey } from "./LeftSidebar";
 import HelpPopover from "./holdings_risk_evidence/HelpPopover";
 import KospiDetailSection from "./today/KospiDetailSection";
@@ -75,7 +89,7 @@ import MarketEvidenceFold from "./today/MarketEvidenceFold";
 import FreshnessCard from "./today/FreshnessCard";
 import OciScheduleCard, { mdHm } from "./today/OciScheduleCard";
 import StaleConfirmDialog, { type FailedSource } from "./today/StaleConfirmDialog";
-import { CandidatesCheckCard, HoldingsCheckCard, SUMMARY_SOURCE_LABEL } from "./today/CheckCards";
+import { HoldingsCheckCard, SUMMARY_SOURCE_LABEL } from "./today/CheckCards";
 import { collectMaintenance } from "./today/maintenanceQueue";
 import { useLightRefreshState } from "./today/useLightRefreshState";
 import { useTodayRefresh } from "./today/useTodayRefresh";
@@ -188,7 +202,8 @@ const KODEX_TICKERS = ["069500"];
 export default function TodayInvestmentCheckView({ onNavigate }: Props) {
   // POC6-29 — 시장 판정 · VIX · 거래량만 쓰므로 기본 조건 한 키(목록 조건과 무관 · DASH_KEY_MARKET).
   const market = useSharedQuery<MarketTopNResponse>(DASH_KEY_MARKET, () => fetchMarketTopnLatest(10));
-  // POC6-29 — 잘 오르는 ETF · 보유 점검 = 이 화면 조건(자체 기간 · 4종 제외 고정)의 공통 기간 요약.
+  // POC6-29 — 보유 점검 = 이 화면 조건(자체 기간 · 4종 제외 고정)의 공통 기간 요약(POC6-32 V2: 「잘 오르는 ETF」 카드 자리는
+  //   「주간 ETF 점검」 한 줄 · 주간 자료는 주간 화면이 자기 조건으로 따로 읽음).
   const { cond: todayCond, q: summary } = useEtfCompareSummary("today");
   const holdings = useSharedQuery<EnrichedHoldingsResult>(DASH_KEY_HOLDINGS, () => fetchEnrichedHoldings());
   const evidence = useSharedQuery<HoldingsMarketEvidenceResponse>(DASH_KEY_EVIDENCE, () =>
@@ -204,6 +219,8 @@ export default function TodayInvestmentCheckView({ onNavigate }: Props) {
   // POC6-29 보완 2차 — 아침 요약 기준(준비 상태 · 아침 판정) · 수급 5거래일(저장값만)
   const morning = useSharedQuery<MorningBasisResponse>(MORNING_BASIS_KEY, () => fetchMorningBasis());
   const short = useSharedQuery<ShortFlowsResponse>(SHORT_FLOWS_KEY, () => fetchShortFlows());
+  // POC6-32 V2(PLAN §4-1) — 공통 시장 근거 · [AI용 시장 정보 복사]를 누를 때만 새로 읽는다(들어올 때 · 다시 읽기 때 읽지 않음).
+  const common = useSharedQuery<MarketCommonEvidence>(MARKET_COMMON_EVIDENCE_KEY, () => fetchMarketCommonEvidence(), { lazy: true });
   // POC6-31 — 보유 ETF 구성 상태(저장 자료만 · 할 일 개수 · 보유 구성종목 줄)
   const consStatus = useSharedQuery<HoldingsConstituentsStatus>(HOLDINGS_CONSTITUENTS_KEY, () =>
     fetchHoldingsConstituentsStatus(),
@@ -237,6 +254,7 @@ export default function TodayInvestmentCheckView({ onNavigate }: Props) {
   const [topOpen, setTopOpen] = useState(false);
   const toggleTop = useCallback(() => setTopOpen((v) => !v), []);
   const [copyState, setCopyState] = useState<{ message: string; fallback: string | null } | null>(null);
+  const [copyReading, setCopyReading] = useState(false); // 복사용 공통 시장 근거를 읽는 중(버튼 · 다시 읽기 막힘)
 
   const dataOf = <T,>(q: QueryState<T>): T | null => (q.phase === "success" ? q.data : null);
   const sourcesNow = (): FreshSources => ({
@@ -399,7 +417,7 @@ export default function TodayInvestmentCheckView({ onNavigate }: Props) {
 
   // ── [요약 다시 읽기] — 받아 두기 → 최신성 대조 → (필요하면) 고르기 → 반영 · 버림 ──
   const onSummaryReload = useCallback(async () => {
-    if (reload.phase === "running" || allBusy || marketRefresh.busy || confirm) return;
+    if (reload.phase === "running" || allBusy || marketRefresh.busy || confirm || copyReading) return;
     setReload({ phase: "running" });
     const gen = dataGenRef.current;
     const jobs: { label: string; key: string; run: () => Promise<unknown>; q: QueryState<unknown> }[] = [
@@ -490,6 +508,7 @@ export default function TodayInvestmentCheckView({ onNavigate }: Props) {
     allBusy,
     marketRefresh.busy,
     confirm,
+    copyReading,
     market,
     flow,
     series,
@@ -510,11 +529,13 @@ export default function TodayInvestmentCheckView({ onNavigate }: Props) {
     const purpose = confirm?.purpose;
     setConfirm(null);
     if (purpose === "reload") setReload({ phase: "cancelled", at: Date.now() });
+    if (purpose === "copy") setCopyState({ message: COPY_CANCELLED, fallback: null }); // 검토 F3 — 읽는 중 안내를 남기지 않음
   }, [confirm]);
 
-  // ── [AI용 시장 정보 복사] — 화면 값으로만 · 늦은 핵심 자료가 있으면 먼저 고르기 ──
-  // 검증자 F11 — 복사 글에 쓰는 원천(시장 판정 · 시장 흐름 · 아침 기준의 응답 · 상태). 확인 창을 연 뒤 이것이 바뀌면 받아 둔
-  // 글을 복사하지 않는다(창을 닫고 다시 누르게 · 시장 갱신 완료 때 닫는 기존 보호와 같은 방식).
+  // ── [AI용 시장 정보 복사] — 누르면 공통 시장 근거(GET /market/evidence)를 새로 읽어 그 글을 그대로(PLAN §4-1 · I-23) ──
+  // 응답의 기준(시장 판정 이름 · 가격 기준일 · 코스피 · 수급 기준일)이 화면과 다르거나 못 읽으면 복사하지 않는다(대신할 글
+  // 없음). 늦은 핵심 자료가 있으면 먼저 고르기. 검증자 F11 보호 — 누른 뒤(읽는 동안 · 확인 창이 열린 동안) 화면 원천(시장
+  // 판정 · 시장 흐름 · 아침 기준의 응답 · 상태)이나, 창이 열린 동안 받아 둔 공통 근거 응답이 바뀌면 복사하지 않는다.
   const copyBase = () => ({
     market: dataOf(market),
     marketPhase: market.phase,
@@ -524,59 +545,61 @@ export default function TodayInvestmentCheckView({ onNavigate }: Props) {
     morningPhase: morning.phase,
     morningStale: morning.phase === "success" && morning.stale,
   });
-  const copyBaseRef = useRef<ReturnType<typeof copyBase> | null>(null);
+  // 읽는 동안은 화면 원천만 대조 · 창을 열 때 받은 응답(common)을 더한다(자기 읽기를 '바뀜'으로 보지 않게).
+  const copyBaseRef = useRef<(ReturnType<typeof copyBase> & { common?: MarketCommonEvidence }) | null>(null);
   useEffect(() => {
-    if (confirm?.purpose !== "copy" || !copyBaseRef.current) return;
-    const was = copyBaseRef.current;
-    const now = copyBase();
-    const changed = (Object.keys(now) as (keyof typeof now)[]).some((k) => was[k] !== now[k]);
-    if (!changed) return;
+    if ((confirm?.purpose !== "copy" && !copyReading) || !copyBaseRef.current) return;
+    const was: Record<string, unknown> = copyBaseRef.current;
+    const now: Record<string, unknown> = { ...copyBase(), common: dataOf(common) };
+    if (!Object.keys(was).some((k) => was[k] !== now[k])) return;
     copyBaseRef.current = null;
-    setConfirm(null);
+    if (confirm?.purpose === "copy") setConfirm(null);
     setCopyState({ message: "복사에 쓰는 시장 자료가 바뀌어 복사를 멈췄습니다 — 다시 눌러 주세요.", fallback: null });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [confirm, market, flow, morning]);
+  }, [confirm, copyReading, market, flow, morning, common]);
 
   const onCopy = useCallback(() => {
-    if (confirm || reload.phase === "running" || market.phase === "loading" || flow.phase === "loading") return;
-    // 설계자 V3 §3 — 시장 판정 줄 · [자료 상태]의 시장 판정 줄 · 확인 창이 화면 당일 상자 · 표와 같은 선택 결과(todayBasis)
+    if (confirm || copyReading || reload.phase === "running" || market.phase === "loading" || flow.phase === "loading") return;
+    // 설계자 V3 §3 — 확인 창 · 대조할 화면 판정은 화면 당일 상자 · 표와 같은 선택 결과(todayBasis)
     const verdict = todayBasis(morning, dataOf(market)?.market_context ?? null, market.phase);
-    const src = { ...sourcesNow(), verdict };
-    const all = freshnessRows(src, "copy");
-    const text = buildTodayMarketCopyText({ flow: src.flow, fresh: all, verdict });
-    const doCopy = () => {
-      const fail = () =>
-        setCopyState({ message: "복사하지 못했습니다 — 아래 글을 직접 선택해 복사하세요.", fallback: text });
-      try {
-        const p = navigator.clipboard?.writeText(text);
-        if (!p) {
-          fail();
-          return;
-        }
-        p.then(() => setCopyState({ message: "AI용 시장 정보를 복사했습니다(고정 프롬프트 + 시장 근거).", fallback: null })).catch(
-          fail,
-        );
-      } catch {
-        fail();
-      }
+    const rows = needsAttention(freshnessRows({ ...sourcesNow(), verdict }, "copy"));
+    const screenBasis = {
+      regimeLabel: verdict.ctx?.regime_label ?? null,
+      regimePriceDate: verdict.date,
+      regimePriceState: verdict.row?.state, // 화면이 판정 가격 행(장중 · 마감 뒤)을 보일 때만 대조
+      kospiDate: kospiObs(dataOf(flow))?.date ?? null,
+      flowDate: dataOf(flow)?.series?.flows?.E ?? null,
     };
-    const rows = needsAttention(all);
-    if (rows.length === 0) {
-      doCopy();
-      return;
-    }
-    copyBaseRef.current = copyBase();
-    setConfirm({
-      purpose: "copy",
-      rows,
-      failed: [],
-      onContinue: () => {
+    const base = copyBase();
+    const gen = dataGenRef.current;
+    copyBaseRef.current = base;
+    setCopyReading(true);
+    setCopyState({ message: COPY_READING, fallback: null });
+    const done = (ok: boolean, text: string) =>
+      setCopyState(ok ? { message: COPY_DONE, fallback: null } : { message: COPY_FAILED, fallback: text });
+    const stop = (message: string): CopyDecision => (setCopyState({ message, fallback: null }), { kind: "blocked" });
+    const settle = (r: MarketCommonEvidence | null): CopyDecision => {
+      setCopyReading(false);
+      if (copyBaseRef.current !== base) return { kind: "blocked" }; // 읽는 동안 화면 원천이 바뀌어 이미 멈춤(안내는 위 보호가 띄움)
+      copyBaseRef.current = null;
+      // 읽는 동안 시장 갱신이 끝나 자료를 새로 읽었다 — 그 전 화면 기준으로 복사하지 않는다(F1 과 같은 방식).
+      if (gen !== dataGenRef.current) return stop("시장 자료를 새로 읽어 복사를 멈췄습니다 — 다시 눌러 주세요.");
+      const check = copyCheck(r, screenBasis);
+      if (!check.ok) return stop(check.message);
+      if (rows.length === 0) return { kind: "write", text: check.text };
+      copyBaseRef.current = { ...base, common: r ?? undefined };
+      const onContinue = () => {
         setConfirm(null);
-        doCopy();
-      },
-    });
+        writeCopyText(check.text, (ok) => done(ok, check.text)); // [이 자료로 계속] 누름 안에서 씀
+      };
+      setCopyState(null); // 검토 F3 — 확인 창이 열리면 '읽는 중' 안내를 내린다
+      setConfirm({ purpose: "copy", rows, failed: [], onContinue });
+      return { kind: "dialog" };
+    };
+    // 클립보드 쓰기는 누른 순간에 시작한다(I-30 · 검토 F1) — 글은 새로 읽고 대조한 뒤 채운다(확인 창 · 막힘 = 쓰지 않음).
+    startGestureCopy(common.reloadAsync().then(settle, () => settle(null)), done);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [confirm, reload.phase, market, flow, holdings, evidence, morning]);
+  }, [confirm, copyReading, reload.phase, market, flow, holdings, evidence, morning, common]);
 
   const onAction = useCallback(
     (a: SummaryAction) => {
@@ -613,7 +636,7 @@ export default function TodayInvestmentCheckView({ onNavigate }: Props) {
   const successAt = (q: { phase: string; successAt?: number }) => (q.phase === "success" ? q.successAt : undefined);
   const readRange = readRangeText([market, series, flow, holdings, evidence, nav, forward, summary].map(successAt));
   const refreshBusy = allBusy || marketRefresh.busy || vixRetryRunning;
-  const blocked = reload.phase === "running" || allBusy || refreshing.state === "running" || confirm !== null;
+  const blocked = reload.phase === "running" || allBusy || refreshing.state === "running" || confirm !== null || copyReading;
   // 시장 갱신이 도는 동안은 다시 읽지 않는다(끝나면 갱신이 다시 읽음 · F1).
   const reloadBlocked = blocked || marketRefresh.busy;
   const mr = marketRefresh.refreshUi;
@@ -765,13 +788,14 @@ export default function TodayInvestmentCheckView({ onNavigate }: Props) {
             morning={morning}
             short={short}
             onCopy={onCopy}
-            copyDisabled={confirm !== null || reload.phase === "running" || market.phase === "loading" || flow.phase === "loading"}
+            copyDisabled={
+              confirm !== null || copyReading || reload.phase === "running" || market.phase === "loading" || flow.phase === "loading"
+            }
             copyMessage={copyState?.message ?? null}
             copyFallback={copyState?.fallback ?? null}
           />
         }
         holdingsCard={<HoldingsCheckCard market={market} summary={summary} holdings={holdings} onNavigate={onNavigate} />}
-        candidatesCard={<CandidatesCheckCard summary={summary} basis={todayCond.basis} onNavigate={onNavigate} />}
         detailBlock={
           <MarketEvidenceFold
             market={market}

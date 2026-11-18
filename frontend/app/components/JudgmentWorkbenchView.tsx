@@ -71,7 +71,7 @@ export default function JudgmentWorkbenchView({ onNavigate }: Props) {
       <BasisSaveRow screen="candidates" basis={cond.basis} />
       {once && cond === once.cond ? (
         <p className="ec-small" data-testid="wb-once-condition">
-          「섹터요약」에서 넘긴 조건으로 열었습니다 — 이 화면을 떠났다 다시 들어오면 원래 조건으로 보입니다
+          {once.origin ?? "「섹터요약」"}에서 넘긴 조건으로 열었습니다 — 다른 화면에 갔다가 다시 열면 원래 조건으로 보입니다
         </p>
       ) : null}
 

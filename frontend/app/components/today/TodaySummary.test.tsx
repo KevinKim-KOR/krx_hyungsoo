@@ -11,6 +11,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, fireEvent, waitFor, within, act } from "@testing-library/react";
 import { __resetQueryCache } from "@/lib/api/queryCache";
+import { weeklyFor } from "@/lib/weeklyReviewTestFixtures";
 import { DATA as FWD } from "../ml_forward/testFixtures";
 import { detailResponse, summaryOk } from "@/lib/etfCompareTestFixtures";
 import { quickOk } from "@/lib/quickQuotesTestFixtures";
@@ -85,6 +86,12 @@ vi.mock("@/lib/api/decisionLedger", async (importOriginal) => {
 vi.mock("@/lib/api/etfCompare", async (importOriginal) => {
   const actual = await importOriginal<Record<string, unknown>>();
   return { ...actual, fetchEtfCompareSummary: (...a: unknown[]) => fetchEtfCompareSummary(...a) };
+});
+// POC6-32 — ETF 주간 검토(「잘 오르는 ETF」 자리) 고정 응답
+const fetchWeeklyReview = vi.fn();
+vi.mock("@/lib/api/weeklyReview", async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+  return { ...actual, fetchWeeklyReview: (...a: unknown[]) => fetchWeeklyReview(...a) };
 });
 vi.mock("@/lib/api/refreshAll", async (importOriginal) => {
   const actual = await importOriginal<Record<string, unknown>>();
@@ -273,6 +280,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   prime();
   fetchHoldingsConstituentsStatus.mockResolvedValue(consStatus());
+  fetchWeeklyReview.mockImplementation(async (sel: string | null) => weeklyFor(sel));
 });
 
 const summary = () => screen.getByLabelText("지금 확인할 내용");
@@ -317,7 +325,7 @@ describe("POC6-16 · POC6-27 지금 확인할 내용", () => {
     for (const f of READ_FNS) expect(f).not.toHaveBeenCalled();
   });
 
-  it("배치: 머리말 → 자료 최신화 · OCI → 지금 확인할 내용(시장 흐름 → 보유 점검 | 잘 오르는 ETF → 시장 근거 접기 → 자료 · 연구)", async () => {
+  it("배치: 머리말 → 자료 최신화 · OCI → 지금 확인할 내용(시장 흐름 → 보유 점검 → 주간 ETF 점검 한 줄 → 시장 근거 접기 → 자료 · 연구)", async () => {
     await renderView();
     const seq = [
       screen.getByRole("heading", { level: 1, name: "오늘의 투자 점검" }),
@@ -325,7 +333,7 @@ describe("POC6-16 · POC6-27 지금 확인할 내용", () => {
       screen.getByLabelText("OCI 운영 스케줄 확인"),
       flowCard(),
       screen.getByLabelText("보유 점검"),
-      screen.getByLabelText("잘 오르는 ETF"),
+      screen.getByLabelText("주간 ETF 점검"),
       screen.getByTestId("tc-evidence-fold"),
       screen.getByRole("group", { name: "자료 · 연구 상태" }),
     ];
@@ -363,7 +371,7 @@ describe("POC6-16 · POC6-27 지금 확인할 내용", () => {
     expect(screen.queryByTestId("tc-oci-body")).toBeNull();
   });
 
-  it("요약 = 원래 구역 값(시장 판정 · KOSPI 상태 · 잘 오르는 ETF 선정 1 ~ 3위 · 연구 결론)", async () => {
+  it("요약 = 원래 구역 값(시장 판정 · KOSPI 상태 · 주간 ETF 점검 한 줄(주간 자료 안 읽음) · 연구 결론)", async () => {
     await renderView();
     expect(screen.getByTestId("tc-now-regime").textContent).toContain("하락장(11거래일째)");
     // 1 · 3개월 칸은 시장 흐름 응답의 기간 값(형수님 결정 2026-11-14) — 이 자료(기간 없음)면 '확인 불가 · 자료 없음'.
@@ -374,8 +382,10 @@ describe("POC6-16 · POC6-27 지금 확인할 내용", () => {
     const close = screen.getByTestId("tc-kospi-close");
     expect(close.textContent).not.toMatch(/KOSPI 기준일|거래일 지연|원자료가 최근 거래일까지/);
     expect(openFresh().querySelector('[data-fresh="kospi"]')?.textContent).toContain("2026-10-22");
-    const top = within(screen.getByLabelText("잘 오르는 ETF")).getByTestId("tc-cand-top");
-    expect(Array.from(top.querySelectorAll(".tc-cand-name")).map((e) => e.textContent)).toEqual(["인도 대표", "인도 대표2", "헬스케어"]);
+    // POC6-32 V2(PLAN §2 S2) — 「잘 오르는 ETF」 자리 = 「주간 ETF 점검」 한 줄 · 주간 자료는 이 화면에서 읽지 않음.
+    expect(within(screen.getByLabelText("주간 ETF 점검")).getByRole("button", { name: "주간 ETF 점검 열기 →" })).toBeInTheDocument();
+    expect(screen.queryByTestId("wr-flows")).toBeNull();
+    expect(fetchWeeklyReview).not.toHaveBeenCalled();
     // 이 화면 조건(1개월 · 4종 제외 고정)으로 요약을 읽는다.
     expect(fetchEtfCompareSummary).toHaveBeenCalledWith(
       expect.objectContaining({ basis: "one_month", filters: expect.objectContaining({ exclude_inverse: true, exclude_futures: true }) }),
@@ -481,19 +491,19 @@ describe("POC6-16 · POC6-27 지금 확인할 내용", () => {
     expect(row("data").textContent).toMatch(/보유 근거: 다시 읽기 실패 · \d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}에 읽은 값을 표시 중/);
   });
 
-  it("다시 읽기 일부 실패 — 잘 오르는 ETF · 보유 하락 판정 요약이 실패하면 두 카드에 이전 값 + 그 시각(완료로 위장 안 함)", async () => {
+  it("다시 읽기 일부 실패 — 보유 하락 판정 요약이 실패하면 보유 카드에 이전 값 + 그 시각(완료로 위장 안 함) · 주간 자료는 읽지 않음", async () => {
     prime("ok");
     await renderView();
     fetchEtfCompareSummary.mockRejectedValueOnce(new Error("x"));
     fireEvent.click(screen.getByRole("button", { name: "요약 다시 읽기" }));
     const dlg = await screen.findByTestId("tc-stale-dialog");
     fireEvent.click(within(dlg).getByRole("button", { name: "이 자료로 계속" }));
-    expect(await screen.findByText(/^다시 읽기 일부 실패\(잘 오르는 ETF · 보유 하락 판정\)/)).toBeInTheDocument();
-    const re = /잘 오르는 ETF · 보유 하락 판정: 다시 읽기 실패 · \d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}에 읽은 값을 표시 중/;
+    expect(await screen.findByText(/^다시 읽기 일부 실패\(보유 하락 판정\)/)).toBeInTheDocument();
+    const re = /보유 하락 판정: 다시 읽기 실패 · \d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}에 읽은 값을 표시 중/;
     expect(screen.getByLabelText("보유 점검").textContent).toMatch(re);
-    expect(screen.getByLabelText("잘 오르는 ETF").textContent).toMatch(re);
-    // 이전 값은 그대로 보인다(0종목 · 빈 목록으로 바꾸지 않음).
-    expect(within(screen.getByLabelText("잘 오르는 ETF")).getByTestId("tc-cand-top").children).toHaveLength(3);
+    // 주간 화면 이동 줄에는 보유 하락 판정 실패 줄이 붙지 않고, 이 화면은 주간 자료를 읽지 않는다(POC6-32 V2).
+    expect(screen.getByLabelText("주간 ETF 점검").textContent).not.toMatch(re);
+    expect(fetchWeeklyReview).not.toHaveBeenCalled();
   });
 
   it("[최신 자료 갱신](POST 뒤 다시 읽기)가 도는 동안 [요약 다시 읽기]는 막힘 — 같은 조회가 겹쳐 POST 전 값으로 완료되지 않게(검토 지적 4)", async () => {
@@ -559,7 +569,7 @@ describe("POC6-16 · POC6-27 지금 확인할 내용", () => {
     expect(primaries.map((b) => b.textContent)).toEqual(["예측과 결과 비교"]);
     for (const [area, name, key] of [
       ["보유 점검", "보유 보기 →", "workbench_holdings"],
-      ["잘 오르는 ETF", "후보리스트 보기 →", "workbench"],
+      ["주간 ETF 점검", "주간 ETF 점검 열기 →", "weekly_etf_check"],
     ] as const) {
       fireEvent.click(within(screen.getByLabelText(area)).getByRole("button", { name }));
       expect(onNavigate).toHaveBeenLastCalledWith(key);

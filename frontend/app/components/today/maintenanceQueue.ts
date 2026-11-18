@@ -49,6 +49,12 @@ export type MaintenanceItem = {
   source?: "kospi" | "constituents";
 };
 
+// POC6-32 V2(판정 Q2 (b) · PLAN S5) — NAV 항목 4개의 이동 = 「진단·상태 › 데이터 상태」(읽기 전용 · 전체 ETF NAV · 괴리율).
+// 버튼 글자는 같은 곳으로 가는 기존 버튼 낱말(HoldingsRiskEvidenceSection)을 그대로 쓴다.
+// NAV 를 다시 받는 일은 「오늘의 투자 점검」 [최신 자료 갱신]의 시장 단계다(「데이터 상태」는 보기만).
+export const NAV_TARGET: MenuKey = "data_status";
+export const NAV_ACTION_LABEL = "전체 ETF NAV·괴리율 보기 →";
+
 export function collectMaintenance(
   holdings: QueryState<EnrichedHoldingsResult>,
   evidence: QueryState<HoldingsMarketEvidenceResponse>,
@@ -178,8 +184,8 @@ export function collectMaintenance(
         task: "other",
         text: `ETF 기준가 비교 자료가 없습니다 (${s.nav_discount_unavailable_count}건)`,
         kind: "heavy",
-        target: "etf_exposure",
-        actionLabel: "구성종목 업데이트로",
+        target: NAV_TARGET,
+        actionLabel: NAV_ACTION_LABEL,
         reason:
           "ETF의 순자산가치(NAV)와 시장가격을 비교한 괴리 자료가 없습니다. NAV보다 비싸게/싸게 거래되는지 확인하는 값입니다.",
       });
@@ -195,7 +201,7 @@ export function collectMaintenance(
     });
   }
 
-  // NAV 미연동/실패 — 기준가 자료는 구성종목/시장 갱신 필요 → heavy (재분류).
+  // NAV 미연동/실패 → heavy (재분류) · 버튼 = 「데이터 상태」(NAV_TARGET · 판정 Q2 (b)).
   if (nav.phase === "success") {
     const s = nav.data.summary;
     // B-1: 필수 집계 필드가 숫자가 아니면(손상 응답) 0 으로 위장하지 않고 "확인 불가".
@@ -206,8 +212,8 @@ export function collectMaintenance(
         task: "read_failed",
         text: "ETF 기준가 자료 상태를 확인할 수 없습니다",
         kind: "heavy",
-        target: "etf_exposure",
-        actionLabel: "구성종목 업데이트로",
+        target: NAV_TARGET,
+        actionLabel: NAV_ACTION_LABEL,
         reason:
           "ETF 기준가(NAV) 자료의 상태 집계가 응답에 없어 정상 여부를 확인할 수 없습니다.",
       });
@@ -216,8 +222,8 @@ export function collectMaintenance(
         task: "other",
         text: `ETF 기준가 자료가 일부 없습니다 (${uc + fc}건)`,
         kind: "heavy",
-        target: "etf_exposure",
-        actionLabel: "구성종목 업데이트로",
+        target: NAV_TARGET,
+        actionLabel: NAV_ACTION_LABEL,
         reason:
           "일부 ETF의 순자산가치(NAV)·시장가격 괴리 자료가 없습니다. NAV 대비 현재 가격 수준을 확인하는 값입니다.",
       });
@@ -227,8 +233,8 @@ export function collectMaintenance(
       task: "read_failed",
       text: "ETF 기준가 자료를 불러오지 못했습니다",
       kind: "heavy",
-      target: "etf_exposure",
-      actionLabel: "구성종목 업데이트로",
+      target: NAV_TARGET,
+      actionLabel: NAV_ACTION_LABEL,
       reason: "ETF 순자산가치(NAV) 자료를 조회하지 못했습니다.",
     });
   }

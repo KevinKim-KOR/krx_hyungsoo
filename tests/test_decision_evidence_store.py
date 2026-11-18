@@ -17,6 +17,7 @@ from app.decision_evidence_store import (
     ALLOWED_USER_VERDICTS,
     DEFAULT_USER_VERDICT,
     DecisionValidationError,
+    default_user_verdict,
     get_record,
     init_db,
     insert_record,
@@ -160,8 +161,23 @@ def test_user_verdict_enum_constants():
         "needs_constituents",
         "needs_market_compare",
         "hold",
+        "unrecorded",  # POC6-32 V2 Q4 — 주간 기록 출처에서만
     )
     assert DEFAULT_USER_VERDICT == "hold"
+
+
+def test_unrecorded_verdict_only_for_weekly_source(tmp_path: Path):
+    # POC6-32 V2 Q4 — 저장소 층 가드: '미기록'은 주간 기록 출처만 · 기본값은 출처별(그 밖 = hold 그대로)
+    db = tmp_path / "decision_evidence.sqlite"
+    weekly = _minimal_kwargs(
+        source_screen="today_weekly_review", user_verdict="unrecorded"
+    )
+    rid = insert_record(db_path=db, **weekly)["id"]
+    assert get_record(rid, db_path=db)["user_verdict"] == "unrecorded"
+    with pytest.raises(DecisionValidationError):
+        insert_record(db_path=db, **_minimal_kwargs(user_verdict="unrecorded"))
+    assert default_user_verdict("today_weekly_review") == "unrecorded"
+    assert default_user_verdict("market_discovery") == "hold"
 
 
 def test_list_recent_records_orders_by_created_at_desc(tmp_path: Path):

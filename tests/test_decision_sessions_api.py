@@ -10,7 +10,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
+from pydantic import ValidationError
 
 from app import api as api_module
 from app import api_decision_sessions, decision_evidence_store
@@ -212,6 +214,42 @@ def test_post_decision_sessions_accepts_default_user_verdict(api_client):
     rid = res.json()["id"]
     detail = api_client.get(f"/decision/sessions/{rid}").json()
     assert detail["record"]["user_verdict"] == "hold"
+
+
+def test_unrecorded_verdict_is_guarded_in_model_handler_and_store(api_client):
+    # POC6-32 V2 Q4 — 요청 모델: 주간 기록 출처가 아니면 '미기록' 422 · 판정이 빠진 주간 기록 = '미기록'
+    assert (
+        api_client.post(
+            "/decision/sessions", json=_payload(user_verdict="unrecorded")
+        ).status_code
+        == 422
+    )
+    # 모델 층 단독(저장소까지 가지 않음) · 명시한 null 도 거부
+    for bad in ({"user_verdict": "unrecorded"}, {"user_verdict": None}):
+        with pytest.raises(ValidationError):
+            api_decision_sessions.CreateDecisionSessionRequest.model_validate(
+                _payload(**bad)
+            )
+    p = _payload(source_screen="today_weekly_review")
+    p.pop("user_verdict")
+    rid = api_client.post("/decision/sessions", json=p).json()["id"]
+    rec = api_client.get(f"/decision/sessions/{rid}").json()["record"]
+    assert rec["user_verdict"] == "unrecorded"
+    # 요청 검사를 건너뛴 모델(model_construct)이어도 처리 함수 → 저장소 검사가 다시 막음(422)
+    req = api_decision_sessions.CreateDecisionSessionRequest.model_validate(
+        _payload(source_screen="today_weekly_review", user_verdict="unrecorded")
+    )
+    forged = req.model_copy(update={"source_screen": "market_discovery"})
+    with pytest.raises(HTTPException) as e:
+        api_decision_sessions.post_decision_session(forged)
+    assert e.value.status_code == 422 and "unrecorded" in str(e.value.detail)
+    # 판정 칸이 비어 온 모델 = 처리 함수가 출처별 값(그 밖 출처 = hold)
+    blank = req.model_copy(
+        update={"source_screen": "market_discovery", "user_verdict": None}
+    )
+    rid = api_decision_sessions.post_decision_session(blank).id
+    rec = api_client.get(f"/decision/sessions/{rid}").json()["record"]
+    assert rec["user_verdict"] == "hold"
 
 
 # ─── market_context_snapshot 저장/조회 (2026-05-22) ─────────────────

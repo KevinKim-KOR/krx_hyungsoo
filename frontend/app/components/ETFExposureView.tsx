@@ -7,6 +7,12 @@
 // - draft 없으면 안내 + 비활성 상태.
 // - [구성종목] / [중복률] 탭 분리.
 // - 분석 결과를 AI Sessions 로 넘기는 별도 카드 (copy text 포함 메시지 + draft).
+//
+// POC6-32 V2(판정 §3 · Q9 (a) 보완 · PLAN S6 · §9 I-9 · I-10) — 두 가지로 연다.
+// - 한 ETF 모드: 다른 화면의 [구성종목 보기]가 넘긴 ETF 하나(lib/detailNav 한 번 넘김). 그 ETF 의 구성 표 · 저장 행 수 ·
+//   구성 기준일 · 상태 넷 · 기존 집중(Top 1 · 3 · 5 · 10)을 저장 자료로만 보이고, [구성종목 수집]은 그 ETF 하나만 받는다.
+//   목록 초안은 읽지도 바꾸지도 않는다. 목록 탭 · 보유 겹침 카드 · AI 넘기기 · NAV 카드 · 고른 후보 줄은 없다.
+// - 목록 모드: 「후보리스트」 [이 목록을 ETF 구성종목에서 보기]가 넘긴 목록 전체(지금 그대로 · 머리에 넘겨받은 목록 설명).
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -17,7 +23,9 @@ import {
   CONSTITUENTS_TOP_K,
   ApiRequestError,
   type ConstituentsAnalysisResponse,
+  type ConstituentsSummaryResponse,
   fetchConstituentsAnalysis,
+  fetchConstituentsSummary,
   fetchHoldingsMarketEvidence,
   type HoldingsMarketEvidenceResponse,
 } from "@/lib/api";
@@ -29,11 +37,18 @@ import {
   type ETFExposureDraft,
   loadETFExposureDraft,
 } from "@/lib/etfExposureDraft";
-import ConstituentsTab, { CollectButton, CollectHelp, CollectStatus, useCandidateCollect } from "./ConstituentsTab";
+import ConstituentsTab, {
+  CollectButton,
+  CollectHelp,
+  CollectStatus,
+  SingleEtfConstituents,
+  useCandidateCollect,
+} from "./ConstituentsTab";
 import CrossFamilyCard, { signed } from "./CrossFamilyCard";
 import { fetchConstituentsCrossFamily, type CrossFamilyResponse } from "@/lib/api/constituentsStatus";
-import { md } from "@/lib/etfCompare";
+import { BASIS_LABEL, filtersText, md } from "@/lib/etfCompare";
 import { presetOneTimeCondition } from "@/lib/etfCompareCondition";
+import { type ExposureSinglePreset, takeExposureSingle } from "@/lib/detailNav";
 import { splitPairs } from "@/lib/constituentsText";
 import { presetCompareCandidate } from "./workbench/compareSelection";
 import { directionColor } from "./workbench/helpers";
@@ -148,6 +163,38 @@ function _toShortTermMomentumSnapshot(
   return { asof: draft.asof, benchmark: "KODEX200", items };
 }
 
+// 보낸 화면 이름 — 「…」로 감싼 이름(이미 감쌌으면 그대로).
+function fromLabel(from: string): string {
+  return /^「.*」$/.test(from) ? from : `「${from}」`;
+}
+
+// 한 ETF 를 보낸 화면의 목록 조건(받는 쪽이 해석 · 모양이 다르면 쓰지 않음) — '1개월 상위 · 10/19 → 11/16 · … 제외'.
+export function presetConditionText(cond: unknown): string | null {
+  if (!cond || typeof cond !== "object") return null;
+  const c = cond as Record<string, unknown>;
+  const basis = typeof c.basis === "string" ? (BASIS_LABEL as Record<string, string>)[c.basis] : undefined;
+  if (!basis) return null;
+  const side = c.side === "top" ? " 상위" : c.side === "bottom" ? " 하위" : "";
+  const parts = [`${basis}${side}`];
+  if (typeof c.start === "string" && typeof c.end === "string") parts.push(`${md(c.start)} → ${md(c.end)}`);
+  if (c.filters && typeof c.filters === "object") {
+    parts.push(filtersText(c.filters as Parameters<typeof filtersText>[0]));
+  }
+  return parts.join(" · ");
+}
+
+// 목록 모드 머리 — 넘겨받은 목록(조건 · 기간 · 개수)과 이 화면이 보이는 것.
+export function listHeadText(draft: ETFExposureDraft): string {
+  const n = draft.candidate_snapshot.length;
+  const lc = draft.list_condition;
+  const what = draft.list_scope
+    ? `넘겨받은 목록: ${draft.list_scope}`
+    : lc
+      ? `넘겨받은 목록: ${BASIS_LABEL[lc.basis]} ${lc.side === "top" ? "상위" : "하위"} · ${md(lc.start)} → ${md(lc.end)} · ${filtersText(lc.filters)}`
+      : `넘겨받은 후보 ${n}개 · 목록 기준일 ${md(draft.asof)}`;
+  return `${what} · 대상 ${n}개 · 아래 = 그 ETF 들의 저장 구성(ETF 마다 구성일)과 후보끼리 중복률`;
+}
+
 function _toDataQualitySnapshot(
   draft: ETFExposureDraft,
 ): Record<string, unknown> | null {
@@ -165,6 +212,11 @@ function _toDataQualitySnapshot(
 }
 
 export default function ETFExposureView({ onNavigate }: Props) {
+  // POC6-32 V2(PLAN S6) — 한 ETF 모드: 처음 그릴 때 한 번 꺼낸다(useState 초기값 · Strict Mode 에서도 첫 호출 값을 씀 ·
+  // compareSelection 을 받는 「보유와 후보 비교」와 같은 방식). 없으면 목록 모드.
+  const [single] = useState<ExposureSinglePreset | null>(() => takeExposureSingle());
+  const [singleData, setSingleData] = useState<ConstituentsSummaryResponse | null>(null);
+  const [singleError, setSingleError] = useState<string | null>(null);
   const [draft, setDraft] = useState<ETFExposureDraft | null>(null);
   const [draftLoaded, setDraftLoaded] = useState<boolean>(false);
   const [active, setActive] = useState<TabKey>("constituents");
@@ -237,7 +289,29 @@ export default function ETFExposureView({ onNavigate }: Props) {
       });
   }, []);
 
+  // 한 ETF 구성 — 저장 자료 읽기(수집 없음) · 화면 진입 · 이 ETF 수집 작업이 끝난 뒤. 가장 최근 읽기만 반영(같은 순번).
+  const loadSingle = useCallback(() => {
+    if (!single) return;
+    const my = ++loadSeq.current;
+    fetchConstituentsSummary(single.ticker)
+      .then((r) => {
+        if (my !== loadSeq.current) return;
+        setSingleData(r);
+        setSingleError(null);
+      })
+      .catch((e) => {
+        if (my !== loadSeq.current) return;
+        setSingleData(null);
+        setSingleError(e instanceof Error ? e.message : "알 수 없는 오류");
+      });
+  }, [single]);
+
   useEffect(() => {
+    if (single) {
+      // 한 ETF 모드 — 목록 초안은 읽지도 바꾸지도 않는다.
+      loadSingle();
+      return;
+    }
     const d = loadETFExposureDraft();
     setDraft(d);
     setDraftLoaded(true);
@@ -320,20 +394,20 @@ export default function ETFExposureView({ onNavigate }: Props) {
     return m;
   }, [draft]);
 
-  const tickerCount = useMemo(
-    () => (draft ? draft.candidate_snapshot.length : 0),
-    [draft],
-  );
-
-  // 2026-06-06 ETF Exposure Data Unfolding 1차 (지시문 §5.1 / AC-1) —
-  // 화면 역할을 펼쳐보기 / 비교 / ML 준비 상태 확인의 프레임으로 명시화.
+  // 화면 역할 설명 띠(POC6-32 V2 PLAN S6 — 낡은 'STEP 2' · 'ML / 위험 감지' 문구를 지금 화면이 하는 일로 고침 ·
+  // 판정 §3: 한 ETF 의 집중 = 한 ETF 모드 · 후보끼리 중복 = 목록 모드 · 내 보유 노출 = 「주간 ETF 점검」 ③).
   const roleBanner = (
-    <div className="role-banner">
-      <strong>[판단 흐름 STEP 2]</strong> 「ETF 구성종목」은 후보 ETF들이 실제로 어떤
-      종목을 담고 있는지, 서로 얼마나 겹치는지, 그리고 ML / 위험 감지에 필요한
-      데이터가 현재 어디까지 준비됐는지 확인하는 화면입니다. 「후보리스트」에서
-      [이 목록을 ETF 구성종목에서 보기]를 먼저 실행해야 후보 목록이 이 화면에
-      연결됩니다.
+    <div className="role-banner" data-testid="exposure-role">
+      <strong>목록 보기</strong> 「후보리스트」에서 넘긴 ETF 들이 실제로 어떤 종목을 담고 있는지(ETF 마다 구성일)와 후보끼리
+      얼마나 겹치는지(중복률 · 여러 지수가 함께 담은 주식)를 저장된 구성으로 봅니다. ETF 하나의 집중은 [구성종목 보기],
+      내 보유와 겹치는 정도는 「주간 ETF 점검」 ③에서 봅니다.
+    </div>
+  );
+  const singleBanner = (
+    <div className="role-banner" data-testid="exposure-role">
+      <strong>한 ETF 보기</strong> 이 ETF 가 실제로 어떤 종목에 얼마나 집중되는지(주요 편입 · 합산 비중)를 저장된 구성으로
+      봅니다. 후보끼리 겹치는 정도는 「후보리스트」 [이 목록을 ETF 구성종목에서 보기]로 연 목록에서, 내 보유와 겹치는 정도는
+      「주간 ETF 점검」 ③에서 봅니다.
     </div>
   );
 
@@ -345,8 +419,11 @@ export default function ETFExposureView({ onNavigate }: Props) {
     [draft],
   );
   // POC6-31 — 후보 수집 따라가기는 화면이 든다(탭을 바꿔도 이어짐 · 이 목록의 작업이 끝나면 분석 · 공통 주식 다시 읽기).
-  const collect = useCandidateCollect(candidateTickers, () => {
-    if (draft) loadAll(draft);
+  // POC6-32 V2 — 한 ETF 모드는 그 ETF 하나만 대상(끝나면 그 ETF 구성 다시 읽기).
+  const collectTickers = useMemo(() => (single ? [single.ticker] : candidateTickers), [single, candidateTickers]);
+  const collect = useCandidateCollect(collectTickers, () => {
+    if (single) loadSingle();
+    else if (draft) loadAll(draft);
   });
 
   const repeatedCoreTickers = useMemo(
@@ -356,6 +433,33 @@ export default function ETFExposureView({ onNavigate }: Props) {
         .filter((t): t is string => !!t),
     [analysis],
   );
+
+  if (single) {
+    const cond = presetConditionText(single.condition);
+    return (
+      <section aria-labelledby="etf-exposure-h" data-testid="exposure-single">
+        <div className="ec-head">
+          <h1 id="etf-exposure-h">ETF 구성종목</h1>
+          <CollectButton collect={collect} count={1} />
+        </div>
+        <p className="subtitle" data-testid="exposure-single-head">
+          {fromLabel(single.from)}에서 고른 ETF 하나를 보여 줍니다 · 저장 자료를 먼저 읽고 수집은 [구성종목 수집]을 누를
+          때만(이 ETF 하나)
+        </p>
+        {cond ? (
+          <p className="ec-small" data-testid="exposure-single-cond">
+            보낸 화면의 목록: {cond} · 아래 구성 기준일은 그 기간과 따로 저장된 구성의 날짜입니다
+          </p>
+        ) : null}
+        <div className="exp-top" data-testid="exposure-top">
+          <CollectStatus collect={collect} scope="single" />
+          <CollectHelp />
+        </div>
+        {singleBanner}
+        <SingleEtfConstituents ticker={single.ticker} name={single.name} data={singleData} error={singleError} />
+      </section>
+    );
+  }
 
   if (!draftLoaded) {
     return (
@@ -376,8 +480,8 @@ export default function ETFExposureView({ onNavigate }: Props) {
         {roleBanner}
         <div className="card">
           <div className="message info">
-            「후보리스트」에서 목록을 고른 뒤 [이 목록을 ETF 구성종목에서 보기]를
-            먼저 실행하세요. 구성종목 / 중복률 분석은 후보 ETF 목록이 필요합니다.
+            넘겨받은 목록이 없습니다. 목록은 「후보리스트」 [이 목록을 ETF 구성종목에서 보기]로 넘기고, ETF 하나는 「주간 ETF
+            점검」 ③ 또는 「후보리스트」 · 「섹터요약」 행 상세의 [구성종목 보기]로 엽니다.
           </div>
         </div>
       </section>
@@ -405,9 +509,8 @@ export default function ETFExposureView({ onNavigate }: Props) {
           AI 투자 세션으로 넘기기
         </button>
       </div>
-      <p className="subtitle">
-        {draft.list_scope ? `넘겨받은 목록: ${draft.list_scope}` : `넘겨받은 후보 ${tickerCount}개`} · 목록 끝날{" "}
-        {md(draft.list_condition?.end ?? draft.asof)} · 대상 {tickerCount}개
+      <p className="subtitle" data-testid="exposure-list-head">
+        {listHeadText(draft)}
       </p>
       {/* POC6-31(형수님 화면 의견 · 목업 확인 2026-11-16) — 고른 후보 줄은 화면을 내려도 위에 붙어 있고(탭과 상관없이),
           고르면 파란 줄로 바뀐다. */}

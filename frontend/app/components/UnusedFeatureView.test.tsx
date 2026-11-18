@@ -6,6 +6,8 @@
 // - 화면을 열기만 해서는 갱신(외부 조회 · 파일 덮어쓰기) 요청 0 · 버튼을 누를 때만 1회(기존 패널 그대로).
 // - 「자세히」는 처음엔 접힘 · 없앤 「요즘 잘 오르는 ETF」의 기능별 옮긴 곳 · 옮긴 메뉴로 가는 버튼 · 보관 경로는 이 안에만.
 // - 관통(실제 MainPanel · 사이드바): 메뉴 → 페이지 → 「개발·실험용」 → 안내 줄 버튼 → 다시 페이지.
+// - POC6-32 V2(PLAN §2 S4 · S5): 「자세히」의 [「보유와 후보 비교」로] = 상세 화면(메뉴에 없음) → [← 보낸 화면으로]로 돌아오면
+//   이 페이지 그대로(펼친 「자세히」 유지) · 상세가 열린 동안 메뉴 강조 = 이 페이지 메뉴.
 //
 // @/lib/api 는 부분 mock — 갱신 요청(refreshUniverseMomentum)만 바꿔 호출 수를 센다.
 // 첫 화면(「오늘의 투자 점검」)과 「개발·실험용」의 미리보기 · 호환 점검 · LEGACY 대시보드는 이 계약(메뉴 → 화면 연결)과
@@ -28,6 +30,8 @@ vi.mock("./TodayInvestmentCheckView", () => ({
 vi.mock("./approval/ManualPreviewSection", () => ({ default: () => <div>미리보기 자리</div> }));
 vi.mock("./approval/DevCompatSection", () => ({ default: () => <div>호환 점검 자리</div> }));
 vi.mock("./DashboardView", () => ({ default: () => <div>LEGACY 자리</div> }));
+// 「보유와 후보 비교」(상세)는 이동만 보려고 가짜 화면으로 바꾼다(조회 없음).
+vi.mock("./HoldingCandidateCompareView", () => ({ default: () => <h1>보유와 후보 비교</h1> }));
 
 import MainPanel from "./MainPanel";
 import UnusedFeatureView from "./UnusedFeatureView";
@@ -106,12 +110,13 @@ describe("「신규 ETF 관찰 점검」 페이지", () => {
     const t = d.textContent ?? "";
     for (const s of [
       "「후보리스트」 [목록 | 표]",
-      "「보유와 후보 비교」",
+      // POC6-32 V2(검토 F6) — 메뉴가 아닌 상세 화면 · 여는 곳
+      "「보유와 후보 비교」 상세 화면(메뉴에 없음 · 「주간 ETF 점검」 · 「보유」 · 「후보리스트」 · 「섹터요약」 줄 상세에서 엶)",
       "「오늘의 투자 점검」 시장 흐름 · [시장 근거와 다른 변화 보기]",
       "「오늘의 투자 점검」 [최신 자료 갱신]",
       "「후보리스트」 「이 목록으로 할 일」",
       "화면마다 [이 기준을 기본으로]",
-      "「오늘의 투자 점검」 「보유 점검」 · 「잘 오르는 ETF」 카드",
+      "「오늘의 투자 점검」 「보유 점검」 · 메뉴 「주간 ETF 점검」",
       "archive/poc6_29_market_discovery/README.md",
     ]) {
       expect(t).toContain(s);
@@ -186,6 +191,33 @@ describe("MainPanel 「미사용 기능 › 신규 ETF 관찰 점검」 관통",
     const line = screen.getByTestId("diag-unused-moved");
     fireEvent.click(within(line).getByRole("button", { name: "「신규 ETF 관찰 점검」으로" }));
     expect(await screen.findByRole("heading", { level: 1, name: "신규 ETF 관찰 점검" })).toBeInTheDocument();
+    expect(refreshUniverseMomentum).not.toHaveBeenCalled();
+  });
+});
+
+describe("POC6-32 V2 — 「자세히」 [「보유와 후보 비교」로] = 상세 · 돌아오면 이 페이지 그대로", () => {
+  it("상세 위 [← 보낸 화면으로] · 강조 = 「신규 ETF 관찰 점검」 · 돌아오면 펼친 「자세히」 유지 · 갱신 요청 0", async () => {
+    await renderPanel();
+    fireEvent.click(menu("신규 ETF 관찰 점검"));
+    await screen.findByRole("heading", { level: 1, name: "신규 ETF 관찰 점검" });
+    fireEvent.click(details().querySelector("summary")!);
+    expect(details().open).toBe(true);
+    fireEvent.click(within(details()).getByRole("button", { name: "「보유와 후보 비교」로" }));
+
+    expect(await screen.findByRole("heading", { level: 1, name: "보유와 후보 비교" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 1, name: "신규 ETF 관찰 점검" })).toBeNull();
+    expect(screen.getByTestId("dn-back")).toHaveTextContent("보낸 화면 「신규 ETF 관찰 점검」");
+    const current = within(sidebar())
+      .getAllByRole("button")
+      .filter((b) => b.getAttribute("aria-current") === "page");
+    expect(current).toHaveLength(1);
+    expect(current[0].textContent).toContain("신규 ETF 관찰 점검");
+    expect(within(sidebar()).queryByText("보유와 후보 비교")).toBeNull(); // 메뉴에 없는 상세
+
+    fireEvent.click(screen.getByRole("button", { name: "← 보낸 화면으로" }));
+    expect(screen.getByRole("heading", { level: 1, name: "신규 ETF 관찰 점검" })).toBeInTheDocument();
+    expect(details().open).toBe(true);
+    expect(screen.queryByTestId("dn-back")).toBeNull();
     expect(refreshUniverseMomentum).not.toHaveBeenCalled();
   });
 });

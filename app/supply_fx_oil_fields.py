@@ -83,3 +83,12 @@ def windows_fields(w: Optional[dict]) -> dict:
             for k in ("foreign", "individual", "institution")
         },
     }
+
+
+def vix_basis(points: list, collected_at: Optional[str]) -> dict:
+    """[자료 기준일]의 VIX 칸(POC6-32 판정 Q9) — 미국 날짜라 국내 자료 '늦음' 판정(`status`)에는 넣지 않는다."""
+    return {
+        "label": "VIX(미국 날짜)",
+        "E": points[-1][0] if points else None,
+        "collected_at": collected_at,
+    }

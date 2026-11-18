@@ -23,15 +23,22 @@
 // 2026-11-12 POC6-29(설계 §3 · PLAN 판정 Q3 · Q17): 「비교·판단」 → 「ETF보유 및 후보 선정」 · 「ETF 비교하기」 폴더를 없애고
 //   보유 · 섹터요약 · 후보리스트 · 보유와 후보 비교를 바로 둔다(+ ETF 구성종목 · AI 투자 세션). 「요즘 잘 오르는 ETF」
 //   (`market_discovery`)는 기능을 「오늘의 투자 점검」 · 이 그룹으로 옮기고 메뉴에서 뺐다. 메뉴의 '후보'는 이 그룹 이름 ·
-//   「후보리스트」 · 「보유와 후보 비교」 세 곳뿐이다(힌트에는 쓰지 않음).
+//   「후보리스트」 · 「보유와 후보 비교」 세 곳뿐이다(힌트에는 쓰지 않음 · POC6-32 V2 부터 두 곳 · 아래).
 // 2026-11-12 POC6-29 보완(보완 PLAN 판정 Q-R5 · RESULT 판정 §4 · 목업 R4): 「진단·상태」 끝(「개발·실험용」 다음)에 폴더
 //   「미사용 기능」(「ML 연구」와 같은 폴더)을 두고 기능마다 하위 메뉴 하나를 둔다. 첫 하위 메뉴 = 「신규 ETF 관찰 점검」
 //   (`unused_universe_watch` · 메뉴 key 16 → 17).
+// 2026-11-17 POC6-32 V2(PLAN 판정 V2 Q1 (a) · PLAN §2 S1 · S4 · §9 I-4):
+//   - 「오늘 확인」에 「오늘의 투자 점검」 바로 아래 형제 메뉴 「주간 ETF 점검」(`weekly_etf_check`)을 둔다.
+//   - 「보유와 후보 비교」(`holding_candidate_compare`) · 「ETF 구성종목」(`etf_exposure`)은 메뉴에서 뺀 상세 화면이다
+//     (key 는 그대로 · 화면 안에서만 엶). 계약 = 메뉴 key 는 메뉴에 정확히 1번 · 상세 key 는 0번.
+//   - 메뉴의 '후보'는 그룹 이름 「ETF보유 및 후보 선정」 · 「후보리스트」 두 곳뿐이다(힌트에는 쓰지 않음).
+//   - 상세가 열린 동안의 강조는 MainPanel 이 넘긴 '처음 보낸 화면'의 메뉴다. 상세 key 가 그대로 오면 「주간 ETF 점검」.
 
 import { useEffect, useState } from "react";
 
 export type MenuKey =
   | "today_check"
+  | "weekly_etf_check"
   | "workbench"
   | "workbench_holdings"
   | "etf_sector"
@@ -80,13 +87,15 @@ export function groupMenuItems(group: MenuGroup): MenuItem[] {
 }
 
 // 5개 과업 그룹 (설계서 §3.1·§3.2·Q2·Q3 + 사용자 "점검대상" 분리 지시).
-// 각 화면 전환 key 는 정확히 한 그룹에만 1회 귀속 (중복·고아 0 · AC-2).
+// 각 화면 전환 key 는 정확히 한 그룹에만 1회 귀속 (중복·고아 0 · AC-2 · 상세 key 는 메뉴에 없음 · POC6-32 V2).
 export const MENU_GROUPS: MenuGroup[] = [
   {
     id: "today",
     title: "오늘 확인",
     items: [
       { key: "today_check", label: "오늘의 투자 점검", hint: "코스피 위치 · 오늘 확인할 것 · 자료 상태" },
+      // 2026-11-17 POC6-32 V2 — 형제 메뉴(힌트에 '후보'를 쓰지 않음).
+      { key: "weekly_etf_check", label: "주간 ETF 점검", hint: "1개월 상위 ETF 흐름 · 고른 ETF 근거 · 보유 겹침 · 검토 기록" },
     ],
   },
   {
@@ -97,8 +106,7 @@ export const MENU_GROUPS: MenuGroup[] = [
       { key: "workbench_holdings", label: "보유", hint: "내 보유의 비중 · 하락 · 약세 묶음 접점 · 판단 근거" },
       { key: "etf_sector", label: "섹터요약", hint: "같은 기간 상·하위 ETF의 업종 · 테마" },
       { key: "workbench", label: "후보리스트", hint: "같은 기간 상·하위 ETF 순위 · 표 · 목록 넘기기" },
-      { key: "holding_candidate_compare", label: "보유와 후보 비교", hint: "보유 하나와 ETF 하나를 같은 항목으로 나란히" },
-      { key: "etf_exposure", label: "ETF 구성종목", hint: "담고 있는 종목 / 중복" },
+      // 2026-11-17 POC6-32 V2 — 「보유와 후보 비교」 · 「ETF 구성종목」은 상세 화면(DETAIL_KEYS · 메뉴에 없음).
       { key: "ai_sessions", label: "AI 투자 세션", hint: "AI 질문/답변 기록" },
     ],
   },
@@ -153,7 +161,7 @@ export const MENU_GROUPS: MenuGroup[] = [
       { key: "alert_records", label: "받은 알림 기록", hint: "받은 알림 · 당시 근거 · 이후 결과" },
       { key: "diagnostics", label: "개발·실험용", hint: "미리보기 · 샘플 · 개발 호환 · LEGACY" },
       // 2026-11-12 POC6-29 보완(Q-R5 · RESULT 판정 §4): 일상 메뉴에서 뺀 기능을 기능마다 하위 메뉴 하나로 둔다.
-      //   힌트에 '후보'를 쓰지 않는다(판정 Q17 — 메뉴의 '후보'는 세 이름에만).
+      //   힌트에 '후보'를 쓰지 않는다(판정 Q17 · POC6-32 V2 — 메뉴의 '후보'는 그룹 이름 · 「후보리스트」에만).
       {
         id: "unused_features",
         title: "미사용 기능",
@@ -172,12 +180,35 @@ export const MENU_GROUPS: MenuGroup[] = [
 // 하위 호환: 기존에 평면 목록을 참조하던 코드/테스트를 위해 유지(그룹 · 폴더 평탄화).
 export const MENU_ITEMS: MenuItem[] = MENU_GROUPS.flatMap(groupMenuItems);
 
-// 모듈 로드 시 메뉴 귀속 무결성 검증 (계약: 모든 MenuKey 가 정확히 1개 그룹에 귀속).
+// 2026-11-17 POC6-32 V2(PLAN §2 S4) — 메뉴에 없는 상세 화면 key(화면 안에서만 엶 · 보낸 화면 기록에 쌓임).
+export const DETAIL_KEYS: readonly MenuKey[] = ["etf_exposure", "holding_candidate_compare"];
+// 상세 화면 이름(메뉴 라벨이 없으므로 따로 둔다 · [← 보낸 화면으로] 안내에 씀).
+const DETAIL_LABELS: Partial<Record<MenuKey, string>> = {
+  etf_exposure: "ETF 구성종목",
+  holding_candidate_compare: "보유와 후보 비교",
+};
+
+export function isDetailKey(key: MenuKey): boolean {
+  return DETAIL_KEYS.includes(key);
+}
+
+// 강조할 메뉴 key — 상세 key 가 오면 「주간 ETF 점검」(기본값 · MainPanel 은 처음 보낸 화면의 key 를 넘김).
+export function menuKeyOf(key: MenuKey): MenuKey {
+  return isDetailKey(key) ? "weekly_etf_check" : key;
+}
+
+// 화면 이름 — 메뉴 라벨 또는 상세 화면 이름.
+export function screenLabelOf(key: MenuKey): string {
+  return DETAIL_LABELS[key] ?? MENU_ITEMS.find((it) => it.key === key)?.label ?? key;
+}
+
+// 모듈 로드 시 메뉴 귀속 무결성 검증 (계약: 상세가 아닌 MenuKey 는 정확히 1개 그룹에 1번 · 상세 key 는 0번).
 // 누락·중복이면 첫 그룹 위장(fallback)으로 숨기지 않고 즉시 throw — dev/운영 모두 동일하게
 // 명확한 오류로 종료한다. 화면 빌드·렌더 이전에 터지므로 "활성 그룹 없는 상태로 조용히 진행"
 // 하는 경로 자체가 존재하지 않는다.
 const ALL_MENU_KEYS: MenuKey[] = [
   "today_check",
+  "weekly_etf_check",
   "workbench",
   "workbench_holdings",
   "etf_sector",
@@ -198,20 +229,28 @@ const ALL_MENU_KEYS: MenuKey[] = [
 
 function assertMenuGroupsCover(): void {
   const allItems = MENU_ITEMS;
-  // 각 MenuKey 가 그룹 전체에서 "정확히 1번" 나타나는지 item 단위로 센다.
+  // 각 MenuKey 가 그룹 전체에서 몇 번 나타나는지 item 단위로 센다(메뉴 key = 정확히 1번 · 상세 key = 0번).
   // (그룹 단위 filter 로 세면 같은 그룹 안 동일 key 중복을 놓친다.)
   for (const key of ALL_MENU_KEYS) {
     const count = allItems.filter((it) => it.key === key).length;
-    if (count !== 1) {
+    const want = isDetailKey(key) ? 0 : 1;
+    if (count !== want) {
       throw new Error(
-        `LeftSidebar 메뉴 귀속 계약 위반: MenuKey "${key}" 는 정확히 1번 나타나야 하나 ${count}번. (누락=0 / 중복>1, 같은 그룹 내 중복 포함)`
+        `LeftSidebar 메뉴 귀속 계약 위반: MenuKey "${key}" 는 ${want}번 나타나야 하나 ${count}번. (메뉴 key = 정확히 1번 · 상세 key = 0번, 같은 그룹 내 중복 포함)`
       );
     }
   }
-  // 정의된 항목 수 = 알려진 key 수. 목록에 없는 신규 key 유입도 차단.
-  if (allItems.length !== ALL_MENU_KEYS.length) {
+  // 상세 key 는 알려진 key 여야 한다.
+  for (const key of DETAIL_KEYS) {
+    if (!ALL_MENU_KEYS.includes(key)) {
+      throw new Error(`LeftSidebar: 상세 key "${key}" 가 알려진 MenuKey 목록에 없음.`);
+    }
+  }
+  // 정의된 항목 수 = 알려진 key 수 − 상세 key 수. 목록에 없는 신규 key 유입도 차단.
+  const menuKeyCount = ALL_MENU_KEYS.length - DETAIL_KEYS.length;
+  if (allItems.length !== menuKeyCount) {
     throw new Error(
-      `LeftSidebar 메뉴 항목 수(${allItems.length})가 알려진 MenuKey 수(${ALL_MENU_KEYS.length})와 다름 — 미등록 key 유입.`
+      `LeftSidebar 메뉴 항목 수(${allItems.length})가 메뉴 key 수(${menuKeyCount})와 다름 — 미등록 key 유입.`
     );
   }
 }
@@ -239,11 +278,14 @@ function folderIdOf(key: MenuKey): string | null {
 }
 
 interface Props {
+  // 강조할 화면 key(MainPanel = 처음 보낸 화면 · 상세 key 면 「주간 ETF 점검」으로 바꿔 강조)
   active: MenuKey;
   onSelect: (key: MenuKey) => void;
 }
 
-export default function LeftSidebar({ active, onSelect }: Props) {
+export default function LeftSidebar({ active: activeKey, onSelect }: Props) {
+  // POC6-32 V2 — 상세 key 는 메뉴에 없으므로 강조할 메뉴 key 로 바꿔 쓴다(그룹 · 폴더 · 현재 위치 표시 모두).
+  const active = menuKeyOf(activeKey);
   // 최초 진입: 모든 그룹 펼침 (§4.1·보완1). collapsed = 접힌 그룹 id 집합.
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 

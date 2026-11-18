@@ -6,18 +6,15 @@
 // 보유 점검: [시장 배지] [보유 배지] → '보유 N종목 중 M종목 하락 · 판정 K종목' → 20구간 날짜 · 가격 상태 · 해당 비중.
 //   판정 = 「보유」와 같은 요약 응답의 price_flow · 같은 함수(declineJudged · isDecline) · 종목 단위(계좌 합산).
 //   판정 못 한 보유는 '하락 아님'으로 세지 않고 판정 수를 따로 적는다. 종목별 수치는 [보유 보기 →](「보유」).
-// 잘 오르는 ETF: 이 카드 자체 기간(1일 · 1개월 · 3개월 · 기본 저장) · 제외 4종 고정으로 같은 요약(공통 기간 목록)을 읽어
-//   선정 1 ~ 3위를 보인다. 「후보리스트」 조건과 따로이고, [후보리스트 보기 →]는 그 화면 조건으로 연다.
+// POC6-32(판정 Q1 (a)) — 「잘 오르는 ETF」 카드는 「ETF 주간 검토」(today/WeeklyReviewCard)가 대신한다. 이 화면 조건의
+//   요약(공통 기간 목록)은 보유 점검의 price_flow 로만 쓴다(저장된 기본 기간 · 없으면 1개월 · 제외 4종 고정).
 import type { EnrichedHoldingsResult, MarketTopNResponse } from "@/lib/api";
-import type { CompareBasis, CompareSummary, CompareSummaryOk } from "@/lib/api/etfCompare";
+import type { CompareSummary, CompareSummaryOk } from "@/lib/api/etfCompare";
 import type { QueryState } from "@/lib/api/queryCache";
-import { BASIS_LABEL, endPriceText, md, pct, weightText } from "@/lib/etfCompare";
-import { setScreenCondition, ETF_COMPARE_DEFAULT } from "@/lib/etfCompareCondition";
+import { endPriceText, md, weightText } from "@/lib/etfCompare";
 import HelpPopover from "../holdings_risk_evidence/HelpPopover";
 import type { MenuKey } from "../LeftSidebar";
-import { BasisSaveRow } from "../workbench/CompareHead";
 import { aggregateHoldings, declineJudged, isDecline, linkOf, type AggHolding } from "../workbench/holdingParts";
-import { directionColor } from "../workbench/helpers";
 import { joinStale, staleOf } from "./summaryLines";
 import { regimeLabelKo } from "./todayHelpers";
 
@@ -43,7 +40,8 @@ function okOf(q: QueryState<CompareSummary>): CompareSummaryOk | null {
 }
 
 // [요약 다시 읽기]에서 이 요약 원천을 부르는 이름(다시 읽기 실패 줄 · 일부 실패 표시와 같은 낱말).
-export const SUMMARY_SOURCE_LABEL = "잘 오르는 ETF · 보유 하락 판정";
+// POC6-32 — 「잘 오르는 ETF」 카드가 빠져 이 요약은 보유 하락 판정에만 쓴다.
+export const SUMMARY_SOURCE_LABEL = "보유 하락 판정";
 
 export interface HoldingsCount {
   total: number;
@@ -169,77 +167,6 @@ export function HoldingsCheckCard({
       <div className="tc-btn-row">
         <button type="button" className="tc-btn tc-btn-link" onClick={() => onNavigate("workbench_holdings")}>
           보유 보기 →
-        </button>
-      </div>
-    </section>
-  );
-}
-
-const BASES: CompareBasis[] = ["daily", "one_month", "three_month"];
-
-export function CandidatesCheckCard({
-  summary,
-  basis,
-  onNavigate,
-}: {
-  summary: QueryState<CompareSummary>;
-  basis: CompareBasis;
-  onNavigate: (key: MenuKey) => void;
-}) {
-  const s = okOf(summary);
-  const top = s ? s.top.slice(0, 3) : [];
-  const stale = staleOf(SUMMARY_SOURCE_LABEL, summary);
-  return (
-    <section className="tc-card tc-check" aria-label="잘 오르는 ETF" data-testid="tc-cand-check">
-      <h3 className="tc-h3">잘 오르는 ETF</h3>
-      <div className="tc-check-badges">
-        <span className="holdings-sort-seg" role="group" aria-label="잘 오르는 ETF 기간">
-          {BASES.map((b) => (
-            <button
-              key={b}
-              type="button"
-              className={basis === b ? "on" : undefined}
-              aria-pressed={basis === b}
-              onClick={() => setScreenCondition("today", { basis: b, filters: ETF_COMPARE_DEFAULT.filters })}
-            >
-              {BASIS_LABEL[b]}
-            </button>
-          ))}
-        </span>
-        <span className="tc-muted tc-small">인버스 · 레버리지 · 합성 · 선물형 제외(고정)</span>
-      </div>
-      <BasisSaveRow screen="today" basis={basis} />
-      {s ? (
-        <>
-          <div className="tc-muted tc-small" data-testid="tc-cand-line">
-            {BASIS_LABEL[s.basis]} 수익률 상위 · {md(s.period.start)} → {md(s.period.end)} · {md(s.price_state.end_date)} 가격 ={" "}
-            {s.price_state.intraday_count > 0 ? "장중 저장값 포함(잠정)" : s.price_state.after_close_count > 0 ? "마감 뒤 저장" : "마감값 확인 필요"} ·
-            비교한 ETF {s.counts.population.toLocaleString("ko-KR")}개 · 기간이 달라 뺀 {s.counts.period_differs}개
-          </div>
-          <ol className="tc-cand-top" data-testid="tc-cand-top">
-            {top.map((r) => (
-              <li key={r.ticker}>
-                <span className="tc-cand-rank">{r.rank}위</span>
-                <span className="tc-cand-name">{r.name ?? r.ticker}</span>
-                <span style={{ color: directionColor(r.basis_return.value), fontWeight: 600 }}>{pct(r.basis_return.value)}</span>
-              </li>
-            ))}
-          </ol>
-          <div className="tc-muted tc-small">이 카드의 조건으로 공통 기간 목록을 계산한 선정 1 ~ 3위 · 「후보리스트」 조건과 따로입니다</div>
-        </>
-      ) : summary.phase === "loading" || summary.phase === "idle" ? (
-        <div className="tc-muted">목록을 불러오는 중입니다 · {BASIS_LABEL[basis]}</div>
-      ) : summary.phase === "error" ? (
-        <div className="tc-warn">목록을 불러오지 못했습니다 · [요약 다시 읽기]로 다시 시도하세요</div>
-      ) : (
-        <div className="tc-warn" data-testid="tc-cand-notok">
-          {summary.data.message ?? "비교 목록을 만들 수 없습니다"}
-        </div>
-      )}
-      {stale ? <div className="tc-sum-stale">{stale}</div> : null}
-      <div className="tc-btn-row">
-        <button type="button" className="tc-btn tc-btn-link" onClick={() => onNavigate("workbench")}>
-          후보리스트 보기 →
         </button>
       </div>
     </section>

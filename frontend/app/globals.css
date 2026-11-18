@@ -4141,6 +4141,13 @@ button.help-pop-btn[aria-expanded="true"] .help-pop-dot, button.help-pop-btn:hov
   .ec-table.hcc-table td { padding-left: 4px; padding-right: 4px; }
   .hcc-num { font-size: 16px; }
 }
+/* POC6-32 V2 — 「보유와 후보 비교」 상품 확인 표 · 지수 상태 한 줄 · 구조 다름 줄(workbench/ProductCheckTable.tsx ·
+   workbench/CompareCards.tsx). 표는 기존 .ec-table.hcc-table · 배지는 기존 .tc-sum-badge 를 그대로 쓴다. */
+.hcc-product { display: grid; gap: 10px; min-width: 0; }
+.hcc-product .hcc-table tbody td { font-size: 13px; }
+.hcc-state-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; font-size: 13px; min-width: 0; overflow-wrap: anywhere; }
+.hcc-state-line .tc-sum-badge { font-size: 13px; }
+.hcc-structure { font-size: 13px; font-weight: 600; color: var(--warn); overflow-wrap: anywhere; }
 /* POC6-29 보완 R1 — 「시장 흐름」 맨 위 '지금 시장'(빠른 시세 3칸 · 흐름 문장) */
 .tc-now { display: grid; gap: 8px; padding-bottom: 10px; border-bottom: 1px solid var(--border-soft); }
 .tc-now-quotes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
@@ -4242,3 +4249,108 @@ button.help-pop-btn[aria-expanded="true"] .help-pop-dot, button.help-pop-btn:hov
 .pe-block { display: grid; gap: 8px; min-width: 0; font-size: 13px; }
 .pe-scope { display: grid; gap: 4px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); min-width: 0; }
 .pe-scope-t { font-weight: 700; }
+
+/* ── POC6-32 「오늘의 투자 점검」 ETF 주간 검토 한 장(「잘 오르는 ETF」 자리 · 보유 점검 아래 전체 폭) ───── */
+.wr-card { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; min-width: 0; }
+.wr-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; }
+.wr-cond { font-size: 13px; color: var(--muted); }
+.wr-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.wr-sec { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; min-width: 0; padding: 10px 14px; border: 1px solid var(--border-soft); border-radius: 12px; }
+.wr-sec-title { font-weight: 700; }
+.wr-warn { color: var(--warn); font-size: 14px; }
+.wr-table-wrap { overflow-x: auto; min-width: 0; }
+.wr-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.wr-table th, .wr-table td { padding: 7px 6px; border-bottom: 1px solid var(--border-soft); text-align: left; vertical-align: top; }
+.wr-table th { color: var(--muted); font-size: 13px; font-weight: 600; }
+.wr-num { text-align: right !important; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.wr-nowrap { white-space: nowrap; }
+.wr-flow-title { font-weight: 600; }
+.wr-picked td { background: #eff6ff; }
+.wr-pick { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.wr-pill { display: inline-block; padding: 1px 8px; border-radius: 999px; background: #f1f3f6; color: #374151; font-size: 12px; }
+.wr-pill-on { background: var(--accent); color: #fff; }
+.wr-pill-wait { background: #fef3c7; color: #92400e; }
+.wr-rest > summary { cursor: pointer; font-weight: 600; margin: 4px 0; }
+.wr-same { color: #047857; font-weight: 600; }
+.wr-diff { color: #b45309; font-weight: 600; }
+.wr-check-need { color: var(--muted); }
+.wr-card button { max-width: 100%; white-space: normal; }
+.wr-table button, .wr-pill { white-space: nowrap; }
+.wr-pill-wait { white-space: normal; }
+
+/* ── POC6-32 V2 — 상세 위 [← 보낸 화면으로] 줄(MainPanel) · 「오늘의 투자 점검」 주간 화면 이동 줄 · 「주간 ETF 점검」 화면 ───── */
+.dn-back { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0 0 12px; min-width: 0; }
+.dn-back-from { color: var(--muted); font-size: 14px; }
+.tc-weekly-link { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; min-width: 0; }
+.tc-weekly-link-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; }
+.wk-root { min-width: 0; }
+
+/* ── POC6-32 V2 — 「주간 ETF 점검」 ② ETF 흐름 · ③ 선택한 후보 검토 · ④ AI 의견(today/WeeklyFlowTable.tsx ·
+   today/WeeklyCandidateReview.tsx · today/WeeklyRecord.tsx). 기존 .wr-* 규칙(표 · 칸 · 알약 · .wr-picked)에 더한다.
+   고른 표시 '✓ 고른 후보' = [고르기](40px)와 같은 높이 · 파란 바탕 · 그 줄 왼쪽 파란 줄 / 묶음 안 ETF 줄 = 들여 쓴 줄 /
+   자료 부족 = 노란 알약 / ③ 질문 칸 = 왼쪽 질문 이름 · 오른쪽 내용(좁은 화면은 한 열). ───── */
+.wk-picked-mark {
+  display: inline-flex; align-items: center; gap: 4px; min-height: 40px; padding: 0 12px;
+  border: 1px solid var(--accent); border-radius: 12px; background: var(--accent); color: #fff;
+  font-size: 14px; font-weight: 700; white-space: nowrap; box-sizing: border-box;
+}
+.wk-picked-row td:first-child { box-shadow: inset 4px 0 0 var(--accent); }
+.wk-grp-row td { border-bottom: none; }
+.wk-mem-row td { border-bottom: none; padding-top: 2px; padding-bottom: 4px; }
+.wk-mem-row td:first-child { padding-left: 14px; }
+.wk-mem-row + tr:not(.wk-mem-row) td { border-top: 1px solid var(--border-soft); }
+.wk-lack {
+  display: inline-block; margin-top: 4px; padding: 1px 8px; border-radius: 999px;
+  background: #fef3c7; color: #92400e; font-size: 12px; white-space: normal;
+}
+.wk-q {
+  display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 6px 12px; min-width: 0;
+  padding: 8px 0; border-top: 1px solid var(--border-soft);
+}
+.wk-q-t { font-size: 14px; }
+.wk-q-b { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; min-width: 0; overflow-wrap: anywhere; }
+@media (max-width: 640px) {
+  .wk-q { grid-template-columns: minmax(0, 1fr); }
+}
+.wk-ai-latest { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; min-width: 0; overflow-wrap: anywhere; }
+
+/* ── POC6-32 V2 — 「AI 투자 세션」 주간 기록 상세 '당시 검토'(ai_sessions/WeeklyReviewSnapshot.tsx · AISessionsListTab.tsx).
+   후보 표 · AI 대조 표는 기존 .wr-table / .wr-table-wrap / .wr-num / .wr-picked 를 그대로 쓴다. 접는 줄(summary)은
+   누르는 칸이라 40px 이상 · 좁은 화면에서 긴 글은 줄바꿈(가로 스크롤은 표 안에서만). ───── */
+.wrs { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; min-width: 0; margin: 8px 0 12px; }
+.wrs-head { font-weight: 600; overflow-wrap: anywhere; }
+.wrs-note { color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+.wrs-sec { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; min-width: 0; padding: 10px 14px; border: 1px solid var(--border-soft); border-radius: 12px; overflow-wrap: anywhere; }
+.wrs-title { font-weight: 700; }
+.wrs-sub { color: var(--muted); font-size: 13px; }
+.wrs-warn { color: var(--warn); }
+.wrs-lack { color: var(--warn); font-size: 13px; }
+.wrs-picked td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+.wrs-fold > summary { cursor: pointer; font-weight: 600; min-height: 40px; padding: 10px 0; line-height: 20px; box-sizing: border-box; }
+.wrs-fold > summary:hover { color: var(--accent); }
+details.wrs-fold { min-width: 0; }
+/* 접는 묶음 상자(details 는 grid 대신 블록 · 브라우저마다 details 의 grid 지원이 달라서) */
+.wrs-box { display: block; min-width: 0; padding: 0 14px 10px; border: 1px solid var(--border-soft); border-radius: 12px; }
+
+/* ── POC6-32 V2 — 「ETF 구성종목」 한 ETF 모드 카드(ConstituentsTab.tsx SingleEtfConstituents) · 행 상세 이동 버튼 줄
+   (workbench/EtfRowDetail.tsx). 기존 변수만 쓴다. ───── */
+/* 한 ETF 카드 머리 — 이름 · 코드 · 상태 배지(.wb-hb) 한 줄(눌러 펼치는 줄이 아니므로 손가락 커서 없음) */
+.exs-head {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+/* 구성 기준일 · 저장 행 · 상태 한 줄(서버 line) — 판단에 쓰는 줄이라 본문 크기 */
+.exs-line {
+  font-size: 13px;
+  color: var(--fg);
+  margin: 2px 0 4px;
+}
+
+/* 행 상세 [비교 상세 →] · [구성종목 보기 →] 줄 — 버튼과 설명 글자를 가운데 맞춤 */
+.erd-go {
+  align-items: center;
+}

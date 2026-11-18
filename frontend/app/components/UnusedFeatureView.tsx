@@ -55,7 +55,7 @@ const FEATURES: Record<UnusedFeatureId, UnusedFeature> = {
         { was: "후보 카드 · 표 · 순위 수치", now: "「후보리스트」 [목록 | 표] · 줄을 펼친 상세", to: TO_LIST },
         {
           was: "보유와 비교 · 판단 근거 미리보기 · [AI 세션에서 검토]",
-          now: "「보유와 후보 비교」(「보유」 · 「후보리스트」 줄 상세에서도 봄)",
+          now: "「보유와 후보 비교」 상세 화면(메뉴에 없음 · 「주간 ETF 점검」 · 「보유」 · 「후보리스트」 · 「섹터요약」 줄 상세에서 엶)",
           to: TO_COMPARE,
         },
         {
@@ -66,7 +66,7 @@ const FEATURES: Record<UnusedFeatureId, UnusedFeature> = {
         { was: "[최신 시장 데이터 갱신]", now: "「오늘의 투자 점검」 [최신 자료 갱신]", to: TO_TODAY },
         {
           was: "「오늘의 투자 점검」의 판단 대기 목록(이 화면으로 이어지던 목록)",
-          now: "「오늘의 투자 점검」 「보유 점검」 · 「잘 오르는 ETF」 카드",
+          now: "「오늘의 투자 점검」 「보유 점검」 · 메뉴 「주간 ETF 점검」",
           to: TO_TODAY,
         },
         {

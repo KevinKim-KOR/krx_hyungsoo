@@ -39,6 +39,8 @@ class MarketFlowContextResponse(BaseModel):
     flow_link: dict[str, Any]
     # POC6-27 — 자료별 최신성(국내 T-1 대비 · WTI 관측일만 · `app/market_freshness_rows.py`)
     freshness: Optional[dict[str, Any]] = None
+    # POC6-32 — [자료 기준일]의 VIX(미국 날짜 · 국내 '늦음' 판정 밖 · `supply_fx_oil_fields.vix_basis`)
+    vix_basis: Optional[dict[str, Any]] = None
 
 
 @router.get("/flow-context", response_model=MarketFlowContextResponse)

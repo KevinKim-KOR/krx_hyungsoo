@@ -9,6 +9,10 @@
 //
 // draft 가 없으면 저장을 막고 안내 문구 표시 (지시문 §5.4 / AC-7).
 //
+// POC6-32 V2(PLAN §4-3 · §4-4) — 주간 초안(「주간 ETF 점검」 · 출처 `today_weekly_review`)은 사용자 판단을 '미기록'에서
+// 시작하고 그대로 저장할 수 있다(판단에 따른 저장 막기 없음 · AI 답 하나면 저장). 초안에 실린 저장 칸(시장 근거 ·
+// 구성 · 겹침 · 데이터 품질)은 아래에서 그대로 보낸다. 주간이 아닌 초안은 지금 그대로(기본 '보류').
+//
 // AI API 직접 호출 / 자동 토론은 본 STEP 의 작업이 아니다.
 
 import { useCallback, useMemo, useState } from "react";
@@ -17,6 +21,7 @@ import {
   ApiRequestError,
   DECISION_VERDICT_LABEL,
   DEFAULT_DECISION_VERDICT,
+  UNRECORDED_DECISION_VERDICT,
   createDecisionSession,
   type DecisionUserVerdict,
 } from "@/lib/api";
@@ -25,6 +30,7 @@ import { constituentDatesText } from "@/lib/pairExposureText";
 import {
   clearAISessionsDraft,
   isSelectedPreviewRecord,
+  isWeeklyRecord,
   kstDateTimeLabel,
   type AISessionsDraft,
 } from "@/lib/aiSessionsDraft";
@@ -55,6 +61,13 @@ const VERDICT_OPTIONS: DecisionUserVerdict[] = [
   "needs_market_compare",
   "hold",
 ];
+// POC6-32 V2(PLAN §4-4 · Q4 (c) 보완) — 주간 초안만 '미기록'을 맨 앞에 두고 거기서 시작한다(그대로 저장 가능).
+// 주간이 아닌 초안은 지금 그대로(기본 '보류' · '미기록' 없음 — 서버도 주간이 아닌 출처의 '미기록'을 거부).
+const WEEKLY_VERDICT_OPTIONS: DecisionUserVerdict[] = [UNRECORDED_DECISION_VERDICT, ...VERDICT_OPTIONS];
+
+function initialVerdict(draft: AISessionsDraft | null): DecisionUserVerdict {
+  return isWeeklyRecord(draft?.source_screen) ? UNRECORDED_DECISION_VERDICT : DEFAULT_DECISION_VERDICT;
+}
 
 function filtersText(f: AISessionsDraft["filters"]): string {
   const items: string[] = [];
@@ -132,6 +145,7 @@ function SelectedTarget({ draft }: { draft: AISessionsDraft }) {
 
 export default function AISessionsCreateTab({ draft, onSaved }: Props) {
   const selectedMode = isSelectedPreviewRecord(draft?.source_screen, draft?.candidate_snapshot);
+  const weekly = isWeeklyRecord(draft?.source_screen);
   const initialQuestion = useMemo(
     () => (draft ? draft.question_text : ""),
     [draft],
@@ -142,8 +156,8 @@ export default function AISessionsCreateTab({ draft, onSaved }: Props) {
   const [geminiAnswer, setGeminiAnswer] = useState<string>("");
   const [claudeAnswer, setClaudeAnswer] = useState<string>("");
   const [userMemo, setUserMemo] = useState<string>("");
-  const [userVerdict, setUserVerdict] = useState<DecisionUserVerdict>(
-    DEFAULT_DECISION_VERDICT,
+  const [userVerdict, setUserVerdict] = useState<DecisionUserVerdict>(() =>
+    initialVerdict(draft),
   );
   const [nextChecksRaw, setNextChecksRaw] = useState<string>("");
   const [saving, setSaving] = useState<boolean>(false);
@@ -189,7 +203,12 @@ export default function AISessionsCreateTab({ draft, onSaved }: Props) {
         gemini_answer_text: geminiAnswer,
         claude_answer_text: claudeAnswer,
         user_memo: userMemo,
-        user_verdict: userVerdict,
+        // 주간 초안은 고른 값 그대로('미기록' 포함 · 메모 · 다음 확인이 비어도 저장) · 주간이 아닌 초안에는 '미기록'을
+        // 보내지 않는다(선택지에 없음 · 서버 422 · 혹시 상태에 들어와도 그 화면 기본값 '보류'로).
+        user_verdict:
+          weekly || userVerdict !== UNRECORDED_DECISION_VERDICT
+            ? userVerdict
+            : DEFAULT_DECISION_VERDICT,
         next_checks: splitNextChecks(nextChecksRaw),
         linked_market_refresh_id: draft.linked_market_refresh_id,
         // 2026-05-22 — Market Discovery 에서 넘어온 시장 문맥 그대로 영속화.
@@ -249,7 +268,7 @@ export default function AISessionsCreateTab({ draft, onSaved }: Props) {
       setGeminiAnswer("");
       setClaudeAnswer("");
       setUserMemo("");
-      setUserVerdict(DEFAULT_DECISION_VERDICT);
+      setUserVerdict(initialVerdict(draft));
       setNextChecksRaw("");
       onSaved();
     } catch (e) {
@@ -269,6 +288,7 @@ export default function AISessionsCreateTab({ draft, onSaved }: Props) {
     nextChecksRaw,
     onSaved,
     selectedMode,
+    weekly,
   ]);
 
   if (!draft) {
@@ -289,7 +309,9 @@ export default function AISessionsCreateTab({ draft, onSaved }: Props) {
       <p className="helper" style={{ marginBottom: 8 }}>
         {selectedMode
           ? "판단 근거 미리보기에서 넘어온 선택 종목"
-          : "「후보리스트」 · 「ETF 구성종목」에서 넘어온 목록"}
+          : weekly
+            ? "「주간 ETF 점검」에서 넘어온 목록"
+            : "「후보리스트」 · 「ETF 구성종목」에서 넘어온 목록"}
         를 기반으로 외부 AI(GPT / Gemini / Claude) 답변과 사용자 메모 / 1차
         판정을 저장합니다. AI 를 직접 호출하지 않습니다.
       </p>
@@ -367,19 +389,25 @@ export default function AISessionsCreateTab({ draft, onSaved }: Props) {
         placeholder="해석 / 의문점 / 다음 액션 등을 자유롭게."
       />
 
-      <label htmlFor="ais-verdict">사용자 1차 판정</label>
+      <label htmlFor="ais-verdict">{weekly ? "사용자 판단" : "사용자 1차 판정"}</label>
       <select
         id="ais-verdict"
         className="decision-select"
         value={userVerdict}
         onChange={(e) => setUserVerdict(e.target.value as DecisionUserVerdict)}
       >
-        {VERDICT_OPTIONS.map((v) => (
+        {(weekly ? WEEKLY_VERDICT_OPTIONS : VERDICT_OPTIONS).map((v) => (
           <option key={v} value={v}>
             {DECISION_VERDICT_LABEL[v]}
           </option>
         ))}
       </select>
+      {weekly ? (
+        <div className="helper" data-testid="ais-verdict-help">
+          &apos;미기록&apos;에서 시작하고 그대로 저장할 수 있습니다 · 직접 고른 &apos;보류&apos;는 메모 · 다음 확인이
+          비어도 유효합니다
+        </div>
+      ) : null}
 
       <label htmlFor="ais-next-checks">
         다음 확인 항목 (한 줄당 1항목)

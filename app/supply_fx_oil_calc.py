@@ -103,6 +103,14 @@ def change_over(points: list[Point], boundary: str, end: str) -> Optional[dict]:
     }
 
 
+def vix_evidence(c: dict) -> str:
+    """해석에 쓴 VIX 기간 근거(POC6-32 판정 Q9 · 시작 · 끝 값과 미국 날짜)."""
+    return (
+        f"VIX {num(c['from'], 'pt')} → {num(c['to'], 'pt')} ({pct(c['pct'])} · "
+        f"{md(c['from_date'])} → {md(c['to_date'])} 미국 날짜)"
+    )
+
+
 def period_sum(
     points: list[Point], expected: list[str], boundary: str, end: str
 ) -> dict:

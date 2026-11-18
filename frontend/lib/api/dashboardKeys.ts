@@ -3,6 +3,8 @@
 // Dashboard·Workbench 와 변경 성공 이벤트(Holdings 저장 / Market 갱신)가 같은 키를
 // 참조하도록 한 곳에 모은다. 무효화는 이 prefix 로 "관련 읽기만" 지운다.
 
+import { ETF_OFFICIAL_KEY_PREFIX } from "./etfOfficial";
+
 // ── Dashboard 조회 키 (endpoint + 요청 조건 유일 식별) ──────────────────────
 export const DASH_KEY_MARKET =
   "dashboard:market/topn/latest?n=10&basis=one_month&order=desc" +
@@ -61,4 +63,7 @@ export const MARKET_INVALIDATION_KEYS = [
   ETF_COMPARE_KEY_PREFIX, // POC6-28
   PRICE_SERIES_KEY_PREFIX, // POC6-28
   ETF_DETAIL_KEY_PREFIX, // POC6-29
+  // POC6-32 V2 — 공식 기준정보 · 지수 상태(「보유와 후보 비교」 상품 확인). 공식 CSV 는 갱신으로 바뀌지 않지만 개별 주식
+  // 판별(etf_master)은 시장 갱신이 바꿀 수 있어 [최신 자료 갱신] 뒤 다시 읽는다.
+  ETF_OFFICIAL_KEY_PREFIX,
 ];

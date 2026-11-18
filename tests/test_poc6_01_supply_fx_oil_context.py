@@ -322,11 +322,16 @@ def test_context_interpretation_rows(tmp_path):
     _seed(
         db, kdays=kdays
     )  # 코스피 하락 · 외국인 순매도 · 원/달러 상승 · 유가 하락 · VIX 상승
-    rows = build_market_flow_context(db_path=db)["interpretation"]["6M"]["rows"]
+    out = build_market_flow_context(db_path=db)
+    rows = out["interpretation"]["6M"]["rows"]
+    # POC6-32 판정 Q9 — 해석에 쓴 VIX 기간의 시작 · 끝 값과 미국 날짜를 해석 옆에(기간 칸 vix 와 같은 값)
     assert [r[0] for r in rows] == [
         "코스피 하락 · 외국인 순매도 · 원/달러 상승",
-        "유가 하락 · VIX 상승(글로벌 위험 회피)",
+        "유가 하락 · VIX 상승(글로벌 위험 회피) — VIX 15.07 → 16.38 (+8.69% · 4/10 → 10/12 미국 날짜)",
     ]
+    v = out["periods"]["6M"]["vix"]
+    assert (v["from_date"], v["to_date"]) == ("2026-04-10", "2026-10-12")
+    assert rows[1][0].endswith(calc.vix_evidence(v))
     db2 = tmp_path / "m2.sqlite"
     _seed(
         db2,
@@ -341,7 +346,12 @@ def test_context_interpretation_rows(tmp_path):
     db3 = tmp_path / "m3.sqlite"
     _seed(db3, kdays=kdays, vix_up=False)  # 유가 하락 · VIX 하락
     rows3 = build_market_flow_context(db_path=db3)["interpretation"]["6M"]["rows"]
-    assert rows3[-1][0] == "유가 하락 · VIX 하락(글로벌 시장 견조)"
+    v3 = build_market_flow_context(db_path=db3)["periods"]["6M"]["vix"]
+    assert v3["pct"] < 0
+    assert (
+        rows3[-1][0]
+        == f"유가 하락 · VIX 하락(글로벌 시장 견조) — {calc.vix_evidence(v3)}"
+    )
     upsert_benchmark_prices(
         benchmark_id="VIX",
         benchmark_name="VIX",
@@ -473,7 +483,11 @@ def test_interpretation_follows_each_period_and_ai_text(tmp_path):
         and "원/달러 상승 →" not in out["ai_text"]["1M"]
     )
     tail = out["ai_text"]["6M"].split("[자료 기준일] ")[1].split("\n")[0]
-    assert tail.count("(수집 ") == 4 and " KST)" in tail and "코스피 " in tail
+    # POC6-32 Q9 — [자료 기준일]에 VIX(미국 날짜)가 다섯째로 붙는다(국내 '늦음' 판정 status 4개는 그대로)
+    assert tail.count("(수집 ") == 5 and " KST)" in tail and "코스피 " in tail
+    assert len(out["status"]) == 4 and "VIX(미국 날짜) " in tail
+    # [자료 기준일] = 최신 저장일(다른 자료와 같음) · 해석은 D 이하 마지막 값이라 같거나 앞선 날짜
+    assert out["vix_basis"]["E"] >= out["periods"]["6M"]["vix"]["to_date"]
     assert out["status"][0]["collected_at"]  # 코스피 = 최신 저장 행의 저장 시각
     assert out["today_lines"][0].startswith(
         f"시장 흐름 6개월({calc.md(out['D'])}까지): "
@@ -535,7 +549,9 @@ def test_today_line_shows_partial_flows_and_unavailable_20day(tmp_path):
     assert "최근 20거래일 비교 불가(자료가 온전하지 않음)" in out["today_lines"][0]
     assert any(part in line for line in out["periods"]["6M"]["lines"])
     it = out["interpretation"]["6M"]
-    assert [r[0] for r in it["rows"]] == ["유가 하락 · VIX 상승(글로벌 위험 회피)"]
+    assert [r[0].split(" — ")[0] for r in it["rows"]] == [
+        "유가 하락 · VIX 상승(글로벌 위험 회피)"
+    ]
     assert it["notes"][0] == (
         "확인 못 한 조합: 코스피 하락 · 외국인 순매도 · 원/달러 — "
         f"외국인 수급 부분 집계({f['days']}/{f['expected']}일)"
@@ -681,7 +697,7 @@ def test_interpretation_notes_never_turn_missing_into_not_applicable(tmp_path):
     it = build_market_flow_context(db_path=db)["interpretation"]["6M"]
     assert [r[0] for r in it["rows"]] == ["코스피 하락 · 외국인 순매도 · 원/달러 상승"]
     assert it["notes"] == [
-        "확인 못 한 조합: 유가 하락 · VIX — VIX 기간 변화 계산 불가(기간을 덮는 저장 값 없음)"
+        "확인 못 한 조합: 유가 하락 · VIX — VIX 기간 변화 미확인(기간을 덮는 저장 값 없음)"
     ]
     # 환율 · WTI 자료 없음 → 두 조합 모두 확인 못 함('해당 규칙 없음'을 말하지 않음)
     db = tmp_path / "b.sqlite"

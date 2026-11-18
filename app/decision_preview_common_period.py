@@ -1,6 +1,7 @@
 """POC6-29 — 판단 근거 미리보기의 후보를 '공통 기간 목록'에서 찾는다(읽기 전용 · PLAN §3-4 · 판정 Q4-2).
 
-화면(「후보리스트」 · 「섹터요약」 · 「보유와 후보 비교」 · 「보유」)이 본 목록 = 같은 조건의 요약
+화면(「후보리스트」 · 「섹터요약」 · 「보유와 후보 비교」 · 「보유」 · 「주간 ETF 점검」(후보만 · 그 화면 고정 조건만 ·
+POC6-32 V2))이 본 목록 = 같은 조건의 요약
 (`GET /market/etf-compare/summary` 와 같은 입력 읽기 + `build_summary` · 상 · 하위 30). 서버가 지금 다시 계산한
 요약에서 그 종목을 찾아 화면이 보낸 쪽(상위/하위) · 선정 순위 · 실제 시작일 · 끝일 · 끝일 가격 시점과 대조한다.
 하나라도 다르면(그사이 갱신 등) `ListChanged` — 미리보기를 만들지 않고 다시 읽기 안내.
@@ -27,6 +28,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from app import api_etf_compare
+from app import weekly_review as wr
 from app.api_market_topn_models import (
     MarketCandidate,
     MarketPeriodReturn,
@@ -64,6 +66,10 @@ SCREEN_LABEL = {
     "holding_candidate_compare": "「보유와 후보 비교」",
     "holdings": "「보유」",
 }
+# POC6-32 V2 — 「주간 ETF 점검」 [판단 근거 보기](후보 미리보기만 · 보유 미리보기 화면 목록 `SCREEN_LABEL` 에는 넣지 않음).
+# 그 화면 목록은 조건이 고정(1개월 · 상위 30 · 제외 4종 · 출처 값 = 주간 기록 출처)이라 다른 조건으로 온 요청은 받지 않는다.
+WEEKLY_SCREEN = wr.SOURCE_SCREEN
+PICK_SCREEN_LABEL = {**SCREEN_LABEL, WEEKLY_SCREEN: "「주간 ETF 점검」"}
 SIDE_LABEL = {"top": "상위", "bottom": "하위"}
 # 응답 값은 소수 4자리(요약 `round(…, 4)`) — 같은 계산이면 같은 값 · 표현 차이만 허용.
 VALUE_TOLERANCE = 1e-6
@@ -108,9 +114,18 @@ class CommonPeriodPick:
     # 없으면(예전 화면) 대조하지 않는다.
     basis_value: Optional[float] = None
 
+    def _weekly_condition(self) -> bool:
+        """주간 화면 = 그 화면의 고정 조건(1개월 · 상위 · 제외 4종 모두)일 때만."""
+        return (
+            self.basis == wr.BASIS
+            and self.side == wr.SIDE
+            and self.filters == wr.FILTERS
+        )
+
     def is_valid(self) -> bool:
         return (
-            self.screen in SCREEN_LABEL
+            self.screen in PICK_SCREEN_LABEL
+            and (self.screen != WEEKLY_SCREEN or self._weekly_condition())
             and self.basis in ALLOWED_BASES
             and set(self.filters) == set(FILTER_KEYS)
             and self.side in SIDE_LABEL
@@ -132,7 +147,7 @@ def _md(day: str) -> str:
 def list_label(pick: CommonPeriodPick) -> str:
     """[대상] 줄 — 예: 「후보리스트」 1개월 상위 3위 · 공통 기간 10/12 → 11/10."""
     return (
-        f"{SCREEN_LABEL[pick.screen]} {BASIS_LABEL[pick.basis]} "
+        f"{PICK_SCREEN_LABEL[pick.screen]} {BASIS_LABEL[pick.basis]} "
         f"{SIDE_LABEL[pick.side]} {pick.rank}위 · 공통 기간 "
         f"{_md(pick.start_date)} → {_md(pick.end_date)}"
     )

@@ -24,6 +24,7 @@ export interface PresetCandidate {
   condition: CompareCondition | null; // null = 넘긴 목록 조건 없음(예전 draft)
   start?: string | null; // 넘긴 목록의 공통 기간 시작일
   end?: string | null; // 넘긴 목록의 끝일
+  origin?: string; // 보낸 화면 이름(POC6-32 · 없으면 「ETF 구성종목」)
 }
 
 let pendingCandidate: PresetCandidate | null = null;

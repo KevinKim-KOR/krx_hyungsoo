@@ -29,6 +29,7 @@ from app.holdings_market_evidence import (
     get_holdings_file_mtime_iso,
 )
 from app.api_market_topn_models import SamePeriodKodex200
+from app.holdings_overlap_period import topn_basis
 from app.market_data_store import DEFAULT_DB_PATH as MARKET_DB_PATH
 from app.market_topn import DEFAULT_BASIS, DEFAULT_N, DEFAULT_ORDER, compute_topn
 from app.pc_price_basis import apply_pc_price_basis, load_recent_price_rows
@@ -191,6 +192,17 @@ class MarketContextResponse(BaseModel):
     regime_code: str = "unavailable"
 
 
+class TopnBasis(BaseModel):
+    # POC6-32 V2 — 겹침 비교에 쓴 상위 목록 기준 · 실제 기간(시작일은 ETF 마다 다를 수 있어 최소 ~ 최대).
+    basis: Optional[str] = None
+    n: Optional[int] = None
+    count: int = 0
+    filters: Optional[dict[str, bool]] = None
+    start_min: Optional[str] = None
+    start_max: Optional[str] = None
+    end: Optional[str] = None
+
+
 class HoldingsMarketEvidenceResponse(BaseModel):
     status: (
         str  # ok (read-only API 는 항상 ok 로 응답, market 데이터 부재는 warnings 로)
@@ -206,6 +218,8 @@ class HoldingsMarketEvidenceResponse(BaseModel):
     judgment_summary: Optional[dict[str, Any]] = None
     # POC5-09 — PC 비교 기준일 · 기준일이 달라 현재 비교에서 뺀 종목(선택 필드).
     price_basis: Optional[PriceBasis] = None
+    # POC6-32 V2 — 보유 겹침 비교 기준(서버 1개월 상위 10개)과 실제 기간(선택 필드 · `holdings_overlap_period`).
+    topn_basis: Optional[TopnBasis] = None
     warnings: list[str] = []
 
 
@@ -307,5 +321,6 @@ def get_holdings_market_evidence_latest() -> HoldingsMarketEvidenceResponse:
         ],
         judgment_summary=evidence.get("judgment_summary"),
         price_basis=PriceBasis(**evidence["price_basis"]),
+        topn_basis=TopnBasis(**topn_basis(topn_payload)),
         warnings=list(evidence.get("warnings") or []),
     )

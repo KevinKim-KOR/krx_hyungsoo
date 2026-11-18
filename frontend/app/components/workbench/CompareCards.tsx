@@ -10,12 +10,16 @@
 //   하락 판정 · 구성종목 겹침 · 판단 근거 미리보기(화면이 넘긴 카드 그대로) · [AI 세션에서 검토].
 // 값 · 날짜 · 사유 문장은 행 상세(DetailNumbers)와 같은 함수 — 자료 없음 · 기간 다름을 0 으로 채우지 않는다.
 // 차이 줄은 lib/compareDiff(두 쪽 시작 · 끝일과 확인된 가격 상태가 같을 때만) · 새 계산 · 점수 · 등급 없음.
+// POC6-32 V2(PLAN §3-2 D4 · §9 I-20) — 차이 줄은 서버 지수 상태가 '같은 공식 기초지수'일 때만 위 규칙대로(gatedDiffLine) ·
+// 그 밖이면 다섯 줄 모두 '차이 요약 안 함 — 지수 사유 · 규칙 사유'. 값 칸(각 ETF 값 · 실제 기간)은 지수 상태와 상관없이 그대로.
+// 같은 지수에서 구조가 다르면 차이 줄 위에 '구조 다름: …'. 제목 = '해당 기간 가격 성과'.
 // 거래량 · 가격 흔들림은 상세 응답에 없어 넣지 않는다(Q-R4 (a)) — 판단 근거 미리보기에서 본다.
 
 import type { ReactNode } from "react";
 import type { EndPrice } from "@/lib/api/etfCompare";
 import type { DetailPeriod, DetailSameKodex, EtfDetailItem } from "@/lib/api/etfDetail";
-import { DIFF_LABEL, diffLine, diffSideOf, type DiffPeriodKey } from "@/lib/compareDiff";
+import type { OfficialPairState } from "@/lib/api/etfOfficial";
+import { DIFF_LABEL, diffSideOf, gatedDiffLine, type DiffPeriodKey } from "@/lib/compareDiff";
 import { md, mdhm, pct } from "@/lib/etfCompare";
 import { dd, drawdownText, excessText, navText, periodText, reasonOf } from "./DetailNumbers";
 import { directionColor } from "./helpers";
@@ -152,27 +156,38 @@ function HeadCell({ role, head, item }: { role: CompareRole; head: CompareHeadIn
   );
 }
 
-// 기본 비교 — 표 하나(머리 = 두 종목 · 한 항목 = 값 줄 + 차이 줄). 상세를 아직 못 읽었으면 차이 줄 대신 그 사실 한 줄.
+// 기본 비교 — 표 하나(머리 = 두 종목 · 한 항목 = 값 줄 + 차이 줄). 두 상품을 아직 다 고르지 않았거나 상세 · 공식 기준정보를
+// 아직 못 읽었으면(pending) 차이 줄 대신 그 사실 한 줄. gate = 서버 지수 상태(pending 이 아니면 늘 있음 · 없으면 차이를 적지 않음).
 export function CompareBasic({
   hold,
   cand,
   holdHead,
   candHead,
   pending,
+  gate,
+  structure,
 }: {
   hold: EtfDetailItem | null;
   cand: EtfDetailItem | null;
   holdHead: CompareHeadInfo;
   candHead: CompareHeadInfo;
   pending: string | null;
+  gate: OfficialPairState | null;
+  structure: string | null;
 }) {
   const items: Record<CompareRole, EtfDetailItem | null> = { holding: hold, candidate: cand };
   const heads: Record<CompareRole, CompareHeadInfo> = { holding: holdHead, candidate: candHead };
+  const note = pending ?? (gate ? null : "지수 상태를 확인하지 못해 차이를 적지 않습니다");
   return (
     <section className="tc-card hcc-basic" aria-labelledby="hcc-basic-h" data-testid="hcc-basic">
       <h2 id="hcc-basic-h" className="hcc-h2">
-        기본 비교 · 같은 기간 성과 · 최근 움직임 · 고점 대비
+        기본 비교 — 해당 기간 가격 성과
       </h2>
+      {!note && gate === "same" && structure ? (
+        <div className="hcc-structure" data-testid="hcc-structure">
+          {structure}
+        </div>
+      ) : null}
       <div className="ec-table-wrap">
         <table className="ec-table hcc-table">
           <colgroup>
@@ -189,7 +204,7 @@ export function CompareBasic({
             </tr>
           </thead>
           {ROWS.map((k) => {
-            const l = pending ? null : diffLine(k, diffSideOf(hold, k), diffSideOf(cand, k), reasonOf);
+            const l = note || !gate ? null : gatedDiffLine(k, diffSideOf(hold, k), diffSideOf(cand, k), reasonOf, gate);
             return (
               <tbody key={k} data-testid={`hcc-row-${k}`}>
                 <tr className="hcc-val-row">
@@ -214,14 +229,16 @@ export function CompareBasic({
           })}
         </table>
       </div>
-      {pending ? (
+      {note ? (
         <div className="tc-muted tc-small" data-testid="hcc-diff-pending">
-          {pending}
+          {note}
         </div>
       ) : null}
       <div className="ec-small">
-        차이는 두 쪽의 실제 시작일 · 끝일과 가격 상태(장중 · 마감 뒤)가 같을 때만 적습니다. 고점 대비는 두 종목의 20저장일 창(시작
-        · 끝일)이 같을 때만 하락폭을 비교합니다. 둘 다 장중 저장값이면 잠정 비교입니다.
+        항목마다 아래 줄의 차이는 해당 기간의 가격 성과 차이입니다. 두 상품의 공식 기초지수가 같고(위 상품 확인), 두 쪽의 실제
+        시작일 · 끝일과 가격 상태(장중 · 마감 뒤)가 같을 때만 적습니다. 고점 대비는 두 종목의 20저장일 창(시작 · 끝일)이 같을 때만
+        하락폭을 비교합니다. 둘 다 장중 저장값이면 잠정 비교입니다. 같은 투자 목적에 맞는지는 위 공식 기초지수 · 투자 대상으로
+        확인합니다.
       </div>
     </section>
   );
@@ -268,8 +285,9 @@ export function CompareEvidence({
         </span>
       </div>
       <div className="ec-small" data-testid="hcc-ev-who">
-        {ROLE_WORD[focus]} · {head.name ?? "—"}
-        {!it && head.note ? ` — ${head.note}` : ""}
+        {/* 고르지 않았으면(V2 · 빈 선택에서 시작) 이름 대신 안내만('후보 · 후보를 고르세요'). */}
+        {ROLE_WORD[focus]} · {head.name ?? head.note ?? "—"}
+        {head.name && !it && head.note ? ` — ${head.note}` : ""}
       </div>
       <dl className="ec-lines">
         <dt>시장가 · 기준가(NAV) · 괴리율</dt>

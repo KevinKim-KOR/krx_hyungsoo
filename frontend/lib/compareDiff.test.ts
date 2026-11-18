@@ -3,7 +3,8 @@
 // 보완 2차 S3(PLAN §10-6 · S 판정 Q-S6) — 최근 5 · 20구간 · 고점 대비(20저장일 창 · 하락폭 작음/큼)도 같은 순서로.
 import { describe, it, expect } from "vitest";
 import type { EtfDetailItem } from "@/lib/api/etfDetail";
-import { diffLine, diffSideOf, type DiffKind, type DiffPeriod, type DiffSide } from "@/lib/compareDiff";
+import { diffLine, diffSideOf, gatedDiffLine, type DiffKind, type DiffPeriod, type DiffSide } from "@/lib/compareDiff";
+import type { OfficialPairState } from "@/lib/api/etfOfficial";
 import { detailItem, period } from "@/lib/etfCompareTestFixtures";
 
 const S = "2026-10-12";
@@ -290,5 +291,63 @@ describe("diffSideOf — 최근 5 · 20구간 · 고점 대비도 상세 응답 
     const b = detailItem("B", { drawdown: { ...a.drawdown, value: -1.25 }, w5: period(0.3, "2026-11-02") });
     expect(diffLine("drawdown", diffSideOf(a, "drawdown"), diffSideOf(b, "drawdown"), reasonText).text).toBe(`${DDR}: 후보 하락폭이 1.75%p 작음`);
     expect(diffLine("w5", diffSideOf(a, "w5"), diffSideOf(b, "w5"), reasonText).text).toBe("최근 5구간(11/2 → 11/9 · 같은 기간): 후보가 1.50%p 높음");
+  });
+});
+
+// ── POC6-32 V2 — 지수 상태 조건(PLAN §3-2 D4 · §9 I-6 · I-20) ─────────────────────────────
+// 서버 지수 상태 넷 × 기존 규칙 결과 일곱(차이 · 잠정 · 기간 다름 · 값 없음 · 가격 시점 확인 필요 · 가격 상태 다름 · 상세 없음).
+// '같은 공식 기초지수'면 diffLine 그대로 · 그 밖이면 차이(%p)를 만들지 않고 지수 사유를 먼저, 기존 규칙 사유를 뒤에.
+// (판정 순서를 뒤집어 기존 사유가 지수 사유를 이기게 하거나 · 같은 계열을 같은 지수로 넘기면 이 표가 깨진다.)
+describe("차이 줄 — 지수 상태 조건(gatedDiffLine) 조합 표", () => {
+  const RULES: [string, DiffSide | null, DiffSide | null, string][] = [
+    ["차이(둘 다 마감 뒤 · 같은 기간)", side(ok(-3.2)), side(ok(14.55)), ""],
+    ["잠정(둘 다 장중)", side(ok(1), "intraday"), side(ok(3.5), "intraday"), ""],
+    ["기간 다름", side(ok(1, "2026-10-12")), side(ok(2, "2026-10-13")), " · 기간 다름(보유 10/12 → 11/9 · 후보 10/13 → 11/9)"],
+    ["값 없음(보유)", side(missing()), side(ok(2)), " · 보유 값 없음 · 저장 이력 부족"],
+    ["가격 시점 확인 필요(보유)", side(ok(1), "unknown"), side(ok(2)), " · 가격 시점 확인 필요(보유)"],
+    ["가격 상태 다름", side(ok(1), "intraday"), side(ok(2), "after_close"), " · 가격 상태 다름(보유 장중 · 후보 마감 뒤)"],
+    ["상세 없음(보유)", null, side(ok(2)), " · 보유 상세 수치 없음"],
+  ];
+  const GATES: [OfficialPairState, string][] = [
+    ["different", "지수 다름"],
+    ["same_family", "지수 다름(같은 계열)"],
+    ["unconfirmed", "기준 미확인"],
+  ];
+  const table = GATES.flatMap(([g, word]) => RULES.map(([name, h, c, extra]) => [g, name, h, c, `1개월: 차이 요약 안 함 — ${word}${extra}`] as const));
+
+  it.each(table)("%s × %s = 차이 요약 안 함", (g, _name, h, c, text) => {
+    expect(gatedDiffLine("m1", h, c, reasonText, g)).toEqual({ kind: "not_compared", text, diffPctp: null });
+  });
+
+  it.each(RULES)("같은 공식 기초지수 × %s = 기존 규칙(diffLine) 그대로", (_name, h, c) => {
+    expect(gatedDiffLine("m1", h, c, reasonText, "same")).toEqual(diffLine("m1", h, c, reasonText));
+  });
+
+  it("같은 공식 기초지수 · 기간 · 가격 상태가 맞으면 차이를 적는다(값 · 종류)", () => {
+    expect(gatedDiffLine("m1", side(ok(-3.2)), side(ok(14.55)), reasonText, "same")).toEqual({
+      kind: "compared",
+      text: "1개월(10/12 → 11/9 · 같은 기간): 후보가 17.75%p 높음",
+      diffPctp: 17.75,
+    });
+    expect(gatedDiffLine("m1", side(ok(1), "intraday"), side(ok(3.5), "intraday"), reasonText, "same").kind).toBe("provisional");
+  });
+
+  it("다섯 줄 모두 같은 조건(I-20) — 지수가 다르면 계산 가능한 줄도 차이 · 하락폭 글을 만들지 않는다", () => {
+    const a = detailItem("A");
+    const b = detailItem("B", { m1: period(14.55), w5: period(0.3, "2026-11-02"), drawdown: { ...a.drawdown, value: -1.25 } });
+    for (const k of ["m1", "m3", "w5", "w20", "drawdown"] as const) {
+      // 같은 지수면 다섯 줄 모두 차이를 적는 자료(기간 · 가격 상태 맞음)
+      expect(gatedDiffLine(k, diffSideOf(a, k), diffSideOf(b, k), reasonText, "same").kind).toBe("compared");
+      const l = gatedDiffLine(k, diffSideOf(a, k), diffSideOf(b, k), reasonText, "different");
+      expect(l.kind).toBe("not_compared");
+      expect(l.diffPctp).toBeNull();
+      expect(l.text).toMatch(/: 차이 요약 안 함 — 지수 다름$/);
+      expect(l.text).not.toMatch(/높음|작음|큼|같음|%p/);
+    }
+  });
+
+  it("고점 대비 · 기준 미확인 + 창 다름 = 지수 사유 뒤에 실제 창(20저장일)", () => {
+    const l = gatedDiffLine("drawdown", side(ddp(-3, "2026-10-10")), side(ddp(-1)), reasonText, "unconfirmed");
+    expect(l.text).toBe("고점 대비: 차이 요약 안 함 — 기준 미확인 · 기간 다름(보유 20저장일 10/10 → 11/9 · 후보 20저장일 10/13 → 11/9)");
   });
 });

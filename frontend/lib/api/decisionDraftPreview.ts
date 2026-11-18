@@ -8,7 +8,13 @@ export type DecisionDraftTargetKind = "holding" | "candidate";
 // POC5-23 판정 Q1 (a) — 후보는 화면 목록 조건으로 같은 목록에서 찾는다(없으면 서버 기본 조건).
 // POC6-29(판정 Q4-2) — list_source = "common_period" 면 그 화면의 공통 기간 목록(상 · 하위 30)에서 찾고,
 //   화면이 본 쪽 · 선정 순위 · 실제 시작일 · 끝일 · 끝일 가격 시점을 서버가 지금 결과와 대조한다(다르면 다시 읽기 안내).
-export type DecisionDraftScreen = "candidate_list" | "sector_summary" | "holding_candidate_compare" | "holdings";
+// POC6-32 V2 — 「주간 ETF 점검」 ③ [판단 근거 보기](서버 `app/decision_preview_common_period.py` 가 받는 값).
+export type DecisionDraftScreen =
+  | "candidate_list"
+  | "sector_summary"
+  | "holding_candidate_compare"
+  | "holdings"
+  | "today_weekly_review";
 
 export interface DecisionDraftListQuery {
   n?: number;

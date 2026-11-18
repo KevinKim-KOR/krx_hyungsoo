@@ -14,6 +14,7 @@ import LeftSidebar, { MENU_ITEMS } from "./LeftSidebar";
 import { detailResponse, summaryOk } from "@/lib/etfCompareTestFixtures";
 import { quickOk } from "@/lib/quickQuotesTestFixtures";
 import { morningOk, shortOk } from "@/lib/morningTestFixtures";
+import { weeklyFor } from "@/lib/weeklyReviewTestFixtures";
 
 const fetchMarketTopnLatest = vi.fn();
 const fetchEnrichedHoldings = vi.fn();
@@ -31,6 +32,14 @@ const fetchEtfCompareSummary = vi.fn();
 vi.mock("@/lib/api/etfCompare", async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
   fetchEtfCompareSummary: (...a: unknown[]) => fetchEtfCompareSummary(...a),
+}));
+
+// POC6-32 — ETF 주간 검토 고정 응답(11/16 공개 시장 자료 · 합성 보유). V2(PLAN §2 S2)부터 이 화면은 주간 자료를 읽지 않는다 —
+//   부르지 않음을 세려고 남겨 둔다(주간 화면 = 메뉴 「주간 ETF 점검」).
+const fetchWeeklyReview = vi.fn();
+vi.mock("@/lib/api/weeklyReview", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  fetchWeeklyReview: (...a: unknown[]) => fetchWeeklyReview(...a),
 }));
 
 vi.mock("@/lib/api/refreshAll", async (importOriginal) => ({
@@ -261,6 +270,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   primeAll();
   fetchHoldingsConstituentsStatus.mockResolvedValue(consStatus());
+  fetchWeeklyReview.mockImplementation(async (sel: string | null) => weeklyFor(sel));
 });
 
 // POC5-UI-03 — 접기(시장 수치와 거래량 · 수치 더보기 · 현재 제공 범위와 남은 기능 · 모두 보기)를
@@ -303,9 +313,11 @@ describe("TodayInvestmentCheckView", () => {
     await renderView();
     // 시장 흐름 · 보유 · 잘 오르는 ETF(판단) · 자료 최신화 · OCI(정비 · 운영) 영역이 각각 존재.
     expect(screen.getByLabelText("시장 흐름")).toBeInTheDocument();
-    // POC6-29 — 보유 점검 · 잘 오르는 ETF 각 한 카드 · 시장 근거 접힘 구역(자세히 구역 없음).
+    // POC6-29 — 보유 점검 · 시장 근거 접힘 구역(자세히 구역 없음) · POC6-32 V2 「잘 오르는 ETF」 자리 = 「주간 ETF 점검」 한 줄.
     expect(screen.getByLabelText("보유 점검")).toBeInTheDocument();
-    expect(screen.getByLabelText("잘 오르는 ETF")).toBeInTheDocument();
+    expect(screen.getByLabelText("주간 ETF 점검")).toBeInTheDocument();
+    expect(screen.queryByLabelText("ETF 주간 검토")).toBeNull();
+    expect(screen.queryByLabelText("잘 오르는 ETF")).toBeNull();
     expect(screen.getByTestId("tc-evidence-fold")).toBeInTheDocument();
     expect(screen.queryByLabelText("보유 자세히")).toBeNull();
     expect(screen.queryByLabelText("잘 오르는 ETF 자세히")).toBeNull();
@@ -472,7 +484,7 @@ describe("TodayInvestmentCheckView", () => {
   it("AC-4/AC-5 큐 분리: 정비 항목이 '오늘 내가 확인할 것' 안에 없다", async () => {
     fetchHoldingsConstituentsStatus.mockResolvedValue(consStatus(2));
     await renderView();
-    for (const label of ["보유 점검", "잘 오르는 ETF"]) {
+    for (const label of ["보유 점검", "주간 ETF 점검"]) {
       const judgment = screen.getByLabelText(label);
       // 판단 영역 안에는 자료 상태 문구가 없어야 한다.
       expect(within(judgment).queryByText(/자료가 없습니다/)).toBeNull();
@@ -531,6 +543,25 @@ describe("TodayInvestmentCheckView", () => {
     expect(
       within(maint).getByText(/ETF 기준가 자료 상태를 확인할 수 없습니다/),
     ).toBeInTheDocument();
+  });
+
+  // POC6-32 V2(판정 Q2 (b) · PLAN S5) — NAV 항목 4개의 버튼 = 「진단·상태 › 데이터 상태」(전체 ETF NAV · 괴리율) ·
+  // 예전 '구성종목 업데이트로'(「ETF 구성종목」으로 감) 없음.
+  it.each([
+    ["보유 근거의 NAV 비교 없음", () => fetchHoldingsMarketEvidence.mockResolvedValue(evidenceOk({ nav_discount_unavailable_count: 2 })), /ETF 기준가 비교 자료가 없습니다 \(2건\)/],
+    ["NAV 집계 칸 손상", () => fetchNavDiscountLatest.mockResolvedValue({ status: "ok", asof: "2026-07-24", summary: { unavailable_count: null, failed_count: undefined } }), /ETF 기준가 자료 상태를 확인할 수 없습니다/],
+    ["NAV 일부 없음", () => fetchNavDiscountLatest.mockResolvedValue({ status: "ok", asof: "2026-07-24", summary: { unavailable_count: 1, failed_count: 1 } }), /ETF 기준가 자료가 일부 없습니다 \(2건\)/],
+    ["NAV 조회 실패", () => fetchNavDiscountLatest.mockRejectedValue(new Error("nav down")), /ETF 기준가 자료를 불러오지 못했습니다/],
+  ])("POC6-32 V2 판정 Q2 — NAV 항목(%s) 버튼 = 「데이터 상태」 '전체 ETF NAV·괴리율 보기 →'", async (_n, prime, text) => {
+    prime();
+    const { onNavigate } = await renderView();
+    const list = screen.getByLabelText("자료 업데이트 목록");
+    const item = within(list).getByText(text).closest("li") as HTMLElement;
+    onNavigate.mockClear();
+    fireEvent.click(within(item).getByRole("button", { name: "전체 ETF NAV·괴리율 보기 →" }));
+    expect(onNavigate).toHaveBeenCalledTimes(1);
+    expect(onNavigate).toHaveBeenCalledWith("data_status");
+    expect(within(list).queryByRole("button", { name: "구성종목 업데이트로" })).toBeNull();
   });
 
   it("POC3-02D-OPS-03 RESULT STEP 4: KOSPI 지연은 맨 위 「자료 최신화 필요」(코스피 줄 · 갱신 할 일) · 카드 기준일은 KOSPI 기준일", async () => {
@@ -594,22 +625,39 @@ describe("TodayInvestmentCheckView", () => {
     }
   });
 
-  it("POC6-29 잘 오르는 ETF: 이 화면 조건(1개월 · 4종 제외 고정)의 공통 기간 목록 선정 1 ~ 3위 · [후보리스트 보기 →]", async () => {
+  it("POC6-32 V2 「잘 오르는 ETF」 자리 = 「주간 ETF 점검」 한 줄(주간 자료 안 읽음 · 주간 카드 없음) · [주간 ETF 점검 열기 →] = 메뉴 key 이동", async () => {
     const { onNavigate } = await renderView();
-    const card = screen.getByLabelText("잘 오르는 ETF");
-    const s = summaryOk();
+    const card = screen.getByLabelText("주간 ETF 점검");
+    // 보유 점검은 이 화면 조건 요약을 그대로 읽는다(저장 기본 기간 없음 = 1개월 · 4종 제외)
     expect(fetchEtfCompareSummary.mock.calls[0][0]).toEqual({
       basis: "one_month",
       filters: { exclude_inverse: true, exclude_leveraged: true, exclude_synthetic: true, exclude_futures: true },
     });
-    const top = within(card).getByTestId("tc-cand-top");
-    for (const r of s.top.slice(0, 3)) expect(top).toHaveTextContent(`${r.rank}위${r.name}`);
-    expect(within(card).getByTestId("tc-cand-line")).toHaveTextContent("1개월 수익률 상위 · 10/12 → 11/9");
-    fireEvent.click(within(card).getByRole("button", { name: "3개월" }));
-    await waitFor(() => expect(fetchEtfCompareSummary.mock.calls.some((c) => c[0].basis === "three_month")).toBe(true));
-    fireEvent.click(within(card).getByRole("button", { name: "후보리스트 보기 →" }));
-    expect(onNavigate).toHaveBeenCalledWith("workbench");
-    expect(within(card).queryByRole("button", { name: /요즘 잘 오르는 ETF/ })).toBeNull();
+    // 주간 자료는 이 화면에서 읽지 않는다 · V1 주간 카드(표 · 복사 · 넘기기)는 없다.
+    expect(fetchWeeklyReview).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("wr-card")).toBeNull();
+    expect(screen.queryByTestId("wr-flows")).toBeNull();
+    expect(screen.queryByRole("button", { name: "AI용 주간 검토 복사" })).toBeNull();
+    // 한 줄 = 제목 · 이동 버튼(중간 크기 보조 버튼) · 설명
+    expect(within(card).getByRole("heading", { name: "주간 ETF 점검" })).toBeInTheDocument();
+    const open = within(card).getByRole("button", { name: "주간 ETF 점검 열기 →" });
+    expect(open.className).toContain("btn-md");
+    expect(within(card).getAllByRole("button")).toHaveLength(1);
+    expect(card.textContent).toContain("이 화면은 주간 자료를 읽지 않음");
+    expect(card.textContent).not.toContain("후보");
+    fireEvent.click(open);
+    expect(onNavigate).toHaveBeenCalledTimes(1);
+    expect(onNavigate).toHaveBeenCalledWith("weekly_etf_check");
+    // [요약 다시 읽기](머리 버튼 · 펼친 카드에도 같은 이름이 있어 첫 번째)도 주간 자료를 읽지 않는다
+    //   (확인 창이 뜨면 [이 자료로 계속] · 끝 줄까지 기다림).
+    fireEvent.click(screen.getAllByRole("button", { name: "요약 다시 읽기" })[0]);
+    await waitFor(() =>
+      expect(screen.queryByTestId("tc-stale-dialog") ?? screen.queryByTestId("tc-reload-state")).not.toBeNull(),
+    );
+    const dlg = screen.queryByTestId("tc-stale-dialog");
+    if (dlg) fireEvent.click(within(dlg).getByRole("button", { name: "이 자료로 계속" }));
+    await waitFor(() => expect(screen.getByTestId("tc-reload-state")).toBeInTheDocument());
+    expect(fetchWeeklyReview).not.toHaveBeenCalled();
   });
 
   // 2026-09-27 사용자 직접 지시: 「OCI 운영 상태」(oci_status)가 「승인·적용」과 합쳐져
@@ -929,7 +977,8 @@ describe("TodayInvestmentCheckView", () => {
 
   // 2026-11-12 POC6-29(설계자 PLAN 판정 Q17): '후보' 예외를 사용자가 정한 세 이름 — 그룹 「ETF보유 및 후보 선정」 ·
   //   「후보리스트」 · 「보유와 후보 비교」 — 에 정확히 한정한다(설명 hint 에는 쓰지 않음). 「요즘 잘 오르는 ETF」 메뉴는 없앴다.
-  const CANDIDATE_NAMES = ["ETF보유 및 후보 선정", "후보리스트", "보유와 후보 비교"];
+  // 2026-11-17 POC6-32 V2(PLAN §2 S4): 「보유와 후보 비교」는 메뉴에서 빠진 상세 화면 → 메뉴의 '후보'는 두 이름뿐이다.
+  const CANDIDATE_NAMES = ["ETF보유 및 후보 선정", "후보리스트"];
 
   it("AC-7: 좌측 메뉴 전체 텍스트(라벨+힌트)에 금지 용어가 없다 (Sidebar 실제 렌더)", () => {
     render(<LeftSidebar active="today_check" onSelect={() => {}} />);
@@ -938,13 +987,15 @@ describe("TodayInvestmentCheckView", () => {
       if (term === "후보") continue;
       expect(text).not.toContain(term);
     }
-    expect(text.split("후보").length - 1).toBe(3); // 세 이름에 한 번씩
+    expect(text.split("후보").length - 1).toBe(2); // 두 이름에 한 번씩(POC6-32 V2)
     let rest = text;
     for (const n of CANDIDATE_NAMES) {
       expect(rest).toContain(n);
       rest = rest.replace(n, "");
     }
     expect(rest).not.toContain("후보");
+    expect(text).not.toContain("보유와 후보 비교"); // 상세 화면(메뉴에 없음 · POC6-32 V2)
+    expect(text).toContain("주간 ETF 점검");
     // 사용자 언어 라벨이 실제로 있는지도 확인.
     expect(text).not.toContain("요즘 잘 오르는 ETF");
     expect(text).toContain("보유 현황");
@@ -1053,7 +1104,7 @@ describe("POC5-UI-03 「오늘의 투자 점검」 기본 화면 · 아래 묶�
       screen.getByLabelText("OCI 운영 스케줄 확인"),
       screen.getByLabelText("지금 확인할 내용"),
       screen.getByLabelText("보유 점검"),
-      screen.getByLabelText("잘 오르는 ETF"),
+      screen.getByLabelText("주간 ETF 점검"),
       screen.getByTestId("tc-evidence-fold"),
       screen.getAllByLabelText("자료 · 연구 상태")[0],
       screen.getByLabelText("현재 제공 범위와 남은 기능"),

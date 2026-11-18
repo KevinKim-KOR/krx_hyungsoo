@@ -5,6 +5,8 @@
 //   항목마다 두 값 + 차이 줄) → 종목별 근거(후보 · 보유 탭 하나 · 판단 근거 미리보기 · [AI 세션에서 검토]).
 // - 「보유」 행의 [보유와 후보 비교에서 보기 →]가 넘긴 보유를 먼저 고른다.
 // - 후보 판단 근거는 이 화면의 공통 기간 목록(쪽 · 순위 · 날짜 · 가격 시점)으로 요청한다.
+// - POC6-32 V2 [비교 상세](PLAN §3-2 D1 ~ D6): 두 칸 모두 빈 선택에서 시작(기본 짝 없음) · 넘겨받은 쪽만 채움 ·
+//   같은 종목 = '같은 종목입니다' · 상품 확인 표(공식 기준정보 요청도 가짜) · 차이 줄은 '같은 공식 기초지수'일 때만.
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { act, render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { __resetQueryCache } from "@/lib/api/queryCache";
@@ -15,6 +17,7 @@ import {
   setScreenCondition,
 } from "@/lib/etfCompareCondition";
 import type { EtfDetailItem } from "@/lib/api/etfDetail";
+import type { EtfOfficialResponse, OfficialItem, OfficialPair, OfficialPairState } from "@/lib/api/etfOfficial";
 import { detailItem, detailResponse, period, summaryOk } from "@/lib/etfCompareTestFixtures";
 import { pairOk } from "@/lib/pairExposureTestFixtures";
 import type { PairQuery } from "@/lib/api/pairExposure";
@@ -24,6 +27,7 @@ const fetchEtfDetail = vi.fn();
 const fetchEnrichedHoldings = vi.fn();
 const postDecisionDraftPreview = vi.fn();
 const fetchPairExposure = vi.fn();
+const fetchEtfOfficial = vi.fn();
 
 vi.mock("@/lib/api/etfCompare", async (orig) => ({
   ...(await orig<typeof import("@/lib/api/etfCompare")>()),
@@ -32,6 +36,10 @@ vi.mock("@/lib/api/etfCompare", async (orig) => ({
 vi.mock("@/lib/api/etfDetail", async (orig) => ({
   ...(await orig<typeof import("@/lib/api/etfDetail")>()),
   fetchEtfDetail: (...a: unknown[]) => fetchEtfDetail(...a),
+}));
+vi.mock("@/lib/api/etfOfficial", async (orig) => ({
+  ...(await orig<typeof import("@/lib/api/etfOfficial")>()),
+  fetchEtfOfficial: (...a: unknown[]) => fetchEtfOfficial(...a),
 }));
 vi.mock("@/lib/api/pairExposure", async (orig) => ({
   ...(await orig<typeof import("@/lib/api/pairExposure")>()),
@@ -42,11 +50,53 @@ vi.mock("@/lib/api", () => ({
   postDecisionDraftPreview: (...a: unknown[]) => postDecisionDraftPreview(...a),
 }));
 
+import { useState } from "react";
 import HoldingCandidateCompareView from "./HoldingCandidateCompareView";
 import { presetCompareCandidate, presetCompareHolding } from "./workbench/compareSelection";
+import { detailStateText, useEtfDetail } from "./workbench/DetailNumbers";
 
 function item(ticker: string, name: string, weight: number | null) {
   return { ticker, name, quantity: 1, current_price: 100, eval_amount: 1000, market_weight_pct: weight, price_missing: false };
+}
+
+// POC6-32 V2 — GET /market/etf-official 시험 응답(서버 app/etf_official_info 와 같은 모양 · 합성 값).
+function offItem(ticker: string, over: Partial<OfficialItem> = {}): OfficialItem {
+  return {
+    ticker,
+    found: true,
+    kind: "etf",
+    name: `ETF ${ticker}`,
+    index_name: "시험 지수 A",
+    index_provider: "시험 산출기관",
+    market: "국내",
+    asset: "주식",
+    multiple: "일반",
+    replication: "실물(패시브)",
+    fee_pct: "0.150000",
+    tax: "배당소득세(보유기간과세)",
+    listed: "2020/01/02",
+    missing_reason: null,
+    ...over,
+  };
+}
+const PAIR: Record<OfficialPairState, OfficialPair> = {
+  same: { state: "same", label: "같은 공식 기초지수", reason: "두 상품 모두 공식 기초지수 '시험 지수 A'", structure_diffs: [] },
+  same_family: {
+    state: "same_family",
+    label: "다른 지수 · 같은 계열",
+    reason: "공식 기초지수명이 다름('시험 지수 A' ↔ '시험 지수 A 커버드콜') · 같은 기초지수 계열로 확인됨(시험 계열)",
+    structure_diffs: [],
+  },
+  different: { state: "different", label: "다른 지수", reason: "공식 기초지수가 다름('시험 지수 A' ↔ '시험 지수 B')", structure_diffs: [] },
+  unconfirmed: { state: "unconfirmed", label: "기준 미확인", reason: "공식 기준정보에 없음", structure_diffs: [] },
+};
+function officialResp(ts: string[], state: OfficialPairState = "same", over: Partial<EtfOfficialResponse> = {}): EtfOfficialResponse {
+  return {
+    csv: { name: "krx_etf_basic_20260927.csv", asof: "2026-09-27", ok: true, error: null },
+    items: Object.fromEntries(ts.map((t) => [t, offItem(t)])),
+    pair: PAIR[state],
+    ...over,
+  };
 }
 
 const nav = vi.fn();
@@ -54,9 +104,11 @@ beforeEach(() => {
   __resetQueryCache();
   __resetEtfCompareCondition();
   window.sessionStorage.clear();
-  for (const f of [fetchEtfCompareSummary, fetchEtfDetail, fetchEnrichedHoldings, postDecisionDraftPreview, fetchPairExposure, nav])
+  for (const f of [fetchEtfCompareSummary, fetchEtfDetail, fetchEnrichedHoldings, postDecisionDraftPreview, fetchPairExposure, fetchEtfOfficial, nav])
     f.mockReset();
   fetchPairExposure.mockImplementation((q: PairQuery) => Promise.resolve(pairOk(q)));
+  // 기본 = 같은 공식 기초지수(기존 차이 줄 규칙이 그대로 보이는 경우) · 지수 상태별 경우는 아래 조합 표.
+  fetchEtfOfficial.mockImplementation((ts: string[]) => Promise.resolve(officialResp(ts)));
   fetchEtfCompareSummary.mockResolvedValue(summaryOk());
   fetchEtfDetail.mockImplementation((ts: string[]) => Promise.resolve(detailResponse(ts)));
   // 같은 종목 두 계좌(10 + 15 = 25) > 다른 종목 20 — 비중 큰 순 첫째 = B00001.
@@ -79,24 +131,67 @@ function detailWith(hold: Partial<EtfDetailItem>, cand: Partial<EtfDetailItem>) 
   );
 }
 
+const sel = (id: "hcc-holding" | "hcc-candidate") => screen.getByTestId(id) as HTMLSelectElement;
+
+// V2 — 기본 짝이 없으므로 시험이 직접 고른다(보유 먼저 · 후보 다음 → 판단 근거 대상 = 후보 탭).
+// 고른 뒤 waitFor 로 끝낸다 — 고르기가 시작한 조회의 응답이 act 밖에서 화면을 바꾸지 않게(waitFor 가 그 응답까지 흘려보냄).
+async function pick(holding: string | null = "B00001", cand: string | null = `top:${summaryOk().top[0].ticker}`) {
+  if (holding) {
+    await waitFor(() => expect(sel("hcc-holding")).not.toBeDisabled());
+    fireEvent.change(sel("hcc-holding"), { target: { value: holding } });
+    await waitFor(() => expect(sel("hcc-holding").value).toBe(holding));
+  }
+  if (cand) {
+    await waitFor(() => expect(sel("hcc-candidate")).not.toBeDisabled());
+    fireEvent.change(sel("hcc-candidate"), { target: { value: cand } });
+    await waitFor(() => expect(sel("hcc-candidate").value).toBe(cand));
+  }
+}
+
 async function renderLoaded() {
   render(<HoldingCandidateCompareView onNavigate={nav} />);
+  await pick();
   await waitFor(() => expect(screen.getByTestId("hcc-diff-m1")).toBeInTheDocument());
 }
 
 describe("「보유와 후보 비교」", () => {
-  it("이 화면 조건으로 1회 조회 · 보유 = 비중 큰 순(계좌 합산) · 후보 = 상위 1위 · 두 종목 상세를 한 번에 읽어 기본 비교 표", async () => {
+  it("V2 — 두 칸 모두 빈 선택에서 시작(기본 짝 없음 · 상세 · 공식 기준정보 조회 없음) · 둘 다 고르면 두 종목 상세를 한 번에 읽어 기본 비교 표", async () => {
     render(<HoldingCandidateCompareView onNavigate={nav} />);
     expect(screen.getByRole("heading", { level: 1, name: "보유와 후보 비교" })).toBeInTheDocument();
-    await waitFor(() => expect(fetchEtfDetail).toHaveBeenCalled());
+    await waitFor(() => expect(sel("hcc-holding")).not.toBeDisabled());
+    await waitFor(() => expect(sel("hcc-candidate")).not.toBeDisabled());
     expect(fetchEtfCompareSummary).toHaveBeenCalledTimes(1);
     expect(fetchEtfCompareSummary.mock.calls[0][0]).toEqual(getScreenCondition("compare"));
+    // 보유 비중 1위(B00001) · 후보 1위를 고른 것처럼 보이지 않는다.
+    expect(sel("hcc-holding").value).toBe("");
+    expect(sel("hcc-candidate").value).toBe("");
+    expect(screen.getByRole("option", { name: "보유를 고르세요" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "후보를 고르세요" })).toBeInTheDocument();
+    expect(screen.queryByText(/다시 고르세요/)).toBeNull();
+    expect(fetchEtfDetail).not.toHaveBeenCalled();
+    expect(fetchEtfOfficial).not.toHaveBeenCalled();
+    expect(fetchPairExposure).not.toHaveBeenCalled();
+    expect(tid("hcc-name-holding")).toBe("—");
+    expect(tid("hcc-price-holding")).toBe("보유를 고르세요");
+    expect(tid("hcc-price-candidate")).toBe("후보를 고르세요");
+    expect(tid("hcc-diff-pending")).toBe("보유와 후보를 고르면 비교합니다");
+    for (const k of ["m1", "m3", "w5", "w20", "drawdown"]) expect(screen.queryByTestId(`hcc-diff-${k}`)).toBeNull();
+    expect(screen.queryByTestId("hcc-product")).toBeNull();
+    expect(tid("hcc-ev-who")).toBe("후보 · 후보를 고르세요");
+    expect(screen.getByText("고른 후보가 없습니다 — 위에서 후보를 고르세요.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "보유 판단 근거" }));
+    expect(tid("hcc-ev-who")).toBe("보유 · 보유를 고르세요");
+    expect(screen.getByText("고른 보유가 없습니다 — 위에서 보유를 고르세요.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "후보 판단 근거" }));
     const top1 = summaryOk().top[0];
-    expect((screen.getByTestId("hcc-holding") as HTMLSelectElement).value).toBe("B00001");
-    expect((screen.getByTestId("hcc-candidate") as HTMLSelectElement).value).toBe(`top:${top1.ticker}`);
-    expect(fetchEtfDetail).toHaveBeenLastCalledWith(["B00001", top1.ticker]);
+    await pick();
+    expect(sel("hcc-holding").value).toBe("B00001");
+    expect(sel("hcc-candidate").value).toBe(`top:${top1.ticker}`);
     await waitFor(() => expect(tid("hcc-holding-m1")).toContain("-10.25%"));
-    expect(fetchEtfDetail).toHaveBeenCalledTimes(1);
+    expect(fetchEtfDetail).toHaveBeenLastCalledWith(["B00001", top1.ticker]);
+    // 공식 기준정보 = [보유, 후보] 순서로 한 번(서버 pair 의 a = 보유 · b = 후보).
+    expect(fetchEtfOfficial).toHaveBeenCalledTimes(1);
+    expect(fetchEtfOfficial).toHaveBeenLastCalledWith(["B00001", top1.ticker]);
     expect(tid("hcc-name-holding")).toBe("반도체 전공정");
     expect(tid("hcc-name-candidate")).toBe(top1.name);
     expect(tid("hcc-badge-holding")).toBe("보유 · 비중 25.00%");
@@ -120,7 +215,7 @@ describe("「보유와 후보 비교」", () => {
         }),
       ),
     );
-    render(<HoldingCandidateCompareView onNavigate={nav} />);
+    await renderLoaded();
     await waitFor(() => expect(tid("hcc-candidate-m3")).toContain("기간 다름 · 실제 8/20 → 11/9"));
     fireEvent.click(screen.getByRole("button", { name: "보유 판단 근거" }));
     expect(tid("hcc-e-m12")).toContain("값 없음");
@@ -129,23 +224,33 @@ describe("「보유와 후보 비교」", () => {
     expect(tid("hcc-diff-m3")).toBe("3개월: 기간이 달라 비교하지 않음(보유 8/11 → 11/9 · 후보 8/20 → 11/9)");
   });
 
-  it("「보유」에서 넘긴 보유를 먼저 고르고 보유 판단 근거를 연다(한 번만 · 다시 들어오면 기본)", async () => {
+  it("「보유」에서 넘긴 보유만 채우고 후보는 빈칸(V2 기본 짝 없음) · 보유 판단 근거를 연다 · 다시 열면 둘 다 빈칸(한 번만)", async () => {
     presetCompareHolding("H00002");
     const { unmount } = render(<HoldingCandidateCompareView onNavigate={nav} />);
-    await waitFor(() => expect((screen.getByTestId("hcc-holding") as HTMLSelectElement).value).toBe("H00002"));
+    await waitFor(() => expect(sel("hcc-holding").value).toBe("H00002"));
+    await waitFor(() => expect(sel("hcc-candidate")).not.toBeDisabled());
+    expect(sel("hcc-candidate").value).toBe("");
+    expect(tid("hcc-preset-holding")).toBe("「보유」에서 고른 보유로 열렸습니다 · 비교할 후보를 고르세요");
     expect(screen.getByRole("button", { name: "보유 판단 근거" })).toHaveAttribute("aria-pressed", "true");
+    await waitFor(() => expect(fetchEtfDetail).toHaveBeenLastCalledWith(["H00002"]));
+    expect(tid("hcc-diff-pending")).toBe("후보를 고르면 비교합니다");
+    expect(fetchEtfOfficial).not.toHaveBeenCalled();
+    // 후보를 고르면 안내의 '후보를 고르세요'가 내려간다(넘겨받은 보유 안내는 그대로).
+    await pick(null);
+    await waitFor(() => expect(tid("hcc-preset-holding")).toBe("「보유」에서 고른 보유로 열렸습니다"));
     unmount();
     render(<HoldingCandidateCompareView onNavigate={nav} />);
-    await waitFor(() => expect((screen.getByTestId("hcc-holding") as HTMLSelectElement).value).toBe("B00001"));
+    await waitFor(() => expect(sel("hcc-holding")).not.toBeDisabled());
+    expect(sel("hcc-holding").value).toBe("");
+    expect(screen.queryByTestId("hcc-preset-holding")).toBeNull();
     expect(screen.getByRole("button", { name: "후보 판단 근거" })).toHaveAttribute("aria-pressed", "true");
   });
 
   it("후보 판단 근거 = 이 화면의 공통 기간 목록에서 고른 쪽 · 순위 · 날짜 · 가격 시점을 보낸다 · 시장 흐름 6개월", async () => {
     postDecisionDraftPreview.mockResolvedValue({ status: "error", message: "목록이 바뀌었습니다 — 목록을 다시 읽고 다시 고르세요." });
     render(<HoldingCandidateCompareView onNavigate={nav} />);
-    await waitFor(() => expect(fetchEtfDetail).toHaveBeenCalled());
     const b1 = summaryOk().bottom[1];
-    fireEvent.change(screen.getByTestId("hcc-candidate"), { target: { value: `bottom:${b1.ticker}` } });
+    await pick("B00001", `bottom:${b1.ticker}`);
     // POC6-31 C25 — 그 후보 · 고른 보유 · 이 화면 조건의 구성종목 비교를 읽은 뒤에 만들 수 있다.
     await waitFor(() =>
       expect(screen.getByRole("button", { name: "판단 근거 미리보기 생성" })).not.toBeDisabled(),
@@ -189,15 +294,65 @@ describe("「보유와 후보 비교」", () => {
     expect(within(screen.getByTestId("ec-save-compare")).getByRole("button")).toBeInTheDocument();
   });
 
-  it("[다시 불러오기] = 요약 · 보유와 함께 두 종목 상세도 다시 읽는다 · '확인 중'에 멈추지 않음(검토 지적)", async () => {
-    render(<HoldingCandidateCompareView onNavigate={nav} />);
+  it("[다시 불러오기] = 요약 · 보유와 함께 두 종목 상세 · 공식 기준정보도 다시 읽는다 · '확인 중'에 멈추지 않음(검토 지적)", async () => {
+    await renderLoaded();
+    await waitFor(() => expect(tid("hcc-holding-m1")).toContain("-10.25%"));
+    const calls = fetchEtfDetail.mock.calls.length;
+    const offCalls = fetchEtfOfficial.mock.calls.length;
+    fireEvent.click(screen.getByRole("button", { name: "다시 불러오기" }));
+    await waitFor(() => expect(fetchEtfDetail.mock.calls.length).toBeGreaterThan(calls));
+    await waitFor(() => expect(fetchEtfOfficial.mock.calls.length).toBeGreaterThan(offCalls));
+    await waitFor(() => expect(screen.getByTestId("hcc-index-chip")).toHaveTextContent("같은 공식 기초지수"));
+    await waitFor(() => expect(tid("hcc-candidate-m1")).toContain("-10.25%"));
+    expect(screen.queryByText("상세 수치 확인 중...")).toBeNull();
+    expect(screen.getByTestId("hcc-diff-m1")).toBeInTheDocument();
+  });
+
+  // 검토 NAV-1 — MainPanel 은 보낸 화면을 내리지 않고 숨겨 둔다. 그 화면의 열린 행 상세(같은 상세 조회 hook · 다른 키)가
+  // [다시 불러오기] 뒤에도 자기 값을 그대로 가져야 한다(앞부분으로 지우면 그 칸은 스스로 다시 읽지 않아 '확인 중'에 멈춤).
+  it.each<[string, string[], [string | null, string | null]]>([
+    ["다른 종목 행 상세", ["S00001"], ["B00001", `top:${summaryOk().top[0].ticker}`]],
+    // 이 화면 키(보유 하나만 고름)가 앞부분으로 겹치는 보낸 화면 키(여러 종목 [표])도 지우지 않는다(정확히 같은 키만)
+    ["앞부분이 겹치는 여러 종목 키", ["B00001", "S00001"], ["B00001", null]],
+  ])("[다시 불러오기]는 이 화면 키만 지운다 — 숨긴 보낸 화면(%s)은 돌아가도 값 그대로", async (_t, senderTickers, picks) => {
+    function SenderRow() {
+      const d = useEtfDetail(senderTickers);
+      return <p data-testid="sender-detail">{detailStateText(d, senderTickers[0]) ?? "보낸 화면 상세 있음"}</p>;
+    }
+    function Stack() {
+      const [onDetail, setOnDetail] = useState(false);
+      return (
+        <>
+          <div hidden={onDetail}>
+            <SenderRow />
+            <button type="button" onClick={() => setOnDetail(true)}>
+              비교 상세 열기
+            </button>
+          </div>
+          {onDetail ? (
+            <>
+              <button type="button" onClick={() => setOnDetail(false)}>
+                ← 보낸 화면으로
+              </button>
+              <HoldingCandidateCompareView onNavigate={nav} />
+            </>
+          ) : null}
+        </>
+      );
+    }
+    render(<Stack />);
+    await waitFor(() => expect(tid("sender-detail")).toBe("보낸 화면 상세 있음"));
+    fireEvent.click(screen.getByRole("button", { name: "비교 상세 열기" }));
+    await pick(...picks);
     await waitFor(() => expect(tid("hcc-holding-m1")).toContain("-10.25%"));
     const calls = fetchEtfDetail.mock.calls.length;
     fireEvent.click(screen.getByRole("button", { name: "다시 불러오기" }));
     await waitFor(() => expect(fetchEtfDetail.mock.calls.length).toBeGreaterThan(calls));
-    await waitFor(() => expect(tid("hcc-candidate-m1")).toContain("-10.25%"));
-    expect(screen.queryByText("상세 수치 확인 중...")).toBeNull();
-    expect(screen.getByTestId("hcc-diff-m1")).toBeInTheDocument();
+    await waitFor(() => expect(tid("hcc-holding-m1")).toContain("-10.25%"));
+    fireEvent.click(screen.getByRole("button", { name: "← 보낸 화면으로" }));
+    expect(tid("sender-detail")).toBe("보낸 화면 상세 있음");
+    // 보낸 화면 키는 다시 읽지 않았다(지워지지 않음 · 그 화면 자기 조회 1번 그대로)
+    expect(fetchEtfDetail.mock.calls.filter((c) => (c[0] as string[]).join(",") === senderTickers.join(","))).toHaveLength(1);
   });
 
   it("고점 대비(기본 비교) = 기간 다름 · 값 없음은 행 상세와 같은 문장 · 차이 줄은 값 없음 사유(0 으로 채우지 않음)", async () => {
@@ -226,6 +381,7 @@ describe("「보유와 후보 비교」", () => {
     fetchEtfCompareSummary.mockImplementation((c: { basis: "daily" | "one_month" | "three_month" }) => Promise.resolve(summaryOk({ basis: c.basis })));
     setScreenCondition("compare", { ...getScreenCondition("compare"), basis: "three_month" });
     render(<HoldingCandidateCompareView onNavigate={nav} />);
+    await pick("B00001", null);
     await waitFor(() => expect(fetchEtfDetail).toHaveBeenCalled());
     fireEvent.click(screen.getByRole("button", { name: "보유 판단 근거" }));
     fireEvent.click(screen.getByRole("button", { name: "판단 근거 미리보기 생성" }));
@@ -236,17 +392,20 @@ describe("「보유와 후보 비교」", () => {
     expect(q).toMatchObject({ list_source: "common_period", screen: "holding_candidate_compare", basis: "three_month", exclude_inverse: true });
   });
 
-  it("보유를 못 읽으면 그 사실을 적고 후보 카드는 그대로 · 차이 줄은 0 으로 채우지 않음", async () => {
+  it("보유를 못 읽으면 그 사실을 적고 고른 후보 값 칸은 그대로 · 차이 줄은 만들지 않음(0 으로 채우지 않음)", async () => {
     fetchEnrichedHoldings.mockRejectedValue(new Error("down"));
     render(<HoldingCandidateCompareView onNavigate={nav} />);
     expect(await screen.findByText("보유를 불러오지 못했습니다")).toBeInTheDocument();
+    await pick(null);
     await waitFor(() => expect(fetchEtfDetail).toHaveBeenCalledWith([summaryOk().top[0].ticker]));
     await waitFor(() => expect(tid("hcc-candidate-m1")).toContain("-10.25%"));
     expect(tid("hcc-name-holding")).toBe("—");
     expect(tid("hcc-price-holding")).toBe("보유 목록을 읽지 못해 고를 보유가 없습니다");
     for (const k of ["m1", "m3", "w5", "w20", "drawdown"]) expect(tid(`hcc-holding-${k}`)).toBe("—");
-    expect(tid("hcc-diff-m1")).toBe("1개월: 비교하지 않음 — 보유 상세 수치 없음");
-    expect(tid("hcc-diff-drawdown")).toBe("고점 대비: 비교하지 않음 — 보유 상세 수치 없음");
+    expect(tid("hcc-diff-pending")).toBe("보유 목록을 읽지 못해 비교하지 않습니다");
+    for (const k of ["m1", "m3", "w5", "w20", "drawdown"]) expect(screen.queryByTestId(`hcc-diff-${k}`)).toBeNull();
+    expect(screen.queryByTestId("hcc-product")).toBeNull();
+    expect(fetchEtfOfficial).not.toHaveBeenCalled();
   });
 
   it("기본 비교 값 칸 = 1 · 3개월 큰 숫자(색 · 부호 · 실제 날짜) · 같은 기간 KODEX 200 대비 · 최근 5 · 20구간 · 고점 대비 · 가격 기준", async () => {
@@ -469,6 +628,7 @@ describe("「보유와 후보 비교」", () => {
   it("상세를 읽는 중 · 실패면 차이 줄을 만들지 않고 그 사실만 적는다", async () => {
     fetchEtfDetail.mockRejectedValue(new Error("down"));
     render(<HoldingCandidateCompareView onNavigate={nav} />);
+    await pick();
     expect(await screen.findByText("상세 수치를 읽지 못해 차이를 적지 않습니다")).toBeInTheDocument();
     for (const k of ["m1", "m3", "w5", "w20", "drawdown"]) expect(screen.queryByTestId(`hcc-diff-${k}`)).toBeNull();
     expect(tid("hcc-price-holding")).toBe("상세 수치 조회 실패 — [다시 불러오기]로 다시 시도하세요.");
@@ -509,11 +669,12 @@ describe("「보유와 후보 비교」", () => {
   it("종목별 근거 — 상세를 못 읽으면 안내만 · 값 칸은 비움(0 으로 채우지 않음)", async () => {
     fetchEtfDetail.mockRejectedValue(new Error("down"));
     render(<HoldingCandidateCompareView onNavigate={nav} />);
+    await pick();
     await waitFor(() => expect(tid("hcc-ev-who")).toContain("상세 수치 조회 실패"));
     for (const id of ["hcc-e-nav", "hcc-e-m6", "hcc-e-m12", "hcc-e-excess"]) expect(tid(id)).toBe("—");
   });
 
-  it("화면 순서 = 고르기 → 기본 비교(1 · 3개월 · 최근 5 · 20구간 · 고점 대비) → 종목별 근거 → 미리보기 → [AI 세션에서 검토]까지 닿는다", async () => {
+  it("화면 순서 = 고르기 → 상품 확인(지수 상태) → 기본 비교(1 · 3개월 · 최근 5 · 20구간 · 고점 대비) → 종목별 근거 → 미리보기 → [AI 세션에서 검토]까지 닿는다", async () => {
     postDecisionDraftPreview.mockResolvedValue({
       status: "ok",
       target_kind: "candidate",
@@ -524,8 +685,12 @@ describe("「보유와 후보 비교」", () => {
     });
     await renderLoaded();
     const ev = screen.getByTestId("hcc-evidence");
+    await waitFor(() => expect(screen.getByTestId("hcc-index-state")).toBeInTheDocument());
     const order = [
       screen.getByTestId("hcc-candidate"),
+      screen.getByTestId("hcc-product"),
+      screen.getByTestId("hcc-product-table"),
+      screen.getByTestId("hcc-index-state"),
       screen.getByTestId("hcc-basic"),
       screen.getByTestId("hcc-row-m1"),
       screen.getByTestId("hcc-row-m3"),
@@ -579,8 +744,19 @@ describe("「ETF 구성종목」에서 넘어온 후보", () => {
     expect(getScreenCondition("compare")).toBe(before); // 화면 조건 메모리도 그대로(지적 frontend#6)
     await waitFor(() => expect((screen.getByTestId("hcc-candidate") as HTMLSelectElement).value).toBe("top:T00003"));
     expect(tid("hcc-preset-candidate")).toBe(
-      "「ETF 구성종목」에서 고른 후보로 열렸습니다 · 이번 이동 조건 = 3개월 상위(넘긴 목록 조건 · 이 화면을 떠나면 원래 조건) · 목록 날짜 10/12 → 11/9 같음",
+      "「ETF 구성종목」에서 고른 후보로 열렸습니다 · 이번 이동 조건 = 3개월 상위(넘긴 목록 조건 · 이 화면을 다시 열면 원래 조건) · 목록 날짜 10/12 → 11/9 같음",
     );
+    // V2(D1) — 넘겨받은 후보 쪽만 채운다(보유는 빈칸 · 기본 짝 없음).
+    await waitFor(() => expect(sel("hcc-holding")).not.toBeDisabled());
+    expect(sel("hcc-holding").value).toBe("");
+    expect(tid("hcc-diff-pending")).toBe("보유를 고르면 비교합니다");
+  });
+
+  it("POC6-32(검토 F5 · V2 D6) — 보낸 화면 이름이 있으면 그 이름으로(「주간 ETF 점검」에서 고른 후보로 열렸습니다)", async () => {
+    send({ origin: "「주간 ETF 점검」" });
+    render(<HoldingCandidateCompareView onNavigate={nav} />);
+    await waitFor(() => expect(tid("hcc-preset-candidate")).toContain("「주간 ETF 점검」에서 고른 후보로 열렸습니다"));
+    expect(tid("hcc-preset-candidate")).not.toContain("「ETF 구성종목」");
   });
 
   it("넘긴 목록의 시작일 · 끝일이 이 화면 목록과 다르면 이유로 보인다(지적 frontend#5)", async () => {
@@ -601,7 +777,7 @@ describe("「ETF 구성종목」에서 넘어온 후보", () => {
     expect(fetchEtfCompareSummary.mock.calls[0][0]).toEqual(getScreenCondition("compare"));
   });
 
-  it("화면을 떠났다 메뉴로 다시 들어오면 원래 화면 조건(이동 한 번 · 지적 frontend#6)", async () => {
+  it("화면을 떠났다 다시 열면 원래 화면 조건(이동 한 번 · 지적 frontend#6)", async () => {
     send();
     const { unmount } = render(<HoldingCandidateCompareView onNavigate={nav} />);
     await waitFor(() => expect(fetchEtfCompareSummary).toHaveBeenCalled());
@@ -733,21 +909,292 @@ describe("「보유와 후보 비교」 구성종목 비교 · 같은 근거", (
     expect(screen.queryByTestId("hcc-holding-missing")).toBeNull();
   });
 
-  it("고르지 않고 보던 첫 후보 · 첫 보유도 [다시 불러오기] 뒤 다른 종목으로 넘어가지 않는다(검토 지적 frontend#0)", async () => {
-    await renderLoaded();
-    const s1 = summaryOk();
-    const t0 = s1.top[0].ticker;
-    expect((screen.getByTestId("hcc-candidate") as HTMLSelectElement).value).toBe(`top:${t0}`);
-    expect((screen.getByTestId("hcc-holding") as HTMLSelectElement).value).toBe("B00001");
-    // 다시 읽은 목록 · 보유에서 순위 · 비중이 바뀜(보던 첫 후보는 빠지고 다른 보유가 더 큼)
-    fetchEtfCompareSummary.mockResolvedValue({ ...s1, top: s1.top.filter((r) => r.ticker !== t0) });
-    fetchEnrichedHoldings.mockResolvedValue({
-      items: [item("H00002", "분산 ETF", 90), item("B00001", "반도체 전공정", 10)],
-    });
+  it("V2 — 고르지 않았으면 [다시 불러오기] 뒤에도 빈 선택 그대로(첫 종목을 고른 것으로 굳히지 않음 · 기본 짝 없음)", async () => {
+    render(<HoldingCandidateCompareView onNavigate={nav} />);
+    await waitFor(() => expect(sel("hcc-holding")).not.toBeDisabled());
+    await waitFor(() => expect(sel("hcc-candidate")).not.toBeDisabled());
     fireEvent.click(screen.getByRole("button", { name: "다시 불러오기" }));
-    await waitFor(() => expect(screen.getByTestId("hcc-pick-missing")).toBeInTheDocument());
-    expect((screen.getByTestId("hcc-candidate") as HTMLSelectElement).value).toBe("");
-    // 보유는 그대로(목록에 있음 · 비중 순서가 바뀌어도 첫 보유로 바꾸지 않음)
-    expect((screen.getByTestId("hcc-holding") as HTMLSelectElement).value).toBe("B00001");
+    await waitFor(() => expect(fetchEtfCompareSummary).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(fetchEnrichedHoldings).toHaveBeenCalledTimes(2));
+    expect(sel("hcc-holding").value).toBe("");
+    expect(sel("hcc-candidate").value).toBe("");
+    expect(screen.queryByTestId("hcc-pick-missing")).toBeNull();
+    expect(screen.queryByTestId("hcc-holding-missing")).toBeNull();
+    expect(screen.getByRole("option", { name: "보유를 고르세요" })).toBeInTheDocument();
+    expect(fetchEtfDetail).not.toHaveBeenCalled();
+    expect(fetchEtfOfficial).not.toHaveBeenCalled();
+  });
+});
+
+// POC6-32 V2 [비교 상세](PLAN §3-2 D1 ~ D4 · §9 I-6 · I-19 · I-20 · I-21) — 같은 종목 · 상품 확인 표 · 지수 상태 · 차이 줄 조건.
+describe("V2 [비교 상세] 상품 확인 · 지수 상태", () => {
+  const T0 = () => summaryOk().top[0].ticker;
+  const ROWS5 = ["m1", "m3", "w5", "w20", "drawdown"];
+
+  it("같은 종목을 두 칸에 고르면 '같은 종목입니다' · 상품 확인 · 차이 줄 · 공식 기준정보 조회 없음", async () => {
+    render(<HoldingCandidateCompareView onNavigate={nav} />);
+    // B00001 = 보유이면서 하위 1위 후보(고정 자료 held)
+    await pick("B00001", "bottom:B00001");
+    expect(await screen.findByTestId("hcc-same")).toHaveTextContent("같은 종목입니다");
+    expect(tid("hcc-diff-pending")).toBe("같은 종목입니다 — 비교하지 않습니다");
+    for (const k of ROWS5) expect(screen.queryByTestId(`hcc-diff-${k}`)).toBeNull();
+    expect(screen.queryByTestId("hcc-product")).toBeNull();
+    expect(fetchEtfOfficial).not.toHaveBeenCalled();
+    // 다른 후보로 바꾸면 비교로 돌아온다.
+    fireEvent.change(sel("hcc-candidate"), { target: { value: `top:${T0()}` } });
+    await waitFor(() => expect(screen.getByTestId("hcc-diff-m1")).toBeInTheDocument());
+    expect(screen.queryByTestId("hcc-same")).toBeNull();
+    expect(fetchEtfOfficial).toHaveBeenLastCalledWith(["B00001", T0()]);
+  });
+
+  it("상품 확인 표 = 칸마다 공식 기초지수 · 지수산출기관 · 투자 대상 · 상품 구조(총보수 %) · 과세유형 · 공식 기준정보 파일 + 지수 상태 한 줄", async () => {
+    fetchEtfOfficial.mockImplementation((ts: string[]) =>
+      Promise.resolve(
+        officialResp(ts, "same", {
+          items: { [ts[0]]: offItem(ts[0]), [ts[1]]: offItem(ts[1], { market: "해외", fee_pct: "0.450000", replication: "실물(액티브)" }) },
+        }),
+      ),
+    );
+    await renderLoaded();
+    await waitFor(() => expect(screen.getByTestId("hcc-product-table")).toBeInTheDocument());
+    expect(tid("hcc-p-head-holding")).toBe("보유 · 반도체 전공정");
+    expect(tid("hcc-p-head-candidate")).toBe(`후보 · ${summaryOk().top[0].name}`);
+    expect(tid("hcc-p-index-holding")).toBe("시험 지수 A");
+    expect(tid("hcc-p-provider-holding")).toBe("시험 산출기관");
+    expect(tid("hcc-p-target-holding")).toBe("국내 · 주식");
+    expect(tid("hcc-p-target-candidate")).toBe("해외 · 주식");
+    expect(tid("hcc-p-structure-holding")).toBe("일반 · 실물(패시브) · 총보수 0.15%");
+    expect(tid("hcc-p-structure-candidate")).toBe("일반 · 실물(액티브) · 총보수 0.45%");
+    expect(tid("hcc-p-tax-candidate")).toBe("배당소득세(보유기간과세)");
+    expect(tid("hcc-p-file-holding")).toBe("KRX 2026-09-27 파일");
+    expect(tid("hcc-index-chip")).toBe("같은 공식 기초지수");
+    expect(tid("hcc-index-reason")).toBe(
+      "두 상품 모두 공식 기초지수 '시험 지수 A' — 기간 · 가격 상태가 맞는 줄만 아래 기본 비교에 차이(해당 기간 가격 성과)를 적습니다",
+    );
+    expect(screen.getByRole("heading", { level: 2, name: "기본 비교 — 해당 기간 가격 성과" })).toBeInTheDocument();
+    // 구조가 다르다는 서버 칸이 없으면 '구조 다름' 줄도 없다.
+    expect(screen.queryByTestId("hcc-structure")).toBeNull();
+  });
+
+  it("보유 칸의 개별 주식(I-19) = '개별 주식 · 기초지수 해당 없음' · 기준 미확인 · 다섯 줄 모두 차이 요약 안 함 · 값 칸은 그대로", async () => {
+    fetchEtfOfficial.mockImplementation((ts: string[]) =>
+      Promise.resolve(
+        officialResp(ts, "unconfirmed", {
+          items: {
+            [ts[0]]: offItem(ts[0], {
+              found: false,
+              kind: "stock",
+              name: null,
+              index_name: null,
+              index_provider: null,
+              market: null,
+              asset: null,
+              multiple: null,
+              replication: null,
+              fee_pct: null,
+              tax: null,
+              listed: null,
+              missing_reason: "개별 주식 · 기초지수 해당 없음",
+            }),
+            [ts[1]]: offItem(ts[1]),
+          },
+          pair: { ...PAIR.unconfirmed, reason: "개별 주식 · 기초지수 해당 없음" },
+        }),
+      ),
+    );
+    detailWith({}, { m1: period(14.55) });
+    await renderLoaded();
+    await waitFor(() => expect(tid("hcc-index-chip")).toBe("기준 미확인"));
+    expect(tid("hcc-p-index-holding")).toBe("개별 주식 · 기초지수 해당 없음");
+    for (const k of ["provider", "target", "structure", "tax"]) expect(tid(`hcc-p-${k}-holding`)).toBe("—");
+    expect(tid("hcc-p-file-holding")).toBe("해당 없음");
+    expect(tid("hcc-index-reason")).toBe("개별 주식 · 기초지수 해당 없음 — 수익률 차이 요약을 쓰지 않고 각 ETF 값만 보입니다");
+    expect(tid("hcc-diff-m1")).toBe("1개월: 차이 요약 안 함 — 기준 미확인");
+    for (const k of ROWS5) {
+      expect(screen.getByTestId(`hcc-diff-${k}`)).toHaveAttribute("data-kind", "not_compared");
+      expect(tid(`hcc-diff-${k}`)).not.toMatch(/높음|작음|큼|같음|%p/);
+    }
+    expect(tid("hcc-holding-m1")).toContain("-10.25%");
+    expect(tid("hcc-candidate-m1")).toContain("+14.55%");
+  });
+
+  it("공식 기준정보에 없는 후보(I-21) = '공식 기준정보에 없음 — 확인 불가' · 파일 날짜에 없음", async () => {
+    fetchEtfOfficial.mockImplementation((ts: string[]) =>
+      Promise.resolve(
+        officialResp(ts, "unconfirmed", {
+          items: {
+            [ts[0]]: offItem(ts[0]),
+            [ts[1]]: offItem(ts[1], {
+              found: false,
+              index_name: null,
+              index_provider: null,
+              market: null,
+              asset: null,
+              multiple: null,
+              replication: null,
+              fee_pct: null,
+              tax: null,
+              missing_reason: "공식 기준정보에 없음",
+            }),
+          },
+        }),
+      ),
+    );
+    await renderLoaded();
+    await waitFor(() => expect(tid("hcc-p-index-candidate")).toBe("공식 기준정보에 없음 — 확인 불가"));
+    expect(tid("hcc-p-file-candidate")).toBe("KRX 2026-09-27 파일에 없음");
+    expect(tid("hcc-index-chip")).toBe("기준 미확인");
+  });
+
+  it("공식 기준정보 조회 실패 = 기준 미확인(차이 요약 안 함) · [다시 불러오기]로 다시 읽으면 같은 지수 차이", async () => {
+    fetchEtfOfficial.mockRejectedValue(new Error("down"));
+    detailWith({}, { m1: period(14.55) });
+    await renderLoaded();
+    expect(await screen.findByTestId("hcc-product-error")).toHaveTextContent("공식 기준정보를 읽지 못했습니다");
+    expect(tid("hcc-index-chip")).toBe("기준 미확인");
+    expect(tid("hcc-index-reason")).toContain("공식 기준정보를 읽지 못함");
+    expect(tid("hcc-diff-m1")).toBe("1개월: 차이 요약 안 함 — 기준 미확인");
+    fetchEtfOfficial.mockImplementation((ts: string[]) => Promise.resolve(officialResp(ts)));
+    fireEvent.click(screen.getByRole("button", { name: "다시 불러오기" }));
+    await waitFor(() => expect(tid("hcc-index-chip")).toBe("같은 공식 기초지수"));
+    await waitFor(() => expect(tid("hcc-diff-m1")).toBe("1개월(10/12 → 11/9 · 같은 기간): 후보가 24.80%p 높음"));
+    expect(screen.queryByTestId("hcc-product-error")).toBeNull();
+  });
+
+  it("공식 기준정보를 읽는 중이면 차이 줄을 만들지 않고 그 사실만(같은 지수인지 모르는 채로 차이를 적지 않음)", async () => {
+    fetchEtfOfficial.mockImplementation(() => new Promise(() => {}));
+    render(<HoldingCandidateCompareView onNavigate={nav} />);
+    await pick();
+    await waitFor(() => expect(tid("hcc-holding-m1")).toContain("-10.25%"));
+    expect(fetchEtfOfficial).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("hcc-product")).toHaveTextContent("공식 기준정보 확인 중...");
+    expect(tid("hcc-diff-pending")).toBe("공식 기준정보를 읽는 중이라 차이는 아직 적지 않습니다");
+    for (const k of ROWS5) expect(screen.queryByTestId(`hcc-diff-${k}`)).toBeNull();
+    expect(screen.queryByTestId("hcc-index-state")).toBeNull();
+  });
+
+  it("같은 공식 기초지수 · 구조 다름 = 차이를 적고 '구조 다름: …'(확인된 값 · 보유 ↔ 후보)", async () => {
+    fetchEtfOfficial.mockImplementation((ts: string[]) =>
+      Promise.resolve(
+        officialResp(ts, "same", {
+          pair: {
+            ...PAIR.same,
+            reason: "두 상품 모두 공식 기초지수 '시험 지수 A' · 상품 구조 다름",
+            structure_diffs: [
+              { field: "추적배수", a: "일반", b: "2X 레버리지" },
+              { field: "총보수", a: "0.150000", b: "0.450000" },
+            ],
+          },
+        }),
+      ),
+    );
+    detailWith({}, { m1: period(14.55) });
+    await renderLoaded();
+    await waitFor(() => expect(screen.getByTestId("hcc-structure")).toBeInTheDocument());
+    expect(tid("hcc-structure")).toBe("구조 다름: 추적배수 일반 ↔ 2X 레버리지 · 총보수 0.15% ↔ 0.45%(보유 ↔ 후보)");
+    expect(tid("hcc-diff-m1")).toBe("1개월(10/12 → 11/9 · 같은 기간): 후보가 24.80%p 높음");
+    expect(screen.getByTestId("hcc-diff-m1")).toHaveAttribute("data-kind", "compared");
+    // 구조 다름 줄은 기본 비교 안 · 차이 줄보다 앞.
+    expect(
+      screen.getByTestId("hcc-structure").compareDocumentPosition(screen.getByTestId("hcc-row-m1")) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("같은 공식 기초지수 · 한쪽 총보수만 빔 = 차이를 적고 '확인 안 된 구조 항목'(구조 다름 아님 · r1 F2)", async () => {
+    fetchEtfOfficial.mockImplementation((ts: string[]) =>
+      Promise.resolve(
+        officialResp(ts, "same", {
+          pair: {
+            ...PAIR.same,
+            reason: "두 상품 모두 공식 기초지수 '시험 지수 A' · 상품 구조 일부 확인 안 됨",
+            structure_diffs: [],
+            structure_unconfirmed: [{ field: "총보수", side: "a" }],
+          },
+        }),
+      ),
+    );
+    detailWith({}, { m1: period(14.55) });
+    await renderLoaded();
+    await waitFor(() => expect(screen.getByTestId("hcc-structure")).toBeInTheDocument());
+    expect(tid("hcc-structure")).toBe("확인 안 된 구조 항목: 총보수(보유 쪽)");
+    expect(tid("hcc-structure")).not.toContain("구조 다름");
+    expect(tid("hcc-diff-m1")).toBe("1개월(10/12 → 11/9 · 같은 기간): 후보가 24.80%p 높음");
+    expect(screen.getByTestId("hcc-diff-m1")).toHaveAttribute("data-kind", "compared");
+  });
+
+  // 조합 표 — 서버 지수 상태 넷 × 상세 수치 경우 넷(기간 · 가격 상태가 맞음 · 기간 다름 · 가격 상태 다름 · 값 없음).
+  // 같은 공식 기초지수일 때만 기존 규칙 글 · 그 밖은 지수 사유를 먼저(기존 사유는 뒤) · 차이(%p) 없음.
+  const GATE_WORD: Record<Exclude<OfficialPairState, "same">, string> = {
+    different: "지수 다름",
+    same_family: "지수 다름(같은 계열)",
+    unconfirmed: "기준 미확인",
+  };
+  const DETAIL: [string, Partial<EtfDetailItem>, Partial<EtfDetailItem>, string, string, string][] = [
+    ["기간 · 가격 상태 맞음", {}, { m1: period(14.55) }, "compared", "1개월(10/12 → 11/9 · 같은 기간): 후보가 24.80%p 높음", ""],
+    [
+      "기간 다름",
+      {},
+      { m1: period(3, "2026-10-13") },
+      "not_compared",
+      "1개월: 기간이 달라 비교하지 않음(보유 10/12 → 11/9 · 후보 10/13 → 11/9)",
+      " · 기간 다름(보유 10/12 → 11/9 · 후보 10/13 → 11/9)",
+    ],
+    [
+      "가격 상태 다름",
+      { end_price: INTRA },
+      { end_price: AFTER },
+      "not_compared",
+      "1개월(10/12 → 11/9): 가격 상태가 달라 비교하지 않음(보유 장중 · 후보 마감 뒤)",
+      " · 가격 상태 다름(보유 장중 · 후보 마감 뒤)",
+    ],
+    [
+      "값 없음(보유)",
+      { m1: period(null, null, "2026-11-09", "missing", "insufficient_history") },
+      {},
+      "not_compared",
+      "1개월: 비교하지 않음 — 보유 값 없음 · 저장 이력 부족",
+      " · 보유 값 없음 · 저장 이력 부족",
+    ],
+  ];
+  const STATES: OfficialPairState[] = ["same", "same_family", "different", "unconfirmed"];
+  const COMBOS = STATES.flatMap((st) => DETAIL.map((d) => [st, ...d] as const));
+
+  it.each(COMBOS)("지수 상태 %s × %s", async (st, _name, hold, cand, sameKind, sameText, extra) => {
+    fetchEtfOfficial.mockImplementation((ts: string[]) => Promise.resolve(officialResp(ts, st)));
+    detailWith(hold, cand);
+    await renderLoaded();
+    await waitFor(() => expect(tid("hcc-index-chip")).toBe(PAIR[st].label));
+    if (st === "same") {
+      expect(tid("hcc-diff-m1")).toBe(sameText);
+      expect(screen.getByTestId("hcc-diff-m1")).toHaveAttribute("data-kind", sameKind);
+    } else {
+      expect(tid("hcc-diff-m1")).toBe(`1개월: 차이 요약 안 함 — ${GATE_WORD[st]}${extra}`);
+      expect(screen.getByTestId("hcc-diff-m1")).toHaveAttribute("data-kind", "not_compared");
+      expect(tid("hcc-index-reason")).toContain("수익률 차이 요약을 쓰지 않고 각 ETF 값만 보입니다");
+      for (const k of ROWS5) expect(tid(`hcc-diff-${k}`)).not.toMatch(/높음|작음|큼|같음|%p/);
+    }
+    // 값 칸(각 ETF 값 · 실제 기간)은 지수 상태와 상관없이 그대로(비어 있지 않음).
+    for (const r of ["holding", "candidate"]) expect(tid(`hcc-${r}-m1`)).not.toBe("—");
+  });
+
+  it("지수 다름이어도 값 칸은 각 ETF 값 · 실제 기간 · 같은 기간 KODEX 200 대비 그대로", async () => {
+    fetchEtfOfficial.mockImplementation((ts: string[]) => Promise.resolve(officialResp(ts, "different")));
+    detailWith({}, { m1: period(14.55) });
+    await renderLoaded();
+    await waitFor(() => expect(tid("hcc-index-chip")).toBe("다른 지수"));
+    expect(tid("hcc-holding-m1")).toBe("10/12 → 11/9-10.25%KODEX 200 대비 +12.39%p (KODEX 200 -22.64% · 같은 기간)");
+    expect(tid("hcc-candidate-m1")).toContain("+14.55%");
+    expect(tid("hcc-diff-m1")).toBe("1개월: 차이 요약 안 함 — 지수 다름");
+  });
+
+  it("응답에 지수 상태가 없거나 알 수 없는 상태 글이면 기준 미확인(영어 상태 글을 보이지 않음)", async () => {
+    fetchEtfOfficial.mockImplementation((ts: string[]) =>
+      Promise.resolve({ ...officialResp(ts), pair: { ...PAIR.same, state: "mystery" as unknown as OfficialPairState, label: "mystery" } }),
+    );
+    await renderLoaded();
+    await waitFor(() => expect(tid("hcc-index-chip")).toBe("기준 미확인"));
+    expect(tid("hcc-index-reason")).toContain("공식 기준정보 응답에 두 상품의 지수 상태가 없음");
+    expect(tid("hcc-product")).not.toContain("mystery");
+    expect(tid("hcc-diff-m1")).toBe("1개월: 차이 요약 안 함 — 기준 미확인");
   });
 });

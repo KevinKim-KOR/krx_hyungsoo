@@ -14,13 +14,21 @@
 // POC6-31 STEP 4 ~ 5(PLAN C21 ~ C25 · 판정 Q12 · Q13) — 「종목별 근거」의 '구성종목 겹침' 자리를 '구성종목 비교'(후보 주요 주식마다
 // 후보 비중 · 고른 보유 비중 · 내 보유 전체의 확인된 노출 · 확인 범위 먼저)로 바꾸고, 후보 판단 근거 미리보기는 이 비교의 근거 지문과
 // 같을 때만 만든다. 고른 후보 · 보유가 다시 불러온 목록에 없으면 다른 종목으로 바꾸지 않고 다시 고르라고 보인다.
+// POC6-32 V2 [비교 상세](PLAN §3-2 D1 ~ D6 · §9 I-6 · I-18 ~ I-21) — 메뉴에 없는 상세 화면(주간 · 「ETF 구성종목」 · 「보유」 등에서 엶):
+// - 두 칸 모두 빈 선택에서 시작한다(기본 짝 없음 · 보유 비중 1위 × 후보 1위 제거). 다른 화면이 넘긴 쪽만 채운다.
+// - 같은 종목을 두 칸에 고르면 '같은 종목입니다' · 상품 확인 · 차이 줄을 만들지 않는다.
+// - 서로 다른 두 종목을 고르면 먼저 '상품 확인' 표(공식 기준정보 · GET /market/etf-official)와 지수 상태 한 줄.
+//   기본 비교의 차이 줄은 서버 지수 상태가 '같은 공식 기초지수'이고 기존 기간 · 가격 상태 규칙이 맞을 때만(compareDiff).
+// - 종목별 근거 · 구성종목 비교 · 판단 근거 미리보기는 그대로.
 // 읽기 전용 · 새 점수 · 등급 · 매매 신호 없음.
 
 import { useState } from "react";
 import { fetchEnrichedHoldings, type EnrichedHoldingsResult } from "@/lib/api";
 import type { CompareCondition, CompareRow, CompareSummaryOk } from "@/lib/api/etfCompare";
-import { invalidateQueries, useSharedQuery } from "@/lib/api/queryCache";
-import { ETF_DETAIL_KEY_PREFIX, WB_KEY_HOLD } from "@/lib/api/dashboardKeys";
+import { invalidateQueryKey, useSharedQuery } from "@/lib/api/queryCache";
+import { WB_KEY_HOLD } from "@/lib/api/dashboardKeys";
+import { etfDetailKey } from "@/lib/api/etfDetail";
+import { etfOfficialKey } from "@/lib/api/etfOfficial";
 import { BASIS_LABEL, md, pct, weightText } from "@/lib/etfCompare";
 import type { MenuKey } from "./LeftSidebar";
 import DecisionDraftPreviewCard from "./holdings_compare/DecisionDraftPreviewCard";
@@ -32,6 +40,7 @@ import { takePresetCandidate, takePresetHolding, type PresetCandidate } from "./
 import { takeOneTimeCondition } from "@/lib/etfCompareCondition";
 import { aggregateHoldings, linkOf, type AggHolding } from "./workbench/holdingParts";
 import PairExposureBlock, { usePairExposure } from "./workbench/PairExposureBlock";
+import ProductCheckTable, { indexGateOf, useEtfOfficial } from "./workbench/ProductCheckTable";
 
 interface Props {
   onNavigate: (key: MenuKey) => void;
@@ -62,7 +71,8 @@ export default function HoldingCandidateCompareView({ onNavigate }: Props) {
   const holdFound = holdings.find((x) => x.ticker === holdingPick) ?? null;
   // 고른(또는 넘겨받은) 보유가 다시 읽은 보유 목록에 없으면 첫 보유로 바꾸지 않는다(STEP 5 · 고른 종목 유지).
   const holdMissing = !!(hold.phase === "success" && holdingPick && !holdFound);
-  const h = holdFound ?? (holdMissing ? null : (holdings[0] ?? null));
+  // POC6-32 V2(D1) — 기본 보유 없음: 고르거나 넘겨받은 보유만.
+  const h = holdFound;
   const candList: { side: "top" | "bottom"; row: CompareRow }[] = s
     ? [...s.top.map((row) => ({ side: "top" as const, row })), ...s.bottom.map((row) => ({ side: "bottom" as const, row }))]
     : [];
@@ -74,11 +84,17 @@ export default function HoldingCandidateCompareView({ onNavigate }: Props) {
   // 고른 후보가 지금 목록(다시 불러온 목록 · 바꾼 조회 기준의 목록)에 없으면 첫 후보로 조용히 바꾸지 않는다
   // (STEP 5 · 고른 종목 유지 · 조회 기준을 바꿔도 같은 규칙 — 결과서 §4).
   const pickMissing = !!(s && candPick && !found);
-  const c = found ?? (presetMissing || pickMissing ? null : (candList[0] ?? null));
+  // POC6-32 V2(D1) — 기본 후보 없음: 고르거나 넘겨받은 후보만.
+  const c = found;
   const tickers = [h?.ticker, c?.row.ticker].filter((t): t is string => !!t);
   const detail = useEtfDetail(tickers);
   const hd = h ? detailOf(detail, h.ticker) : null;
   const cd = c ? detailOf(detail, c.row.ticker) : null;
+  // 같은 종목을 두 칸에 고르면 비교하지 않는다(D1). 서로 다른 두 종목일 때만 공식 기준정보를 [보유, 후보] 순서로 읽는다.
+  const same = !!(h && c && h.ticker === c.row.ticker);
+  const pairTickers = h && c && !same ? [h.ticker, c.row.ticker] : [];
+  const official = useEtfOfficial(pairTickers);
+  const gate = indexGateOf(official);
   const link = h ? linkOf(s, h.ticker) : undefined;
   const flow = link?.price_flow ?? null;
   const band = flow?.decline_band;
@@ -87,18 +103,34 @@ export default function HoldingCandidateCompareView({ onNavigate }: Props) {
     : hold.phase === "error"
       ? "보유 목록을 읽지 못해 고를 보유가 없습니다"
       : hold.phase === "success"
-        ? "고를 보유가 없습니다"
+        ? holdings.length > 0
+          ? "보유를 고르세요"
+          : "고를 보유가 없습니다"
         : "보유 목록 확인 중...";
-  const candidateNote = c ? detailStateText(detail, c.row.ticker) : s ? "고를 후보가 없습니다" : "후보 목록 확인 중...";
-  // 상세를 아직 못 읽었으면 차이 줄을 만들지 않고 그 사실만(읽는 중 · 실패 · 고른 종목 없음).
+  const candidateNote = c
+    ? detailStateText(detail, c.row.ticker)
+    : s
+      ? candList.length > 0
+        ? "후보를 고르세요"
+        : "고를 후보가 없습니다"
+      : "후보 목록 확인 중...";
+  // 차이 줄을 만들지 않는 경우 그 사실만(앞에서부터): 보유 목록 못 읽음(보유 미선택) → 고르지 않은 쪽 → 같은 종목 →
+  // 상세 실패 · 읽는 중 → 공식 기준정보 읽는 중. 공식 기준정보를 못 읽으면 기다리지 않고 '기준 미확인'으로 차이 요약을 쓰지 않는다.
+  const unpicked = !h && !c ? "보유와 후보를" : !h ? "보유를" : !c ? "후보를" : null;
   const diffPending =
-    tickers.length === 0
-      ? "고른 종목이 없어 차이를 적지 않습니다"
-      : detail.phase === "error"
-        ? "상세 수치를 읽지 못해 차이를 적지 않습니다"
-        : detail.phase !== "success"
-          ? "상세 수치를 읽는 중이라 차이는 아직 적지 않습니다"
-          : null;
+    !h && hold.phase === "error"
+      ? "보유 목록을 읽지 못해 비교하지 않습니다"
+      : unpicked
+        ? `${unpicked} 고르면 비교합니다`
+        : same
+          ? "같은 종목입니다 — 비교하지 않습니다"
+          : detail.phase === "error"
+            ? "상세 수치를 읽지 못해 차이를 적지 않습니다"
+            : detail.phase !== "success"
+              ? "상세 수치를 읽는 중이라 차이는 아직 적지 않습니다"
+              : gate.phase === "pending"
+                ? gate.text
+                : null;
   const holdingDecline = !h
     ? "—"
     : band?.judgeable
@@ -144,15 +176,17 @@ export default function HoldingCandidateCompareView({ onNavigate }: Props) {
           type="button"
           className="wb-btn btn-md"
           onClick={() => {
-            // 지금 보이는 후보 · 보유를 고른 것으로 고정한 뒤 다시 읽는다 — 고르지 않고 보던 첫 종목도 목록이 바뀌면
-            // 다른 종목으로 조용히 넘어가지 않고 '다시 고르세요'(검토 지적 frontend#0 · 서버 안내 '고른 보유 · 후보는 그대로').
-            if (c && !candPick) setCandPick({ side: c.side, ticker: c.row.ticker });
-            if (h && !holdingPick) setHoldingPick(h.ticker);
-            invalidateQueries(ETF_DETAIL_KEY_PREFIX);
+            // 보이는 종목 = 고른(또는 넘겨받은) 종목뿐이다(V2 · 기본 짝 없음) — 다시 읽어도 고른 것은 그대로 두고, 목록에서
+            // 빠졌으면 다른 종목으로 바꾸지 않고 '다시 고르세요'(STEP 5).
+            // 이 화면의 상세 · 공식 기준정보 키만 지운다(검토 NAV-1) — 앞부분(etf-detail?)으로 지우면 숨겨 둔 보낸 화면의
+            // 열린 행 상세 칸까지 지워져 돌아갔을 때 '상세 수치 확인 중...'에 멈춘다.
+            if (tickers.length > 0) invalidateQueryKey(etfDetailKey(tickers));
+            if (pairTickers.length > 0) invalidateQueryKey(etfOfficialKey(pairTickers));
             q.reload();
             hold.reload();
-            // 지운 상세 칸은 같은 키로 스스로 다시 읽지 않는다 — 이 두 종목을 바로 다시 읽는다(검토 지적).
+            // 지운 상세 · 공식 기준정보 칸은 같은 키로 스스로 다시 읽지 않는다 — 고른 종목으로 바로 다시 읽는다(검토 지적).
             if (tickers.length > 0) detail.reload();
+            if (pairTickers.length > 0) official.reload();
             pair.reload();
           }}
         >
@@ -173,6 +207,12 @@ export default function HoldingCandidateCompareView({ onNavigate }: Props) {
 
       {presetCand && presetSelected ? (
         <PresetNotice p={presetCand} missing={presetMissing} onceActive={!!once && cond === once.cond} cond={cond} s={s} />
+      ) : null}
+      {/* POC6-32 V2(D6) — 넘겨받은 보유(보내는 곳 = 「보유」 행 [보유와 후보 비교에서 보기 →] 하나뿐)를 지금 고른 동안만. */}
+      {preset && h && h.ticker === preset ? (
+        <p className="ec-small" data-testid="hcc-preset-holding">
+          「보유」에서 고른 보유로 열렸습니다{c ? "" : " · 비교할 후보를 고르세요"}
+        </p>
       ) : null}
       {holdMissing ? (
         <p className="wb-warn" data-testid="hcc-holding-missing">
@@ -196,9 +236,10 @@ export default function HoldingCandidateCompareView({ onNavigate }: Props) {
             disabled={holdings.length === 0}
             data-testid="hcc-holding"
           >
+            {/* POC6-32 V2(D1) — 처음엔 빈 선택 · 고른 보유가 목록에서 빠졌을 때만 '다시'. */}
             {!h && holdings.length > 0 ? (
               <option value="" disabled>
-                보유를 다시 고르세요
+                {holdMissing ? "보유를 다시 고르세요" : "보유를 고르세요"}
               </option>
             ) : null}
             {holdings.map((x) => (
@@ -221,10 +262,11 @@ export default function HoldingCandidateCompareView({ onNavigate }: Props) {
             disabled={candList.length === 0}
             data-testid="hcc-candidate"
           >
-            {/* POC6-31(C23) — 넘겨받은 후보가 목록에 없으면 비운 채로 둔다(첫 후보가 고른 것처럼 보이지 않게). */}
+            {/* POC6-31(C23) — 넘겨받은 후보가 목록에 없으면 비운 채로 둔다(첫 후보가 고른 것처럼 보이지 않게).
+                POC6-32 V2(D1) — 처음에도 빈 선택 · 고른(넘겨받은) 후보가 목록에 없을 때만 '다시'. */}
             {!c && candList.length > 0 ? (
               <option value="" disabled>
-                후보를 다시 고르세요
+                {pickMissing ? "후보를 다시 고르세요" : "후보를 고르세요"}
               </option>
             ) : null}
             {candList.map((x) => (
@@ -236,7 +278,28 @@ export default function HoldingCandidateCompareView({ onNavigate }: Props) {
         </label>
       </div>
 
-      <CompareBasic hold={hd} cand={cd} holdHead={holdHead} candHead={candHead} pending={diffPending} />
+      {same ? (
+        <p className="wb-warn" data-testid="hcc-same">
+          같은 종목입니다 — 보유와 후보에 서로 다른 상품을 고르면 상품 확인과 차이를 봅니다
+        </p>
+      ) : h && c ? (
+        <ProductCheckTable
+          q={official}
+          gate={gate}
+          hold={{ ticker: h.ticker, name: h.name ?? h.ticker }}
+          cand={{ ticker: c.row.ticker, name: c.row.name ?? c.row.ticker }}
+        />
+      ) : null}
+
+      <CompareBasic
+        hold={hd}
+        cand={cd}
+        holdHead={holdHead}
+        candHead={candHead}
+        pending={diffPending}
+        gate={gate.phase === "ready" ? gate.state : null}
+        structure={gate.phase === "ready" ? gate.structure : null}
+      />
 
       <CompareEvidence
         focus={focus}
@@ -274,7 +337,9 @@ export default function HoldingCandidateCompareView({ onNavigate }: Props) {
             flowPeriod={B_FLOW_PERIOD}
           />
         ) : (
-          <div className="ec-small">고를 종목이 없습니다.</div>
+          <div className="ec-small">
+            {focus === "candidate" ? "고른 후보가 없습니다 — 위에서 후보를 고르세요." : "고른 보유가 없습니다 — 위에서 보유를 고르세요."}
+          </div>
         )}
       </CompareEvidence>
     </section>
@@ -300,7 +365,7 @@ function PresetNotice({
   const condText = !p.condition
     ? `넘겨받은 조건 없음 — 이 화면 조건(${BASIS_LABEL[cond.basis]} ${side})으로 찾았습니다`
     : onceActive
-      ? `이번 이동 조건 = ${BASIS_LABEL[cond.basis]} ${side}(넘긴 목록 조건 · 이 화면을 떠나면 원래 조건)`
+      ? `이번 이동 조건 = ${BASIS_LABEL[cond.basis]} ${side}(넘긴 목록 조건 · 이 화면을 다시 열면 원래 조건)`
       : `이 화면 조건(${BASIS_LABEL[cond.basis]})을 바꿔 넘긴 조건(${BASIS_LABEL[p.condition.basis]})과 다릅니다`;
   const dateDiff = !!(s && p.start && p.end && (p.start !== s.period.start || p.end !== s.end_date));
   const dateText =
@@ -310,11 +375,12 @@ function PresetNotice({
         : `목록 날짜 ${md(p.start)} → ${md(p.end)} 같음`
       : null;
   const name = p.name ?? p.ticker;
+  const from = p.origin ?? "「ETF 구성종목」";
   return (
     <p className={missing || dateDiff || (p.condition && !onceActive) ? "wb-warn" : "ec-small"} data-testid="hcc-preset-candidate">
       {missing
-        ? `「ETF 구성종목」에서 고른 ${name}은(는) 이 조건 목록에 없습니다 — 목록을 다시 읽거나 후보를 다시 고르세요`
-        : `「ETF 구성종목」에서 고른 후보로 열렸습니다`}
+        ? `${from}에서 고른 ${name}은(는) 이 조건 목록에 없습니다 — 목록을 다시 읽거나 후보를 다시 고르세요`
+        : `${from}에서 고른 후보로 열렸습니다`}
       {` · ${condText}`}
       {dateText ? ` · ${dateText}` : ""}
     </p>

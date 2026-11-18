@@ -759,3 +759,16 @@ describe("POC6-31 — 구성종목 비교 기준일(작성 · 다시 열기)", (
     expect(calls.some((c) => c.path.startsWith("/market/constituents"))).toBe(false);
   });
 });
+
+describe("POC6-32(검토 F7 · V2 메뉴 이름) — 「주간 ETF 점검」에서 넘긴 초안", () => {
+  it("저장 탭 머리 안내 = 넘긴 화면 이름 · 출처 표시도 같은 이름", async () => {
+    const { WEEKLY_NONE } = await import("@/lib/weeklyReviewTestFixtures");
+    const { weeklyDraft } = await import("@/lib/weeklyReview");
+    const d = weeklyDraft(WEEKLY_NONE, new Date("2026-11-17T12:05:00Z"));
+    const { container } = render(<AISessionsCreateTab draft={d} onSaved={() => {}} />);
+    expect(container.textContent).toContain("「주간 ETF 점검」에서 넘어온 목록");
+    expect(container.textContent).not.toContain("「후보리스트」 · 「ETF 구성종목」에서 넘어온 목록");
+    expect(container.textContent).not.toContain("「오늘의 투자 점검」 ETF 주간 검토");
+    expect(describeDraftOrigin(d)).toBe("「주간 ETF 점검」 · 목록 30개 · 2026-11-17 21:05");
+  });
+});

@@ -9,20 +9,26 @@
 import { request } from "./core";
 import type { MarketCandidate, SamePeriodKodex200 } from "./market";
 
+// POC6-32 V2(PLAN §4-4 · Q4 (c) 보완) — 'unrecorded'(미기록)는 주간 기록 출처(`today_weekly_review`)에서만 저장된다
+// (서버가 다른 출처의 'unrecorded' 를 422 로 거부 · 주간 출처에서 판단 칸이 빠지면 서버가 'unrecorded' 로 저장).
 export type DecisionUserVerdict =
   | "useful"
   | "needs_constituents"
   | "needs_market_compare"
-  | "hold";
+  | "hold"
+  | "unrecorded";
 
 export const DECISION_VERDICT_LABEL: Record<DecisionUserVerdict, string> = {
   useful: "쓸 만함",
   needs_constituents: "구성 종목 필요",
   needs_market_compare: "시장 비교 필요",
   hold: "보류",
+  unrecorded: "미기록",
 };
 
+// 주간이 아닌 저장 화면의 기본값(지금 그대로 · 주간 저장 화면은 '미기록'에서 시작).
 export const DEFAULT_DECISION_VERDICT: DecisionUserVerdict = "hold";
+export const UNRECORDED_DECISION_VERDICT: DecisionUserVerdict = "unrecorded";
 
 export interface DecisionFilters {
   exclude_inverse: boolean;

@@ -355,20 +355,31 @@ describe("[검증자 r1 F3] 상·하위에 함께 든 같은 ETF 를 공통으�
 });
 
 describe("POC6-31 「섹터요약」에서 넘긴 조건(이동 한 번 · 판정 Q17 · 검토 지적 frontend#6)", () => {
-  it("넘긴 조건으로 조회 · 안내 · 화면을 떠났다 다시 들어오면 원래 화면 조건", async () => {
+  it("넘긴 조건으로 조회 · 안내 · 다른 화면에 갔다가 다시 열면 원래 화면 조건(검토 NAV-2 — 같은 메뉴를 다시 눌러도 그대로라 '메뉴로' 대신)", async () => {
     const { presetOneTimeCondition } = await import("@/lib/etfCompareCondition");
     const cond = { basis: "three_month" as const, filters: { ...getScreenCondition("candidates").filters } };
     presetOneTimeCondition("candidates", cond);
     const first = renderView();
     await waitFor(() => expect(fetchEtfCompareSummary).toHaveBeenCalled());
     expect(fetchEtfCompareSummary.mock.calls[0][0]).toEqual(cond);
-    expect(screen.getByTestId("wb-once-condition").textContent).toContain("「섹터요약」에서 넘긴 조건으로 열었습니다");
+    expect(screen.getByTestId("wb-once-condition").textContent).toBe(
+      "「섹터요약」에서 넘긴 조건으로 열었습니다 — 다른 화면에 갔다가 다시 열면 원래 조건으로 보입니다",
+    );
     first.unmount();
     fetchEtfCompareSummary.mockClear();
     renderView();
     await waitFor(() => expect(fetchEtfCompareSummary).toHaveBeenCalled());
     expect(fetchEtfCompareSummary.mock.calls[0][0]).toEqual(getScreenCondition("candidates"));
     expect(screen.queryByTestId("wb-once-condition")).toBeNull();
+  });
+
+  it("POC6-32(검토 F6) — 보낸 화면 이름이 있으면 그 이름(「오늘의 투자 점검」 ETF 주간 검토 [후보리스트 보기 →])", async () => {
+    const { presetOneTimeCondition } = await import("@/lib/etfCompareCondition");
+    presetOneTimeCondition("candidates", { basis: "one_month", filters: { ...getScreenCondition("candidates").filters } }, "「오늘의 투자 점검」 ETF 주간 검토");
+    renderView();
+    await waitFor(() => expect(fetchEtfCompareSummary).toHaveBeenCalled());
+    expect(screen.getByTestId("wb-once-condition").textContent).toContain("「오늘의 투자 점검」 ETF 주간 검토에서 넘긴 조건으로 열었습니다");
+    expect(screen.getByTestId("wb-once-condition").textContent).not.toContain("「섹터요약」");
   });
 });
 

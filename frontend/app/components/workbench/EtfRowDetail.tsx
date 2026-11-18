@@ -5,14 +5,29 @@
 // POC6-29(PLAN §2-5 · §2-7 · §3-3 · §3-4 · 판정 Q4-1 · Q4-2) — 「섹터요약」 · 「후보리스트」 공통 행 상세:
 //   조회 기간 · 상세 수치(1 · 3 · 6 · 12개월 · 20구간 KODEX 200 차이 · 시장가 · NAV · 괴리율 등 · 펼칠 때 그 종목만 읽음) ·
 //   분류 · 보유 → 판단 근거 미리보기(이 화면의 공통 기간 목록에서 찾음) → [AI 세션에서 검토].
+// POC6-32 V2(PLAN S5 · 판정 Q9 (a) 보완 · Q11 (d)) — 상세로 가는 버튼 두 개(이동할 수 있을 때만):
+//   [비교 상세 →] = 「보유와 후보 비교」 후보 칸에 이 ETF 한쪽만(「ETF 구성종목」 [보유와 후보 비교에서 보기 →]와 같은 넘김 ·
+//   이 화면 조건 · 공통 기간 시작 · 끝일은 이번 이동에만) · [구성종목 보기 →] = 「ETF 구성종목」 한 ETF 모드(이 ETF 하나).
 
 import type { CompareCondition, CompareRow, CompareSummaryOk } from "@/lib/api/etfCompare";
 import type { DecisionDraftScreen } from "@/lib/api/decisionDraftPreview";
+import { presetExposureSingle } from "@/lib/detailNav";
 import { BASIS_LABEL, bothRanks, endPriceText, md } from "@/lib/etfCompare";
+import { presetOneTimeCondition } from "@/lib/etfCompareCondition";
 import type { MenuKey } from "../LeftSidebar";
 import DecisionDraftPreviewCard from "../holdings_compare/DecisionDraftPreviewCard";
+import { presetCompareCandidate } from "./compareSelection";
 import { DetailLines, detailOf, detailStateText, useEtfDetail } from "./DetailNumbers";
 import PriceChart from "./PriceChart";
+
+// 보낸 화면 이름(받는 상세 화면의 안내 · 이 행 상세를 쓰는 화면).
+export const ROW_DETAIL_ORIGIN: Record<DecisionDraftScreen, string> = {
+  candidate_list: "「후보리스트」",
+  sector_summary: "「섹터요약」",
+  holding_candidate_compare: "「보유와 후보 비교」",
+  holdings: "「보유」",
+  today_weekly_review: "「주간 ETF 점검」",
+};
 
 function won(v: number | null | undefined): string {
   return v == null ? "—" : `${v.toLocaleString("ko-KR")}원`;
@@ -65,6 +80,30 @@ export default function EtfRowDetail({
     row.end_price.state === "intraday" ? `${md(row.end_price.date)} = ${endPriceText(row.end_price)}` : null;
   const kind =
     cls.kind === "sector" ? `업종 ${cls.sector}` : cls.kind === "index" ? "기초지수별 묶음" : "미분류";
+  const origin = ROW_DETAIL_ORIGIN[screen];
+  const condition: CompareCondition = { basis: s.basis, filters: { ...s.filters } };
+  const goCompare = () => {
+    presetCompareCandidate({
+      ticker: row.ticker,
+      name: row.name,
+      side,
+      condition: { basis: condition.basis, filters: { ...condition.filters } },
+      start: s.period.start,
+      end: s.end_date,
+      origin,
+    });
+    presetOneTimeCondition("compare", condition);
+    onNavigate?.("holding_candidate_compare");
+  };
+  const goExposure = () => {
+    presetExposureSingle({
+      ticker: row.ticker,
+      name: row.name ?? row.ticker,
+      from: origin,
+      condition: { basis: s.basis, side, start: s.period.start, end: s.end_date, filters: { ...s.filters } },
+    });
+    onNavigate?.("etf_exposure");
+  };
   return (
     <div className="ec-detail" data-testid="ec-etf-detail">
       <PriceChart ticker={row.ticker} valueLabel="저장 가격" compact lastNote={intradayNote} />
@@ -94,6 +133,19 @@ export default function EtfRowDetail({
         <dt>보유</dt>
         <dd>{row.held ? "보유 중" : "보유하지 않음"}</dd>
       </dl>
+      {onNavigate ? (
+        <div className="ec-btn-row erd-go" data-testid="ec-detail-go">
+          <button type="button" className="wb-btn btn-md" onClick={goCompare}>
+            비교 상세 →
+          </button>
+          <button type="button" className="wb-btn btn-md" onClick={goExposure}>
+            구성종목 보기 →
+          </button>
+          <span className="ec-small">
+            [비교 상세] = 보유를 바꿀 상품을 볼 때(이 ETF 를 후보 칸에) · [구성종목 보기] = 이 ETF 하나의 구성
+          </span>
+        </div>
+      ) : null}
       <DecisionDraftPreviewCard
         targetKind="candidate"
         ticker={row.ticker}

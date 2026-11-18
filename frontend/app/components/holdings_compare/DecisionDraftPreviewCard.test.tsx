@@ -237,4 +237,23 @@ describe("POC6-31 — 같은 근거로만 미리보기", () => {
     await generate();
     expect(pending[0].body).not.toHaveProperty("pair_fingerprint");
   });
+
+  it("POC6-32 V2 — hideReviewTransfer 면 화면 필터 · 이동을 넘겨도 자체 [AI 세션에서 검토]를 숨김 · 없으면(기본) 지금처럼 보임", async () => {
+    const filters = { exclude_inverse: true, exclude_leveraged: true, exclude_synthetic: true, exclude_futures: true };
+    const shown = render(
+      <DecisionDraftPreviewCard targetKind="candidate" ticker="333333" screenFilters={filters} rank={2} onNavigate={vi.fn()} />,
+    );
+    await generate();
+    await answer(0, okBody());
+    expect(screen.getByRole("button", { name: "AI 세션에서 검토" })).toBeInTheDocument();
+    shown.unmount();
+    pending = [];
+    render(
+      <DecisionDraftPreviewCard targetKind="candidate" ticker="333333" screenFilters={filters} rank={2} onNavigate={vi.fn()} hideReviewTransfer />,
+    );
+    await generate();
+    await answer(0, okBody());
+    expect(screen.getByRole("button", { name: "복사" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "AI 세션에서 검토" })).toBeNull();
+  });
 });

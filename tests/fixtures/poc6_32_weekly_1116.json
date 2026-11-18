@@ -1,0 +1,2274 @@
+{
+ "_note": "POC6-32 시험 고정 자료 — 2026-11-16 저장 시장 자료(공개 · ETF 목록 · 시장 흐름)만. 보유 표시 held 는 모두 false · 보유 · 금액 · 개인 자료 없음. 생성: 격리 사본 상태 사본에서 build_summary(1개월 · 제외 4종) · build_market_flow_context 읽기만(2026-11-17). V2 덧붙임: summary.top[*].end_price = 이 자료의 price_state(마감 뒤 저장 963 · 장중 0 · 확인 필요 0 = 모집단 전부)에서 끌어낸 상태(행별 저장 시각은 남지 않아 null) · official = 공개 KRX ETF 기본정보 CSV krx_etf_basic_20260927.csv의 상위 30 종목 행(글자 그대로) · summary.sources.official_csv = 같은 파일 메타(2026-11-17 읽기만).",
+ "flow": {
+  "D": "2026-11-13",
+  "interpretation": {
+   "6M": {
+    "notes": [],
+    "rows": [
+     [
+      "코스피 하락 · 외국인 순매도 · 원/달러 하락",
+      "주식 수급 압박과 원화 강세가 동시에 관측됨",
+      "원화 강세가 외국인 주식자금 유입을 뜻하지 않음 · 달러 공급 · 다른 자금 이동 가능"
+     ],
+     [
+      "유가 하락 · VIX 상승(글로벌 위험 회피) — VIX 17.87 → 19.30 (+8.00% · 5/13 → 11/13 미국 날짜)",
+      "수요 둔화 가능성 검토",
+      "공급 확대 · 공급 차질 완화도 유가를 낮출 수 있음 · 원인 확정 불가"
+     ]
+    ]
+   }
+  },
+  "periods": {
+   "6M": {
+    "boundary": "2026-05-13",
+    "end": "2026-11-13",
+    "label": "6개월",
+    "start": "2026-05-14",
+    "vix": {
+     "diff": 1.4299983978271484,
+     "from": 17.8700008392334,
+     "from_date": "2026-05-13",
+     "pct": 8.002229046836984,
+     "to": 19.299999237060547,
+     "to_date": "2026-11-13"
+    }
+   }
+  },
+  "status": [
+   {
+    "E": "2026-11-13",
+    "collected_at": null,
+    "key": "kospi",
+    "label": "코스피"
+   },
+   {
+    "E": "2026-11-13",
+    "collected_at": null,
+    "key": "flows",
+    "label": "투자자별 순매수"
+   },
+   {
+    "E": "2026-11-13",
+    "collected_at": null,
+    "key": "usdkrw",
+    "label": "원/달러"
+   },
+   {
+    "E": "2026-11-13",
+    "collected_at": null,
+    "key": "wti",
+    "label": "WTI"
+   }
+  ],
+  "vix_basis": {
+   "E": "2026-11-13",
+   "collected_at": null,
+   "label": "VIX(미국 날짜)"
+  },
+  "windows": {
+   "foreign20": {
+    "previous": {
+     "avg": -1593170000000.0,
+     "from": "2026-09-15",
+     "sum": -31863400000000.0,
+     "to": "2026-10-16"
+    },
+    "recent": {
+     "avg": -547875000000.0,
+     "from": "2026-10-19",
+     "sum": -10957500000000.0,
+     "to": "2026-11-13"
+    }
+   }
+  }
+ },
+ "official": {
+  "meta": {
+   "csv_asof": "2026-09-27",
+   "name": "krx_etf_basic_20260927.csv",
+   "rows": 1175,
+   "status": "ok"
+  },
+  "rows": {
+   "0000H0": {
+    "과세유형": "배당소득세(보유기간과세)",
+    "기초시장분류": "해외",
+    "기초자산분류": "주식",
+    "기초지수명": "Nifty Midcap 100 Index(PR)",
+    "단축코드": "0000H0",
+    "복제방법": "실물(패시브)",
+    "상장일": "2025/04/08",
+    "지수산출기관": "NSE(NSE Indices Limited)",
+    "총보수": "0.450000",
+    "추적배수": "일반",
+    "한글종목약명": "KODEX 인도Nifty미드캡100"
+   },
+   "0002C0": {
+    "과세유형": "배당소득세(보유기간과세)",
+    "기초시장분류": "해외",
+    "기초자산분류": "주식",
+    "기초지수명": "MSCI India IMI Index(PR)",
+    "단축코드": "0002C0",
+    "복제방법": "실물(액티브)",
+    "상장일": "2025/02/25",
+    "지수산출기관": "MSCI",
+    "총보수": "0.990000",
+    "추적배수": "일반",
+    "한글종목약명": "에셋플러스 인도일등기업포커스20액티브"
+   },
+   "0004G0": {
+    "과세유형": "배당소득세(보유기간과세)",
+    "기초시장분류": "해외",
+    "기초자산분류": "주식",
+    "기초지수명": "Solactive U.S. Dividend TOP 30 Index PR",
+    "단축코드": "0004G0",
+    "복제방법": "실물(패시브)",
+    "상장일": "2025/01/21",
+    "지수산출기관": "Solactive",
+    "총보수": "0.100000",
+    "추적배수": "일반",
+    "한글종목약명": "1Q 미국배당TOP30"
+   },
+   "0048K0": {
+    "과세유형": "배당소득세(보유기간과세)",
+    "기초시장분류": "해외",
+    "기초자산분류": "주식",
+    "기초지수명": "Solactive China Humanoid Robotics Index (CNH) (Price Return)",
+    "단축코드": "0048K0",
+    "복제방법": "실물(패시브)",
+    "상장일": "2025/05/13",
+    "지수산출기관": "Solactive",
+    "총보수": "0.450000",
+    "추적배수": "일반",
+    "한글종목약명": "KODEX 차이나휴머노이드로봇"
+   },
+   "0053L0": {
+    "과세유형": "배당소득세(보유기간과세)",
+    "기초시장분류": "해외",
+    "기초자산분류": "주식",
+    "기초지수명": "Mirae Asset China Humanoid Robot 지수(PR)",
+    "단축코드": "0053L0",
+    "복제방법": "실물(패시브)",
+    "상장일": "2025/05/27",
+    "지수산출기관": "Mirae Asset Global Indices",
+    "총보수": "0.490000",
+    "추적배수": "일반",
+    "한글종목약명": "TIGER 차이나휴머노이드로봇"
+   },
+   "373790": {
+    "과세유형": "배당소득세(보유기간과세)",
+    "기초시장분류": "해외",
+    "기초자산분류": "주식",
+    "기초지수명": "Nasdaq US Low Volatility Dividend Achievers Index",
+    "단축코드": "373790",
+    "복제방법": "실물(패시브)",
+    "상장일": "2020/12/24",
+    "지수산출기관": "NASDAQ",
+    "총보수": "0.400000",
+    "추적배수": "일반",
+    "한글종목약명": "KIWOOM 미국방어배당성장나스닥"
+   },
+   "379790": {
+    "과세유형": "배당소득세(보유기간과세)",
+    "기초시장분류": "해외",
+    "기초자산분류": "주식",
+    "기초지수명": "EURO STOXX 50 Index",
+    "단축코드": "379790",
+    "복제방법": "실물(패시브)",
+    "상장일": "2021/04/09",
+    "지수산출기관": "STOXX",
+    "총보수": "0.021000",
+    "추적배수": "일반",
+    "한글종목약명": "RISE 유로스탁스50(H)"
+   },
+   "428560": {
+    "과세유형": "배당소득세(보유기간과세)",
+    "기초시장분류": "해외",
+    "기초자산분류": "주식",
+    "기초지수명": "Indxx US ETF Industry Top10 Index(Price Return)",
+    "단축코드": "428560",
+    "복제방법": "실물(패시브)",
+    "상장일": "2022/05/17",
+    "지수산출기관": "Indxx",
+    "총보수": "0.500000",
+    "추적배수": "일반",
+    "한글종목약명": "KODEX 미국ETF산업Top10 Indxx"
+   },
+   "429000": {
+    "과세유형": "배당소득세(보유기간과세)",
+    "기초시장분류": "해외",
+    "기초자산분류": "주식",
+    "기초지수명": "S&P 500 Dividend Aristocrats 지수 (Price Return)",
+    "단축코드": "429000",
+    "복제방법": "실물(패시브)",
+    "상장일": "2022/05/17",
+    "지수산출기관": "S&P",
+    "총보수": "0.250000",
+    "추적배수": "일반",
+    "한글종목약명": "TIGER 미국S&P500배당귀족"
+   },
+   "451530": {
+    "과세유형": "배당소득세(보유기간과세)",
+    "기초시장분류": "국내",
+    "기초자산분류": "채권",
+    "기초지수명": "KIS STRIP 30Y Index(총수익지수)",
+    "단축코드": "451530",
+    "복제방법": "실물(액티브)",
+    "상장일": "2023/02/01",
+    "지수산출기관": "KIS자산평가",
+    "총보수": "0.150000",
+    "추적배수": "일반",
+    "한글종목약명": "TIGER 국고채30년스트립액티브"
+   },
+   "453640": {
+    "과세유형": "배당소득세(보유기간과세)",
+    "기초시장분류": "해외",
+    "기초자산분류": "주식",
+    "기초지수명": "S&P Health Care Select Sector Index(Price Return)",
+    "단축코드": "453640",
+    "복제방법": "실물(패시브)",
+    "상장일": "2023/03/21",
+    "지수산출기관": "S&P",
+    "총보수": "0.250000",
+    "추적배수": "일반",
+    "한글종목약명": "KODEX 미국S&P500헬스케어"
+   },
+   "453660": {
+    "과세유형": "배당소득세(보유기간과세)",
+    "기초시장분류": "해외",
+    "기초자산분류": "주식",
+    "기초지수명": "S&P Consumer Discretionary Select Sector Index(Price Return)",
+    "단축코드": "453660",
+    "복제방법": "실물(패시브)",
+    "상장일": "2023/03/21",
+    "지수산출기관": "S&P",
+    "총보수": "0.250000",
+    "추적배수": "일반",
+    "한글종목약명": "KODEX 미국S&P500경기소비재"
+   },
+   "453810": {
+    "과세유형": "배당소득세(보유기간과세)",
+    "기초시장분류": "해외",
+    "기초자산분류": "주식",
+    "기초지수명": "Nifty 50 Index",
+    "단축코드": "453810",
+    "복제방법": "실물(패시브)",
+    "상장일": "2023/04/21",
+    "지수산출기관": "NSE(NSE Indices Limited)",
+    "총보수": "0.190000",
+    "추적배수": "일반",
+    "한글종목약명": "KODEX 인도Nifty50"
+   },
+   "453870": {
+    "과세유형": "배당소득세(보유기간과세)",
+    "기초시장분류": "해외",
+    "기초자산분류": "주식",
+    "기초지수명": "Nifty 50 Index",
+    "단축코드": "453870",
+    "복제방법": "실물(패시브)",
+    "상장일": "2023/04/14",
+    "지수산출기관": "NSE(NSE Indices Limited)",
+    "총보수": "0.190000",
+    "추적배수": "일반",
+    "한글종목약명": "TIGER 인도니프티50"
+   },
+   "458730": {
+    "과세유형": "배당소득세(보유기간과세)",
+    "기초시장분류": "해외",
+    "기초자산분류": "주식",
+    "기초지수명": "Dow Jones U.S. Dividend 100 Price Return Index",
+    "단축코드": "458730",
+    "복제방법": "실물(패시브)",
+    "상장일": "2023/06/20",
+    "지수산출기관": "S&P",
+    "총보수": "0.010000",
+    "추적배수": "일반",
+    "한글종목약명": "TIGER 미국배당다우존스"
+   },
+   "458750": {
+    "과세유형": "배당소득세(보유기간과세)",
+    "기초시장분류": "해외",
+    "기초자산분류": "주식",
+    "기초지수명": "DowJones U.S. Dividend 100 3% Premium Covered Call 지수 (TR)",
+    "단축코드": "458750",
+    "복제방법": "실물(패시브)",
+    "상장일": "2023/06/20",
+    "지수산출기관": "S&P",
+    "총보수": "0.390000",
+    "추적배수": "일반",
+    "한글종목약명": "TIGER 미국배당다우존스타겟커버드콜1호"
+   },
+   "458760": {
+    "과세유형": "배당소득세(보유기간과세)",
+    "기초시장분류": "해외",
+    "기초자산분류": "주식",
+    "기초지수명": "DowJones U.S. Dividend 100 7% Premium Covered Call 지수 (TR)",
+    "단축코드": "458760",
+    "복제방법": "실물(패시브)",
+    "상장일": "2023/06/20",
+    "지수산출기관": "S&P",
+    "총보수": "0.390000",
+    "추적배수": "일반",
+    "한글종목약명": "TIGER 미국배당다우존스타겟커버드콜2호"
+   },
+   "460660": {
+    "과세유형": "배당소득세(보유기간과세)",
+    "기초시장분류": "해외",
+    "기초자산분류": "주식",
+    "기초지수명": "S&P Dividend Monarchs Index(Price Return)",
+    "단축코드": "460660",
+    "복제방법": "실물(패시브)",
+    "상장일": "2023/06/27",
+    "지수산출기관": "S&P",
+    "총보수": "0.010000",
+    "추적배수": "일반",
+    "한글종목약명": "RISE 미국S&P배당킹"
+   },
+   "476070": {
+    "과세유형": "배당소득세(보유기간과세)",
+    "기초시장분류": "해외",
+    "기초자산분류": "주식",
+    "기초지수명": "iSelect 글로벌 비만치료제TOP2 Plus 지수(PR)",
+    "단축코드": "476070",
+    "복제방법": "실물(패시브)",
+    "상장일": "2024/02/14",
+    "지수산출기관": "NH투자증권",
+    "총보수": "0.450000",
+    "추적배수": "일반",
+    "한글종목약명": "KODEX 글로벌비만치료제TOP2 Plus"
+   },
+   "476310": {
+    "과세유형": "배당소득세(보유기간과세)",
+    "기초시장분류": "해외",
+    "기초자산분류": "주식",
+    "기초지수명": "KEDI 글로벌 비만 산업 Top2+ 지수(Price Return)",
+    "단축코드": "476310",
+    "복제방법": "실물(패시브)",
+    "상장일": "2024/02/27",
+    "지수산출기관": "한국경제신문",
+    "총보수": "0.350000",
+    "추적배수": "일반",
+    "한글종목약명": "RISE 글로벌비만산업TOP2+"
+   },
+   "476690": {
+    "과세유형": "배당소득세(보유기간과세)",
+    "기초시장분류": "해외",
+    "기초자산분류": "주식",
+    "기초지수명": "Indxx Global Obesity Treatment Top 2 Plus 지수 (시장가격)",
+    "단축코드": "476690",
+    "복제방법": "실물(패시브)",
+    "상장일": "2024/02/29",
+    "지수산출기관": "Indxx",
+    "총보수": "0.450000",
+    "추적배수": "일반",
+    "한글종목약명": "TIGER 글로벌비만치료제TOP2Plus"
+   },
+   "477730": {
+    "과세유형": "배당소득세(보유기간과세)",
+    "기초시장분류": "해외",
+    "기초자산분류": "주식",
+    "기초지수명": "Nifty India Corporate Group Index - Tata Group 25% Cap(PR)",
+    "단축코드": "477730",
+    "복제방법": "실물(패시브)",
+    "상장일": "2024/05/08",
+    "지수산출기관": "NSE(NSE Indices Limited)",
+    "총보수": "0.450000",
+    "추적배수": "일반",
+    "한글종목약명": "KODEX 인도타타그룹"
+   },
+   "479730": {
+    "과세유형": "배당소득세(보유기간과세)",
+    "기초시장분류": "해외",
+    "기초자산분류": "주식",
+    "기초지수명": "Mirae Asset India Billion Consumer 지수(PR)",
+    "단축코드": "479730",
+    "복제방법": "실물(패시브)",
+    "상장일": "2024/05/14",
+    "지수산출기관": "Mirae Asset Global Indices",
+    "총보수": "0.490000",
+    "추적배수": "일반",
+    "한글종목약명": "TIGER 인도빌리언컨슈머"
+   },
+   "483030": {
+    "과세유형": "배당소득세(보유기간과세)",
+    "기초시장분류": "해외",
+    "기초자산분류": "주식",
+    "기초지수명": "Solactive Blockbuster Biotech Drugs Index(PR)",
+    "단축코드": "483030",
+    "복제방법": "실물(패시브)",
+    "상장일": "2024/05/28",
+    "지수산출기관": "Solactive",
+    "총보수": "0.490000",
+    "추적배수": "일반",
+    "한글종목약명": "KIWOOM 미국블록버스터바이오테크의약품+"
+   },
+   "483290": {
+    "과세유형": "배당소득세(보유기간과세)",
+    "기초시장분류": "해외",
+    "기초자산분류": "주식",
+    "기초지수명": "Dow Jones U.S. Dividend 100 10% Premium Covered Call Index(Total Return)",
+    "단축코드": "483290",
+    "복제방법": "실물(패시브)",
+    "상장일": "2024/05/28",
+    "지수산출기관": "S&P",
+    "총보수": "0.390000",
+    "추적배수": "일반",
+    "한글종목약명": "KODEX 미국배당다우존스타겟커버드콜"
+   },
+   "487910": {
+    "과세유형": "배당소득세(보유기간과세)",
+    "기초시장분류": "해외",
+    "기초자산분류": "주식",
+    "기초지수명": "Indxx India Super Consumption Index (Price Return)",
+    "단축코드": "487910",
+    "복제방법": "실물(액티브)",
+    "상장일": "2024/09/10",
+    "지수산출기관": "Indxx",
+    "총보수": "0.450000",
+    "추적배수": "일반",
+    "한글종목약명": "ACE 인도컨슈머파워액티브"
+   },
+   "487920": {
+    "과세유형": "배당소득세(보유기간과세)",
+    "기초시장분류": "해외",
+    "기초자산분류": "주식",
+    "기초지수명": "Indxx India Big 5 Conglomerates Index (Price Return)",
+    "단축코드": "487920",
+    "복제방법": "실물(액티브)",
+    "상장일": "2024/09/10",
+    "지수산출기관": "Indxx",
+    "총보수": "0.450000",
+    "추적배수": "일반",
+    "한글종목약명": "ACE 인도시장대표BIG5그룹액티브"
+   },
+   "490330": {
+    "과세유형": "배당소득세(보유기간과세)",
+    "기초시장분류": "해외",
+    "기초자산분류": "주식",
+    "기초지수명": "Solactive 미국뇌질환치료제 PR 지수",
+    "단축코드": "490330",
+    "복제방법": "실물(액티브)",
+    "상장일": "2024/09/03",
+    "지수산출기관": "Solactive",
+    "총보수": "0.500000",
+    "추적배수": "일반",
+    "한글종목약명": "KoAct 미국치매&뇌질환치료제액티브"
+   },
+   "497510": {
+    "과세유형": "배당소득세(보유기간과세)",
+    "기초시장분류": "해외",
+    "기초자산분류": "주식",
+    "기초지수명": "Solactive Global Big Pharma Index (Price Return)",
+    "단축코드": "497510",
+    "복제방법": "실물(패시브)",
+    "상장일": "2024/11/19",
+    "지수산출기관": "Solactive",
+    "총보수": "0.300000",
+    "추적배수": "일반",
+    "한글종목약명": "ACE 글로벌빅파마"
+   },
+   "497520": {
+    "과세유형": "배당소득세(보유기간과세)",
+    "기초시장분류": "해외",
+    "기초자산분류": "주식",
+    "기초지수명": "Solactive Eli Lilly Value Chain Index(PR)",
+    "단축코드": "497520",
+    "복제방법": "실물(패시브)",
+    "상장일": "2024/11/19",
+    "지수산출기관": "Solactive",
+    "총보수": "0.450000",
+    "추적배수": "일반",
+    "한글종목약명": "ACE 일라이릴리밸류체인"
+   }
+  }
+ },
+ "summary": {
+  "basis": "one_month",
+  "criteria_periods": {
+   "drawdown": {
+    "end": "2026-11-16",
+    "start": "2026-10-20"
+   },
+   "one_month": {
+    "end": "2026-11-16",
+    "start": "2026-10-19"
+   },
+   "three_month": {
+    "end": "2026-11-16",
+    "start": "2026-08-18"
+   }
+  },
+  "end_date": "2026-11-16",
+  "filters": {
+   "exclude_futures": true,
+   "exclude_inverse": true,
+   "exclude_leveraged": true,
+   "exclude_synthetic": true
+  },
+  "kodex200": {
+   "basis_return_pct": -11.0265,
+   "one_month_return_pct": -11.0265,
+   "three_month_return_pct": -26.2888
+  },
+  "message": null,
+  "n": 30,
+  "period": {
+   "end": "2026-11-16",
+   "start": "2026-10-19"
+  },
+  "price_state": {
+   "after_close_count": 963,
+   "after_close_fetched_max": "2026-11-16T22:01:22+09:00",
+   "after_close_fetched_min": "2026-11-16T21:58:48+09:00",
+   "end_date": "2026-11-16",
+   "intraday_count": 0,
+   "intraday_fetched_max": null,
+   "intraday_fetched_min": null,
+   "provisional": false,
+   "unknown_count": 0
+  },
+  "regime": {
+   "asof": "2026-11-16",
+   "code": "bear",
+   "label": "하락장",
+   "price": {
+    "date": "2026-11-16",
+    "fetched_at_kst": "2026-11-16T21:59:20+09:00",
+    "state": "after_close"
+   },
+   "reasons": [
+    "KODEX200 20거래일 수익률 -11.03%",
+    "KODEX200 60거래일 수익률 -26.29%",
+    "현재가가 20일 이동평균 아래",
+    "현재가가 60일 이동평균 아래"
+   ],
+   "same_end_date": true,
+   "score": -4,
+   "status": "partial",
+   "streak_at_least": false,
+   "streak_days": 27
+  },
+  "sources": {
+   "official_csv": {
+    "csv_asof": "2026-09-27",
+    "name": "krx_etf_basic_20260927.csv",
+    "rows": 1175,
+    "status": "ok"
+   }
+  },
+  "status": "ok",
+  "top": [
+   {
+    "basis_return": {
+     "end": "2026-11-16",
+     "end_close": 17655.0,
+     "start": "2026-10-19",
+     "start_close": 15686.0,
+     "value": 12.5526
+    },
+    "classification": {
+     "asset": "주식",
+     "broad": false,
+     "index_name": "Indxx US ETF Industry Top10 Index(Price Return)",
+     "kind": "index",
+     "market": "해외",
+     "sector": null,
+     "strategy": false
+    },
+    "criteria": {
+     "one_month": {
+      "end": "2026-11-16",
+      "end_close": 17655.0,
+      "reason": null,
+      "start": "2026-10-19",
+      "start_close": 15686.0,
+      "status": "ok",
+      "value": 12.5526
+     },
+     "same_kodex_1m": {
+      "end": "2026-11-16",
+      "etf_return_pct": 12.5526,
+      "kodex200_return_pct": -11.0265,
+      "reason": null,
+      "start": "2026-10-19",
+      "status": "ok",
+      "value": 23.5791
+     },
+     "three_month": {
+      "end": "2026-11-16",
+      "end_close": 17655.0,
+      "reason": null,
+      "start": "2026-08-18",
+      "start_close": 16070.0,
+      "status": "ok",
+      "value": 9.8631
+     }
+    },
+    "end_price": {
+     "date": "2026-11-16",
+     "fetched_at_kst": null,
+     "state": "after_close"
+    },
+    "held": false,
+    "name": "KODEX 미국ETF산업Top10 Indxx",
+    "rank": 1,
+    "tags": [],
+    "ticker": "428560"
+   },
+   {
+    "basis_return": {
+     "end": "2026-11-16",
+     "end_close": 11250.0,
+     "start": "2026-10-19",
+     "start_close": 10065.0,
+     "value": 11.7735
+    },
+    "classification": {
+     "asset": "주식",
+     "broad": false,
+     "index_name": "iSelect 글로벌 비만치료제TOP2 Plus 지수(PR)",
+     "kind": "index",
+     "market": "해외",
+     "sector": null,
+     "strategy": false
+    },
+    "criteria": {
+     "one_month": {
+      "end": "2026-11-16",
+      "end_close": 11250.0,
+      "reason": null,
+      "start": "2026-10-19",
+      "start_close": 10065.0,
+      "status": "ok",
+      "value": 11.7735
+     },
+     "same_kodex_1m": {
+      "end": "2026-11-16",
+      "etf_return_pct": 11.7735,
+      "kodex200_return_pct": -11.0265,
+      "reason": null,
+      "start": "2026-10-19",
+      "status": "ok",
+      "value": 22.8
+     },
+     "three_month": {
+      "end": "2026-11-16",
+      "end_close": 11250.0,
+      "reason": null,
+      "start": "2026-08-18",
+      "start_close": 11320.0,
+      "status": "ok",
+      "value": -0.6184
+     }
+    },
+    "end_price": {
+     "date": "2026-11-16",
+     "fetched_at_kst": null,
+     "state": "after_close"
+    },
+    "held": false,
+    "name": "KODEX 글로벌비만치료제TOP2 Plus",
+    "rank": 2,
+    "tags": [],
+    "ticker": "476070"
+   },
+   {
+    "basis_return": {
+     "end": "2026-11-16",
+     "end_close": 11965.0,
+     "start": "2026-10-19",
+     "start_close": 10799.0,
+     "value": 10.7973
+    },
+    "classification": {
+     "asset": "주식",
+     "broad": false,
+     "index_name": "Nifty 50 Index",
+     "kind": "index",
+     "market": "해외",
+     "sector": null,
+     "strategy": false
+    },
+    "criteria": {
+     "one_month": {
+      "end": "2026-11-16",
+      "end_close": 11965.0,
+      "reason": null,
+      "start": "2026-10-19",
+      "start_close": 10799.0,
+      "status": "ok",
+      "value": 10.7973
+     },
+     "same_kodex_1m": {
+      "end": "2026-11-16",
+      "etf_return_pct": 10.7973,
+      "kodex200_return_pct": -11.0265,
+      "reason": null,
+      "start": "2026-10-19",
+      "status": "ok",
+      "value": 21.8238
+     },
+     "three_month": {
+      "end": "2026-11-16",
+      "end_close": 11965.0,
+      "reason": null,
+      "start": "2026-08-18",
+      "start_close": 11964.0,
+      "status": "ok",
+      "value": 0.0084
+     }
+    },
+    "end_price": {
+     "date": "2026-11-16",
+     "fetched_at_kst": null,
+     "state": "after_close"
+    },
+    "held": false,
+    "name": "KODEX 인도Nifty50",
+    "rank": 3,
+    "tags": [],
+    "ticker": "453810"
+   },
+   {
+    "basis_return": {
+     "end": "2026-11-16",
+     "end_close": 11710.0,
+     "start": "2026-10-19",
+     "start_close": 10569.0,
+     "value": 10.7957
+    },
+    "classification": {
+     "asset": "주식",
+     "broad": false,
+     "index_name": "Nifty 50 Index",
+     "kind": "index",
+     "market": "해외",
+     "sector": null,
+     "strategy": false
+    },
+    "criteria": {
+     "one_month": {
+      "end": "2026-11-16",
+      "end_close": 11710.0,
+      "reason": null,
+      "start": "2026-10-19",
+      "start_close": 10569.0,
+      "status": "ok",
+      "value": 10.7957
+     },
+     "same_kodex_1m": {
+      "end": "2026-11-16",
+      "etf_return_pct": 10.7957,
+      "kodex200_return_pct": -11.0265,
+      "reason": null,
+      "start": "2026-10-19",
+      "status": "ok",
+      "value": 21.8222
+     },
+     "three_month": {
+      "end": "2026-11-16",
+      "end_close": 11710.0,
+      "reason": null,
+      "start": "2026-08-18",
+      "start_close": 11785.0,
+      "status": "ok",
+      "value": -0.6364
+     }
+    },
+    "end_price": {
+     "date": "2026-11-16",
+     "fetched_at_kst": null,
+     "state": "after_close"
+    },
+    "held": false,
+    "name": "TIGER 인도니프티50",
+    "rank": 4,
+    "tags": [],
+    "ticker": "453870"
+   },
+   {
+    "basis_return": {
+     "end": "2026-11-16",
+     "end_close": 10255.0,
+     "start": "2026-10-19",
+     "start_close": 9265.0,
+     "value": 10.6854
+    },
+    "classification": {
+     "asset": "주식",
+     "broad": false,
+     "index_name": "KEDI 글로벌 비만 산업 Top2+ 지수(Price Return)",
+     "kind": "index",
+     "market": "해외",
+     "sector": null,
+     "strategy": false
+    },
+    "criteria": {
+     "one_month": {
+      "end": "2026-11-16",
+      "end_close": 10255.0,
+      "reason": null,
+      "start": "2026-10-19",
+      "start_close": 9265.0,
+      "status": "ok",
+      "value": 10.6854
+     },
+     "same_kodex_1m": {
+      "end": "2026-11-16",
+      "etf_return_pct": 10.6854,
+      "kodex200_return_pct": -11.0265,
+      "reason": null,
+      "start": "2026-10-19",
+      "status": "ok",
+      "value": 21.7119
+     },
+     "three_month": {
+      "end": "2026-11-16",
+      "end_close": 10255.0,
+      "reason": null,
+      "start": "2026-08-18",
+      "start_close": 10015.0,
+      "status": "ok",
+      "value": 2.3964
+     }
+    },
+    "end_price": {
+     "date": "2026-11-16",
+     "fetched_at_kst": null,
+     "state": "after_close"
+    },
+    "held": false,
+    "name": "RISE 글로벌비만산업TOP2+",
+    "rank": 5,
+    "tags": [],
+    "ticker": "476310"
+   },
+   {
+    "basis_return": {
+     "end": "2026-11-16",
+     "end_close": 11080.0,
+     "start": "2026-10-19",
+     "start_close": 10090.0,
+     "value": 9.8117
+    },
+    "classification": {
+     "asset": "주식",
+     "broad": false,
+     "index_name": "Indxx Global Obesity Treatment Top 2 Plus 지수 (시장가격)",
+     "kind": "index",
+     "market": "해외",
+     "sector": null,
+     "strategy": false
+    },
+    "criteria": {
+     "one_month": {
+      "end": "2026-11-16",
+      "end_close": 11080.0,
+      "reason": null,
+      "start": "2026-10-19",
+      "start_close": 10090.0,
+      "status": "ok",
+      "value": 9.8117
+     },
+     "same_kodex_1m": {
+      "end": "2026-11-16",
+      "etf_return_pct": 9.8117,
+      "kodex200_return_pct": -11.0265,
+      "reason": null,
+      "start": "2026-10-19",
+      "status": "ok",
+      "value": 20.8382
+     },
+     "three_month": {
+      "end": "2026-11-16",
+      "end_close": 11080.0,
+      "reason": null,
+      "start": "2026-08-18",
+      "start_close": 10683.0,
+      "status": "ok",
+      "value": 3.7162
+     }
+    },
+    "end_price": {
+     "date": "2026-11-16",
+     "fetched_at_kst": null,
+     "state": "after_close"
+    },
+    "held": false,
+    "name": "TIGER 글로벌비만치료제TOP2Plus",
+    "rank": 6,
+    "tags": [],
+    "ticker": "476690"
+   },
+   {
+    "basis_return": {
+     "end": "2026-11-16",
+     "end_close": 14410.0,
+     "start": "2026-10-19",
+     "start_close": 13160.0,
+     "value": 9.4985
+    },
+    "classification": {
+     "asset": "주식",
+     "broad": false,
+     "index_name": "Solactive Eli Lilly Value Chain Index(PR)",
+     "kind": "index",
+     "market": "해외",
+     "sector": null,
+     "strategy": false
+    },
+    "criteria": {
+     "one_month": {
+      "end": "2026-11-16",
+      "end_close": 14410.0,
+      "reason": null,
+      "start": "2026-10-19",
+      "start_close": 13160.0,
+      "status": "ok",
+      "value": 9.4985
+     },
+     "same_kodex_1m": {
+      "end": "2026-11-16",
+      "etf_return_pct": 9.4985,
+      "kodex200_return_pct": -11.0265,
+      "reason": null,
+      "start": "2026-10-19",
+      "status": "ok",
+      "value": 20.525
+     },
+     "three_month": {
+      "end": "2026-11-16",
+      "end_close": 14410.0,
+      "reason": null,
+      "start": "2026-08-18",
+      "start_close": 13140.0,
+      "status": "ok",
+      "value": 9.6651
+     }
+    },
+    "end_price": {
+     "date": "2026-11-16",
+     "fetched_at_kst": null,
+     "state": "after_close"
+    },
+    "held": false,
+    "name": "ACE 일라이릴리밸류체인",
+    "rank": 7,
+    "tags": [],
+    "ticker": "497520"
+   },
+   {
+    "basis_return": {
+     "end": "2026-11-16",
+     "end_close": 13800.0,
+     "start": "2026-10-19",
+     "start_close": 12651.0,
+     "value": 9.0823
+    },
+    "classification": {
+     "asset": "주식",
+     "broad": false,
+     "index_name": "Solactive Global Big Pharma Index (Price Return)",
+     "kind": "index",
+     "market": "해외",
+     "sector": null,
+     "strategy": false
+    },
+    "criteria": {
+     "one_month": {
+      "end": "2026-11-16",
+      "end_close": 13800.0,
+      "reason": null,
+      "start": "2026-10-19",
+      "start_close": 12651.0,
+      "status": "ok",
+      "value": 9.0823
+     },
+     "same_kodex_1m": {
+      "end": "2026-11-16",
+      "etf_return_pct": 9.0823,
+      "kodex200_return_pct": -11.0265,
+      "reason": null,
+      "start": "2026-10-19",
+      "status": "ok",
+      "value": 20.1088
+     },
+     "three_month": {
+      "end": "2026-11-16",
+      "end_close": 13800.0,
+      "reason": null,
+      "start": "2026-08-18",
+      "start_close": 12960.0,
+      "status": "ok",
+      "value": 6.4815
+     }
+    },
+    "end_price": {
+     "date": "2026-11-16",
+     "fetched_at_kst": null,
+     "state": "after_close"
+    },
+    "held": false,
+    "name": "ACE 글로벌빅파마",
+    "rank": 8,
+    "tags": [],
+    "ticker": "497510"
+   },
+   {
+    "basis_return": {
+     "end": "2026-11-16",
+     "end_close": 12375.0,
+     "start": "2026-10-19",
+     "start_close": 11350.0,
+     "value": 9.0308
+    },
+    "classification": {
+     "asset": "주식",
+     "broad": false,
+     "index_name": "Solactive Blockbuster Biotech Drugs Index(PR)",
+     "kind": "index",
+     "market": "해외",
+     "sector": null,
+     "strategy": false
+    },
+    "criteria": {
+     "one_month": {
+      "end": "2026-11-16",
+      "end_close": 12375.0,
+      "reason": null,
+      "start": "2026-10-19",
+      "start_close": 11350.0,
+      "status": "ok",
+      "value": 9.0308
+     },
+     "same_kodex_1m": {
+      "end": "2026-11-16",
+      "etf_return_pct": 9.0308,
+      "kodex200_return_pct": -11.0265,
+      "reason": null,
+      "start": "2026-10-19",
+      "status": "ok",
+      "value": 20.0573
+     },
+     "three_month": {
+      "end": "2026-11-16",
+      "end_close": 12375.0,
+      "reason": null,
+      "start": "2026-08-18",
+      "start_close": 11849.0,
+      "status": "ok",
+      "value": 4.4392
+     }
+    },
+    "end_price": {
+     "date": "2026-11-16",
+     "fetched_at_kst": null,
+     "state": "after_close"
+    },
+    "held": false,
+    "name": "KIWOOM 미국블록버스터바이오테크의약품+",
+    "rank": 9,
+    "tags": [],
+    "ticker": "483030"
+   },
+   {
+    "basis_return": {
+     "end": "2026-11-16",
+     "end_close": 13370.0,
+     "start": "2026-10-19",
+     "start_close": 12265.0,
+     "value": 9.0094
+    },
+    "classification": {
+     "asset": "주식",
+     "broad": false,
+     "index_name": "Solactive 미국뇌질환치료제 PR 지수",
+     "kind": "index",
+     "market": "해외",
+     "sector": null,
+     "strategy": false
+    },
+    "criteria": {
+     "one_month": {
+      "end": "2026-11-16",
+      "end_close": 13370.0,
+      "reason": null,
+      "start": "2026-10-19",
+      "start_close": 12265.0,
+      "status": "ok",
+      "value": 9.0094
+     },
+     "same_kodex_1m": {
+      "end": "2026-11-16",
+      "etf_return_pct": 9.0094,
+      "kodex200_return_pct": -11.0265,
+      "reason": null,
+      "start": "2026-10-19",
+      "status": "ok",
+      "value": 20.0359
+     },
+     "three_month": {
+      "end": "2026-11-16",
+      "end_close": 13370.0,
+      "reason": null,
+      "start": "2026-08-18",
+      "start_close": 15280.0,
+      "status": "ok",
+      "value": -12.5
+     }
+    },
+    "end_price": {
+     "date": "2026-11-16",
+     "fetched_at_kst": null,
+     "state": "after_close"
+    },
+    "held": false,
+    "name": "KoAct 미국치매&뇌질환치료제액티브",
+    "rank": 10,
+    "tags": [],
+    "ticker": "490330"
+   },
+   {
+    "basis_return": {
+     "end": "2026-11-16",
+     "end_close": 9780.0,
+     "start": "2026-10-19",
+     "start_close": 8994.0,
+     "value": 8.7392
+    },
+    "classification": {
+     "asset": "주식",
+     "broad": false,
+     "index_name": "Mirae Asset India Billion Consumer 지수(PR)",
+     "kind": "index",
+     "market": "해외",
+     "sector": null,
+     "strategy": false
+    },
+    "criteria": {
+     "one_month": {
+      "end": "2026-11-16",
+      "end_close": 9780.0,
+      "reason": null,
+      "start": "2026-10-19",
+      "start_close": 8994.0,
+      "status": "ok",
+      "value": 8.7392
+     },
+     "same_kodex_1m": {
+      "end": "2026-11-16",
+      "etf_return_pct": 8.7392,
+      "kodex200_return_pct": -11.0265,
+      "reason": null,
+      "start": "2026-10-19",
+      "status": "ok",
+      "value": 19.7657
+     },
+     "three_month": {
+      "end": "2026-11-16",
+      "end_close": 9780.0,
+      "reason": null,
+      "start": "2026-08-18",
+      "start_close": 10373.0,
+      "status": "ok",
+      "value": -5.7168
+     }
+    },
+    "end_price": {
+     "date": "2026-11-16",
+     "fetched_at_kst": null,
+     "state": "after_close"
+    },
+    "held": false,
+    "name": "TIGER 인도빌리언컨슈머",
+    "rank": 11,
+    "tags": [],
+    "ticker": "479730"
+   },
+   {
+    "basis_return": {
+     "end": "2026-11-16",
+     "end_close": 8110.0,
+     "start": "2026-10-19",
+     "start_close": 7465.0,
+     "value": 8.6403
+    },
+    "classification": {
+     "asset": "주식",
+     "broad": false,
+     "index_name": "Indxx India Super Consumption Index (Price Return)",
+     "kind": "index",
+     "market": "해외",
+     "sector": null,
+     "strategy": false
+    },
+    "criteria": {
+     "one_month": {
+      "end": "2026-11-16",
+      "end_close": 8110.0,
+      "reason": null,
+      "start": "2026-10-19",
+      "start_close": 7465.0,
+      "status": "ok",
+      "value": 8.6403
+     },
+     "same_kodex_1m": {
+      "end": "2026-11-16",
+      "etf_return_pct": 8.6403,
+      "kodex200_return_pct": -11.0265,
+      "reason": null,
+      "start": "2026-10-19",
+      "status": "ok",
+      "value": 19.6668
+     },
+     "three_month": {
+      "end": "2026-11-16",
+      "end_close": 8110.0,
+      "reason": null,
+      "start": "2026-08-18",
+      "start_close": 8695.0,
+      "status": "ok",
+      "value": -6.728
+     }
+    },
+    "end_price": {
+     "date": "2026-11-16",
+     "fetched_at_kst": null,
+     "state": "after_close"
+    },
+    "held": false,
+    "name": "ACE 인도컨슈머파워액티브",
+    "rank": 12,
+    "tags": [],
+    "ticker": "487910"
+   },
+   {
+    "basis_return": {
+     "end": "2026-11-16",
+     "end_close": 7755.0,
+     "start": "2026-10-19",
+     "start_close": 7205.0,
+     "value": 7.6336
+    },
+    "classification": {
+     "asset": "주식",
+     "broad": false,
+     "index_name": "Indxx India Big 5 Conglomerates Index (Price Return)",
+     "kind": "index",
+     "market": "해외",
+     "sector": null,
+     "strategy": false
+    },
+    "criteria": {
+     "one_month": {
+      "end": "2026-11-16",
+      "end_close": 7755.0,
+      "reason": null,
+      "start": "2026-10-19",
+      "start_close": 7205.0,
+      "status": "ok",
+      "value": 7.6336
+     },
+     "same_kodex_1m": {
+      "end": "2026-11-16",
+      "etf_return_pct": 7.6336,
+      "kodex200_return_pct": -11.0265,
+      "reason": null,
+      "start": "2026-10-19",
+      "status": "ok",
+      "value": 18.6601
+     },
+     "three_month": {
+      "end": "2026-11-16",
+      "end_close": 7755.0,
+      "reason": null,
+      "start": "2026-08-18",
+      "start_close": 8205.0,
+      "status": "ok",
+      "value": -5.4845
+     }
+    },
+    "end_price": {
+     "date": "2026-11-16",
+     "fetched_at_kst": null,
+     "state": "after_close"
+    },
+    "held": false,
+    "name": "ACE 인도시장대표BIG5그룹액티브",
+    "rank": 13,
+    "tags": [],
+    "ticker": "487920"
+   },
+   {
+    "basis_return": {
+     "end": "2026-11-16",
+     "end_close": 8345.0,
+     "start": "2026-10-19",
+     "start_close": 7755.0,
+     "value": 7.608
+    },
+    "classification": {
+     "asset": "주식",
+     "broad": false,
+     "index_name": "Mirae Asset China Humanoid Robot 지수(PR)",
+     "kind": "index",
+     "market": "해외",
+     "sector": null,
+     "strategy": false
+    },
+    "criteria": {
+     "one_month": {
+      "end": "2026-11-16",
+      "end_close": 8345.0,
+      "reason": null,
+      "start": "2026-10-19",
+      "start_close": 7755.0,
+      "status": "ok",
+      "value": 7.608
+     },
+     "same_kodex_1m": {
+      "end": "2026-11-16",
+      "etf_return_pct": 7.608,
+      "kodex200_return_pct": -11.0265,
+      "reason": null,
+      "start": "2026-10-19",
+      "status": "ok",
+      "value": 18.6345
+     },
+     "three_month": {
+      "end": "2026-11-16",
+      "end_close": 8345.0,
+      "reason": null,
+      "start": "2026-08-18",
+      "start_close": 10718.0,
+      "status": "ok",
+      "value": -22.1403
+     }
+    },
+    "end_price": {
+     "date": "2026-11-16",
+     "fetched_at_kst": null,
+     "state": "after_close"
+    },
+    "held": false,
+    "name": "TIGER 차이나휴머노이드로봇",
+    "rank": 14,
+    "tags": [],
+    "ticker": "0053L0"
+   },
+   {
+    "basis_return": {
+     "end": "2026-11-16",
+     "end_close": 41220.0,
+     "start": "2026-10-19",
+     "start_close": 38530.0,
+     "value": 6.9816
+    },
+    "classification": {
+     "asset": "채권",
+     "broad": false,
+     "index_name": "KIS STRIP 30Y Index(총수익지수)",
+     "kind": "index",
+     "market": "국내",
+     "sector": null,
+     "strategy": false
+    },
+    "criteria": {
+     "one_month": {
+      "end": "2026-11-16",
+      "end_close": 41220.0,
+      "reason": null,
+      "start": "2026-10-19",
+      "start_close": 38530.0,
+      "status": "ok",
+      "value": 6.9816
+     },
+     "same_kodex_1m": {
+      "end": "2026-11-16",
+      "etf_return_pct": 6.9816,
+      "kodex200_return_pct": -11.0265,
+      "reason": null,
+      "start": "2026-10-19",
+      "status": "ok",
+      "value": 18.0081
+     },
+     "three_month": {
+      "end": "2026-11-16",
+      "end_close": 41220.0,
+      "reason": null,
+      "start": "2026-08-18",
+      "start_close": 33215.0,
+      "status": "ok",
+      "value": 24.1006
+     }
+    },
+    "end_price": {
+     "date": "2026-11-16",
+     "fetched_at_kst": null,
+     "state": "after_close"
+    },
+    "held": false,
+    "name": "TIGER 국고채30년스트립액티브",
+    "rank": 15,
+    "tags": [],
+    "ticker": "451530"
+   },
+   {
+    "basis_return": {
+     "end": "2026-11-16",
+     "end_close": 15280.0,
+     "start": "2026-10-19",
+     "start_close": 14289.0,
+     "value": 6.9354
+    },
+    "classification": {
+     "asset": "주식",
+     "broad": false,
+     "index_name": "S&P Health Care Select Sector Index(Price Return)",
+     "kind": "index",
+     "market": "해외",
+     "sector": null,
+     "strategy": false
+    },
+    "criteria": {
+     "one_month": {
+      "end": "2026-11-16",
+      "end_close": 15280.0,
+      "reason": null,
+      "start": "2026-10-19",
+      "start_close": 14289.0,
+      "status": "ok",
+      "value": 6.9354
+     },
+     "same_kodex_1m": {
+      "end": "2026-11-16",
+      "etf_return_pct": 6.9354,
+      "kodex200_return_pct": -11.0265,
+      "reason": null,
+      "start": "2026-10-19",
+      "status": "ok",
+      "value": 17.9619
+     },
+     "three_month": {
+      "end": "2026-11-16",
+      "end_close": 15280.0,
+      "reason": null,
+      "start": "2026-08-18",
+      "start_close": 14136.0,
+      "status": "ok",
+      "value": 8.0928
+     }
+    },
+    "end_price": {
+     "date": "2026-11-16",
+     "fetched_at_kst": null,
+     "state": "after_close"
+    },
+    "held": false,
+    "name": "KODEX 미국S&P500헬스케어",
+    "rank": 16,
+    "tags": [],
+    "ticker": "453640"
+   },
+   {
+    "basis_return": {
+     "end": "2026-11-16",
+     "end_close": 13680.0,
+     "start": "2026-10-19",
+     "start_close": 12849.0,
+     "value": 6.4674
+    },
+    "classification": {
+     "asset": "주식",
+     "broad": false,
+     "index_name": "S&P 500 Dividend Aristocrats 지수 (Price Return)",
+     "kind": "index",
+     "market": "해외",
+     "sector": null,
+     "strategy": false
+    },
+    "criteria": {
+     "one_month": {
+      "end": "2026-11-16",
+      "end_close": 13680.0,
+      "reason": null,
+      "start": "2026-10-19",
+      "start_close": 12849.0,
+      "status": "ok",
+      "value": 6.4674
+     },
+     "same_kodex_1m": {
+      "end": "2026-11-16",
+      "etf_return_pct": 6.4674,
+      "kodex200_return_pct": -11.0265,
+      "reason": null,
+      "start": "2026-10-19",
+      "status": "ok",
+      "value": 17.4939
+     },
+     "three_month": {
+      "end": "2026-11-16",
+      "end_close": 13680.0,
+      "reason": null,
+      "start": "2026-08-18",
+      "start_close": 13769.0,
+      "status": "ok",
+      "value": -0.6464
+     }
+    },
+    "end_price": {
+     "date": "2026-11-16",
+     "fetched_at_kst": null,
+     "state": "after_close"
+    },
+    "held": false,
+    "name": "TIGER 미국S&P500배당귀족",
+    "rank": 17,
+    "tags": [],
+    "ticker": "429000"
+   },
+   {
+    "basis_return": {
+     "end": "2026-11-16",
+     "end_close": 10375.0,
+     "start": "2026-10-19",
+     "start_close": 9770.0,
+     "value": 6.1924
+    },
+    "classification": {
+     "asset": "주식",
+     "broad": false,
+     "index_name": "MSCI India IMI Index(PR)",
+     "kind": "index",
+     "market": "해외",
+     "sector": null,
+     "strategy": false
+    },
+    "criteria": {
+     "one_month": {
+      "end": "2026-11-16",
+      "end_close": 10375.0,
+      "reason": null,
+      "start": "2026-10-19",
+      "start_close": 9770.0,
+      "status": "ok",
+      "value": 6.1924
+     },
+     "same_kodex_1m": {
+      "end": "2026-11-16",
+      "etf_return_pct": 6.1924,
+      "kodex200_return_pct": -11.0265,
+      "reason": null,
+      "start": "2026-10-19",
+      "status": "ok",
+      "value": 17.2189
+     },
+     "three_month": {
+      "end": "2026-11-16",
+      "end_close": 10375.0,
+      "reason": null,
+      "start": "2026-08-18",
+      "start_close": 10060.0,
+      "status": "ok",
+      "value": 3.1312
+     }
+    },
+    "end_price": {
+     "date": "2026-11-16",
+     "fetched_at_kst": null,
+     "state": "after_close"
+    },
+    "held": false,
+    "name": "에셋플러스 인도일등기업포커스20액티브",
+    "rank": 18,
+    "tags": [],
+    "ticker": "0002C0"
+   },
+   {
+    "basis_return": {
+     "end": "2026-11-16",
+     "end_close": 7215.0,
+     "start": "2026-10-19",
+     "start_close": 6806.0,
+     "value": 6.0094
+    },
+    "classification": {
+     "asset": "주식",
+     "broad": false,
+     "index_name": "Solactive China Humanoid Robotics Index (CNH) (Price Return)",
+     "kind": "index",
+     "market": "해외",
+     "sector": null,
+     "strategy": false
+    },
+    "criteria": {
+     "one_month": {
+      "end": "2026-11-16",
+      "end_close": 7215.0,
+      "reason": null,
+      "start": "2026-10-19",
+      "start_close": 6806.0,
+      "status": "ok",
+      "value": 6.0094
+     },
+     "same_kodex_1m": {
+      "end": "2026-11-16",
+      "etf_return_pct": 6.0094,
+      "kodex200_return_pct": -11.0265,
+      "reason": null,
+      "start": "2026-10-19",
+      "status": "ok",
+      "value": 17.0359
+     },
+     "three_month": {
+      "end": "2026-11-16",
+      "end_close": 7215.0,
+      "reason": null,
+      "start": "2026-08-18",
+      "start_close": 9574.0,
+      "status": "ok",
+      "value": -24.6396
+     }
+    },
+    "end_price": {
+     "date": "2026-11-16",
+     "fetched_at_kst": null,
+     "state": "after_close"
+    },
+    "held": false,
+    "name": "KODEX 차이나휴머노이드로봇",
+    "rank": 19,
+    "tags": [],
+    "ticker": "0048K0"
+   },
+   {
+    "basis_return": {
+     "end": "2026-11-16",
+     "end_close": 12085.0,
+     "start": "2026-10-19",
+     "start_close": 11420.0,
+     "value": 5.8231
+    },
+    "classification": {
+     "asset": "주식",
+     "broad": false,
+     "index_name": "S&P Dividend Monarchs Index(Price Return)",
+     "kind": "index",
+     "market": "해외",
+     "sector": null,
+     "strategy": false
+    },
+    "criteria": {
+     "one_month": {
+      "end": "2026-11-16",
+      "end_close": 12085.0,
+      "reason": null,
+      "start": "2026-10-19",
+      "start_close": 11420.0,
+      "status": "ok",
+      "value": 5.8231
+     },
+     "same_kodex_1m": {
+      "end": "2026-11-16",
+      "etf_return_pct": 5.8231,
+      "kodex200_return_pct": -11.0265,
+      "reason": null,
+      "start": "2026-10-19",
+      "status": "ok",
+      "value": 16.8496
+     },
+     "three_month": {
+      "end": "2026-11-16",
+      "end_close": 12085.0,
+      "reason": null,
+      "start": "2026-08-18",
+      "start_close": 12249.0,
+      "status": "ok",
+      "value": -1.3389
+     }
+    },
+    "end_price": {
+     "date": "2026-11-16",
+     "fetched_at_kst": null,
+     "state": "after_close"
+    },
+    "held": false,
+    "name": "RISE 미국S&P배당킹",
+    "rank": 20,
+    "tags": [],
+    "ticker": "460660"
+   },
+   {
+    "basis_return": {
+     "end": "2026-11-16",
+     "end_close": 9050.0,
+     "start": "2026-10-19",
+     "start_close": 8554.0,
+     "value": 5.7985
+    },
+    "classification": {
+     "asset": "주식",
+     "broad": false,
+     "index_name": "Solactive U.S. Dividend TOP 30 Index PR",
+     "kind": "index",
+     "market": "해외",
+     "sector": null,
+     "strategy": false
+    },
+    "criteria": {
+     "one_month": {
+      "end": "2026-11-16",
+      "end_close": 9050.0,
+      "reason": null,
+      "start": "2026-10-19",
+      "start_close": 8554.0,
+      "status": "ok",
+      "value": 5.7985
+     },
+     "same_kodex_1m": {
+      "end": "2026-11-16",
+      "etf_return_pct": 5.7985,
+      "kodex200_return_pct": -11.0265,
+      "reason": null,
+      "start": "2026-10-19",
+      "status": "ok",
+      "value": 16.825
+     },
+     "three_month": {
+      "end": "2026-11-16",
+      "end_close": 9050.0,
+      "reason": null,
+      "start": "2026-08-18",
+      "start_close": 9341.0,
+      "status": "ok",
+      "value": -3.1153
+     }
+    },
+    "end_price": {
+     "date": "2026-11-16",
+     "fetched_at_kst": null,
+     "state": "after_close"
+    },
+    "held": false,
+    "name": "1Q 미국배당TOP30",
+    "rank": 21,
+    "tags": [],
+    "ticker": "0004G0"
+   },
+   {
+    "basis_return": {
+     "end": "2026-11-16",
+     "end_close": 17160.0,
+     "start": "2026-10-19",
+     "start_close": 16221.0,
+     "value": 5.7888
+    },
+    "classification": {
+     "asset": "주식",
+     "broad": false,
+     "index_name": "S&P Consumer Discretionary Select Sector Index(Price Return)",
+     "kind": "index",
+     "market": "해외",
+     "sector": null,
+     "strategy": false
+    },
+    "criteria": {
+     "one_month": {
+      "end": "2026-11-16",
+      "end_close": 17160.0,
+      "reason": null,
+      "start": "2026-10-19",
+      "start_close": 16221.0,
+      "status": "ok",
+      "value": 5.7888
+     },
+     "same_kodex_1m": {
+      "end": "2026-11-16",
+      "etf_return_pct": 5.7888,
+      "kodex200_return_pct": -11.0265,
+      "reason": null,
+      "start": "2026-10-19",
+      "status": "ok",
+      "value": 16.8153
+     },
+     "three_month": {
+      "end": "2026-11-16",
+      "end_close": 17160.0,
+      "reason": null,
+      "start": "2026-08-18",
+      "start_close": 17677.0,
+      "status": "ok",
+      "value": -2.9247
+     }
+    },
+    "end_price": {
+     "date": "2026-11-16",
+     "fetched_at_kst": null,
+     "state": "after_close"
+    },
+    "held": false,
+    "name": "KODEX 미국S&P500경기소비재",
+    "rank": 22,
+    "tags": [],
+    "ticker": "453660"
+   },
+   {
+    "basis_return": {
+     "end": "2026-11-16",
+     "end_close": 9880.0,
+     "start": "2026-10-19",
+     "start_close": 9342.0,
+     "value": 5.7589
+    },
+    "classification": {
+     "asset": "주식",
+     "broad": false,
+     "index_name": "Nifty Midcap 100 Index(PR)",
+     "kind": "index",
+     "market": "해외",
+     "sector": null,
+     "strategy": false
+    },
+    "criteria": {
+     "one_month": {
+      "end": "2026-11-16",
+      "end_close": 9880.0,
+      "reason": null,
+      "start": "2026-10-19",
+      "start_close": 9342.0,
+      "status": "ok",
+      "value": 5.7589
+     },
+     "same_kodex_1m": {
+      "end": "2026-11-16",
+      "etf_return_pct": 5.7589,
+      "kodex200_return_pct": -11.0265,
+      "reason": null,
+      "start": "2026-10-19",
+      "status": "ok",
+      "value": 16.7854
+     },
+     "three_month": {
+      "end": "2026-11-16",
+      "end_close": 9880.0,
+      "reason": null,
+      "start": "2026-08-18",
+      "start_close": 10653.0,
+      "status": "ok",
+      "value": -7.2562
+     }
+    },
+    "end_price": {
+     "date": "2026-11-16",
+     "fetched_at_kst": null,
+     "state": "after_close"
+    },
+    "held": false,
+    "name": "KODEX 인도Nifty미드캡100",
+    "rank": 23,
+    "tags": [],
+    "ticker": "0000H0"
+   },
+   {
+    "basis_return": {
+     "end": "2026-11-16",
+     "end_close": 10385.0,
+     "start": "2026-10-19",
+     "start_close": 9820.0,
+     "value": 5.7536
+    },
+    "classification": {
+     "asset": "주식",
+     "broad": false,
+     "index_name": "Dow Jones U.S. Dividend 100 10% Premium Covered Call Index(Total Return)",
+     "kind": "index",
+     "market": "해외",
+     "sector": null,
+     "strategy": true
+    },
+    "criteria": {
+     "one_month": {
+      "end": "2026-11-16",
+      "end_close": 10385.0,
+      "reason": null,
+      "start": "2026-10-19",
+      "start_close": 9820.0,
+      "status": "ok",
+      "value": 5.7536
+     },
+     "same_kodex_1m": {
+      "end": "2026-11-16",
+      "etf_return_pct": 5.7536,
+      "kodex200_return_pct": -11.0265,
+      "reason": null,
+      "start": "2026-10-19",
+      "status": "ok",
+      "value": 16.7801
+     },
+     "three_month": {
+      "end": "2026-11-16",
+      "end_close": 10385.0,
+      "reason": null,
+      "start": "2026-08-18",
+      "start_close": 10276.0,
+      "status": "ok",
+      "value": 1.0607
+     }
+    },
+    "end_price": {
+     "date": "2026-11-16",
+     "fetched_at_kst": null,
+     "state": "after_close"
+    },
+    "held": false,
+    "name": "KODEX 미국배당다우존스타겟커버드콜",
+    "rank": 24,
+    "tags": [],
+    "ticker": "483290"
+   },
+   {
+    "basis_return": {
+     "end": "2026-11-16",
+     "end_close": 11095.0,
+     "start": "2026-10-19",
+     "start_close": 10495.0,
+     "value": 5.717
+    },
+    "classification": {
+     "asset": "주식",
+     "broad": false,
+     "index_name": "DowJones U.S. Dividend 100 7% Premium Covered Call 지수 (TR)",
+     "kind": "index",
+     "market": "해외",
+     "sector": null,
+     "strategy": true
+    },
+    "criteria": {
+     "one_month": {
+      "end": "2026-11-16",
+      "end_close": 11095.0,
+      "reason": null,
+      "start": "2026-10-19",
+      "start_close": 10495.0,
+      "status": "ok",
+      "value": 5.717
+     },
+     "same_kodex_1m": {
+      "end": "2026-11-16",
+      "etf_return_pct": 5.717,
+      "kodex200_return_pct": -11.0265,
+      "reason": null,
+      "start": "2026-10-19",
+      "status": "ok",
+      "value": 16.7435
+     },
+     "three_month": {
+      "end": "2026-11-16",
+      "end_close": 11095.0,
+      "reason": null,
+      "start": "2026-08-18",
+      "start_close": 11006.0,
+      "status": "ok",
+      "value": 0.8086
+     }
+    },
+    "end_price": {
+     "date": "2026-11-16",
+     "fetched_at_kst": null,
+     "state": "after_close"
+    },
+    "held": false,
+    "name": "TIGER 미국배당다우존스타겟커버드콜2호",
+    "rank": 25,
+    "tags": [],
+    "ticker": "458760"
+   },
+   {
+    "basis_return": {
+     "end": "2026-11-16",
+     "end_close": 15985.0,
+     "start": "2026-10-19",
+     "start_close": 15130.0,
+     "value": 5.651
+    },
+    "classification": {
+     "asset": "주식",
+     "broad": false,
+     "index_name": "Nasdaq US Low Volatility Dividend Achievers Index",
+     "kind": "index",
+     "market": "해외",
+     "sector": null,
+     "strategy": false
+    },
+    "criteria": {
+     "one_month": {
+      "end": "2026-11-16",
+      "end_close": 15985.0,
+      "reason": null,
+      "start": "2026-10-19",
+      "start_close": 15130.0,
+      "status": "ok",
+      "value": 5.651
+     },
+     "same_kodex_1m": {
+      "end": "2026-11-16",
+      "etf_return_pct": 5.651,
+      "kodex200_return_pct": -11.0265,
+      "reason": null,
+      "start": "2026-10-19",
+      "status": "ok",
+      "value": 16.6775
+     },
+     "three_month": {
+      "end": "2026-11-16",
+      "end_close": 15985.0,
+      "reason": null,
+      "start": "2026-08-18",
+      "start_close": 16030.0,
+      "status": "ok",
+      "value": -0.2807
+     }
+    },
+    "end_price": {
+     "date": "2026-11-16",
+     "fetched_at_kst": null,
+     "state": "after_close"
+    },
+    "held": false,
+    "name": "KIWOOM 미국방어배당성장나스닥",
+    "rank": 26,
+    "tags": [],
+    "ticker": "373790"
+   },
+   {
+    "basis_return": {
+     "end": "2026-11-16",
+     "end_close": 15295.0,
+     "start": "2026-10-19",
+     "start_close": 14479.0,
+     "value": 5.6357
+    },
+    "classification": {
+     "asset": "주식",
+     "broad": false,
+     "index_name": "Dow Jones U.S. Dividend 100 Price Return Index",
+     "kind": "index",
+     "market": "해외",
+     "sector": null,
+     "strategy": false
+    },
+    "criteria": {
+     "one_month": {
+      "end": "2026-11-16",
+      "end_close": 15295.0,
+      "reason": null,
+      "start": "2026-10-19",
+      "start_close": 14479.0,
+      "status": "ok",
+      "value": 5.6357
+     },
+     "same_kodex_1m": {
+      "end": "2026-11-16",
+      "etf_return_pct": 5.6357,
+      "kodex200_return_pct": -11.0265,
+      "reason": null,
+      "start": "2026-10-19",
+      "status": "ok",
+      "value": 16.6622
+     },
+     "three_month": {
+      "end": "2026-11-16",
+      "end_close": 15295.0,
+      "reason": null,
+      "start": "2026-08-18",
+      "start_close": 15240.0,
+      "status": "ok",
+      "value": 0.3609
+     }
+    },
+    "end_price": {
+     "date": "2026-11-16",
+     "fetched_at_kst": null,
+     "state": "after_close"
+    },
+    "held": false,
+    "name": "TIGER 미국배당다우존스",
+    "rank": 27,
+    "tags": [],
+    "ticker": "458730"
+   },
+   {
+    "basis_return": {
+     "end": "2026-11-16",
+     "end_close": 7360.0,
+     "start": "2026-10-19",
+     "start_close": 6968.0,
+     "value": 5.6257
+    },
+    "classification": {
+     "asset": "주식",
+     "broad": false,
+     "index_name": "Nifty India Corporate Group Index - Tata Group 25% Cap(PR)",
+     "kind": "index",
+     "market": "해외",
+     "sector": null,
+     "strategy": false
+    },
+    "criteria": {
+     "one_month": {
+      "end": "2026-11-16",
+      "end_close": 7360.0,
+      "reason": null,
+      "start": "2026-10-19",
+      "start_close": 6968.0,
+      "status": "ok",
+      "value": 5.6257
+     },
+     "same_kodex_1m": {
+      "end": "2026-11-16",
+      "etf_return_pct": 5.6257,
+      "kodex200_return_pct": -11.0265,
+      "reason": null,
+      "start": "2026-10-19",
+      "status": "ok",
+      "value": 16.6522
+     },
+     "three_month": {
+      "end": "2026-11-16",
+      "end_close": 7360.0,
+      "reason": null,
+      "start": "2026-08-18",
+      "start_close": 7702.0,
+      "status": "ok",
+      "value": -4.4404
+     }
+    },
+    "end_price": {
+     "date": "2026-11-16",
+     "fetched_at_kst": null,
+     "state": "after_close"
+    },
+    "held": false,
+    "name": "KODEX 인도타타그룹",
+    "rank": 28,
+    "tags": [],
+    "ticker": "477730"
+   },
+   {
+    "basis_return": {
+     "end": "2026-11-16",
+     "end_close": 13145.0,
+     "start": "2026-10-19",
+     "start_close": 12451.0,
+     "value": 5.5738
+    },
+    "classification": {
+     "asset": "주식",
+     "broad": false,
+     "index_name": "DowJones U.S. Dividend 100 3% Premium Covered Call 지수 (TR)",
+     "kind": "index",
+     "market": "해외",
+     "sector": null,
+     "strategy": true
+    },
+    "criteria": {
+     "one_month": {
+      "end": "2026-11-16",
+      "end_close": 13145.0,
+      "reason": null,
+      "start": "2026-10-19",
+      "start_close": 12451.0,
+      "status": "ok",
+      "value": 5.5738
+     },
+     "same_kodex_1m": {
+      "end": "2026-11-16",
+      "etf_return_pct": 5.5738,
+      "kodex200_return_pct": -11.0265,
+      "reason": null,
+      "start": "2026-10-19",
+      "status": "ok",
+      "value": 16.6003
+     },
+     "three_month": {
+      "end": "2026-11-16",
+      "end_close": 13145.0,
+      "reason": null,
+      "start": "2026-08-18",
+      "start_close": 13125.0,
+      "status": "ok",
+      "value": 0.1524
+     }
+    },
+    "end_price": {
+     "date": "2026-11-16",
+     "fetched_at_kst": null,
+     "state": "after_close"
+    },
+    "held": false,
+    "name": "TIGER 미국배당다우존스타겟커버드콜1호",
+    "rank": 29,
+    "tags": [],
+    "ticker": "458750"
+   },
+   {
+    "basis_return": {
+     "end": "2026-11-16",
+     "end_close": 17665.0,
+     "start": "2026-10-19",
+     "start_close": 16740.0,
+     "value": 5.5257
+    },
+    "classification": {
+     "asset": "주식",
+     "broad": false,
+     "index_name": "EURO STOXX 50 Index",
+     "kind": "index",
+     "market": "해외",
+     "sector": null,
+     "strategy": false
+    },
+    "criteria": {
+     "one_month": {
+      "end": "2026-11-16",
+      "end_close": 17665.0,
+      "reason": null,
+      "start": "2026-10-19",
+      "start_close": 16740.0,
+      "status": "ok",
+      "value": 5.5257
+     },
+     "same_kodex_1m": {
+      "end": "2026-11-16",
+      "etf_return_pct": 5.5257,
+      "kodex200_return_pct": -11.0265,
+      "reason": null,
+      "start": "2026-10-19",
+      "status": "ok",
+      "value": 16.5522
+     },
+     "three_month": {
+      "end": "2026-11-16",
+      "end_close": 17665.0,
+      "reason": null,
+      "start": "2026-08-18",
+      "start_close": 17720.0,
+      "status": "ok",
+      "value": -0.3104
+     }
+    },
+    "end_price": {
+     "date": "2026-11-16",
+     "fetched_at_kst": null,
+     "state": "after_close"
+    },
+    "held": false,
+    "name": "RISE 유로스탁스50(H)",
+    "rank": 30,
+    "tags": [],
+    "ticker": "379790"
+   }
+  ]
+ }
+}

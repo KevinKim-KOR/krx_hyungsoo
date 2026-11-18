@@ -32,9 +32,23 @@ from app.decision_selected_preview import selected_preview_error, selected_targe
 
 DEFAULT_DB_PATH = Path("state/decision/decision_evidence.sqlite")
 
-# 사용자 1차 판정 enum (지시문 §9).
-ALLOWED_USER_VERDICTS = ("useful", "needs_constituents", "needs_market_compare", "hold")
+# 사용자 1차 판정 enum (지시문 §9). POC6-32 V2 Q4 — '미기록'(unrecorded)은 주간 기록 출처에서만(빠지면 그 값으로 시작) ·
+# 그 밖 출처의 기본값은 그대로 'hold' · 표 변경 없음.
+UNRECORDED_USER_VERDICT = "unrecorded"
+UNRECORDED_SOURCE_SCREENS = ("today_weekly_review",)
+ALLOWED_USER_VERDICTS = (
+    *("useful", "needs_constituents", "needs_market_compare", "hold"),
+    UNRECORDED_USER_VERDICT,
+)
 DEFAULT_USER_VERDICT = "hold"
+
+
+def default_user_verdict(source_screen: str) -> str:
+    """판정이 빠진 요청의 값 — 주간 기록 출처 = '미기록' · 그 밖 = 'hold'."""
+    if source_screen in UNRECORDED_SOURCE_SCREENS:
+        return UNRECORDED_USER_VERDICT
+    return DEFAULT_USER_VERDICT
+
 
 AI_SESSION_RECORDS_DDL = """
 CREATE TABLE IF NOT EXISTS ai_session_records (
@@ -284,10 +298,17 @@ class DecisionValidationError(ValueError):
     """입력 검증 실패 — 422 로 응답될 호출자 에러."""
 
 
-def _validate_user_verdict(value: str) -> str:
+def _validate_user_verdict(value: str, source_screen: str) -> str:
     if value not in ALLOWED_USER_VERDICTS:
         raise DecisionValidationError(
             f"user_verdict must be one of {ALLOWED_USER_VERDICTS}, got {value!r}"
+        )
+    if (
+        value == UNRECORDED_USER_VERDICT
+        and source_screen not in UNRECORDED_SOURCE_SCREENS
+    ):
+        raise DecisionValidationError(
+            f"user_verdict {value!r} is only for source_screen {UNRECORDED_SOURCE_SCREENS}"
         )
     return value
 
@@ -340,7 +361,7 @@ def insert_record(
             "At least one of gpt_answer_text / gemini_answer_text / "
             "claude_answer_text must be non-empty."
         )
-    _validate_user_verdict(user_verdict)
+    _validate_user_verdict(user_verdict, source_screen)
     if not isinstance(next_checks, list):
         raise DecisionValidationError("next_checks must be a list.")
     # POC5-24 — 선택 근거 모드(「보유와 비교」 미리보기 → AI 세션) 규칙 · 그 밖 기록은 그대로 통과.
@@ -512,19 +533,22 @@ def list_recent_records(
     *,
     limit: int = 10,
     db_path: Path = DEFAULT_DB_PATH,
+    source_screen: Optional[str] = None,
 ) -> list[dict]:
     """최근 created_at DESC 순 N건 — 목록용 축약 dict 리스트.
 
     each item 에 `has_gpt_answer / has_gemini_answer / has_claude_answer` boolean
-    포함 (지시문 §10.2).
+    포함 (지시문 §10.2). `source_screen` 을 주면 그 출처 기록만(POC6-32 W6 · 표 변경 없음).
     """
     if limit <= 0:
         return []
+    where = "" if source_screen is None else "WHERE source_screen = ? "
+    params = () if source_screen is None else (source_screen,)
     with _connection(db_path) as con:
         cur = con.execute(
-            f"SELECT {_SELECT_COLS} FROM ai_session_records "
+            f"SELECT {_SELECT_COLS} FROM ai_session_records {where}"
             "ORDER BY created_at DESC, id DESC LIMIT ?",
-            (int(limit),),
+            (*params, int(limit)),
         )
         rows = cur.fetchall()
 
