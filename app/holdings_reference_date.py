@@ -15,8 +15,11 @@
 ```
 
 REFERENCE_DATE 는 계산 밖 메타데이터라 holdings(수량 · 평단) · OCI 적용 payload 가 바뀌지 않는다
-(holdings_book). 일괄 설정의 '이미 설정된 기간 덮어쓰지 않음'은 화면이 기준일 없는 기간만 보내고
-여기서 base_revision 일치를 확인해 보장한다(서버 별도 표지 없음 · 판정 §9-1).
+(holdings_book). 화면 진입은 History 기간의 개별 편집(대상 1건 · ReferenceDateEditor · 화면 낱말
+'비교 시작일')뿐이다 — POC6-33(판정 Q17 · Q21 · Q46)에서 「종목 관리」 상단 일괄 창을 내렸다.
+대상 여러 건(1 ~ 200 · 한 번 저장)은 API 계약으로 남는다. 이 함수는 보낸 대상의 값을 그대로 바꾸므로
+'이미 설정된 기간 덮어쓰지 않음'은 여러 건을 보내는 쪽이 기준일 없는 기간만 고르고 여기서 base_revision
+일치를 확인해 지킨다(서버 별도 표지 없음 · POC5-07 판정 §9-1).
 """
 
 from __future__ import annotations

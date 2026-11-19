@@ -6,6 +6,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import CapitalContextPanel, { parseWon, refusedBeforeWrite } from "./CapitalContextPanel";
 import { ApiRequestError } from "@/lib/api";
 import EnrichedSection from "../EnrichedHoldingsSection";
+import HoldingsView from "../HoldingsView";
 import DecisionDraftPreviewCard, { AMOUNT_NOTE } from "../holdings_compare/DecisionDraftPreviewCard";
 import type { CapitalView, EnrichedHolding } from "@/lib/api";
 
@@ -70,15 +71,33 @@ afterEach(() => {
 const panel = () => screen.getByTestId("capital-panel");
 
 describe("자금 기준 카드 — 상태별 글", () => {
-  it("미입력: 0원이 아니라 '미입력' · 합계는 현금을 넣으면 계산", () => {
+  // POC6-33 H7(판정 Q13) — 미입력 = 안내 한 줄 + 보유 평가액 · 가격 기준일 + [입력](현금 · 한도 · 확인일 칸 · 머리 태그 없음).
+  it("미입력: 0원이 아니라 안내 한 줄 · 보유 평가액 · 가격 기준일 칸 하나 · [입력]", () => {
     render(<CapitalContextPanel capital={NOT_ENTERED} onSaved={() => {}} />);
     const t = panel().textContent ?? "";
-    expect(t).toContain("아직 입력하지 않음");
+    expect(t).not.toContain("아직 입력하지 않음");
     expect(t).toContain("현금 미입력 — 보유 + 입력 현금 합계");
-    expect(screen.getAllByText("미입력")).toHaveLength(2);
+    expect(t.match(/미입력/g)).toHaveLength(1); // 미입력 뜻은 한 번만
+    expect(screen.queryAllByText("미입력")).toHaveLength(0);
     const cells = Array.from(panel().querySelectorAll(".cap-grid > div")).map((c) => c.textContent);
-    expect(cells.slice(0, 3)).toEqual(["검토에 포함할 현금미입력", "이번 검토의 추가 투입 한도미입력", "현금 · 한도 확인일—"]);
+    expect(cells).toEqual(["보유 평가액 · 가격 기준일600,000원2026-11-05 · 2/2행"]);
+    expect(t).not.toContain("검토에 포함할 현금");
+    expect(t).not.toContain("이번 검토의 추가 투입 한도");
+    expect(t).not.toContain("현금 · 한도 확인일");
+    expect(t).not.toContain("0원으로");
+    expect(panel().querySelector(".cap-tag")).toBeNull();
     expect(screen.getByRole("button", { name: "입력" })).toBeTruthy();
+  });
+
+  it("[비우기] 뒤(저장 시각 있는 미입력)도 처음 미입력과 같은 모양 · 따로 '비움' 표시 없음", () => {
+    const { unmount } = render(<CapitalContextPanel capital={NOT_ENTERED} onSaved={() => {}} />);
+    const first = panel().innerHTML;
+    unmount();
+    render(
+      <CapitalContextPanel capital={{ ...NOT_ENTERED, saved_at: "2026-11-18T10:00:00+09:00" }} onSaved={() => {}} />,
+    );
+    expect(panel().innerHTML).toBe(first);
+    expect(panel().textContent).not.toMatch(/비움|비웠/);
   });
 
   it("입력됨: 합계 · 구성 · 한도는 합계에 더하지 않음 · 확인일 · 자동 반영 안 됨", () => {
@@ -93,6 +112,12 @@ describe("자금 기준 카드 — 상태별 글", () => {
     expect(t).toContain("거래 · 입출금 뒤 자동으로 바뀌지 않습니다");
     expect(t).toContain("투자 총예산 · 전체 재산이 아닙니다");
     expect(t).not.toContain("기준일이 다른 참고 합계"); // 같은 기준일
+    // POC6-33 H8 — 입력됨 칸 이름 그대로 · 직접 입력 확인일 문장은 기본 화면(자세히 밖) · H6 '행'
+    const cells = Array.from(panel().querySelectorAll(".cap-grid > div")).map((c) => c.querySelector(".k")?.textContent);
+    expect(cells).toEqual(["검토에 포함할 현금", "이번 검토의 추가 투입 한도", "현금 · 한도 확인일", "보유 평가액 · 가격 기준일"]);
+    expect(panel().querySelector(".cap-grid.one")).toBeNull();
+    expect(panel().querySelector(".cap-note")?.textContent).toContain("거래 · 입출금 뒤 자동으로 바뀌지 않습니다");
+    expect(t).toContain("2026-11-05 · 2/2행");
   });
 
   it("한도 비움 = 미정(현금 전액을 한도로 보지 않음) · 0원은 '직접 입력한 0원'", () => {
@@ -107,6 +132,11 @@ describe("자금 기준 카드 — 상태별 글", () => {
     expect(t).toContain("현금 전액을 한도로 보지 않음");
     expect(t).toContain("직접 입력한 0원");
     expect(t).toContain("보유 100% · 현금 0%");
+    // POC6-33 판정 Q14 — 직접 입력한 0원은 금액(미입력 안내 · 한 칸 모양이 아님)
+    const cash = panel().querySelector(".cap-grid > div")?.textContent;
+    expect(cash).toBe("검토에 포함할 현금0원직접 입력한 0원");
+    expect(t).not.toContain("미입력");
+    expect(panel().querySelector(".cap-grid.one")).toBeNull();
   });
 
   it("합계 0원은 알려진 금액 · 구성만 계산 불가 · 보유 없음 = 가격 기준일 대상 없음", () => {
@@ -150,9 +180,12 @@ describe("자금 기준 카드 — 상태별 글", () => {
       />,
     );
     const t = panel().textContent ?? "";
-    expect(t).toContain("보유 1/2종목만 시세 확인");
+    // POC6-33 H6 — priced_rows · holdings_rows 는 계좌별 보유 행 수라 '행' · H2 비중 이름 맞춤
+    expect(t).toContain("보유 1/2행만 시세 확인");
+    expect(t).toContain("종목 행의 ‘보유 내 비중(평가 기준)’은 시세 확인된 종목 평가액 기준");
     expect(t).not.toContain("보유 + 입력 현금 합계 ");
-    expect(t).toContain("부분 합계 · 1/2종목");
+    expect(t).toContain("부분 합계 · 1/2행");
+    expect(t).not.toMatch(/\d종목/);
     expect(t).toContain("400,000원");
   });
 
@@ -197,11 +230,23 @@ describe("자금 기준 카드 — 상태별 글", () => {
     expect(panel().textContent).toContain("같은 기준일의 합계 · 비중으로 보지 않습니다");
   });
 
-  it("보유가 있으면 화면 행(계좌 행)과 미리보기(종목 합산)의 집계 단위를 기본 화면에 적음", () => {
-    const { unmount } = render(<CapitalContextPanel capital={view()} onSaved={() => {}} />);
-    expect(panel().textContent).toContain("종목 행의 비중은 계좌 행마다 따로 계산합니다");
-    expect(panel().textContent).toContain("같은 종목의 모든 계좌 합산");
+  // POC6-33 H8(판정 Q15 · I-13) — 계좌별 비중 계산 설명은 [자세히] 안 맨 앞(입력됨 · 미입력 모두) · 기본 화면에는 없음.
+  it.each([
+    ["입력됨", view()],
+    ["미입력", NOT_ENTERED],
+  ])("보유가 있으면 화면 행(계좌 행)과 미리보기(종목 합산)의 집계 단위를 [자세히] 안 맨 앞에 적음 — %s", (_l, cap) => {
+    const { unmount } = render(<CapitalContextPanel capital={cap} onSaved={() => {}} />);
+    const help = panel().querySelector("details.cap-help") as HTMLElement;
+    const first = help.querySelector("summary + p")?.textContent ?? "";
+    expect(first).toContain("종목 행의 비중은 계좌 행마다 따로 계산합니다");
+    expect(first).toContain("같은 종목의 모든 계좌 합산");
+    const outside = (panel().textContent ?? "").replace(help.textContent ?? "", "");
+    expect(outside).not.toContain("계좌 행마다");
+    expect(Array.from(panel().querySelectorAll(".cap-note")).some((n) => (n.textContent ?? "").includes("계좌 행마다"))).toBe(false);
     unmount();
+  });
+
+  it("보유가 없으면 계좌별 비중 계산 설명 없음", () => {
     render(
       <CapitalContextPanel
         capital={view({ holdings_rows: 0, priced_rows: 0, price_date: { state: "NO_HOLDINGS", min: null, max: null } })}
@@ -410,7 +455,7 @@ describe("종목 행 비중 · 배너 아래 카드 자리", () => {
     );
     const facts = Array.from(container.querySelectorAll(".hld-row-facts"));
     expect(facts).toHaveLength(3);
-    expect(facts.filter((f) => (f.textContent ?? "").includes("보유 내 비중 20%"))).toHaveLength(2);
+    expect(facts.filter((f) => (f.textContent ?? "").includes("보유 내 비중(평가 기준) 20%"))).toHaveLength(2);
     // 값 없음(null)은 '0%'가 아니라 '비중 계산 불가'
     const unpriced = facts.find((f) => (f.textContent ?? "").includes("133690"));
     expect(unpriced?.textContent).toContain("비중 계산 불가");
@@ -445,5 +490,30 @@ describe("판단 근거 미리보기 — 버튼 근처 금액 안내(판정 Q1)"
       "복사·AI 세션 원문에 보유 평가액·현금·한도·합계 금액이 포함됩니다. 외부 AI에 붙여 넣으면 해당 금액도 전달됩니다.",
     );
     expect(screen.getByRole("button", { name: "복사" })).toBeTruthy();
+  });
+});
+
+// POC6-33 H9(판정 Q12) — 「보유 현황」 화면 글은 '네이버' · '저장'(갱신 실패 사유 코드는 그대로) · 가상 보유만.
+describe("보유 현황 화면 — 네이버 · 저장 표기", () => {
+  it("버튼 · 안내 · 갱신 결과 줄에 'Naver' · '캐시' 없음 · 자금 카드는 미입력 모양", async () => {
+    const item = row({ ticker: "TEST01", name: "보유 A", price_source: "naver" });
+    const routed = vi.fn(async (url: string, init?: { method?: string }) => {
+      calls.push({ url, method: init?.method, body: null });
+      const body = url.endsWith("/holdings/market/refresh")
+        ? { ok_count: 1, fail_count: 1, items: [], failures: [{ ticker: "TEST02", reason: "timeout" }] }
+        : { items: [item], capital: { ...NOT_ENTERED, holdings_value: 120000, holdings_rows: 1, priced_rows: 1 } };
+      return { ok: true, status: 200, text: async () => JSON.stringify(body) };
+    });
+    vi.stubGlobal("fetch", routed);
+    const { container } = render(<HoldingsView onNavigate={() => {}} />);
+    const btn = await screen.findByRole("button", { name: "시세 갱신 (네이버)" });
+    expect(btn.getAttribute("title")).toBe("저장된 보유 종목의 현재가를 네이버에서 1회 조회하여 저장");
+    await waitFor(() => expect(container.textContent).toContain("저장된 네이버 시세 기준 평가"));
+    expect(panel().textContent).toContain("현금 미입력 — 보유 + 입력 현금 합계");
+    expect(panel().querySelectorAll(".cap-grid > div")).toHaveLength(1);
+    fireEvent.click(btn);
+    await waitFor(() => expect(container.textContent).toContain("네이버 시세 갱신 완료 — 성공 1건 / 실패 1건: TEST02(timeout)"));
+    expect(container.innerHTML).not.toMatch(/Naver|캐시/);
+    expect(calls.filter((c) => c.method === "POST")).toHaveLength(1);
   });
 });

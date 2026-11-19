@@ -1,8 +1,12 @@
 "use client";
 // POC5-19 개정(2026-10-17 §2 · §4) — 세부 흐름 창 본문.
-// 1) 세 근거의 실제 기준일 + 핵심 값 한 줄씩 → 2) 같은 날짜로 맞춘 최근 저장일(거래량 흐름 날짜) 기간 · ? →
+// POC6-33(판정 Q34 · Q35 · PLAN E4 · E9) — 창 = 차트 · 고른 날의 수치 · 날짜 범위(역할). 세 근거 기준일 + 핵심 값 첫 줄은
+// 펼친 상세의 세 묶음과 같아 뺐다. 5 · 20 은 '저장일'.
+// 1) 차트 표시 기간(같은 날짜로 맞춘 최근 저장일 · 거래량 흐름 날짜) · ? →
 // 3) 고른 날짜의 종가 · 거래량 줄(차트 바로 위 고정) → 4) 가격 선(이미 받은 가격 시계열을 날짜로 찾음 · 배열 위치로
-// 짝짓지 않음 · 그날 종가가 없으면 '가격 자료 없음' · 선을 끊음) → 5) 거래량 막대 → 6) 계산 기간 · 출처.
+// 짝짓지 않음 · 그날 종가가 없으면 '가격 자료 없음' · 선을 끊음) → 5) 거래량 막대 → 6) 계산 기간.
+// POC6-33 RESULT 판정 §2-4(EV-3) — 아래 거래량 줄은 저장 거래량의 비교 구간 · 유효 자료 수만 보이고, 제공처 원문은
+// 이 창의 기존 '세부 흐름' 도움말 마지막 문단으로 읽는다.
 // 가격 시계열은 기본 화면 가격 차트와 같은 공유 조회 키를 '구독만' 한다(lazy · 창이 조회를 시작하지 않음 →
 // 열고 닫아도 · 앞 조회가 실패했어도 새 GET 없음 · 요청 중이면 그 결과를 기다림).
 import { useState } from "react";
@@ -10,12 +14,11 @@ import { fetchPriceSeries, type HoldingsMarketEvidenceItem, type PriceBasis, typ
 import { useSharedQuery } from "@/lib/api/queryCache";
 import { fmtValue } from "@/lib/chartScale";
 import { priceFlowLine } from "@/lib/priceBasis";
-import { NO_VOLUME_TEXT, volumeSourceParts } from "@/lib/storedVolume";
+import { NO_VOLUME_TEXT, volumeProviderHelp, volumeSourceParts } from "@/lib/storedVolume";
 import SeriesChart from "../charts/SeriesChart";
 import { priceSeriesKey } from "../workbench/PriceChart";
 import HelpPopover from "./HelpPopover";
 import { declineDetailText } from "./declineSummary";
-import { evidenceStrip } from "./evidenceStrip";
 import type { RiskEvidenceRow } from "./helpers";
 import { hidesValues, periodLine } from "./priceVolatility";
 import VolumeBars from "./VolumeBars";
@@ -69,34 +72,24 @@ export default function DetailFlowsBody({
       ? fmtValue(curPrice, "원")
       : "자료 없음";
   const volText = p ? (p.volume === null ? "값 없음" : fmtValue(p.volume, "주")) : "";
-  const [src, win] = sv && sv.status !== "no_price_data" ? volumeSourceParts(sv) : ["", ""];
+  const svShown = sv && sv.status !== "no_price_data" ? sv : null;
+  const win = svShown ? volumeSourceParts(svShown)[1] : "";
+  const provider = svShown ? [volumeProviderHelp(svShown)] : [];
   const vnote = vt ? missingNote(vt) : null;
 
   return (
     <div className="dfw" data-testid="detail-flows-body">
-      <div className="dfw-strip" data-testid="detail-flows-strip">
-        {evidenceStrip(row, item, basis).map((l) => (
-          <div key={l.key} className="dfw-strip-line">
-            <span className="dfw-strip-k">
-              {l.title} <span className="dfw-strip-date">기준일 {l.date}</span>
-            </span>
-            <span className="dfw-strip-v">{l.text}</span>
-            {l.note ? <span className="dfw-strip-note hre-status-check">{l.note}</span> : null}
-          </div>
-        ))}
-      </div>
-
       {n === 0 || !p ? (
         <p className="helper">{NO_VOLUME_TEXT}</p>
       ) : (
         <>
           <div className="dfw-period">
             <span data-testid="detail-flows-period">
-              같은 날짜로 맞춘 최근 {n}개 저장일 · {pts[0].date} ~ {pts[n - 1].date}
+              차트 표시 기간 {pts[0].date} ~ {pts[n - 1].date} · 최근 {n}개 저장일(종가 · 거래량 같은 날짜)
             </span>
             <HelpPopover
               label="세부 흐름"
-              paragraphs={[TREND_HELP_BASIS, TREND_HELP_PRICE_MATCH, ...trendLimits(vt)]}
+              paragraphs={[TREND_HELP_BASIS, TREND_HELP_PRICE_MATCH, ...trendLimits(vt), ...provider]}
             />
           </div>
           <div className="rc-readout" aria-live="polite" data-testid="detail-flows-readout">
@@ -142,11 +135,7 @@ export default function DetailFlowsBody({
       <div className="dfw-foot">
         {pd?.end_date ? <div>가격 흐름 · {priceFlowLine(pd.end_date, pd.start_date_5d, pd.start_date_20d)}</div> : null}
         <div data-testid="hre-decline-band">하락 구간 · {declineDetailText(row, basis)}</div>
-        {src ? (
-          <div>
-            거래량 · {src} · {win}
-          </div>
-        ) : null}
+        {win ? <div data-testid="detail-flows-volume-window">거래량 · {win}</div> : null}
         {pv && !hidesValues(pv) ? <div>가격 흔들림 · {periodLine(pv)}</div> : null}
       </div>
     </div>

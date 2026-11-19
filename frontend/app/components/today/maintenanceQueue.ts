@@ -50,7 +50,8 @@ export type MaintenanceItem = {
 };
 
 // POC6-32 V2(판정 Q2 (b) · PLAN S5) — NAV 항목 4개의 이동 = 「진단·상태 › 데이터 상태」(읽기 전용 · 전체 ETF NAV · 괴리율).
-// 버튼 글자는 같은 곳으로 가는 기존 버튼 낱말(HoldingsRiskEvidenceSection)을 그대로 쓴다.
+// 버튼 글자는 POC6-32 때 「확인 근거」 상세에 있던 같은 곳 이동 버튼 낱말이다. POC6-33(PLAN E11)에서 그 상세
+// 버튼은 뺐고, 이 이동(「오늘의 투자 점검」)은 그대로 둔다.
 // NAV 를 다시 받는 일은 「오늘의 투자 점검」 [최신 자료 갱신]의 시장 단계다(「데이터 상태」는 보기만).
 export const NAV_TARGET: MenuKey = "data_status";
 export const NAV_ACTION_LABEL = "전체 ETF NAV·괴리율 보기 →";

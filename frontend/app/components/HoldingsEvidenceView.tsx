@@ -3,19 +3,16 @@
 // POC3-05 DESIGN_V2 — "확인 근거" 화면 (§4.4).
 //
 // 보유 ETF의 수치와 확인 근거를 하나의 읽기 흐름으로 보여준다(POC5-UI-02 — 사용자 선택 정렬).
-// 본체는 기존 HoldingsRiskEvidenceSection 재사용(읽기 전용 표 + 선택 상세). 기존 시장
+// 본체는 기존 HoldingsRiskEvidenceSection 재사용(읽기 전용 목록 + 누른 행 바로 아래 상세). 기존 시장
 // Evidence 카드(HoldingsMarketEvidenceCard)는 별도 대형 패널로 두지 않고(Q2·AC-8), 그
 // 고유 정보(NAV·괴리율·구성종목·중복률)는 선택 상세로 통합한다(HoldingsRiskEvidenceSection
-// 내부에서 처리). unavailable 사유 확인은 "데이터 상태"로 이동(§7).
+// 내부에서 처리). POC6-33(판정 Q54 · PLAN E11) — 상세의 [전체 ETF NAV·괴리율 보기] 이동 버튼은 뺐다.
+// 전체 ETF NAV · 괴리율 표는 메뉴 「진단·상태 › 데이터 상태」에서 본다(「오늘의 투자 점검」 같은 버튼은 그대로).
+// 화면 이동이 없으므로 onNavigate 를 받지 않는다(MainPanel 도 넘기지 않음).
 
 import HoldingsRiskEvidenceSection from "./HoldingsRiskEvidenceSection";
-import type { MenuKey } from "./LeftSidebar";
 
-interface Props {
-  onNavigate: (key: MenuKey) => void;
-}
-
-export default function HoldingsEvidenceView({ onNavigate }: Props) {
+export default function HoldingsEvidenceView() {
   return (
     <section aria-labelledby="holdings-evidence-h">
       <h1 id="holdings-evidence-h">확인 근거</h1>
@@ -24,7 +21,7 @@ export default function HoldingsEvidenceView({ onNavigate }: Props) {
         화면입니다.
       </p>
 
-      <HoldingsRiskEvidenceSection onNavigate={onNavigate} />
+      <HoldingsRiskEvidenceSection />
     </section>
   );
 }

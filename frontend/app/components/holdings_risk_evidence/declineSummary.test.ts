@@ -258,7 +258,7 @@ describe("declineDetailText (POC5-13 상세 줄)", () => {
       BASIS,
     );
     expect(t).toBe(
-      "PC 20저장일 하락 5~8% · 20저장일 변화 -5.0%(판정에 쓴 소수 첫째 자리 값) · 기간 2026-09-12 ~ 2026-10-14(KODEX200 비교 기간과 달라 상대 비교는 비워 둠) · PC 저장 종가",
+      "PC 20저장일 하락 5~8% · 20저장일 변화 -5.0%(판정에 쓴 소수 첫째 자리 값) · 기간 2026-09-12 ~ 2026-10-14(KODEX 200 비교 기간과 달라 상대 비교는 비워 둠) · PC 저장 종가",
     );
   });
 
@@ -281,9 +281,10 @@ describe("declineDetailText (POC5-13 상세 줄)", () => {
         row({ decline_band: band(null, null, "date_mismatch"), price_dates: dates("date_mismatch", "2026-08-12") }),
         BASIS,
       ),
-    ).toBe("판정하지 않음 — 이 종목의 최근 저장일(2026-08-12)이 PC 가격 흐름 기준일(2026-10-14)과 다릅니다(자료 확인 필요).");
-    expect(declineDetailText(row({ decline_band: band(null, null, "insufficient_history") }), null)).toContain(
-      "저장 종가가 21개보다 적어",
+    ).toBe("판정하지 않음 — 이 종목 마지막 저장일(2026-08-12)이 가격 기준일(2026-10-14)과 다릅니다(자료 확인 필요).");
+    // POC6-33 RESULT 판정 §2-6 — 사용자 글의 'KODEX 200'은 띄어 쓴다.
+    expect(declineDetailText(row({ decline_band: band(null, null, "insufficient_history") }), null)).toBe(
+      "판정하지 않음 — 이 종목이나 KODEX 200 의 저장 종가가 21개보다 적어 20저장일 변화를 계산할 수 없습니다(자료 확인 필요).",
     );
     expect(declineDetailText(row({ decline_band: band(null, null, "invalid_value") }), null)).toBe(
       "판정하지 않음 — 20저장일 변화 값을 확인할 수 없습니다(자료 확인 필요).",

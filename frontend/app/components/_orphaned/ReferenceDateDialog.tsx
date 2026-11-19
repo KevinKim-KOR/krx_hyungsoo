@@ -8,8 +8,8 @@
 
 import { useId, useMemo, useRef, useState } from "react";
 import { DEFAULT_REFERENCE_DATE, putReferenceDate, type PositionHistory } from "@/lib/api";
-import Dialog from "./Dialog";
-import { apiErrorText, newSaveId, todayKst } from "./format";
+import Dialog from "../holdings_manage/Dialog";
+import { apiErrorText, newSaveId, todayKst } from "../holdings_manage/format";
 
 interface Props {
   positions: PositionHistory[];

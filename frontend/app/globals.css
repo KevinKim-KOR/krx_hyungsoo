@@ -1118,6 +1118,24 @@ li.account-summary-item:last-child {
   font-size: 11px;
   color: var(--muted);
 }
+/* POC6-33 H7 · H8 — 「보유 현황」 자금 기준 카드.
+   미입력 = 보유 평가액 · 가격 기준일 한 칸만(.cap-grid.one · 한 열) · [자세히] 안 문단 간격. */
+.cap-grid.one {
+  grid-template-columns: minmax(0, 1fr);
+}
+.cap-help > p {
+  margin: 6px 0 0;
+}
+/* POC6-33 H4 — 펼친 상세의 '가격 기준시각 · 출처' 한 줄(목업 wide2). 좁은 칸에서 '네 / 이버'처럼 낱말 중간에서
+   꺾이지 않게 낱말 단위 줄바꿈 · 두 열 이상 나오는 폭에서만 두 칸 폭(한 열 격자에서 span 2 는 가로 넘침). */
+ul.detail-fields li.wide2 .v {
+  word-break: keep-all;
+}
+@media (min-width: 900px) {
+  ul.detail-fields li.wide2 {
+    grid-column: span 2;
+  }
+}
 .cap-note {
   font-size: 12px;
   color: var(--muted);
@@ -1831,6 +1849,61 @@ ul.reason-list li {
 .market-topn-sort-status {
   margin: 8px 0 16px 0;
   padding: 0 4px;
+}
+
+/* POC6-33 PLAN D1 ~ D5 — 「데이터 상태」(DataStatusView) · 공용 괴리율 표시(lib/navLabels.discountFlagClass) */
+
+/* 괴리율 표시 글자 — 기존 색 · 크기 그대로(두 표시 모두 --warn · 작은 글씨 · 옛 인라인 style 과 같은 값). */
+.nav-flag {
+  font-size: 0.75rem;
+  color: var(--warn);
+}
+
+/* 「데이터 상태」 표에서는 괴리율 숫자 아래 줄에(목업 ④ · D2). */
+.ds-card .nav-flag {
+  display: block;
+  white-space: nowrap;
+}
+
+/* 수집 상태 · 정렬 고르기 높이 40px 이상. */
+.ds-controls select {
+  min-height: 40px;
+}
+
+/* 표 위 뜻 두 줄(D5). */
+.ds-meaning {
+  display: grid;
+  gap: 2px;
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  font-size: 13px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+/* 사전 밖 원문 · 불러오기 실패 원문 [자세히](I-11 ②). 누르는 칸 40px. */
+details.ds-raw {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+details.ds-raw > summary {
+  cursor: pointer;
+  min-height: 40px;
+  box-sizing: border-box;
+  padding: 11px 0;
+  font-weight: 600;
+}
+
+.ds-raw-body {
+  display: grid;
+  gap: 2px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow-wrap: anywhere;
 }
 
 .market-discovery-subtitle {
@@ -3828,6 +3901,129 @@ button.help-pop-btn[aria-expanded="true"] .help-pop-dot, button.help-pop-btn:hov
 @media (max-width: 760px) { .evg { grid-template-columns: minmax(0, 1fr); } }
 .hre-detail-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .hre-detail-head h3 { margin: 0; }
+
+/* POC6-33 — 「확인 근거」(HoldingsRiskEvidenceSection · holdings_risk_evidence/*) · PLAN E1 ~ E12 · 목업 ③.
+   POC5-13 · POC5-15 · POC5-19 의 .hre-risk · .evg 규칙 뒤에 둔다 — 같은 선택자 우선순위에서 뒤 규칙이 이긴다
+   (.hre-risk .hre-risk-aux 의 margin-left · .evg-grid .v 의 font-weight 를 덮음).
+   공유 .wb-hlist · .wb-hrow 규칙은 고치지 않고, 이 화면 묶음 클래스(.hre-evlist · .hre-row-wrap)로만 덮는다. */
+
+/* E1 — 목록 위 요약: 머리 · 세 칸(하락 구간 · 자료 확인 필요 · 가격 기준일) · 구간별 · 보조 한 줄. */
+.hre-risk .hre-risk-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.hre-risk .hre-risk-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--card);
+}
+.hre-risk .hre-risk-stat .k { color: var(--muted); font-size: 12px; }
+.hre-risk .hre-risk-stat .v { font-size: 15px; }
+.hre-risk .hre-risk-stat .s { color: var(--muted); font-size: 11.5px; }
+/* 세 칸 아래로 들여쓰기 없이(목업 ③ · 예전 188px 들여쓰기는 '현재 상태' 줄 맞춤용). */
+.hre-risk .hre-risk-bands,
+.hre-risk .hre-risk-aux { margin-left: 0; }
+@media (max-width: 720px) {
+  .hre-risk .hre-risk-stats { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* E2 — 행의 확인 사유 한 줄(기존 배지 그대로 · 앞에 '확인 사유 · '). */
+.hre-reason { margin-top: 4px; font-size: 12.5px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.hre-reason .k { color: var(--muted); }
+
+/* E3 — 행 묶음(행 + 그 행 바로 아래 상세). 행 사이 선은 묶음이 긋는다(.wb-hrow:last-child 규칙이 묶음 안에서
+   모든 행의 선을 지우므로). 누른 행 위치 유지는 화면 코드가 하므로 브라우저 자동 스크롤 고정은 이 목록에서 끈다. */
+.hre-evlist { overflow-anchor: none; }
+.hre-row-wrap { border-bottom: 1px solid #f2f4f7; }
+.hre-row-wrap:last-child { border-bottom: none; }
+.hre-row-wrap .wb-hrow { border-bottom: none; }
+.hre-row-wrap.sel { box-shadow: inset 3px 0 0 var(--accent); }
+
+.hre-rdetail {
+  display: grid;
+  gap: 10px;
+  padding: 6px 16px 14px 18px;
+  background: #fbfcff;
+  border-top: 1px dashed #bfdbfe;
+  cursor: default;
+}
+.hre-rdetail .hre-detail-head { padding-top: 6px; }
+.hre-rdetail .hre-detail-head h3 { font-size: 15px; }
+
+/* 상세 한 줄 = 이름 칸 + 값 칸(목업 .dline). 기존 .hre-detail-line 의 flex 를 이 상세 안에서만 바꾼다. */
+.hre-rdetail .hre-detail-line {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 10px;
+  padding: 6px 0;
+  border-top: 1px solid var(--border-soft, #e8ebf0);
+  font-size: 13px;
+}
+.hre-rdetail .hre-detail-line > .k { min-width: 0; display: flex; align-items: flex-start; gap: 6px; flex-wrap: wrap; }
+.hre-detail-sub { display: block; margin-top: 2px; font-size: 12.5px; }
+
+/* E4 — ① 방향 줄. */
+.hre-dir {
+  font-size: 15px;
+  padding: 8px 10px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+/* E4 — 세 묶음의 첫 칸(거래량 '평균 대비' · 가격 흔들림 '직전 대비')을 굵게. */
+.evg .evg-lead { font-weight: 700; }
+
+/* E9 — 세 묶음 아래 날짜 역할. */
+.hre-roles {
+  font-size: 12.5px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 10px;
+  display: grid;
+  gap: 2px;
+}
+
+/* E10 — 순자산가치(NAV) · 괴리율 여섯 칸 · 괴리 표시는 숫자 아래 줄(.nav-flag 글자 · 색 = 「데이터 상태」 쪽 .nav-flag 공용 규칙). */
+.hre-nav-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+  gap: 6px 12px;
+}
+.hre-nav-cell { display: flex; flex-direction: column; min-width: 0; }
+.hre-nav-cell .k { color: var(--muted); font-size: 11.5px; }
+.hre-nav-cell .v { font-weight: 600; font-variant-numeric: tabular-nums; }
+.hre-nav-cell .nav-flag { display: block; white-space: nowrap; }
+
+/* E10 — 받은 안내 원문 · 사전 밖 원문 [자세히](누르는 칸 40px). */
+details.hre-raw { margin-top: 6px; font-size: 12px; color: var(--muted); }
+details.hre-raw > summary {
+  cursor: pointer;
+  min-height: 40px;
+  box-sizing: border-box;
+  padding: 11px 0;
+  font-weight: 600;
+}
+.hre-raw-body {
+  display: grid;
+  gap: 2px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 640px) {
+  .hre-rdetail { padding: 6px 10px 12px; }
+  .hre-rdetail .hre-detail-line { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+}
 
 /* POC5-19 개정(차트 읽기 · 2026-10-17) — KOSPI · 종목 가격 · 거래량 공통 차트 틀(rc-*) · 세부 흐름 창(dfw-*).
    세로 = 값 눈금 · 단위 · 옅은 가로선 / 가로 = 저장일 날짜 눈금 / 고른 날 = 세로 안내선 + 점 · 막대 강조 / 값 줄은 차트 위. */

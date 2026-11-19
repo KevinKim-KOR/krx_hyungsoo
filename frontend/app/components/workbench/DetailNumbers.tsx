@@ -7,6 +7,7 @@
 import { etfDetailKey, fetchEtfDetail, type DetailPeriod, type EtfDetailItem, type EtfDetailResponse } from "@/lib/api/etfDetail";
 import { useSharedQuery, type QueryState } from "@/lib/api/queryCache";
 import { md, pct } from "@/lib/etfCompare";
+import { discountFlagLabel } from "@/lib/navLabels";
 import { directionColor } from "./helpers";
 
 // 고를 종목이 아직 없으면(목록 · 보유를 받는 중) 조회하지 않는다(빈 종목 요청 없음 · phase = idle).
@@ -64,18 +65,14 @@ function won(v: number | null | undefined): string {
   return v == null ? "—" : `${Math.round(v).toLocaleString("ko-KR")}원`;
 }
 
-const FLAG: Record<string, string> = {
-  discount_check_needed: "괴리 확인 필요(3% 이상)",
-  discount_warning: "괴리 주의(5% 이상)",
-};
-
+// 괴리율 표시 글자 = 공용 사전(lib/navLabels · POC6-33 D6 — 「데이터 상태」 · 「확인 근거」와 같은 글자). 사전 밖 = 원문 그대로(지금과 같음).
 export function navText(it: EtfDetailItem): string {
   const n = it.nav;
   if (n.status === "not_applicable") return "기준가(NAV) · 괴리율: 해당 없음(개별 주식)";
   if (n.status === "missing") return "시장가 · 기준가(NAV) · 괴리율: 저장된 자료 없음";
   return (
     `${won(n.market_price)} · ${won(n.nav)} · ${pct(n.discount_rate_pct)} · ${dd(n.asof)} 자료` +
-    (n.flag ? ` · ${FLAG[n.flag] ?? n.flag}` : "")
+    (n.flag ? ` · ${discountFlagLabel(n.flag) ?? n.flag}` : "")
   );
 }
 

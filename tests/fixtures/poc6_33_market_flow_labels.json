@@ -1,0 +1,11 @@
+{
+  "_note": "POC6-33 I-2 — History [시장 흐름 보기] · 재진입 검토 창의 기준일 글. 서버(app/holdings_market_flow.py REFERENCE_FLOW_NAME · REFERENCE_NOTE)는 원문 그대로 보내고 화면(frontend/app/components/holdings_manage/historyText.ts)이 '비교 시작일' 낱말로 바꿔 읽는다. 서버 시험(tests/test_poc5_07_reference_date.py)은 서버 상수 · 출력이 server 글과 같은지, 화면 시험(frontend/app/components/holdings_manage/MarketFlowPanel.test.tsx)은 화면 사전 열쇠 = server 글 · 보이는 글 = display 글인지 본다. 한쪽 글만 바뀌면 그쪽 시험이 깨진다. 보유 자료 없음.",
+  "reference_flow_name": {
+    "server": "가격 비교 기준일 이후 종가 변화",
+    "display": "비교 시작일부터 종가 변화"
+  },
+  "reference_note": {
+    "server": "가격 비교 기준일은 종가 비교의 출발점이다 — 그날 보유 · 매수했다는 뜻이 아니며 개인 손익이 아니다.",
+    "display": "비교 시작일은 종가 비교의 출발점이다 — 그날 보유 · 매수했다는 뜻이 아니며 개인 손익이 아니다."
+  }
+}

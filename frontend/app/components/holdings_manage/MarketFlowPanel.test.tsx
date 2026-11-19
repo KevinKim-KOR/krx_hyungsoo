@@ -2,6 +2,9 @@
 // 자료 = 실제 백엔드 build_market_flow 출력(historyFixtures). API 는 vi.mock("@/lib/api").
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const fetchMarketFlow = vi.fn();
 
@@ -13,9 +16,22 @@ vi.mock("@/lib/api", async (importOriginal) => {
   };
 });
 
-import { ApiRequestError } from "@/lib/api";
-import MarketFlowPanel from "./MarketFlowPanel";
+import { ApiRequestError, type MarketFlowResponse } from "@/lib/api";
+import MarketFlowPanel, { MarketFlowView } from "./MarketFlowPanel";
 import { FLOW_ETF, FLOW_STOCK } from "./historyFixtures";
+import { REFERENCE_FLOW_NAME_TEXT, REFERENCE_NOTE_TEXT, referenceFlowName, referenceNoteText } from "./historyText";
+import { FLOW_REF_OPEN, FLOW_REF_SOLD } from "./referenceFixtures";
+
+// POC6-33 I-2 — 서버 시험(tests/test_poc5_07_reference_date.py)과 같은 공용 고정 자료로 기준일 글 사전을 대조한다
+// (POC6-33 poc6_33_filtered_notes.json 과 같은 방식 · 저장소 파일만 읽음 · 보유 자료 없음).
+// holdings_manage → components → app → frontend → 저장소 루트
+const REPO_ROOT = path.dirname(
+  path.dirname(path.dirname(path.dirname(path.dirname(fileURLToPath(import.meta.url))))),
+);
+type Label = { server: string; display: string };
+const LABELS = JSON.parse(
+  readFileSync(path.join(REPO_ROOT, "tests", "fixtures", "poc6_33_market_flow_labels.json"), "utf8"),
+) as { reference_flow_name: Label; reference_note: Label };
 
 beforeEach(() => {
   fetchMarketFlow.mockReset();
@@ -126,5 +142,72 @@ describe("개별주 · 오류", () => {
     );
     expect(screen.queryByText("시장 흐름을 불러오는 중…")).toBeNull();
     expect(screen.queryAllByRole("listitem")).toHaveLength(0);
+  });
+});
+
+describe("비교 시작일 낱말(POC6-33 I-2 · 설계자 RESULT 판정 §2-2) — 서버 원문 ↔ 화면 글 공용 고정 자료", () => {
+  it("사전 열쇠 = 고정 자료의 서버 글 · 바꾼 글 = 고정 자료의 화면 글(한 쌍씩 · 그 밖 열쇠 없음)", () => {
+    expect([...REFERENCE_FLOW_NAME_TEXT.entries()]).toEqual([
+      [LABELS.reference_flow_name.server, LABELS.reference_flow_name.display],
+    ]);
+    expect([...REFERENCE_NOTE_TEXT.entries()]).toEqual([[LABELS.reference_note.server, LABELS.reference_note.display]]);
+    for (const l of [LABELS.reference_flow_name, LABELS.reference_note]) {
+      expect(l.server).toContain("가격 비교 기준일");
+      expect(l.display).toContain("비교 시작일");
+      expect(l.display).not.toContain("기준일");
+    }
+    // 화면 시험 자료(실제 백엔드 출력 복사)도 같은 서버 글이다 — 복사본만 낡으면 여기서 깨진다.
+    for (const f of [FLOW_REF_OPEN, FLOW_REF_SOLD]) {
+      expect(f.reference_flow?.name).toBe(LABELS.reference_flow_name.server);
+      expect(f.reference_note).toBe(LABELS.reference_note.server);
+    }
+  });
+
+  it("History 패널 = 서버 원문 대신 화면 글을 보이고 원문 낱말은 보이지 않는다", async () => {
+    fetchMarketFlow.mockResolvedValue(FLOW_REF_OPEN);
+    render(<MarketFlowPanel positionId="p" cycleId="cyc-ref" />);
+    expect((await screen.findByText(LABELS.reference_flow_name.display)).tagName).toBe("STRONG");
+    expect(screen.getByText(LABELS.reference_note.display).tagName).toBe("LI");
+    expect(screen.queryByText(LABELS.reference_flow_name.server)).toBeNull();
+    expect(screen.queryByText(LABELS.reference_note.server)).toBeNull();
+    expect(line(LABELS.reference_flow_name.display)).toHaveTextContent("설정한 비교 시작일 2026-01-01) 종가");
+  });
+
+  it("재진입 검토 창이 쓰는 같은 그리기(MarketFlowView)도 화면 글로 읽는다", () => {
+    render(<MarketFlowView data={FLOW_REF_OPEN} />);
+    expect(screen.getByText(LABELS.reference_flow_name.display)).toBeInTheDocument();
+    expect(screen.getByText(LABELS.reference_note.display)).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/가격 비교 기준일|설정한 기준일/);
+  });
+
+  it("사전 밖 글은 원문 그대로(바꾸거나 숨기지 않음 · 'constructor' 같은 글도 글 그대로)", () => {
+    expect(referenceFlowName("다른 흐름 이름")).toBe("다른 흐름 이름");
+    expect(referenceNoteText("constructor")).toBe("constructor");
+    expect(referenceFlowName("toString")).toBe("toString");
+    const other = {
+      ...FLOW_REF_OPEN,
+      reference_flow: { ...FLOW_REF_OPEN.reference_flow!, name: "새 서버 흐름 이름" },
+      reference_note: "새 서버 안내 글.",
+    } as MarketFlowResponse;
+    render(<MarketFlowView data={other} />);
+    expect(screen.getByText("새 서버 흐름 이름")).toBeInTheDocument();
+    expect(screen.getByText("새 서버 안내 글.")).toBeInTheDocument();
+  });
+
+  it("끝난 기간 줄 = '비교 시작일 …' · 휴장으로 옮긴 시작일은 '설정한 비교 시작일 … → 다음 거래일'", () => {
+    // 시작일만 휴장 이동으로 바꾼 파생 자료(날짜 · 수치는 FLOW_REF_SOLD 그대로 · 화면 글 갈래 확인용).
+    const hp = FLOW_REF_SOLD.holding_period!;
+    const moved = {
+      ...FLOW_REF_SOLD,
+      holding_period: {
+        ...hp,
+        start_basis: { ...hp.start_basis!, trade_date: "2026-01-01", moved_to_next_trading_day: true },
+      },
+    } as MarketFlowResponse;
+    render(<MarketFlowView data={moved} />);
+    expect(line("→ 마지막 매도일")).toHaveTextContent(
+      /^비교 시작일 2026-01-02\(설정한 비교 시작일 2026-01-01 → 다음 거래일\) → 마지막 매도일 2026-03-02 종가 변화 \+10%/,
+    );
+    expect(document.body.textContent).not.toMatch(/가격 비교 기준일|설정한 기준일|보유 기간/);
   });
 });

@@ -1,0 +1,18 @@
+{
+  "_note": "POC6-33 E6 — 「확인 근거」 상세 '필요한 자료 안내'에서 거르는 builder 문장(app/holdings_market_evidence.py _build_evidence_notes). 서버 시험(tests/test_holdings_market_evidence.py)은 builder 가 이 문장을 그대로 만드는지, 화면 시험(frontend/app/components/holdings_risk_evidence/helpers.test.ts)은 화면 거르기 상수가 이 목록과 같은지 본다. 한쪽 문장만 바뀌면 그쪽 시험이 깨진다. 합성 문장만(보유 자료 없음).",
+  "filtered_exact": [
+    "NAV / 괴리율 확인이 필요합니다.",
+    "구성종목 기준 현재 후보군의 반복 핵심 종목과 일부 겹칩니다.",
+    "구성종목 기준 현재 후보군의 반복 핵심 종목과 겹치는 항목이 없습니다.",
+    "구성종목 데이터가 캐시에 없어 비교할 수 없습니다.",
+    "현재 후보군의 구성종목 데이터를 확인할 수 없습니다.",
+    "NAV / 괴리율은 source 미연동으로 확인할 수 없습니다."
+  ],
+  "filtered_prefixes": [
+    "현재 Market Discovery ",
+    "20거래일 KODEX200 대비 단기 흐름 차이 "
+  ],
+  "kept": [
+    "단기 흐름은 데이터 부족으로 확인할 수 없습니다."
+  ]
+}

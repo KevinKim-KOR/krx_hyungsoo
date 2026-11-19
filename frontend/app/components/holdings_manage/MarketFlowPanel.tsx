@@ -7,8 +7,10 @@
 // 보인다. 자료 없음 · 비교 불가는 사유 문구 그대로 · 출처가 다르면 '출처 다름' 표시. 판정 · 추천
 // 문장 · ML 버튼은 없다(재진입 검토는 History 의 [재진입 검토] · POC5-06). 그리기는 `MarketFlowView`
 // (재진입 검토 창이 이미 받은 시장 흐름을 같은 모양으로 그린다). POC5-07: 가격 비교 기준일이 있으면
-// '가격 비교 기준일 이후 종가 변화'(기준일 → 마지막 저장일)를 맨 위에 · 종료 기간은 기준일 → 마지막
-// 매도일 — 매수 · 손익이 아니라 종가 비교 출발점이다(실제 매수일 미상 표시는 그대로).
+// 그 기준일 → 마지막 저장일 항목을 맨 위에 · 종료 기간은 기준일 → 마지막 매도일 — 매수 · 손익이 아니라
+// 종가 비교 출발점이다(실제 매수일 미상 표시는 그대로). POC6-33 I-2: 화면 낱말은 History 와 같은
+// '비교 시작일' — 항목 이름 · 안내는 서버 원문('가격 비교 기준일 …')을 historyText 사전으로 바꿔 읽고
+// (사전 밖 글은 원문 그대로) · 기간 줄 · 휴장 이동 표시 글도 '비교 시작일'. 날짜 · 수치는 서버 값 그대로.
 
 import { useEffect, useState } from "react";
 import {
@@ -22,7 +24,7 @@ import {
   type MarketFlowSeriesItem,
 } from "@/lib/api";
 import { apiErrorText, pnlClass } from "./format";
-import { pct } from "./historyText";
+import { pct, referenceFlowName, referenceNoteText } from "./historyText";
 
 interface Props {
   positionId: string;
@@ -89,13 +91,13 @@ function EventLine({ ev }: { ev: MarketFlowEvent }) {
 
 function ReferenceLine({ rf }: { rf: MarketFlowReference }) {
   const b = rf.basis;
-  const moved = b.moved_to_next_trading_day ? ` · 설정한 기준일 ${b.trade_date}` : "";
+  const moved = b.moved_to_next_trading_day ? ` · 설정한 비교 시작일 ${b.trade_date}` : "";
   const latest = rf.latest_stored_date
     ? `마지막 저장일 ${rf.latest_stored_date} 종가`
     : "마지막 저장일 없음";
   return (
     <li>
-      <strong>{rf.name}</strong>
+      <strong>{referenceFlowName(rf.name)}</strong>
       {" · "}
       {b.basis_date ?? "—"}({b.basis_note}
       {moved}) 종가 → {latest}: <SeriesValue item={rf.ticker} />
@@ -112,14 +114,14 @@ function PeriodLine({ period }: { period: MarketFlowPeriod }) {
       b
         ? `${b.basis_date ?? "—"}${
             b.moved_to_next_trading_day
-              ? `(${first && ref ? "설정한 기준일" : "거래일"} ${b.trade_date} → 다음 거래일)`
+              ? `(${first && ref ? "설정한 비교 시작일" : "거래일"} ${b.trade_date} → 다음 거래일)`
               : ""
           }`
         : "—";
-    // 기준일 구간은 '보유 기간'이라 부르지 않는다(그날 보유했다는 증거가 아님 · 설계 §1).
+    // 비교 시작일(값 = 가격 비교 기준일) 구간은 '보유 기간'이라 부르지 않는다(그날 보유했다는 증거가 아님 · 설계 §1).
     return (
       <li>
-        {ref ? "가격 비교 기준일" : "보유 기간: 최초 매수일"} {day(period.start_basis, true)} → 마지막 매도일{" "}
+        {ref ? "비교 시작일" : "보유 기간: 최초 매수일"} {day(period.start_basis, true)} → 마지막 매도일{" "}
         {day(period.end_basis, false)} 종가 변화{" "}
         <SeriesValue item={period.ticker} />
         {" · 같은 기간 KOSPI "}
@@ -156,7 +158,7 @@ export function MarketFlowView({ data }: { data: MarketFlowResponse }) {
         계열: {seriesNames(data)} · 출처는 각 날짜 행에 저장된 출처입니다.
       </div>
       <ul className="muted hmx-small">
-        {data.reference_note ? <li>{data.reference_note}</li> : null}
+        {data.reference_note ? <li>{referenceNoteText(data.reference_note)}</li> : null}
         {data.notes.map((n) => (
           <li key={n}>{n}</li>
         ))}

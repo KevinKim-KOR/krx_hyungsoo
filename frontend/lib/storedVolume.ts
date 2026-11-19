@@ -50,13 +50,22 @@ export function volumeSourceParts(ev: StoredVolumeEvidence): [string, string] {
 
 // 거래량 기준일이 PC 비교 기준일과 다르면 구분한다(판정 §9-4-4). 더 이르면 과거 저장 자료,
 // 더 늦으면 그 사실만 적는다(날짜 문자열 YYYY-MM-DD 비교).
+// basisName = 비교 기준일의 화면 이름. 기본값은 지금 쓰는 화면(「오늘의 투자 점검」 StoredVolumeBlock)의 글 그대로이고,
+// 「확인 근거」는 '가격 기준일'을 넘긴다(POC6-33 RESULT 판정 §2-6 · 그 화면 안 같은 뜻 낱말만 맞춤).
 export function pastVolumeNote(
   ev: StoredVolumeEvidence,
   referenceDate: string | null | undefined,
+  basisName: string = "PC 비교 기준일",
 ): string | null {
   if (!referenceDate || !ev.asof_date || ev.asof_date === referenceDate) return null;
   if (ev.asof_date < referenceDate) {
-    return `과거 저장 자료 · PC 비교 기준일은 ${referenceDate}`;
+    return `과거 저장 자료 · ${basisName}은 ${referenceDate}`;
   }
-  return `PC 비교 기준일(${referenceDate})보다 늦은 날짜의 자료`;
+  return `${basisName}(${referenceDate})보다 늦은 날짜의 자료`;
+}
+
+// POC6-33 RESULT 판정 §2-4(EV-3) — 「확인 근거」 [세부 흐름 보기] 창은 아래 줄에 비교 구간 · 유효 자료 수만 보이고,
+// 거래량 제공처 원문(응답 source 값 그대로)은 그 창의 기존 도움말 문단으로 읽는다. 다른 화면 출력(volumeSourceParts)은 그대로.
+export function volumeProviderHelp(ev: StoredVolumeEvidence): string {
+  return ev.source ? `거래량 제공처 원문: ${ev.source}` : "거래량 제공처: 확인 불가";
 }

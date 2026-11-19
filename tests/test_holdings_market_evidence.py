@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import json
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -14,7 +15,18 @@ from app import etf_constituents_store, etf_nav_store, market_data_store
 from app.etf_constituents_store import ConstituentRow, upsert_constituents
 from app.etf_nav_store import NavDailyRow, upsert_nav_rows
 from app.holdings import Holding
-from app.holdings_market_evidence import build_holdings_market_evidence
+from app.holdings_market_evidence import (
+    CONSTITUENTS_OK,
+    CONSTITUENTS_UNAVAILABLE,
+    MARKET_CORE_UNAVAILABLE,
+    STATUS_OK,
+    STATUS_UNAVAILABLE,
+    TOPN_MATCH_MATCHED,
+    TOPN_MATCH_NOT_IN_TOPN,
+    TOPN_MATCH_UNAVAILABLE,
+    _build_evidence_notes,
+    build_holdings_market_evidence,
+)
 from app.market_data_store import (
     EtfDailyPriceRow,
     EtfMasterRow,
@@ -442,3 +454,71 @@ def test_returns_six_twelve_are_none_when_unmatched(market_db: Path) -> None:
     assert r["status"] == "unavailable"
     assert r["six_month_return_pct"] is None
     assert r["twelve_month_return_pct"] is None
+
+
+# ─── POC6-33 E6 — builder 안내 문장 ↔ 「확인 근거」 화면 거르기 대조 ──────────────
+# 화면(helpers.ts FILTERED_NOTES · FILTERED_NOTE_PREFIXES)은 builder 문장을 글자 그대로 거른다.
+# builder 문장이 바뀌면 거르기가 소리 없이 풀려 '캐시' · 'source' 문장이 화면에 다시 보이므로
+# builder 의 모든 status 갈래 문장을 공용 고정 자료(tests/fixtures/poc6_33_filtered_notes.json)와 대조한다.
+# 화면 상수 ↔ 같은 고정 자료 대조는 frontend helpers.test.ts 가 한다(POC6-32 공용 고정 자료 방식 · 검증자 r1 B-6:
+# 서버 시험이 프론트 소스 파일 · TypeScript 선언 모양에 묶이지 않게). DB 열지 않음 · 순수 함수.
+_FILTER_FIXTURE = json.loads(
+    (Path(__file__).parent / "fixtures" / "poc6_33_filtered_notes.json").read_text(
+        encoding="utf-8"
+    )
+)
+
+
+def _builder_notes(topn: str, short: dict, cons: dict, nav: dict, topn_n=10):
+    return _build_evidence_notes(
+        {"status": topn}, short, cons, nav, holding_name="보유", topn_n=topn_n
+    )
+
+
+def test_builder_notes_match_shared_filter_fixture() -> None:
+    exact = _FILTER_FIXTURE["filtered_exact"]
+    prefixes = _FILTER_FIXTURE["filtered_prefixes"]
+    assert exact and prefixes
+
+    def filtered(note: str) -> bool:
+        return note in exact or any(note.startswith(p) for p in prefixes)
+
+    short_ok = {"status": STATUS_OK, "excess_vs_kodex200_20d_pctp": 1.25}
+    short_neg = {"status": STATUS_OK, "excess_vs_kodex200_20d_pctp": -3.4}
+    short_na = {"status": STATUS_UNAVAILABLE}
+    cons_hit = {"status": CONSTITUENTS_OK, "overlap_with_market_core": [{"t": 1}]}
+    cons_none = {"status": CONSTITUENTS_OK, "overlap_with_market_core": []}
+    cons_na = {"status": CONSTITUENTS_UNAVAILABLE}
+    core_na = {"status": MARKET_CORE_UNAVAILABLE}
+    nav_ok = {"status": STATUS_OK, "flag": None}
+    nav_flag = {"status": STATUS_OK, "flag": "discount_check_needed"}
+    nav_na = {"status": STATUS_UNAVAILABLE, "flag": None}
+
+    produced: list[str] = []
+    for topn, n in (
+        (TOPN_MATCH_MATCHED, 10),
+        (TOPN_MATCH_NOT_IN_TOPN, 10),
+        (TOPN_MATCH_NOT_IN_TOPN, None),
+        (TOPN_MATCH_UNAVAILABLE, 10),
+    ):
+        for short in (short_ok, short_neg, short_na):
+            for cons in (cons_hit, cons_none, cons_na, core_na):
+                for nav in (nav_ok, nav_flag, nav_na):
+                    produced += _builder_notes(topn, short, cons, nav, topn_n=n)
+
+    # 1) builder 가 만드는 문장 가운데 남기는 것은 자료 부족 안내 한 문장뿐이다.
+    kept = sorted({x for x in produced if not filtered(x)})
+    assert kept == _FILTER_FIXTURE["kept"]
+    # 2) 고정 자료(= 화면)의 정확 일치 목록은 모두 builder 가 실제로 만드는 문장이다(낡은 원문 없음).
+    assert set(exact) <= set(produced)
+    # 3) 앞부분 거르기는 후보 문장 네 갈래 · KODEX200 대비 두 부호를 모두 덮는다.
+    assert {x for x in produced if x.startswith(prefixes[0])} == {
+        "현재 Market Discovery 후보와 일치합니다.",
+        "현재 Market Discovery TOP 10 후보에 포함되어 있지 않습니다.",
+        "현재 Market Discovery 후보에 포함되어 있지 않습니다.",
+        "현재 Market Discovery 후보 목록을 확인할 수 없습니다.",
+    }
+    assert {x for x in produced if x.startswith(prefixes[1])} == {
+        "20거래일 KODEX200 대비 단기 흐름 차이 +1.25%p.",
+        "20거래일 KODEX200 대비 단기 흐름 차이 -3.40%p.",
+    }

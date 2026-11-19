@@ -184,6 +184,8 @@ describe("riskHelpParagraphs — 뜻 → 기준 → 지금 해당하는 제한�
     const p = riskHelpParagraphs({ ...base, summary: s, combo: combineRiskState("down", "down_found", s) });
     expect(p[0]).toContain("시장 국면이 각 종목 하락의 원인이라는 뜻은 아닙니다");
     expect(p).toEqual([p[0], HELP_BAND_BASIS, HELP_SHARE_BASIS, HELP_MARKET_BASIS]);
+    // POC6-33 RESULT 판정 §2-6 — 사용자 글의 'KODEX 200'은 띄어 쓴다.
+    expect(HELP_MARKET_BASIS).toBe("시장 국면은 KODEX 200 기준 기존 시장 판정입니다.");
     expect(p.join(" ")).not.toContain("‘미해당’");
   });
   it("미해당 상태일 때만 '미해당' 뜻 · 일부 판정 · 평가 부족일 때만 그 문단", () => {

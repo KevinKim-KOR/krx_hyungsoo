@@ -21,6 +21,7 @@ import {
   fmtSignedMoney,
   fmtSignedPct,
   pnlClass,
+  priceBasisText,
 } from "@/lib/holdings_view";
 
 // ─── 로컬 타입 (EnrichedHolding 기반) ───────────────────────────
@@ -244,6 +245,8 @@ interface EnrichedSectionProps {
 
 export default function EnrichedSection({ items, capitalSlot }: EnrichedSectionProps) {
   const summary = useMemo(() => computeSummaryFor(items), [items]);
+  // POC6-33 H6 — 서로 다른 종목 수(같은 종목이 여러 계좌에 있으면 1개) ↔ 계좌별 보유 행 수(items.length).
+  const tickerCount = useMemo(() => new Set(items.map((it) => it.ticker)).size, [items]);
   const accountSummaries = useMemo(() => groupByAccount(items), [items]);
   const hasAnyPrice = summary.priced_count > 0;
 
@@ -307,13 +310,13 @@ export default function EnrichedSection({ items, capitalSlot }: EnrichedSectionP
 
   return (
     <div style={{ marginTop: 24 }}>
-      <HoldingsHero summary={summary} accounts={accountSummaries} />
+      <HoldingsHero summary={summary} tickerCount={tickerCount} accounts={accountSummaries} />
       {capitalSlot}
 
       <p className="helper" style={{ margin: "0 0 12px" }}>
         {hasAnyPrice
-          ? "캐시된 Naver 시세 기준 평가. 갱신은 위의 [시세 갱신] 버튼."
-          : "아직 시세가 캐시되지 않았습니다. [시세 갱신] 버튼으로 1회 조회하세요."}
+          ? "저장된 네이버 시세 기준 평가. 갱신은 위의 [시세 갱신] 버튼."
+          : "아직 저장된 시세가 없습니다. [시세 갱신] 버튼으로 1회 조회하세요."}
       </p>
 
       {/* POC3-08: 정렬 컨트롤. 기본 계좌순(증권사 계좌조회 순서). */}
@@ -365,9 +368,11 @@ export default function EnrichedSection({ items, capitalSlot }: EnrichedSectionP
 
 function HoldingsHero({
   summary,
+  tickerCount,
   accounts,
 }: {
   summary: Summary;
+  tickerCount: number;
   accounts: AccountSummary[];
 }) {
   const {
@@ -381,6 +386,7 @@ function HoldingsHero({
   } = summary;
   // 재작업(#3): 부분 합계를 전체처럼 표시하지 않는다. 3상태 명시:
   //   allCalc(전부 계산) / partial(일부만) / none(전부 불가). 부분이면 N/M 기준 표기.
+  //   POC6-33 H6 — N/M 은 계좌별 보유 행 수라 '행'(서로 다른 종목 수와 구별).
   const evalState: "all" | "partial" | "none" =
     calc_available_count === 0
       ? "none"
@@ -389,9 +395,9 @@ function HoldingsHero({
         : "all";
   const basisLabel =
     evalState === "partial"
-      ? `${calc_available_count}/${total_count}종목 기준`
+      ? `${calc_available_count}/${total_count}행 기준`
       : evalState === "all"
-        ? `${total_count}종목 전체`
+        ? `${total_count}행 전체`
         : null;
 
   return (
@@ -429,7 +435,9 @@ function HoldingsHero({
         </div>
         <div className="hld-kv">
           <div className="k">보유 종목</div>
-          <div className="v">{total_count}개</div>
+          <div className="v">
+            종목 {tickerCount}개 · 보유 행 {total_count}개
+          </div>
         </div>
         <div className="hld-kv">
           <div className="k">평가 계산</div>
@@ -443,8 +451,8 @@ function HoldingsHero({
 
       {evalState === "partial" ? (
         <div className="hld-hero-warn">
-          ⚠ {calc_missing_count + unpriced_count}종목은 시세 미확인·계산 정보 부족 —
-          위 총 평가금액·손익·구성은 <strong>{calc_available_count}/{total_count}종목만의
+          ⚠ {calc_missing_count + unpriced_count}행은 시세 미확인·계산 정보 부족 —
+          위 총 평가금액·손익·구성은 <strong>{calc_available_count}/{total_count}행만의
           부분 합계</strong>입니다(전체 아님).
         </div>
       ) : evalState === "none" ? (
@@ -671,7 +679,7 @@ function HoldingRow({
               <span className="sep">/</span>
               {mwText ? (
                 <span>
-                  보유 내 비중 <span className="hld-wv">{mwText}</span>
+                  보유 내 비중(평가 기준) <span className="hld-wv">{mwText}</span>
                 </span>
               ) : (
                 <span className="muted">비중 계산 불가</span>
@@ -707,25 +715,28 @@ function HoldingRow({
   );
 }
 
+// POC6-33 H1 — 상세 = 매입금액 → 평가금액 → 매입 기준 비중 → 가격 기준시각 · 출처(한 줄).
+//   현재가는 요약 행 '매입 X → 현재 Y'(값 없음 '현재 미확인')에 있어 상세에서 뺀다(2026-11-19 형수님 결정 · 판정 Q9 와 다름 ·
+//   1440 폭에서 상세 한 줄).
+//   수량 · 평균 매입단가는 요약 행에 있어 상세에서 뺀다(요약 행은 그대로).
 function DetailRowFields({ it }: { it: EnrichedHolding }) {
   const lines: Array<[string, string]> = [];
-  if (Number.isFinite(it.quantity))
-    lines.push(["수량", it.quantity.toLocaleString("ko-KR")]);
-  const avg = fmtMoney(it.avg_buy_price);
-  if (avg) lines.push(["평균 매입단가", avg]);
   const inv = fmtMoney(it.invested_amount);
   if (inv) lines.push(["매입금액", inv]);
-  const bw = fmtPct(it.buy_weight_pct);
-  if (bw) lines.push(["매입비중", bw]);
   // POC6-25 — 값 없음이어도 항목은 숨기지 않고 '미확인' · '평가 불가'로 적는다(0 · 다른 값으로 채우지 않음).
-  lines.push(["현재가", it.current_price == null ? "미확인" : (fmtMoney(it.current_price) ?? "미확인")]);
   lines.push(["평가금액", it.eval_amount == null ? "평가 불가" : (fmtMoney(it.eval_amount) ?? "평가 불가")]);
-  if (it.price_asof) lines.push(["가격 기준시각", it.price_asof]);
-  if (it.price_source) lines.push(["데이터 출처", it.price_source]);
+  // POC6-33 H3 — 값 없음(null · 누락)은 '0%'가 아니라 '비중 계산 불가'(fmtPct(null) = '0%' 라 먼저 거름).
+  lines.push([
+    "매입 기준 비중",
+    it.buy_weight_pct == null ? "비중 계산 불가" : (fmtPct(it.buy_weight_pct) ?? "비중 계산 불가"),
+  ]);
+  const basis = priceBasisText(it.price_asof, it.price_source);
+  if (basis) lines.push(["가격 기준시각", basis]);
   return (
     <ul className="detail-fields">
       {lines.map(([k, v]) => (
-        <li key={k}>
+        // 가격 기준시각 · 출처 한 줄은 넓은 화면에서 두 칸 폭(목업 wide2 · 낱말 중간 줄바꿈 없음 · globals.css POC6-33 H4)
+        <li key={k} className={k === "가격 기준시각" ? "wide2" : undefined}>
           <span className="k">{k}</span>
           <span className="v">{v}</span>
         </li>

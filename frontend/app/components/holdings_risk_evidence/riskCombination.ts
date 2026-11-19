@@ -150,7 +150,7 @@ const MEANING: Record<string, string> = {
 export const HELP_BAND_BASIS =
   "하락 구간은 PC 저장 종가 21개로 얻은 20저장일 변화를 소수 첫째 자리로 반올림한 뒤 −5% · −8% · −10% 경계로 나눕니다(OCI 보유 알림과 같은 경계). PC 저장 종가 기준이라 OCI 알림과 값이 다를 수 있습니다.";
 export const HELP_SHARE_BASIS = "보유 평가 비중은 보유 현황의 평가금액을 종목별로 합산해 계산합니다.";
-export const HELP_MARKET_BASIS = "시장 국면은 KODEX200 기준 기존 시장 판정입니다.";
+export const HELP_MARKET_BASIS = "시장 국면은 KODEX 200 기준 기존 시장 판정입니다.";
 // 판정하지 않은 이유는 종목마다 다르다(기준일 다름 · 저장 종가 부족 · 값 확인 불가 · 계좌 간 흐름 값 다름 ·
 // 근거 항목 없음) — 한 가지로 단정하지 않고 종목 상세로 보낸다.
 export const HELP_PARTIAL_JUDGE =

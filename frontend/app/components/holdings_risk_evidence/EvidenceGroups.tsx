@@ -1,7 +1,10 @@
 "use client";
 // POC5-19 — 「확인 근거」 종목 상세 기본 표시: 가격 흐름 / 거래량 / 가격 흔들림 세 묶음(개정 판정 §2 · 사용자 확정 목업).
 // 받은 근거 응답 값 · 기존 문구만 쓴다(새 계산 · 조회 없음). 계산할 수 없는 항목은 그 묶음에 기존 사유를 보인다.
-// 묶음마다 실제 기준일과 ? 하나. 기준일이 다른 자료는 기존 안내를 그대로 붙이고 한 시점 결론으로 묶지 않는다.
+// 묶음마다 그 자료의 마지막 날짜(가격 · 거래량 = '마지막 저장일' · 흔들림 = '마지막 유효 가격일' · '가격 기준일'과 구별 ·
+// RESULT 판정 §2-6)와 ? 하나. 기준일이 다른 자료는 기존 안내를 그대로 붙이고 한 시점 결론으로 묶지 않는다.
+// POC6-33(판정 Q34 · Q47 · PLAN E4) — 칸 이름 · 도움말의 5 · 20 은 '저장일' · KODEX 200 대비는 같은 기간 값(근거 응답) ·
+// 거래량 묶음 첫 칸 = 평균 대비 · 가격 흔들림 첫 칸 = 직전 대비(값은 기존 '직전보다 커짐 · 작아짐 · 같음').
 import type { HoldingsMarketEvidenceItem, PriceBasis } from "@/lib/api";
 import { NO_VOLUME_TEXT, VOLUME_HELP, pastVolumeNote, volumeCells } from "@/lib/storedVolume";
 import { directionColor } from "../workbench/helpers";
@@ -14,7 +17,7 @@ import { HELP_BAND_BASIS } from "./riskCombination";
 import { TREND_HELP_BASIS, trendLimits } from "./volumeTrend";
 
 export const PRICE_HELP_MEANING =
-  "5일 · 20일은 PC 저장 종가로 그만큼 앞선 저장일과 비교한 변화입니다. KODEX200 대비는 같은 기간 KODEX200 변화와의 차이(%p)입니다. 오르내림 예측이나 매매 의견이 아닙니다.";
+  "최근 5저장일 · 20저장일은 PC 저장 종가로 그만큼 앞선 저장일과 비교한 변화입니다. KODEX 200 대비는 같은 기간 KODEX 200 변화와의 차이(%p)입니다. 오르내림 예측이나 매매 의견이 아닙니다.";
 
 export default function EvidenceGroups({
   row,
@@ -29,7 +32,8 @@ export default function EvidenceGroups({
   const bandText = bandShortText(row, basis);
   const sv = item?.stored_volume;
   const vcells = sv && sv.status !== "no_price_data" ? volumeCells(sv) : null;
-  const past = sv ? pastVolumeNote(sv, basis?.reference_date) : null;
+  // POC6-33 RESULT 판정 §2-6 — 이 화면에서 reference_date 의 이름은 '가격 기준일'(공유 함수의 다른 화면 글은 그대로).
+  const past = sv ? pastVolumeNote(sv, basis?.reference_date, "가격 기준일") : null;
   const pv = item?.price_volatility;
   const flowDate = basis?.reference_date ?? null;
   return (
@@ -43,15 +47,15 @@ export default function EvidenceGroups({
           <div className="evg-reason">{declineDetailText(row, basis)}</div>
         ) : (
           <div className="evg-grid">
-            <span className="k">5일</span>
+            <span className="k">최근 5저장일</span>
             <span className="v" style={{ color: directionColor(row.return_5d_pct) }}>
               {pct(row.return_5d_pct)}
             </span>
-            <span className="k">20일</span>
+            <span className="k">20저장일</span>
             <span className="v" style={{ color: directionColor(row.return_20d_pct) }}>
               {pct(row.return_20d_pct)}
             </span>
-            <span className="k">KODEX200 대비 20일</span>
+            <span className="k">같은 기간 KODEX 200 대비</span>
             <span className="v" style={{ color: directionColor(row.excess_vs_kodex200_20d_pctp) }}>
               {pctp(row.excess_vs_kodex200_20d_pctp)}
             </span>
@@ -59,7 +63,7 @@ export default function EvidenceGroups({
             <span className="v">{bandText}</span>
           </div>
         )}
-        <div className="evg-foot">기준일 {row.price_dates?.end_date ?? "확인 불가"} · PC 저장 종가</div>
+        <div className="evg-foot">마지막 저장일 {row.price_dates?.end_date ?? "확인 불가"} · PC 저장 종가</div>
       </div>
 
       <div className="evg-cell" data-testid="evg-volume">
@@ -72,10 +76,10 @@ export default function EvidenceGroups({
         </div>
         {vcells ? (
           <div className="evg-grid">
+            <span className="k evg-lead">{vcells[3].label}</span>
+            <span className="v evg-lead">{vcells[3].value}</span>
             <span className="k">{vcells[1].label}</span>
             <span className="v">{vcells[1].value}</span>
-            <span className="k">{vcells[3].label}</span>
-            <span className="v">{vcells[3].value}</span>
             <span className="k">{vcells[2].label}</span>
             <span className="v">{vcells[2].value}</span>
             {past ? <span className="evg-wide evg-reason hre-status-check">{past}</span> : null}
@@ -83,7 +87,7 @@ export default function EvidenceGroups({
         ) : (
           <div className="evg-reason">{NO_VOLUME_TEXT}</div>
         )}
-        <div className="evg-foot">기준일 {sv?.asof_date ?? "확인 불가"}</div>
+        <div className="evg-foot">마지막 저장일 {sv?.asof_date ?? "확인 불가"}</div>
       </div>
 
       <div className="evg-cell" data-testid="evg-volatility">
@@ -97,19 +101,20 @@ export default function EvidenceGroups({
           <div className="evg-reason">{volatilityNote(pv, flowDate)}</div>
         ) : (
           <div className="evg-grid">
-            <span className="k">최근 20구간</span>
-            <span className="v">{cellValue(pv.recent, pv.recent_reason)}</span>
-            <span className="k">직전 20구간</span>
-            <span className="v">{cellValue(pv.previous, pv.previous_reason)}</span>
+            <span className="k evg-lead">직전 대비</span>
             <span
-              className={pv.comparison ? "evg-wide v" : "evg-wide evg-reason"}
+              className={pv.comparison ? "v evg-lead" : "evg-reason"}
               data-testid="evg-volatility-cmp"
             >
               {pv.comparison ? COMPARISON_TEXT[pv.comparison] : volatilityNote(pv, flowDate)}
             </span>
+            <span className="k">최근 20구간</span>
+            <span className="v">{cellValue(pv.recent, pv.recent_reason)}</span>
+            <span className="k">직전 20구간</span>
+            <span className="v">{cellValue(pv.previous, pv.previous_reason)}</span>
           </div>
         )}
-        <div className="evg-foot">기준일 {pv?.end_date ?? "확인 불가"}</div>
+        <div className="evg-foot">마지막 유효 가격일 {pv?.end_date ?? "확인 불가"}</div>
       </div>
     </div>
   );

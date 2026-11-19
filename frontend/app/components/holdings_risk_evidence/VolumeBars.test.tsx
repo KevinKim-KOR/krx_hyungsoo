@@ -34,6 +34,9 @@ describe("거래량 흐름 문구 (POC5-19)", () => {
     expect(TREND_HELP_BASIS).toContain("가격 흐름 · 거래량 칸과 같은, 종가가 확인된 저장일");
     expect(TREND_HELP_BASIS).not.toContain("모든");
     expect(TREND_HELP_BASIS).toContain("차트 위 줄");
+    // POC6-33 RESULT 판정 §2-6 — 저장일을 세는 도움말은 '저장일'(거래일 연속 여부는 따로 확인하지 않는다는 뜻은 그대로).
+    expect(TREND_HELP_BASIS).toContain("최근 20개 저장일이 거래일로 빠짐없이 이어졌는지는 따로 확인하지 않습니다.");
+    expect(TREND_HELP_BASIS).not.toContain("20거래일");
     expect(TREND_HELP_PRICE_MATCH).toContain("같은 날짜의 값을 찾아");
     expect(TREND_HELP_PRICE_MATCH).toContain("'종가 자료 없음'");
     expect(TREND_HELP_PRICE_MATCH).toContain("고른 과거 날짜의 평균이 아닙니다");

@@ -7,6 +7,7 @@
 // - 편집: 세 칸 · [저장] [취소] [비우기]. 편집 중 값은 저장에 성공하기 전까지 합계 · 비중 · AI 근거에 쓰지 않는다.
 //   저장 실패 = 입력값 유지 + 사유 · 저장된 값은 그대로.
 // - 미입력 · 0원 · 미정 · 계산 안 함 · 확인 불가는 서로 다른 글로 보인다(0원으로 바꾸지 않음).
+// - POC6-33: 미입력은 안내 한 줄 + 보유 평가액 · 가격 기준일 + [입력]만 · 계좌별 비중 설명은 [자세히] 안.
 
 import { useState } from "react";
 import {
@@ -272,19 +273,31 @@ export default function CapitalContextPanel({ capital, onSaved }: Props) {
 
   const shares = cv.holdings_share_pct !== null && cv.cash_share_pct !== null;
   const dateText = priceDateText(cv);
+  // POC6-33 H6 — holdings_rows · priced_rows 는 계좌별 보유 행 수라 '행'(서로 다른 종목 수가 아님).
   const valueSub =
     cv.holdings_rows === 0
       ? "보유 없음 · 가격 기준일 대상 없음"
       : cv.complete
-        ? `${dateText} · ${cv.priced_rows}/${cv.holdings_rows}종목`
-        : `부분 합계 · ${cv.priced_rows}/${cv.holdings_rows}종목 · ${dateText}`;
+        ? `${dateText} · ${cv.priced_rows}/${cv.holdings_rows}행`
+        : `부분 합계 · ${cv.priced_rows}/${cv.holdings_rows}행 · ${dateText}`;
+  const valueCell = (
+    <div>
+      <div className="k">보유 평가액 · 가격 기준일</div>
+      <div className={cv.price_date.state === "NONE_PRICED" ? "v na" : "v"}>
+        {cv.price_date.state === "NONE_PRICED" ? "계산 불가" : won(cv.holdings_value)}
+      </div>
+      <div className="s">{valueSub}</div>
+    </div>
+  );
 
+  // POC6-33 H7 — 미입력(처음 · [비우기] 뒤 같음) = 안내 한 줄 + 보유 평가액 · 가격 기준일 + [입력].
+  //   현금 · 한도 · 확인일 칸과 머리 태그는 입력됨에서만(0원은 금액 '0원' · 미입력과 구별).
   return (
     <div className="cap-card" data-testid="capital-panel">
       <div className="cap-head">
         <div className="cap-title">
           자금 기준
-          <span className="cap-tag">{entered ? `직접 입력 · 확인일 ${cv.confirmed_on}` : "아직 입력하지 않음"}</span>
+          {entered ? <span className="cap-tag">{`직접 입력 · 확인일 ${cv.confirmed_on}`}</span> : null}
         </div>
         <button type="button" className="btn-md" onClick={startEdit}>
           {entered ? "입력·수정" : "입력"}
@@ -322,9 +335,9 @@ export default function CapitalContextPanel({ capital, onSaved }: Props) {
         </>
       ) : cv.total_reason === "PARTIAL" ? (
         <div className="cap-conc none">
-          보유 {cv.priced_rows}/{cv.holdings_rows}종목만 시세 확인 — 합계 · 보유/현금 구성 · &lsquo;입력 현금 포함&rsquo;
-          비중은 계산하지 않습니다(부분 합계를 전체처럼 보이지 않게). 종목 행의 &lsquo;보유 내 비중&rsquo;은 시세
-          확인된 종목 평가액 기준입니다.
+          보유 {cv.priced_rows}/{cv.holdings_rows}행만 시세 확인 — 합계 · 보유/현금 구성 · &lsquo;입력 현금 포함&rsquo;
+          비중은 계산하지 않습니다(부분 합계를 전체처럼 보이지 않게). 종목 행의 &lsquo;보유 내 비중(평가 기준)&rsquo;은
+          시세 확인된 종목 평가액 기준입니다.
         </div>
       ) : (
         <div className="cap-conc none">
@@ -332,46 +345,42 @@ export default function CapitalContextPanel({ capital, onSaved }: Props) {
         </div>
       )}
 
-      <div className="cap-grid">
-        <div>
-          <div className="k">검토에 포함할 현금</div>
-          {cv.cash_krw === null ? (
-            <div className="v na">미입력</div>
-          ) : (
-            <>
-              <div className="v">{won(cv.cash_krw)}</div>
-              {cv.cash_krw === 0 ? <div className="s">직접 입력한 0원</div> : null}
-            </>
-          )}
-        </div>
-        <div>
-          <div className="k">이번 검토의 추가 투입 한도</div>
-          {!entered ? (
-            <div className="v na">미입력</div>
-          ) : cv.limit_krw === null ? (
-            <>
-              <div className="v na">미정</div>
-              <div className="s">현금 전액을 한도로 보지 않음</div>
-            </>
-          ) : (
-            <>
-              <div className="v">{won(cv.limit_krw)}</div>
-              <div className="s">합계에 더하지 않음</div>
-            </>
-          )}
-        </div>
-        <div>
-          <div className="k">현금 · 한도 확인일</div>
-          <div className={cv.confirmed_on ? "v" : "v na"}>{cv.confirmed_on ?? DASH}</div>
-        </div>
-        <div>
-          <div className="k">보유 평가액 · 가격 기준일</div>
-          <div className={cv.price_date.state === "NONE_PRICED" ? "v na" : "v"}>
-            {cv.price_date.state === "NONE_PRICED" ? "계산 불가" : won(cv.holdings_value)}
+      {entered ? (
+        <div className="cap-grid">
+          <div>
+            <div className="k">검토에 포함할 현금</div>
+            {cv.cash_krw === null ? (
+              <div className="v na">미입력</div>
+            ) : (
+              <>
+                <div className="v">{won(cv.cash_krw)}</div>
+                {cv.cash_krw === 0 ? <div className="s">직접 입력한 0원</div> : null}
+              </>
+            )}
           </div>
-          <div className="s">{valueSub}</div>
+          <div>
+            <div className="k">이번 검토의 추가 투입 한도</div>
+            {cv.limit_krw === null ? (
+              <>
+                <div className="v na">미정</div>
+                <div className="s">현금 전액을 한도로 보지 않음</div>
+              </>
+            ) : (
+              <>
+                <div className="v">{won(cv.limit_krw)}</div>
+                <div className="s">합계에 더하지 않음</div>
+              </>
+            )}
+          </div>
+          <div>
+            <div className="k">현금 · 한도 확인일</div>
+            <div className={cv.confirmed_on ? "v" : "v na"}>{cv.confirmed_on ?? DASH}</div>
+          </div>
+          {valueCell}
         </div>
-      </div>
+      ) : (
+        <div className="cap-grid one">{valueCell}</div>
+      )}
 
       {cv.total_krw !== null && cv.same_day === false ? (
         <div className="cap-warn">
@@ -390,18 +399,21 @@ export default function CapitalContextPanel({ capital, onSaved }: Props) {
           평가 합계이며 투자 총예산 · 전체 재산이 아닙니다.
         </div>
       ) : null}
-      {cv.holdings_rows > 0 ? (
-        <div className="cap-note">
-          종목 행의 비중은 계좌 행마다 따로 계산합니다(같은 종목이 여러 계좌에 있으면 행마다 나옴) · 판단 근거
-          미리보기의 종목 비중은 같은 종목의 모든 계좌 합산입니다.
-        </div>
-      ) : null}
+      {/* POC6-33 H8 — 계좌별 비중 계산 설명은 [자세히] 안 맨 앞(보유가 있을 때만 · 글 그대로). */}
       <details className="cap-help">
         <summary>자세히</summary>
-        생활비 · 비상금은 넣지 않아도 됩니다. &lsquo;총 매입금액&rsquo;은 지금 보유분의 취득금액이며 넣은 원금이
-        아닙니다. 매매 · 입출금 뒤에는 다음 검토 때 직접 고쳐 주세요(날짜도 자동으로 바뀌지 않음). 저장한 값은 이
-        PC 에만 두며 「보유 OCI 반영」으로 보내지 않습니다. 판단 근거 미리보기에는 생성할 때의 저장값이 들어가고,
-        값을 고친 뒤에는 [다시 생성]해야 바뀝니다.
+        {cv.holdings_rows > 0 ? (
+          <p>
+            종목 행의 비중은 계좌 행마다 따로 계산합니다(같은 종목이 여러 계좌에 있으면 행마다 나옴) · 판단 근거
+            미리보기의 종목 비중은 같은 종목의 모든 계좌 합산입니다.
+          </p>
+        ) : null}
+        <p>
+          생활비 · 비상금은 넣지 않아도 됩니다. &lsquo;총 매입금액&rsquo;은 지금 보유분의 취득금액이며 넣은 원금이
+          아닙니다. 매매 · 입출금 뒤에는 다음 검토 때 직접 고쳐 주세요(날짜도 자동으로 바뀌지 않음). 저장한 값은 이
+          PC 에만 두며 「보유 OCI 반영」으로 보내지 않습니다. 판단 근거 미리보기에는 생성할 때의 저장값이 들어가고,
+          값을 고친 뒤에는 [다시 생성]해야 바뀝니다.
+        </p>
       </details>
     </div>
   );

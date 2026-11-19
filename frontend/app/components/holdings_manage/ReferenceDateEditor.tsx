@@ -1,7 +1,9 @@
 "use client";
 
 // POC5-07 설계 §2 · §9-2-2 — History 기간 머리의 가격 비교 기준일 줄(기준잔고 · 잔고 등록 기간만).
-// '실제 매수일: 미상'과 '가격 비교 기준일: 날짜/없음'을 함께 보이고 [수정/해제] → 같은 줄 안에서
+// POC6-33(판정 Q18 · Q20 · PLAN I-2): 화면 낱말 = '비교 시작일'(값 · 저장 계약은 POC5-07 reference_date 그대로) ·
+// 기준일 없는 새 잔고 등록 기간도 이 줄에서 하나씩 설정(상단 일괄 버튼 없음).
+// '실제 매수일: 미상'과 '비교 시작일: 날짜/없음'을 함께 보이고 [수정/해제] → 같은 줄 안에서
 // 날짜 칸 · [저장] · [해제] · [취소](창 위에 창을 열지 않는다). 저장 = PUT action "reference_date"
 // (대상 1개 · base_revision · request_id — 같은 내용 재시도에는 같은 ID). 기준일은 종가 비교의 출발점이며
 // 매수일 · 매수 거래가 아니다. 저장 뒤 부모가 History · 보유를 다시 읽는다.
@@ -55,7 +57,7 @@ export default function ReferenceDateEditor({ positionId, cycleId, value, revisi
     <div className="hmx-ref-row hmx-small">
       <span>실제 매수일: 미상</span>
       <span>
-        가격 비교 기준일: <b>{value ?? "없음"}</b>
+        비교 시작일: <b>{value ?? "없음"}</b>
       </span>
       {!editing ? (
         <button
@@ -72,7 +74,7 @@ export default function ReferenceDateEditor({ positionId, cycleId, value, revisi
       ) : (
         <span className="hmx-row-actions">
           <label htmlFor={`${uid}-ref`} className="muted">
-            가격 비교 기준일
+            비교 시작일
           </label>
           <input
             id={`${uid}-ref`}

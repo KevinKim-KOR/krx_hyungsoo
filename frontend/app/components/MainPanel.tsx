@@ -87,7 +87,8 @@ function renderView(
       return <HoldingsManageView onNavigate={onNavigate} />;
     case "holdings_evidence":
       // "확인 근거" — 보유 ETF의 수치와 확인 근거 (읽기 전용 · 사용자 선택 정렬 · POC5-UI-02).
-      return <HoldingsEvidenceView onNavigate={onNavigate} />;
+      //   POC6-33(PLAN E11) — 상세의 화면 이동 버튼을 빼서 onNavigate 를 넘기지 않는다.
+      return <HoldingsEvidenceView />;
     case "approval":
       // 「OCI 운영·적용」 — ① 지금 OCI 상태(읽기만) · ② OCI 에 적용.
       //   2026-09-27 사용자 직접 지시로 「OCI 운영 상태」(`oci_status`)를 여기로 합쳤다.

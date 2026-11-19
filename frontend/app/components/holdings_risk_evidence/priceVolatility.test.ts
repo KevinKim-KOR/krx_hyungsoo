@@ -63,11 +63,11 @@ describe("가격 흔들림 문구 (POC5-16)", () => {
     );
     const dm = volatilityNote(ev({ status: "date_mismatch", end_date: "2026-10-13" }), "2026-10-14");
     expect(dm).toBe(
-      "이 종목의 마지막 유효 가격일(2026-10-13)이 PC 가격 흐름 기준일(2026-10-14)과 달라 값을 보이지 않습니다.",
+      "이 종목의 마지막 유효 가격일(2026-10-13)이 가격 기준일(2026-10-14)과 달라 값을 보이지 않습니다.",
     );
     expect(dm).not.toContain("최근 저장일");
     expect(volatilityNote(ev({ status: "reference_unavailable" }), null)).toBe(
-      "PC 가격 흐름 기준일을 확인할 수 없어 값을 보이지 않습니다.",
+      "가격 기준일을 확인할 수 없어 값을 보이지 않습니다.",
     );
   });
 
@@ -127,6 +127,11 @@ describe("가격 흔들림 문구 (POC5-16)", () => {
     // E ≠ D 는 어느 쪽이 늦어도 해당 — 숨긴 값을 '오래된 기간'으로 단정하지 않는다.
     expect(VOL_HELP_DATE).toContain("기준일이 다른 기간");
     expect(VOL_HELP_DATE).not.toContain("오래된");
+    // POC6-33 RESULT 판정 §2-6 — reference_date 의 이름은 「확인 근거」 안에서 '가격 기준일' 하나.
+    for (const t of [VOL_HELP_DATE, VOL_HELP_REF]) {
+      expect(t).toContain("가격 기준일");
+      expect(t).not.toMatch(/PC 가격 흐름 기준일|PC 비교 기준일|저장 가격 기준일/);
+    }
     const all = [
       VOL_HELP_MEANING, VOL_HELP_BASIS, VOL_HELP_INSUFFICIENT, VOL_HELP_INVALID,
       VOL_HELP_BASIS_UNCONFIRMED, VOL_HELP_DATE, VOL_HELP_REF,

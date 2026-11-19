@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import copy
+import json
 import socket
 import uuid
 from collections import Counter
@@ -605,6 +606,29 @@ def test_market_flow_reference_items(flow_env):
     with pytest.raises(ValueError):
         _flow(flow_env, _anchor_cycle("OPEN", reference="2026-1-2"))
     assert Path(db).read_bytes() == before  # 읽기 전용
+
+
+# POC6-33 I-2 — 서버는 원문('가격 비교 기준일 …')을 그대로 보내고 화면이 '비교 시작일' 낱말로 바꿔 읽는다.
+# 서버 상수 · 실제 출력 ↔ 공용 고정 자료(tests/fixtures/poc6_33_market_flow_labels.json)의 server 글을 대조한다.
+# 화면 사전 ↔ 같은 고정 자료 대조는 frontend MarketFlowPanel.test.tsx 가 한다(서버 시험이 프런트 소스에
+# 묶이지 않게 · poc6_33_filtered_notes.json 과 같은 방식). tmp 시세 DB · 보유 자료 없음.
+_LABEL_FIXTURE = json.loads(
+    (Path(__file__).parent / "fixtures" / "poc6_33_market_flow_labels.json").read_text(
+        encoding="utf-8"
+    )
+)
+
+
+def test_reference_texts_match_shared_label_fixture(flow_env):
+    name = _LABEL_FIXTURE["reference_flow_name"]["server"]
+    note = _LABEL_FIXTURE["reference_note"]["server"]
+    assert mf.REFERENCE_FLOW_NAME == name
+    assert mf.REFERENCE_NOTE == note
+    out = _flow(flow_env, _anchor_cycle("OPEN"))
+    assert out["reference_flow"]["name"] == name
+    assert out["reference_note"] == note
+    none = _flow(flow_env, _anchor_cycle("OPEN", reference=None))
+    assert none["reference_flow"] is None and none["reference_note"] is None
 
 
 # ── §5 · §6-5 History · 시장 흐름 조회 쓰기 0 · 06 ML 불변 ───────────────────

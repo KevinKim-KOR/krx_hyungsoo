@@ -25,7 +25,7 @@ export interface DeclineSummary {
   bands: { state: DeclineState; count: number; share: number | null }[];
   evalPartial: boolean; // 평가금액 합산값이 비어 있는 종목이 있음
   regime: string | null; // 시장 국면 문구(날짜 없음 · 판정 §7 '날짜')
-  flowDate: string | null; // PC 가격 흐름 기준일(price_basis.reference_date)
+  flowDate: string | null; // 가격 기준일(price_basis.reference_date)
 }
 
 // 평가 비중 원값 합. 평가금액이 하나도 없으면(분모 0 포함) 확인 불가 — 0% 로 채우지 않는다.
@@ -92,7 +92,7 @@ export function declineDetailText(r: RiskEvidenceRow, basis: PriceBasis | null):
   const wm =
     pd?.comparison === "window_mismatch" &&
     pd.start_date_20d !== (basis?.kodex200_start_date_20d ?? null)
-      ? "(KODEX200 비교 기간과 달라 상대 비교는 비워 둠)"
+      ? "(KODEX 200 비교 기간과 달라 상대 비교는 비워 둠)"
       : "";
   if (b?.judgeable && typeof b.return_20d_pct_1dp === "number") {
     const v = `20저장일 변화 ${b.return_20d_pct_1dp.toFixed(1)}%(판정에 쓴 소수 첫째 자리 값)`;
@@ -104,10 +104,10 @@ export function declineDetailText(r: RiskEvidenceRow, basis: PriceBasis | null):
     return "판정하지 않음 — 계좌 간 가격 흐름 값이 달라 확인이 필요합니다.";
   }
   if (b?.unjudged_reason === "date_mismatch") {
-    return `판정하지 않음 — 이 종목의 최근 저장일(${pd?.end_date ?? "확인 불가"})이 PC 가격 흐름 기준일(${flowDate ?? "확인 불가"})과 다릅니다(자료 확인 필요).`;
+    return `판정하지 않음 — 이 종목 마지막 저장일(${pd?.end_date ?? "확인 불가"})이 가격 기준일(${flowDate ?? "확인 불가"})과 다릅니다(자료 확인 필요).`;
   }
   if (b?.unjudged_reason === "insufficient_history") {
-    return "판정하지 않음 — 이 종목이나 KODEX200 의 저장 종가가 21개보다 적어 20저장일 변화를 계산할 수 없습니다(자료 확인 필요).";
+    return "판정하지 않음 — 이 종목이나 KODEX 200 의 저장 종가가 21개보다 적어 20저장일 변화를 계산할 수 없습니다(자료 확인 필요).";
   }
   return "판정하지 않음 — 20저장일 변화 값을 확인할 수 없습니다(자료 확인 필요).";
 }

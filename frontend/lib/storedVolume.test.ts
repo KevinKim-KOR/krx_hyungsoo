@@ -1,7 +1,7 @@
 // POC5-09 — 저장 거래량 표시 형식(단위 주 · 평균 · 배수 소수 둘째 자리 · 상태 문구 · 판정 §9-2).
 import { describe, it, expect } from "vitest";
 import type { StoredVolumeEvidence } from "@/lib/api";
-import { pastVolumeNote, volumeCells, volumeSourceParts } from "./storedVolume";
+import { pastVolumeNote, volumeCells, volumeProviderHelp, volumeSourceParts } from "./storedVolume";
 
 function ev(over: Partial<StoredVolumeEvidence> = {}): StoredVolumeEvidence {
   return {
@@ -88,5 +88,23 @@ describe("storedVolume 표시 (POC5-09)", () => {
       "PC 비교 기준일(2026-10-08)보다 늦은 날짜의 자료",
     );
     expect(pastVolumeNote(ev({ asof_date: "2026-08-12" }), null)).toBeNull();
+  });
+
+  // POC6-33 RESULT 판정 §2-6 — 「확인 근거」만 '가격 기준일'을 넘긴다. 이름을 넘기지 않는 화면(위 기본값)은 글 그대로.
+  it("비교 기준일 이름을 넘기면 그 이름으로 · 날짜 판정은 같음", () => {
+    expect(pastVolumeNote(ev({ asof_date: "2026-08-12" }), "2026-10-08", "가격 기준일")).toBe(
+      "과거 저장 자료 · 가격 기준일은 2026-10-08",
+    );
+    expect(pastVolumeNote(ev({ asof_date: "2026-10-12" }), "2026-10-08", "가격 기준일")).toBe(
+      "가격 기준일(2026-10-08)보다 늦은 날짜의 자료",
+    );
+    expect(pastVolumeNote(ev(), "2026-10-08", "가격 기준일")).toBeNull();
+  });
+
+  // POC6-33 RESULT 판정 §2-4(EV-3) — 제공처 원문은 응답 source 값 그대로 · 없으면 확인 불가.
+  it("거래량 제공처 도움말 문단 = 응답 원문 그대로 · 없으면 확인 불가", () => {
+    expect(volumeProviderHelp(ev())).toBe("거래량 제공처 원문: FinanceDataReader");
+    expect(volumeProviderHelp(ev({ source: "TEST_SRC" }))).toBe("거래량 제공처 원문: TEST_SRC");
+    expect(volumeProviderHelp(ev({ source: null }))).toBe("거래량 제공처: 확인 불가");
   });
 });

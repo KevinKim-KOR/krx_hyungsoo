@@ -94,7 +94,7 @@ export default function HoldingsView({ onNavigate }: Props) {
               .join(", ")}`
           : "";
       setRefreshSummary(
-        `Naver 시세 갱신 완료 — 성공 ${result.ok_count}건${failNote} (${new Date().toLocaleTimeString(
+        `네이버 시세 갱신 완료 — 성공 ${result.ok_count}건${failNote} (${new Date().toLocaleTimeString(
           "ko-KR"
         )})`
       );
@@ -120,9 +120,9 @@ export default function HoldingsView({ onNavigate }: Props) {
             onClick={onRefreshMarket}
             disabled={refreshing}
             type="button"
-            title="저장된 보유 종목의 현재가를 Naver 에서 1회 조회하여 캐시에 반영"
+            title="저장된 보유 종목의 현재가를 네이버에서 1회 조회하여 저장"
           >
-            {refreshing ? "시세 조회 중..." : "시세 갱신 (Naver)"}
+            {refreshing ? "시세 조회 중..." : "시세 갱신 (네이버)"}
           </button>
           <button type="button" onClick={() => onNavigate("holdings_manage")}>
             종목 관리 →

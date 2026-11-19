@@ -101,6 +101,29 @@ export function recordBrief(r: TradeRecordView): string {
   return `${tradeWhen(p)} ${kind} · 수량 ${dash(p.quantity, 6)} · 체결단가 ${dash(p.price)}`;
 }
 
+// POC6-33 I-2 — 시장 흐름의 기준일 글. 서버(app/holdings_market_flow.py REFERENCE_FLOW_NAME ·
+// REFERENCE_NOTE)는 원문 '가격 비교 기준일'을 그대로 보내고(저장 · API 계약 무변경) 화면은 History 낱말
+// '비교 시작일'로 읽는다. 사전 밖 글은 원문 그대로 보인다. 사전 열쇠 · 보이는 글은 서버 시험과 같은 공용
+// 고정 자료(tests/fixtures/poc6_33_market_flow_labels.json)로 양쪽에서 대조한다. Map = 'constructor' 같은
+// 글이 와도 객체 속성을 읽지 않는다.
+export const REFERENCE_FLOW_NAME_TEXT: ReadonlyMap<string, string> = new Map([
+  ["가격 비교 기준일 이후 종가 변화", "비교 시작일부터 종가 변화"],
+]);
+export const REFERENCE_NOTE_TEXT: ReadonlyMap<string, string> = new Map([
+  [
+    "가격 비교 기준일은 종가 비교의 출발점이다 — 그날 보유 · 매수했다는 뜻이 아니며 개인 손익이 아니다.",
+    "비교 시작일은 종가 비교의 출발점이다 — 그날 보유 · 매수했다는 뜻이 아니며 개인 손익이 아니다.",
+  ],
+]);
+
+export function referenceFlowName(name: string): string {
+  return REFERENCE_FLOW_NAME_TEXT.get(name) ?? name;
+}
+
+export function referenceNoteText(note: string): string {
+  return REFERENCE_NOTE_TEXT.get(note) ?? note;
+}
+
 // 보유 기간 문구: 시작(매수일 미상) ~ 종료.
 export function periodText(cycle: HoldingCycleView): string {
   const start = cycle.start_date ?? "매수일 미상";

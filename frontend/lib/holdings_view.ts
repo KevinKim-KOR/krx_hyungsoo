@@ -5,6 +5,8 @@
 // 분리 목적: KS-10 트리거 해소 + RunPanel ↔ EvidenceDetails 양방향 import 정돈.
 // 분리 전후 함수 본문 / 타입 / 동작 / 출력 모두 동일 — 위치만 이동.
 
+import { isRealDate, parseIsoInstant } from "./todayMarketLines";
+
 export const DEFAULT_GROUP = "일반";
 
 // ─── 숫자 / 포맷 helpers ─────────────────────────────────────────
@@ -46,6 +48,50 @@ export function pnlClass(v: unknown): string {
   if (n > 0) return "pnl-pos";
   if (n < 0) return "pnl-neg";
   return "";
+}
+
+// ─── POC6-33 H4 — 「보유 현황」 상세 가격 기준시각 · 출처 한 줄 ──────────────
+//   '2026-11-18 15:54:12 KST · 네이버' — 초까지 한국 시각 · 출처는 같은 줄.
+//   날짜만 저장된 값 = 날짜만 · 시각을 읽지 못함(엄격 해석 parseIsoInstant) = '확인 불가'.
+//   출처 사전 밖 값 = '기타 출처'(원문은 이 상세에 보이지 않음 · PLAN I-11 ①).
+
+const PRICE_SOURCE_LABEL: Readonly<Record<string, string>> = { naver: "네이버" };
+
+export function priceSourceLabel(src: string): string {
+  return Object.prototype.hasOwnProperty.call(PRICE_SOURCE_LABEL, src)
+    ? PRICE_SOURCE_LABEL[src]
+    : "기타 출처";
+}
+
+export function fmtKstSeconds(s: string): string {
+  if (isRealDate(s)) return s;
+  const t = parseIsoInstant(s);
+  if (t === null) return "확인 불가";
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(t);
+  const get = (k: string) => parts.find((p) => p.type === k)?.value ?? "";
+  return `${get("year")}-${get("month")}-${get("day")} ${get("hour")}:${get("minute")}:${get("second")} KST`;
+}
+
+// 시각 · 출처가 둘 다 없으면 null(줄 없음 · 지금과 같음). 하나만 있으면 있는 쪽을 적고,
+// 시각이 없을 때는 '확인 불가'(값 없음을 다른 값으로 채우지 않음).
+export function priceBasisText(
+  asof: string | null | undefined,
+  source: string | null | undefined,
+): string | null {
+  const hasAsof = typeof asof === "string" && asof !== "";
+  const hasSource = typeof source === "string" && source !== "";
+  if (!hasAsof && !hasSource) return null;
+  const when = hasAsof ? fmtKstSeconds(asof) : "확인 불가";
+  return hasSource ? `${when} · ${priceSourceLabel(source)}` : when;
 }
 
 // ─── recommendations 정규화 ─────────────────────────────────────

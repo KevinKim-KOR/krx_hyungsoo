@@ -1,6 +1,7 @@
 // POC5-13 · POC5-15 — 「확인 근거」 현재 상태 + PC 최근 20저장일 하락 구간: 요약 블록 · ? 도움말 · 실패 · 빈 보유 문구 ·
 // 보기 '하락 구간' · 구간 배지 ·
 // 상세 줄. 받은 두 응답(보유 평가 · 근거)만 쓴다(추가 조회 0). 비중은 정상 보유 평가 응답의 종목 합산이다.
+// POC6-33 — 화면이 새로 부르는 주간 순위 요약 · 한 ETF 구성 요약도 mock 한다(실제 요청이 나가지 않게 · PLAN E5 · E8).
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, act, fireEvent, within } from "@testing-library/react";
 import { __resetQueryCache } from "@/lib/api/queryCache";
@@ -14,6 +15,8 @@ const fetchEnrichedHoldings = vi.fn();
 const fetchHoldingsMarketEvidence = vi.fn();
 const fetchBenchmarkSeries = vi.fn();
 const fetchPriceSeries = vi.fn();
+const fetchConstituentsSummary = vi.fn();
+const fetchEtfCompareSummary = vi.fn();
 
 vi.mock("@/lib/api", async (importOriginal) => {
   const actual = await importOriginal<Record<string, unknown>>();
@@ -23,7 +26,12 @@ vi.mock("@/lib/api", async (importOriginal) => {
     fetchHoldingsMarketEvidence: (...a: unknown[]) => fetchHoldingsMarketEvidence(...a),
     fetchBenchmarkSeries: (...a: unknown[]) => fetchBenchmarkSeries(...a),
     fetchPriceSeries: (...a: unknown[]) => fetchPriceSeries(...a),
+    fetchConstituentsSummary: (...a: unknown[]) => fetchConstituentsSummary(...a),
   };
+});
+vi.mock("@/lib/api/etfCompare", async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+  return { ...actual, fetchEtfCompareSummary: (...a: unknown[]) => fetchEtfCompareSummary(...a) };
 });
 
 import HoldingsRiskEvidenceSection from "./HoldingsRiskEvidenceSection";
@@ -31,6 +39,7 @@ import { NO_VOLUME_TEXT, VOLUME_HELP } from "@/lib/storedVolume";
 import {
   TREND_HELP_BASIS,
   TREND_HELP_MISSING,
+  TREND_HELP_PRICE_MATCH,
   TREND_HELP_SHORT,
 } from "./holdings_risk_evidence/volumeTrend";
 import {
@@ -38,6 +47,17 @@ import {
   HELP_PARTIAL_EVAL,
   HELP_PARTIAL_JUDGE,
 } from "./holdings_risk_evidence/riskCombination";
+import { summaryOk } from "@/lib/etfCompareTestFixtures";
+
+// 모든 describe 앞 — 주간 순위 요약(보유 연결 없음) · 구성 요약(미수집) 기본 응답.
+beforeEach(() => {
+  fetchEtfCompareSummary.mockReset();
+  fetchConstituentsSummary.mockReset();
+  fetchEtfCompareSummary.mockResolvedValue(summaryOk({ holdings: { status: "ok", items: [] } }));
+  fetchConstituentsSummary.mockImplementation((t: string) =>
+    Promise.resolve({ status: "ok", message: null, ticker: t, name: null, state: "not_collected", state_label: "미수집", asof: null, stored_rows: 0 }),
+  );
+});
 
 function enrichedRow(ticker: string, name: string, evalAmt: number | null, invested: number) {
   return {
@@ -151,27 +171,30 @@ describe("확인 근거 — PC 최근 20저장일 하락 구간 (POC5-13)", () =
     fetchPriceSeries.mockResolvedValue({ availability: "NO_DATA", points: [] });
   });
 
-  it("요약(POC5-15) — 현재 상태 + ? / 종목 수 · 비중 / 구간별 / 작은 보조 묶음 · 긴 안내 문단은 ? 로", async () => {
+  it("요약(POC5-15 · POC6-33 E1) — 현재 보유 점검 상태 + ? / 종목 수 · 비중 / 자료 확인 필요 / 가격 기준일 / 구간별 / 보조 묶음 · 긴 안내 문단은 ? 로", async () => {
     await renderSection();
     const box = screen.getByTestId("hre-risk-summary");
-    expect(screen.getByTestId("hre-risk-state").textContent).toBe("현재 상태시장·보유 동반 약세?");
+    expect(screen.getByTestId("hre-risk-state").textContent).toBe("현재 보유 점검 상태시장·보유 동반 약세?");
+    expect(screen.getByTestId("hre-risk-need").textContent).toBe("1종목");
+    expect(screen.getByTestId("hre-risk-date").textContent).toBe("2026-10-14");
     expect(screen.getByTestId("hre-risk-total").textContent).toBe("2종목 · 보유 평가 비중 60.0%");
     expect(screen.getByTestId("hre-risk-band-D10_PLUS").textContent).toBe("10% 이상 1종목 · 40.0%");
     expect(screen.getByTestId("hre-risk-band-D8_10").textContent).toBe("8~10% 0종목 · 0.0%");
     expect(screen.getByTestId("hre-risk-band-D5_8").textContent).toBe("5~8% 1종목 · 20.0%");
     const aux = Array.from(screen.getByTestId("hre-risk-scope").querySelectorAll("span")).map((n) => n.textContent);
     expect(aux).toEqual([
+      "보유 저장 시각 2026-10-14", // 날짜만 온 값은 날짜만(today fmtKstDate)
+      "계산 가능 3/4종목",
       "시장 국면 하락장 · 4거래일째", // 시장 국면 줄에 날짜를 붙이지 않는다(13 판정 §7 '날짜')
       "구간 판정 가능 3/4종목 · 일부 종목 판정 불가",
-      "PC 가격 흐름 기준일 2026-10-14",
-      "PC 저장 종가 기준",
+      "PC 저장 종가 기준", // 가격 기준일은 위 칸 한 곳(POC6-33 판정 Q31) · 시장 기준일은 같은 날이라 적지 않음
     ]);
     // 긴 공통 안내 문단은 기본 화면에서 빠졌다(판정 Q3) — 그 내용은 ? 안에서 실제로 읽힌다.
     expect(box.textContent).not.toContain("OCI 알림과 값이 다를 수 있");
     expect(box.textContent).not.toContain("원인이라는 뜻은 아닙니다");
     expect(box.textContent).not.toMatch(/777/); // 근거 응답의 평가금액은 쓰지 않는다
-    fireEvent.click(within(box).getByRole("button", { name: "현재 상태 도움말" }));
-    const dlg = screen.getByRole("dialog", { name: "현재 상태 도움말" });
+    fireEvent.click(within(box).getByRole("button", { name: "현재 보유 점검 상태 도움말" }));
+    const dlg = screen.getByRole("dialog", { name: "현재 보유 점검 상태 도움말" });
     expect(dlg.textContent).toContain("시장 국면이 각 종목 하락의 원인이라는 뜻은 아닙니다.");
     expect(dlg.textContent).toContain(HELP_BAND_BASIS);
     expect(dlg.textContent).toContain(HELP_PARTIAL_JUDGE);
@@ -248,7 +271,7 @@ describe("확인 근거 — PC 최근 20저장일 하락 구간 (POC5-13)", () =
     expect(cDetail).toContain("해당 없음 · 20저장일 변화 -2.0%");
     const [dGroup, dDetail] = await detail("디");
     const reason =
-      "판정하지 않음 — 이 종목의 최근 저장일(2026-08-12)이 PC 가격 흐름 기준일(2026-10-14)과 다릅니다(자료 확인 필요).";
+      "판정하지 않음 — 이 종목 마지막 저장일(2026-08-12)이 가격 기준일(2026-10-14)과 다릅니다(자료 확인 필요).";
     expect(dGroup).toContain(reason); // 계산할 수 없으면 기본 묶음에 기존 사유
     expect(dDetail).toContain(reason);
     expect(fetchEnrichedHoldings).toHaveBeenCalledTimes(1);
@@ -276,7 +299,7 @@ describe("확인 근거 — PC 최근 20저장일 하락 구간 (POC5-13)", () =
     });
     fireEvent.click(screen.getByRole("button", { name: "세부 흐름 보기" }));
     expect(screen.getByTestId("hre-decline-band").textContent).toContain(
-      "기간 2026-09-12 ~ 2026-10-14(KODEX200 비교 기간과 달라 상대 비교는 비워 둠)",
+      "기간 2026-09-12 ~ 2026-10-14(KODEX 200 비교 기간과 달라 상대 비교는 비워 둠)",
     );
     expect(fetchHoldingsMarketEvidence).toHaveBeenCalledTimes(1);
   });
@@ -301,8 +324,8 @@ describe("확인 근거 — PC 최근 20저장일 하락 구간 (POC5-13)", () =
     }
     fetchHoldingsMarketEvidence.mockResolvedValue(ev);
     await renderSection();
-    expect(screen.getByTestId("hre-risk-state").textContent).toBe("현재 상태시장·보유 하락 구간 미해당?");
-    fireEvent.click(screen.getByRole("button", { name: "현재 상태 도움말" }));
+    expect(screen.getByTestId("hre-risk-state").textContent).toBe("현재 보유 점검 상태시장·보유 하락 구간 미해당?");
+    fireEvent.click(screen.getByRole("button", { name: "현재 보유 점검 상태 도움말" }));
     expect(screen.getByRole("dialog").textContent).toContain("‘미해당’은 지금 기준에 해당하지 않았다는 뜻입니다.");
   });
 
@@ -395,12 +418,14 @@ describe("확인 근거 — 종목 상세 가격 흔들림 (POC5-16)", () => {
     expect(flows.closest(".hre-detail-head")).not.toBeNull();
     expect(flows.compareDocumentPosition(groups) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.getAllByRole("button", { name: "세부 흐름 보기" })).toHaveLength(1);
+    // POC6-33 E4 — 가격 흔들림 첫 칸 = 직전 대비(값은 기존 글).
     expect(Array.from(vol().querySelectorAll(".evg-grid .v")).map((e) => e.textContent)).toEqual([
+      "직전보다 커짐",
       "3.20%",
       "2.97%",
-      "직전보다 커짐",
     ]);
-    expect(vol().querySelector(".evg-foot")?.textContent).toBe("기준일 2026-10-14");
+    expect(vol().querySelector(".evg-grid .k")?.textContent).toBe("직전 대비");
+    expect(vol().querySelector(".evg-foot")?.textContent).toBe("마지막 유효 가격일 2026-10-14");
     expect(screen.queryByTestId("price-volatility")).toBeNull(); // 예전 독립 접힘 구역 없음
     fireEvent.click(within(vol()).getByRole("button", { name: "가격 흔들림 도움말" }));
     expect(screen.getByRole("dialog", { name: "가격 흔들림 도움말" })).toBeInTheDocument();
@@ -431,7 +456,7 @@ describe("확인 근거 — 종목 상세 가격 흔들림 (POC5-16)", () => {
     await renderSection();
     await open("디");
     expect(vol().textContent).toContain(
-      "이 종목의 마지막 유효 가격일(2026-08-12)이 PC 가격 흐름 기준일(2026-10-14)과 달라 값을 보이지 않습니다.",
+      "이 종목의 마지막 유효 가격일(2026-08-12)이 가격 기준일(2026-10-14)과 달라 값을 보이지 않습니다.",
     );
     expect(vol().querySelector(".evg-grid")).toBeNull();
     expect(screen.getByTestId("evg-price").textContent).toContain("판정하지 않음");
@@ -494,7 +519,7 @@ describe("확인 근거 — 세 묶음 · 세부 흐름 창 (POC5-19)", () => {
   const flowsBtn = () => screen.getByRole("button", { name: "세부 흐름 보기" });
   const ro = () => screen.getByTestId("detail-flows-readout").textContent;
 
-  it("거래량 ? 문단 · 창: 세 근거 기준일 · 공통 기간 · 고른 날의 종가 · 거래량(날짜로 찾음) · 두 차트가 같은 날 · 결측 · 새 조회 0", async () => {
+  it("거래량 ? 문단 · 창: 차트 표시 기간 · 고른 날의 종가 · 거래량(날짜로 찾음) · 두 차트가 같은 날 · 결측 · 새 조회 0", async () => {
     await renderSection();
     await open("에이");
     fireEvent.click(within(screen.getByTestId("evg-volume")).getByRole("button", { name: "거래량 도움말" }));
@@ -506,13 +531,10 @@ describe("확인 근거 — 세 묶음 · 세부 흐름 창 (POC5-19)", () => {
     expect(priceCalls).toBe(1); // 기본 화면 가격 차트가 받은 한 번
     fireEvent.click(flowsBtn());
     const dlg = screen.getByRole("dialog", { name: "에이 세부 흐름" });
-    const strip = Array.from(within(dlg).getByTestId("detail-flows-strip").querySelectorAll(".dfw-strip-k")).map(
-      (e) => e.textContent,
-    );
-    // 세 근거 각자의 실제 기준일(이 고정 자료엔 거래량 칸 · 가격 흔들림 필드가 없어 '확인 불가').
-    expect(strip).toEqual(["가격 흐름 기준일 2026-10-14", "거래량 기준일 확인 불가", "가격 흔들림 기준일 확인 불가"]);
+    // POC6-33 E4 — 창 첫 줄(세 근거 기준일 + 값)은 펼친 상세의 세 묶음과 같아 뺐다 · 날짜 범위는 역할 이름과 함께.
+    expect(within(dlg).queryByTestId("detail-flows-strip")).toBeNull();
     expect(within(dlg).getByTestId("detail-flows-period").textContent).toBe(
-      "같은 날짜로 맞춘 최근 4개 저장일 · 2026-10-09 ~ 2026-10-14",
+      "차트 표시 기간 2026-10-09 ~ 2026-10-14 · 최근 4개 저장일(종가 · 거래량 같은 날짜)",
     );
     expect(ro()).toBe("2026-10-14 · 종가 1,020원 · 거래량 1,500주");
     const pricePlot = screen.getByTestId("detail-price-plot");
@@ -638,6 +660,55 @@ describe("확인 근거 — 세 묶음 · 세부 흐름 창 (POC5-19)", () => {
     expect(screen.queryByRole("dialog", { name: "에이 세부 흐름" })).toBeNull();
   });
 
+  // POC6-33 RESULT 판정 §2-4(EV-3) — 창 아래 거래량 줄 = 저장 거래량의 비교 구간 · 유효 자료 수(제공처 원문 없음) ·
+  // 제공처 원문(응답 source 그대로)은 이 창의 기존 '세부 흐름' 도움말 마지막 문단 · 출처 없음 = '확인 불가'.
+  it("세부 흐름 창 — 아래 거래량 줄은 비교 구간 · 유효 수만 · 제공처 원문은 창 도움말에서", async () => {
+    const ev = evidence();
+    ev.holdings[0].volume_trend = VT("2026-10-14");
+    ev.holdings[1].volume_trend = VT("2026-10-14");
+    ev.holdings[3].volume_trend = VT("2026-10-14");
+    ev.holdings[4].volume_trend = VT("2026-10-14"); // 디 = 흐름 자료는 있고 저장 거래량 필드는 없음
+    const sv = {
+      ticker: "A1", status: "ok", asof_date: "2026-10-14", source: "FinanceDataReader", volume: 1500,
+      window_size: 20, window_start_date: "2026-09-15", window_end_date: "2026-10-13", window_date_count: 20,
+      valid_count: 19, avg_prev20: 1000, avg_status: "ok", ratio: 1.5, ratio_status: "ok",
+    } as const;
+    ev.holdings[0].stored_volume = { ...sv };
+    ev.holdings[1].stored_volume = { ...sv };
+    ev.holdings[3].stored_volume = { ...sv, ticker: "C1", source: null };
+    fetchHoldingsMarketEvidence.mockResolvedValue(ev);
+    const helpParas = () => {
+      fireEvent.click(screen.getByRole("button", { name: "세부 흐름 도움말" }));
+      const out = Array.from(
+        screen.getByRole("dialog", { name: "세부 흐름 도움말" }).querySelectorAll(".help-pop-p"),
+      ).map((p) => p.textContent ?? "");
+      fireEvent.keyDown(document, { key: "Escape" });
+      return out;
+    };
+    await renderSection();
+    await open("에이");
+    fireEvent.click(flowsBtn());
+    const dlg = screen.getByRole("dialog", { name: "에이 세부 흐름" });
+    expect(within(dlg).getByTestId("detail-flows-volume-window").textContent).toBe(
+      "거래량 · 비교 구간 2026-09-15 ~ 2026-10-13 · 유효 19/20",
+    );
+    expect(within(dlg).getByTestId("detail-flows-body").textContent).not.toContain("FinanceDataReader");
+    const paras = helpParas();
+    expect(paras.slice(0, 2)).toEqual([TREND_HELP_BASIS, TREND_HELP_PRICE_MATCH]);
+    expect(paras[paras.length - 1]).toBe("거래량 제공처 원문: FinanceDataReader");
+    fireEvent.keyDown(document, { key: "Escape" });
+    await open("씨");
+    fireEvent.click(flowsBtn());
+    const cParas = helpParas();
+    expect(cParas[cParas.length - 1]).toBe("거래량 제공처: 확인 불가");
+    fireEvent.keyDown(document, { key: "Escape" });
+    // 저장 거래량 필드가 없는 종목(디) — 거래량 줄 · 제공처 문단 모두 없음(도움말 자체는 있음).
+    await open("디");
+    fireEvent.click(flowsBtn());
+    expect(screen.queryByTestId("detail-flows-volume-window")).toBeNull();
+    expect(helpParas().some((t) => t.includes("거래량 제공처"))).toBe(false);
+  });
+
   // POC5-19 검증 r1(P2) — 유효한 소수 거래량은 반올림 없이 · 저장된 0 과 구분해 보인다.
   it("고른 날 거래량은 저장된 값 그대로(0.4주 · 0주 구분) · 창 첫 부분 거래량 칸도 같음", async () => {
     const ev = evidence();
@@ -665,8 +736,8 @@ describe("확인 근거 — 세 묶음 · 세부 흐름 창 (POC5-19)", () => {
     expect(ro()).toBe("2026-10-14 · 종가 1,020원 · 거래량 0.4주");
     fireEvent.keyDown(screen.getByTestId("detail-price-plot"), { key: "ArrowLeft" });
     expect(ro()).toBe("2026-10-13 · 종가 1,010원 · 거래량 0주");
-    expect(screen.getByTestId("detail-flows-strip").textContent).toContain("0.4주");
-    expect(Array.from(screen.getByTestId("evg-volume").querySelectorAll(".evg-grid .v")).map((e) => e.textContent)[0]).toBe("0.4주");
+    // 펼친 상세 거래량 묶음(첫 칸 = 평균 대비 · 둘째 = 거래량)에도 같은 값.
+    expect(Array.from(screen.getByTestId("evg-volume").querySelectorAll(".evg-grid .v")).map((e) => e.textContent)[1]).toBe("0.4주");
   });
 
   // POC5-UI-04 — 기본 가격 차트는 3개월만 그려도 공유 조회 결과(원본 전체)는 그대로 → 세부 흐름 창은 3개월 밖 날짜도 찾는다.

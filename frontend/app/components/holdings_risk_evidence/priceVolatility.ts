@@ -39,10 +39,10 @@ export function volatilityNote(
   flowDate: string | null,
 ): string | null {
   if (ev.status === "reference_unavailable") {
-    return "PC 가격 흐름 기준일을 확인할 수 없어 값을 보이지 않습니다.";
+    return "가격 기준일을 확인할 수 없어 값을 보이지 않습니다.";
   }
   if (ev.status === "date_mismatch") {
-    return `이 종목의 마지막 유효 가격일(${ev.end_date ?? "확인 불가"})이 PC 가격 흐름 기준일(${flowDate ?? "확인 불가"})과 달라 값을 보이지 않습니다.`;
+    return `이 종목의 마지막 유효 가격일(${ev.end_date ?? "확인 불가"})이 가격 기준일(${flowDate ?? "확인 불가"})과 달라 값을 보이지 않습니다.`;
   }
   if (ev.status === "unavailable") return "최근 · 직전 20구간 모두 계산하지 못했습니다.";
   if (ev.status === "recent_only") return "직전 20구간은 계산하지 못해 비교하지 않습니다.";
@@ -69,10 +69,12 @@ export const VOL_HELP_INVALID =
   "기간 안 저장 종가에 확인이 필요한 값이 있어 그 기간은 계산하지 않았습니다. 다른 날 가격으로 채우지 않습니다.";
 export const VOL_HELP_BASIS_UNCONFIRMED =
   "기간 안에 가격 연속성을 확인할 수 없는 날(저장된 변화율과 종가 변화 불일치 · 변화율 누락 · 출처 재전환)이 있어 그 기간은 계산하지 않았습니다. 실제 가격 기준이 바뀌었다고 단정하는 뜻은 아닙니다.";
+// POC6-33 RESULT 판정 §2-6 — 아래 두 문단 · volatilityNote 는 「확인 근거」에서만 쓴다(reference_date 이름 = '가격 기준일').
+// VOL_HELP_MEANING · VOL_HELP_BASIS 는 「보유와 후보 비교」 미리보기 도움말과 공유라 글을 바꾸지 않는다.
 export const VOL_HELP_DATE =
-  "이 종목의 마지막 유효 가격일이 PC 가격 흐름 기준일과 달라, 기준일이 다른 기간의 값을 현재 비교값처럼 보이지 않게 값을 숨겼습니다.";
+  "이 종목의 마지막 유효 가격일이 가격 기준일과 달라, 기준일이 다른 기간의 값을 현재 비교값처럼 보이지 않게 값을 숨겼습니다.";
 export const VOL_HELP_REF =
-  "PC 가격 흐름 기준일을 확인할 수 없어, 최신 자료인지 알 수 없는 값을 숨겼습니다.";
+  "가격 기준일을 확인할 수 없어, 최신 자료인지 알 수 없는 값을 숨겼습니다.";
 
 // 순서 = 뜻 → 계산 기준 → 지금 해당하는 제한만(설계 §5).
 export function volatilityHelp(ev: PriceVolatilityEvidence): string[] {
