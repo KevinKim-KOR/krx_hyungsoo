@@ -56,3 +56,16 @@ describe("「개발·실험용」 미사용 기능 이동 안내", () => {
     expect(refreshUniverseMomentum).not.toHaveBeenCalled();
   });
 });
+
+// POC6-34(PLAN N6 · I-34) — 설명 문단의 메뉴 이름 = 「ETF NAV·괴리율 조회」(옛 이름 「데이터 상태」 없음).
+describe("「개발·실험용」 설명 문단의 메뉴 이름", () => {
+  it("'ETF NAV·괴리율 조회와 ML 연구는 각각 별도 메뉴로, …' · 옛 이름 없음", () => {
+    view();
+    const para = screen.getByText(/정상 업무 화면이 아닙니다\./);
+    expect(para.textContent?.replace(/\s+/g, " ").trim()).toBe(
+      "정상 업무 화면이 아닙니다. 미리보기·샘플(PREVIEW/TEST), 개발 호환 점검, 참고용 이전 화면(LEGACY)을 이곳에서 관리합니다. " +
+        "ETF NAV·괴리율 조회와 ML 연구는 각각 별도 메뉴로, OCI 운영 상태는 「OCI 운영·적용」으로 옮겼습니다.",
+    );
+    expect(document.body.textContent).not.toContain("데이터 상태");
+  });
+});

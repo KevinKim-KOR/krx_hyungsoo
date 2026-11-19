@@ -147,7 +147,8 @@ export const MENU_GROUPS: MenuGroup[] = [
     //   2026-06-08 부터 전체 ETF NAV·괴리율 조회 화면이었다(판단 근거가 낡음) → 복원.
     //   (「OCI 운영 상태」는 2026-09-27 에 승인·운영 그룹 「OCI 운영·적용」으로 합쳤다.)
     items: [
-      { key: "data_status", label: "데이터 상태", hint: "전체 ETF NAV · 괴리율 · 수집 상태" },
+      // 2026-11-19 POC6-34(PLAN 판정 Q7 · PLAN N1 · N2 · I-27): 이름만 「데이터 상태」 → 「ETF NAV·괴리율 조회」(key 그대로).
+      { key: "data_status", label: "ETF NAV·괴리율 조회", hint: "전체 ETF · 수집 상태 · 큰 괴리 찾기" },
       {
         id: "ml_research",
         title: "ML 연구",

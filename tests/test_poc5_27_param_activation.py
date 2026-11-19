@@ -893,6 +893,187 @@ def test_api_apply_busy_when_locked(client):
     assert body["status"] == "busy"
 
 
+# ── POC6-34 Q4 · I-7 — OCI 활성값을 읽은 시각 · 경로(param_read_at · param_source) ──────
+# 메모리에 이미 있는 값을 싣기만 한다(새 OCI 읽기 없음). 확인되지 않았으면 둘 다 null.
+# ① 캐시는 conftest 가 시험 끝에 되돌린다 · 기동 점검 SSH 는 합성 출력(실제 SSH 없음).
+
+SYNTH_AT = "2026-11-02T01:02:03.000000+00:00"  # 합성 기동 점검 시각
+SYNTH_VALUES = {"a": ("numeric", 1.0, None, None)}  # 합성 OCI 활성값
+
+
+def _status(client) -> dict:
+    return client.get("/oci/startup-status").json()
+
+
+def _read_fields(body: dict) -> tuple:
+    # 옛 소비자를 깨지 않도록 두 칸은 늘 있다(값만 null 일 수 있음).
+    assert "param_read_at" in body and "param_source" in body
+    return body["param_read_at"], body["param_source"]
+
+
+def _startup_snapshot(**kw) -> oss.OciStartupSnapshot:
+    """기동 점검이 성공해 OCI 활성값을 읽어 둔 합성 스냅샷(refresh_snapshot 과 같은 칸)."""
+    base = dict(
+        checked_at=SYNTH_AT,
+        reachable=True,
+        overall="OPERATING",
+        summary_line="ok",
+        crontab_active=True,
+        jobs=[oss.OciJobStatus("crontab", "SUCCESS", "ok")],
+        note="n",
+        oci_param_values=SYNTH_VALUES,
+        oci_param_read_at=SYNTH_AT,
+    )
+    base.update(kw)
+    return oss.OciStartupSnapshot(**base)
+
+
+def _startup_ssh(monkeypatch, *, param_block, ok=True):
+    """기동 점검 SSH 출력을 합성한다(5번째 블록 = OCI 활성 PARAM 값 · None 이면 블록 없음)."""
+    out = (
+        "holdings_briefing\nholdings_risk_alert\nmarket_briefing\n"
+        "###\n1754400000\n1754400500 167936\n"
+        "###\n\n###\n{}\n"
+    )
+    if param_block is not None:
+        out += "###\n" + param_block
+    monkeypatch.setattr(oss, "require_env", lambda _k: "synthetic-target")
+    monkeypatch.setattr(oss, "_ssh_read", lambda cmd: (ok, out if ok else ""))
+
+
+def _rows_block(d: dict) -> str:
+    rows = [
+        [k, vt, *store._split_value_columns(vt, v)]
+        for k, vt, v in store.flatten_param_dict(d)
+    ]
+    return json.dumps({"rows": rows})
+
+
+def test_read_fields_startup_read_success_is_checked_at_and_startup(
+    client, monkeypatch
+):
+    _startup_ssh(monkeypatch, param_block=_rows_block(_param()))
+    snap = oss.refresh_snapshot()
+    assert snap.reachable and snap.oci_param_values and snap.checked_at
+    path = param_api.latest_param_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(_param()), "utf-8")
+    body = _status(client)
+    assert _read_fields(body) == (snap.checked_at, "startup")
+    assert body["jobs"][-1]["job"] == "param_active"
+    assert body["jobs"][-1]["status"] == "SUCCESS"
+
+
+@pytest.mark.parametrize("block", [None, "{}", json.dumps({"error": "X"})])
+def test_read_fields_startup_param_block_unreadable_is_null(client, monkeypatch, block):
+    """기동 SSH 는 됐는데 PARAM 블록을 못 읽음 → 행은 있음('OCI 활성값을 읽지 못함') · 둘 다 null."""
+    _startup_ssh(monkeypatch, param_block=block)
+    assert oss.refresh_snapshot().reachable
+    body = _status(client)
+    assert _read_fields(body) == (None, None)
+    assert body["jobs"][-1] == {
+        "job": "param_active",
+        "status": "UNKNOWN",
+        "detail": "OCI 활성값을 읽지 못함",
+    }
+
+
+def test_read_fields_startup_connection_failure_is_null_and_no_row(client, monkeypatch):
+    _startup_ssh(monkeypatch, param_block=_rows_block(_param()), ok=False)
+    snap = oss.refresh_snapshot()
+    assert not snap.reachable and snap.checked_at  # 시도 시각은 남는다
+    body = _status(client)
+    assert _read_fields(body) == (None, None)
+    assert body["jobs"] == []
+
+
+def test_read_fields_apply_read_is_that_read_time_and_apply(
+    client, api_oci, monkeypatch
+):
+    monkeypatch.setattr(oss, "_snapshot", _startup_snapshot())
+    assert _read_fields(_status(client)) == (SYNTH_AT, "startup")  # 대조군
+    _seed(api_oci.db, _param())
+    body = client.post("/three-push/param/apply").json()
+    assert body["status"] == "active_same"
+    read_at, source = _read_fields(_status(client))
+    assert source == "apply" and read_at != SYNTH_AT
+    # 적용 요청 안에서 OCI 를 읽은 시각(UTC ISO 원문) — 같은 요청 응답의 KST 표기와 같은 시각.
+    assert param_api._format_applied_at(read_at) == body["checked_at"]
+
+
+def test_read_fields_unconfirmed_apply_is_null(client, api_oci, monkeypatch):
+    monkeypatch.setattr(oss, "_snapshot", _startup_snapshot())
+    _seed(api_oci.db, _param(enabled_push_kinds=B_KINDS))
+    api_oci.tool_mode = "ambiguous_no_run"
+    assert client.post("/three-push/param/apply").json()["status"] == "unconfirmed"
+    snap = oss.get_snapshot()
+    # 메모리에는 요청 종료 시각이 남지만 '읽은 시각'으로 내보내지 않는다.
+    assert snap.oci_param_unconfirmed and snap.oci_param_read_at
+    body = _status(client)
+    assert _read_fields(body) == (None, None)
+    assert body["jobs"][-1]["status"] == "UNKNOWN"
+
+
+def test_read_fields_failure_before_read_keeps_startup_values(
+    client, api_oci, monkeypatch
+):
+    monkeypatch.setattr(oss, "_snapshot", _startup_snapshot())
+    _seed(api_oci.db, _param(enabled_push_kinds=B_KINDS))
+    api_oci.read_fail = True
+    body = client.post("/three-push/param/apply").json()
+    assert body["status"] == "failed" and body["checked_at"] is None
+    assert _read_fields(_status(client)) == (SYNTH_AT, "startup")
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"reachable": False},  # 행이 빠지는 조건이면 칸도 null
+        {"oci_param_source": "other"},  # 정해진 두 경로 밖이면 null
+        {"oci_param_read_at": None},  # 시각이 없으면 null
+        {"oci_param_values": {}},  # 값이 비면 null
+        {"oci_param_unconfirmed": True},  # 확인 불가면 null
+    ],
+)
+def test_read_fields_null_unless_values_and_time_are_known(client, monkeypatch, change):
+    monkeypatch.setattr(oss, "_snapshot", _startup_snapshot())
+    assert _read_fields(_status(client)) == (SYNTH_AT, "startup")  # 대조군
+    monkeypatch.setattr(oss, "_snapshot", _startup_snapshot(**change))
+    assert _read_fields(_status(client)) == (None, None)
+
+
+def test_read_fields_apply_source_shows_even_if_startup_read_failed(
+    client, monkeypatch
+):
+    """기동 읽기는 실패 · 이 프로세스의 적용 요청에서 읽은 값 → 행과 함께 그 시각 · 'apply'."""
+    monkeypatch.setattr(
+        oss, "_snapshot", _startup_snapshot(reachable=False, oci_param_source="apply")
+    )
+    body = _status(client)
+    assert _read_fields(body) == (SYNTH_AT, "apply")
+    assert body["jobs"][-1]["job"] == "param_active"
+
+
+def test_read_fields_default_snapshot_is_null_and_old_fields_kept(client, monkeypatch):
+    """기동 읽기 전(또는 기동 읽기 예외로 기본 스냅샷이 남음) → 둘 다 null · 기존 칸 그대로."""
+    monkeypatch.setattr(oss, "_snapshot", oss.OciStartupSnapshot())
+    body = _status(client)
+    assert _read_fields(body) == (None, None)
+    assert set(body) == {
+        "checked_at",
+        "reachable",
+        "overall",
+        "summary_line",
+        "crontab_active",
+        "jobs",
+        "note",
+        "schedule",
+        "param_read_at",
+        "param_source",
+    }
+    assert "oci_param_values" not in json.dumps(body)
+
+
 def test_api_state_old_delivery_record_is_not_called_unapplied(client):
     """판정 §5 — 예전 '전달' 기록은 '이전 전달 기록 · 활성화 확인 없음'(미적용으로 단정하지 않음)."""
     param_api._SYNC_STATUS_PATH.parent.mkdir(parents=True, exist_ok=True)

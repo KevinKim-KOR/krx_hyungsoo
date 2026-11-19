@@ -1,6 +1,6 @@
 "use client";
 
-// OCI 운영 상태 패널 — 「OCI 운영·적용」(`approval`) 화면의 ① 지금 OCI 상태 (읽기만).
+// OCI 운영 상태 패널 — 「OCI 운영·적용」(`approval`) 화면의 ① 마지막 OCI 점검 (읽기만).
 //
 // 2026-08-16 사용자 직접 지시로 `diagnostics`(진단·상태)에서 떼어 독립 메뉴
 // (`oci_status`)로 두었다. 내용이 "PC 백엔드 기동 시 읽은 OCI 운영 상태" 로 **정상
@@ -18,8 +18,15 @@
 // 그대로 늘어놓던 목록을 **요약 + 표** 로 바꿨다(사용자가 목업 3안 중 선택).
 // 표시만 바꾼다 — 응답 · 판정 · 백엔드는 그대로다. 모르는 job · 상태 · 문구는
 // 원문을 그대로 보인다(조용히 숨기지 않는다).
+//
+// POC6-34(PLAN O1 ~ O4 · 판정 Q1 ~ Q3): 이 값은 '지금' 이 아니라 PC 백엔드가 시작될 때(재시작
+// 포함) 한 번 읽은 **마지막 점검** 결과다. 부제는 점검 성공이면 '확인 시각', 실패면 '마지막 점검
+// 시도'로 그 시각을 보인다. 요약은 예약표에서 확인한 범위(필수 3종 표기)만 말하고 실제 수신은
+// Telegram 으로 안내한다. 파일 두 행은 stat 만 한 결과라 '파일 확인' + 수정 시각이다. 판정
+// (`overall`) · 응답은 그대로다. ① 은 읽기만 · 버튼 없음(보유 적용 상태는 글로 「종목 관리」 안내).
+// I-8 — 받은 응답을 `onStatus` 로 부모에 알린다(실패 = null) · ② 가 같은 응답을 쓴다.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ApiConfigError,
   ApiRequestError,
@@ -71,6 +78,17 @@ export function fmtKst(iso: string | null, withWeekday: boolean): string | null 
   return `${p("month")}/${p("day")}${wd} ${p("hour")}:${p("minute")}`;
 }
 
+// POC6-34 O1 · I-1 — 언제 읽은 값인지(재시작 포함 · '지금' 아님).
+const READ_BASIS = "PC 백엔드가 시작될 때 한 번 읽음(재시작 포함)";
+
+/** ① 부제 — 점검 성공(reachable) = '확인 시각' · 실패 = '마지막 점검 시도' · 시각 없음 · 응답 전 ·
+ *  조회 오류(null) = 읽는 때만. */
+export function subtitleOf(s: OciStartupStatus | null): string {
+  const when = s ? fmtKst(s.checked_at, true) : null;
+  if (!s || !when) return READ_BASIS;
+  return `${s.reachable ? "확인 시각" : "마지막 점검 시도"} ${when} · ${READ_BASIS}`;
+}
+
 /** crontab 누락 문구(`일부 스케줄 누락: a, b`)에서 빠진 예약을 한국어 이름으로. */
 function missingKinds(detail: string): string {
   const raw = detail.split(":").slice(1).join(":");
@@ -82,9 +100,13 @@ function missingKinds(detail: string): string {
   return names.length ? names.join(" · ") : detail;
 }
 
+const FILE_JOBS = new Set(["holdings_source", "runtime_state_db"]);
+
 function stateOf(j: OciJobStatus): { label: string; tone: Tone } {
   if (j.status === "SUCCESS") {
     if (j.job === "param_active") return { label: "일치", tone: "ok" };
+    // POC6-34 O3 — OCI 에서 stat 만 한 결과(내용 검사 없음) → '정상' 이 아니라 '파일 확인'.
+    if (FILE_JOBS.has(j.job)) return { label: "파일 확인", tone: "ok" };
     return { label: "정상", tone: "ok" };
   }
   if (j.status === "STALE") {
@@ -104,10 +126,17 @@ function contentOf(j: OciJobStatus): string {
     if (j.status === "STALE") return `빠짐: ${missingKinds(j.detail)}`;
     if (j.status === "UNKNOWN") return "등록된 예약을 읽지 못함";
   }
-  if (j.job === "holdings_source" || j.job === "runtime_state_db") {
+  if (FILE_JOBS.has(j.job)) {
     const iso = j.detail.match(ISO_RE)?.[0] ?? null;
     const when = fmtKst(iso, false);
-    if (when) return `마지막 수정 ${when}`;
+    // POC6-34 O3 · I-4 — 보유 행은 적용 상태를 「종목 관리」로 글 안내(① 안 버튼 없음) · DB 는
+    // 알림 실행 기록도 쓰는 파일이라 '설정 바꾼 날' 이 아님.
+    if (when) {
+      return j.job === "holdings_source"
+        ? `파일 수정 시각 ${when} · 보유 적용 상태는 「종목 관리」 맨 아래 ‘OCI 적용’에서 확인`
+        : `DB 파일 수정 시각 ${when} (알림 실행 기록도 이 파일에 씀)`;
+    }
+    if (j.status === "SUCCESS") return "수정 시각 확인 불가";
     if (j.status === "UNKNOWN") return "파일 없음 또는 확인 불가";
   }
   if (j.job === "push_job_results") {
@@ -117,11 +146,12 @@ function contentOf(j: OciJobStatus): string {
 }
 
 function summaryOf(s: OciStartupStatus): { icon: string; title: string; sub: string; tone: Tone } {
+  // POC6-34 O2 · I-2 — 예약표에서 읽은 종별 표기만 말한다(실제 발송 · 수신의 근거가 아님).
   if (s.overall === "OPERATING") {
     return {
       icon: "✅",
-      title: "정상 운영 중",
-      sub: "자동 발송 예약이 모두 등록되어 있습니다",
+      title: "예약표에서 필수 3종 표기 확인",
+      sub: "시장 브리핑 · 보유 브리핑 · 장중 급등락 예약 표기가 OCI 예약표에 있습니다 · 실제 수신은 Telegram 에서 확인",
       tone: "ok",
     };
   }
@@ -129,14 +159,14 @@ function summaryOf(s: OciStartupStatus): { icon: string; title: string; sub: str
     const cron = s.jobs.find((j) => j.job === "crontab");
     return {
       icon: "⚠️",
-      title: "일부 예약 누락",
+      title: "예약표에서 필수 3종 중 일부 표기 없음",
       sub: cron ? `빠진 예약: ${missingKinds(cron.detail)}` : s.summary_line,
       tone: "warn",
     };
   }
   return {
     icon: "❔",
-    title: "확인 불가",
+    title: "예약표 확인 불가",
     sub: s.reachable ? "OCI 에서 자동 발송 예약을 읽지 못했습니다" : s.summary_line,
     tone: "unknown",
   };
@@ -144,14 +174,20 @@ function summaryOf(s: OciStartupStatus): { icon: string; title: string; sub: str
 
 export default function OciStatusPanel({
   reloadKey = 0,
+  onStatus,
 }: {
   // POC3-02D-OPS-04 — ② 적용이 끝나면 바뀐다. 다시 읽어도 OCI 는 재조회하지 않는다
   // (백엔드 캐시 + '운영 기준 활성' 행만 지금 PC 운영 기준과 다시 비교 · POC5-27 부터는 적용
   // 요청 안에서 읽은 값 · 시각으로).
   reloadKey?: number;
+  // POC6-34 I-8 — 이 패널이 받은 응답(조회 실패 = null)을 부모에 알린다. 다시 읽기 때도 같다.
+  onStatus?: (s: OciStartupStatus | null) => void;
 } = {}) {
   const [status, setStatus] = useState<OciStartupStatus | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  // 부모가 새 함수를 넘겨도 다시 조회하지 않도록 최신 콜백만 기억한다.
+  const onStatusRef = useRef(onStatus);
+  onStatusRef.current = onStatus;
 
   useEffect(() => {
     let cancelled = false;
@@ -161,6 +197,7 @@ export default function OciStatusPanel({
         if (!cancelled) {
           setStatus(s);
           setErrorMsg(null); // 다시 읽기(reloadKey)가 성공하면 앞선 오류를 지운다
+          onStatusRef.current?.(s);
         }
       } catch (e) {
         if (cancelled) return;
@@ -168,6 +205,7 @@ export default function OciStatusPanel({
         else if (e instanceof ApiRequestError)
           setErrorMsg(`요청 실패(HTTP ${e.httpStatus}): ${e.message}`);
         else setErrorMsg(`알 수 없는 오류: ${(e as Error).message}`);
+        onStatusRef.current?.(null);
       }
     })();
     return () => {
@@ -175,14 +213,12 @@ export default function OciStatusPanel({
     };
   }, [reloadKey]);
 
-  const checked = status ? fmtKst(status.checked_at, true) : null;
   const summary = status ? summaryOf(status) : null;
 
   return (
     <div>
-      <p className="subtitle">
-        PC 백엔드 시작 때 1번 확인{checked ? ` · ${checked}` : ""}
-      </p>
+      {/* 조회 오류면 앞서 받은 시각을 남기지 않는다(O1 — 응답 전 · 조회 오류 = 읽는 때만). */}
+      <p className="subtitle">{subtitleOf(errorMsg ? null : status)}</p>
 
       <div className="card">
         {errorMsg ? (
@@ -228,9 +264,9 @@ export default function OciStatusPanel({
             ) : null}
 
             <p className="helper" style={{ marginTop: 12 }}>
-              PC 백엔드를 시작할 때 한 번 읽은 값입니다. 새로고침해도 OCI 를 다시 읽지
-              않습니다. &lsquo;운영 기준 활성&rsquo; 행만 ② [현재 기준 OCI 적용] 때 다시 읽은
-              값으로 바뀝니다.
+              PC 백엔드가 시작될 때(재시작 포함) 한 번 읽은 마지막 점검 값입니다. 새로고침해도
+              OCI 를 다시 읽지 않습니다. &lsquo;운영 기준 활성&rsquo; 행만 ② [현재 기준 OCI 적용]
+              때 다시 읽은 값으로 바뀝니다.
             </p>
           </div>
         )}

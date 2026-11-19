@@ -1,4 +1,5 @@
 // POC6-33(PLAN §4 D7 · 판정 Q43 · Q45) — 「데이터 상태」 화면 시험.
+// POC6-34(PLAN §2-2 N1 ~ N8 · 판정 Q7 ~ Q9) — 이름 「ETF NAV·괴리율 조회」 · [저장 자료 다시 읽기] · 표시 범위 줄.
 // @/lib/api 의 fetchNavDiscountLatest 만 바꿔 끼운다(실제 네트워크 · 운영 DB 미사용).
 // 고정 자료의 코드 · 이름 · 가격은 모두 합성값(TEST01 · 'ETF 가' …).
 import { describe, it, expect, beforeEach, vi } from "vitest";
@@ -180,11 +181,20 @@ describe("공용 사전(lib/navLabels)", () => {
   });
 });
 
-describe("「데이터 상태」 화면", () => {
-  it("제목 · 첫 NAV 표기 · 표 머리가 한국어", async () => {
-    await renderReady();
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("데이터 상태");
-    expect(screen.getByText(new RegExp(`전체 ETF의 ${NAV_TERM.replace(/[()]/g, "\\$&")}`))).toBeInTheDocument();
+describe("「ETF NAV·괴리율 조회」 화면", () => {
+  it("제목 · 첫 NAV 표기(= h1 · I-28) · 부제 · 표 머리가 한국어", async () => {
+    const { container } = await renderReady();
+    const h1 = screen.getByRole("heading", { level: 1 });
+    expect(h1.textContent).toBe("ETF 순자산가치(NAV)·괴리율 조회");
+    expect(h1.textContent).toBe(`ETF ${NAV_TERM}·괴리율 조회`);
+    expect(container.textContent).not.toContain("데이터 상태");
+    // 화면 글자의 첫 'NAV' = h1 의 '순자산가치(NAV)'(POC6-33 첫 표기 규칙 · 부제에는 NAV 가 없다).
+    const shown = visibleText(container);
+    expect(shown.indexOf("NAV")).toBe(shown.indexOf(NAV_TERM) + NAV_TERM.indexOf("NAV"));
+    expect(shown.indexOf(NAV_TERM)).toBe(shown.indexOf("ETF 순자산가치(NAV)·괴리율 조회") + "ETF ".length);
+    expect(container.querySelector("p.subtitle")?.textContent).toBe(
+      "전체 ETF 의 저장 자료에서 수집 상태 · 큰 괴리를 찾아보는 조회용 표 — 저장된 자료 기준(이 화면은 새로 받지 않음).",
+    );
     const heads = within(screen.getByRole("table"))
       .getAllByRole("columnheader")
       .map((h) => h.textContent);
@@ -418,9 +428,9 @@ describe("「데이터 상태」 화면", () => {
     ]) {
       expect(shown, `화면에 '${raw}'`).not.toContain(raw);
     }
-    // 영어 낱말은 NAV · ETF 와 합성 코드(TEST..)뿐.
+    // 영어 낱말은 NAV · ETF · PC(POC6-34 안내 띠 · 기준일 뜻 줄 · I-31)와 합성 코드(TEST..)뿐.
     const words = new Set(shown.match(/[A-Za-z]+\d*/g) ?? []);
-    for (const w of words) expect(["NAV", "ETF"].includes(w) || /^TEST\d+$/.test(w), `영어 '${w}'`).toBe(true);
+    for (const w of words) expect(["NAV", "ETF", "PC"].includes(w) || /^TEST\d+$/.test(w), `영어 '${w}'`).toBe(true);
 
     // 사전 밖 표시 = 표 칸에는 없음(숫자 · 색은 그대로).
     const unknownFlagCell = cellsOf("TEST13")[COL.rate];
@@ -467,5 +477,185 @@ describe("「데이터 상태」 화면", () => {
     expect(await screen.findByText(/서버가 오류로 답해 자료를 불러오지 못했습니다/)).toBeInTheDocument();
     expect(visibleText(failed.container)).not.toContain("HTTP");
     expect(failed.container.querySelector("details")).toHaveTextContent("요청 실패(HTTP 500): Internal Server Error");
+  });
+});
+
+// POC6-34(PLAN §2-2 N3 · N4 · N5 · N7 · 판정 Q8 · Q9 · I-29 ~ I-33) — 저장 자료 다시 읽기 ↔ 새 자료 경로 · 표시 범위.
+// 고정 자료는 합성값(TEST.. · 'ETF n'). 건수(1,212 · 211 · 201 · 200)는 표시 범위 경계를 보기 위한 합성 행 수.
+const RELOAD = "저장 자료 다시 읽기";
+
+// 괴리율이 행마다 달라(i × 0.01) 정렬 순서가 하나로 정해진다 · ticker = TEST{base + i}.
+function manyRows(n: number, base = 100, over: Partial<NavDiscountItem> = {}): NavDiscountItem[] {
+  return Array.from({ length: n }, (_, i) =>
+    row({ ticker: `TEST${base + i}`, name: `ETF ${base + i}`, discount_rate_pct: i * 0.01, ...over }),
+  );
+}
+
+function summaryOf(items: NavDiscountItem[]): NavDiscountLatestResponse["summary"] {
+  const ok = items.filter((it) => it.status === "ok").length;
+  const un = items.filter((it) => it.status === "unavailable").length;
+  return { total_count: items.length, ok_count: ok, unavailable_count: un, failed_count: 0 };
+}
+
+async function renderItems(items: NavDiscountItem[]) {
+  return renderReady({ items, summary: summaryOf(items) });
+}
+
+function rangeText(): string {
+  return screen.getByTestId("ds-range").textContent ?? "";
+}
+
+function norm(t: string | null | undefined): string {
+  return (t ?? "").replace(/\s+/g, " ").trim();
+}
+
+describe("POC6-34 — 저장 자료 다시 읽기 · 새 자료 경로 · 표시 범위", () => {
+  it("버튼 이름 = [저장 자료 다시 읽기] · 누르면 같은 GET 을 한 번 더 부른다(새로 받지 않음) · 옛 이름 없음", async () => {
+    const { container } = await renderReady();
+    expect(fetchNavDiscountLatest).toHaveBeenCalledTimes(1);
+    const btn = screen.getByRole("button", { name: RELOAD });
+    expect(screen.queryByRole("button", { name: "다시 불러오기" })).toBeNull();
+    expect(container.textContent).not.toContain("다시 불러오기");
+    fireEvent.click(btn);
+    expect(fetchNavDiscountLatest).toHaveBeenCalledTimes(2);
+    expect(fetchNavDiscountLatest).toHaveBeenLastCalledWith();
+    await screen.findByRole("table");
+  });
+
+  it("불러오기 실패 문구 전문 · 문구 안 버튼 이름 = 실제 버튼 이름 · 그 버튼으로 다시 읽으면 표가 나온다", async () => {
+    fetchNavDiscountLatest.mockRejectedValueOnce(new ApiRequestError("Internal Server Error", 500, null));
+    fetchNavDiscountLatest.mockResolvedValueOnce(response());
+    const { container } = render(<DataStatusView />);
+    const msg = await screen.findByText(/로 다시 시도하세요\.$/);
+    expect(msg.textContent).toBe("서버가 오류로 답해 자료를 불러오지 못했습니다. [저장 자료 다시 읽기]로 다시 시도하세요.");
+    const named = /\[(.+?)\]로 다시 시도하세요/.exec(msg.textContent ?? "")?.[1];
+    const btn = screen.getByRole("button", { name: RELOAD });
+    expect(named).toBe(btn.textContent);
+    expect(container.textContent).not.toContain("다시 불러오기");
+    fireEvent.click(btn);
+    expect(await screen.findByRole("table")).toBeInTheDocument();
+    expect(fetchNavDiscountLatest).toHaveBeenCalledTimes(2);
+  });
+
+  it("안내 띠 — 저장 자료 다시 읽기 = PC 저장값만 · 새 자료 = 「오늘의 투자 점검」 [최신 자료 갱신] · 6시간 안에는 NAV 를 다시 받지 않음", async () => {
+    await renderReady();
+    expect(norm(screen.getByTestId("ds-banner").textContent)).toBe(
+      "[보조 화면 — 자료 조회] 네이버 ETF 목록을 받아 PC 에 저장한 전체 ETF 의 NAV · 시장가 · 괴리율을 한곳에서 검색 · 정렬합니다. " +
+        "매수 · 매도 · 교체 판단 화면이 아닙니다. [저장 자료 다시 읽기]는 PC 에 저장된 값만 다시 읽습니다(새로 받지 않음). " +
+        "새 자료는 「오늘의 투자 점검」의 [최신 자료 갱신]으로 받습니다. " +
+        "마지막 시장 갱신이 성공한 뒤 6시간 안에는 [최신 자료 갱신]을 눌러도 NAV 를 다시 받지 않습니다.",
+    );
+    // 안내 띠의 버튼 이름 = 실제 버튼 이름.
+    expect(screen.getByTestId("ds-banner").textContent).toContain(
+      `[${screen.getByRole("button", { name: RELOAD }).textContent}]`,
+    );
+  });
+
+  it("표 도움말 셋째 줄 — 기준일 = PC 가 목록 갱신을 시작한 날짜 · 이전 목록 재사용 행은 '재저장일'", async () => {
+    const { container } = await renderReady();
+    const lines = Array.from(container.querySelectorAll(".ds-meaning > div")).map((d) => norm(d.textContent));
+    expect(lines).toHaveLength(3);
+    expect(lines[2]).toBe(
+      "기준일 = PC 가 목록 갱신을 시작한 날짜(원자료의 산정일은 이 화면에서 확인할 수 없음) · 이전 목록 재사용 행은 ‘재저장일’로 표시",
+    );
+  });
+
+  it("판정 §3 — 한 표에서 '수집됨' + '괴리 주의' 행 · 이전 목록 재사용 행(재저장일) · 범위 줄", async () => {
+    await renderReady();
+    const both = cellsOf("TEST04");
+    expect(both[COL.status]).toHaveTextContent(/^수집됨$/);
+    expect(both[COL.rate].querySelector(".nav-flag")?.textContent).toBe("괴리 주의(5% 이상)");
+    expect(both[COL.date]).toHaveTextContent(/^2026-11-18$/);
+    const reused = cellsOf("TEST08");
+    expect(reused[COL.status]).toHaveTextContent(/^이전 목록 재사용$/);
+    expect(reused[COL.date]).toHaveTextContent(/^재저장일 2026-11-18$/);
+    expect(rangeText()).toBe("전체 12건 · 필터 결과 12건 · 표에 표시 12건");
+    expect(screen.queryByTestId("ds-narrow-hint")).toBeNull();
+  });
+
+  it("범위 줄은 표 카드 h2 바로 아래 · 표보다 위", async () => {
+    await renderReady();
+    const range = screen.getByTestId("ds-range");
+    const h2 = screen.getByRole("heading", { level: 2, name: "전체 ETF NAV / 괴리율" });
+    expect(h2.nextElementSibling).toBe(range);
+    expect(range.compareDocumentPosition(screen.getByRole("table")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("1,212건 응답 → '전체 1,212건 · 필터 결과 1,212건 · 표에 표시 200건 (지금 정렬의 앞 200건)' · 표 아래 검색 · 필터 안내 · 옛 안내 없음", async () => {
+    const { container } = await renderItems(manyRows(1212, 1000));
+    expect(bodyRowCount()).toBe(200);
+    expect(rangeText()).toBe("전체 1,212건 · 필터 결과 1,212건 · 표에 표시 200건 (지금 정렬의 앞 200건)");
+    expect(screen.getByTestId("ds-narrow-hint").textContent).toBe(
+      "필터 · 검색을 좁히면 앞 200건 밖의 ETF 도 표에서 볼 수 있습니다.",
+    );
+    // 안내는 표 아래.
+    expect(
+      screen.getByRole("table").compareDocumentPosition(screen.getByTestId("ds-narrow-hint")) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(container.textContent).not.toContain("상위 200건만 표시");
+    expect(container.textContent).not.toContain("(전체 ");
+    // 「조회 옵션」 요약 줄은 그대로(N8).
+    expect(screen.getByTestId("ds-summary")).toHaveTextContent("전체 1,212건 · 수집됨 1,212 · 확인 불가 0 · 기타 0 ·");
+    expect(screen.getByTestId("ds-count-filtered").textContent).toBe("1,212");
+  });
+
+  it.each([
+    [199, false],
+    [200, false],
+    [201, true],
+    [211, true],
+  ])("필터 결과 %i건 — 표에 표시 = 실제 그린 행 · 앞 200건 안내는 200건을 넘을 때만(%s)", async (n, over) => {
+    await renderItems(manyRows(n));
+    const shownRows = bodyRowCount();
+    expect(shownRows).toBe(Math.min(n, 200));
+    const suffix = over ? " (지금 정렬의 앞 200건)" : "";
+    expect(rangeText()).toBe(`전체 ${n}건 · 필터 결과 ${n}건 · 표에 표시 ${shownRows}건${suffix}`);
+    if (over) expect(screen.getByTestId("ds-narrow-hint")).toBeInTheDocument();
+    else expect(screen.queryByTestId("ds-narrow-hint")).toBeNull();
+  });
+
+  it("검색으로 좁힘 → 표에 표시 = 필터 결과 · 앞 200건 문구 · 표 아래 안내 없음 · 전체는 응답 건수 그대로", async () => {
+    await renderItems(manyRows(211));
+    fireEvent.change(screen.getByPlaceholderText("코드 / ETF명"), { target: { value: "TEST10" } });
+    // TEST100 ~ TEST109 = 10건.
+    expect(bodyRowCount()).toBe(10);
+    expect(rangeText()).toBe("전체 211건 · 필터 결과 10건 · 표에 표시 10건");
+    expect(screen.queryByTestId("ds-narrow-hint")).toBeNull();
+  });
+
+  it("수집 상태 고르기도 필터 결과에 든다 — 수집됨 211 + 확인 불가 3", async () => {
+    const items = [...manyRows(211), ...manyRows(3, 900, { status: "unavailable", nav: null, discount_rate_pct: null })];
+    await renderItems(items);
+    expect(rangeText()).toBe("전체 214건 · 필터 결과 214건 · 표에 표시 200건 (지금 정렬의 앞 200건)");
+    fireEvent.change(statusSelect(), { target: { value: "ok" } });
+    expect(rangeText()).toBe("전체 214건 · 필터 결과 211건 · 표에 표시 200건 (지금 정렬의 앞 200건)");
+    fireEvent.change(statusSelect(), { target: { value: "unavailable" } });
+    expect(bodyRowCount()).toBe(3);
+    expect(rangeText()).toBe("전체 214건 · 필터 결과 3건 · 표에 표시 3건");
+    expect(screen.queryByTestId("ds-narrow-hint")).toBeNull();
+  });
+
+  it("'지금 정렬의 앞 200건' = 지금 정렬 순서의 앞 200행(내림차순 ↔ 오름차순)", async () => {
+    await renderItems(manyRows(211));
+    // 기본 = 괴리율 절대값 내림차순 → 가장 작은 11건(TEST100 ~ TEST110)이 빠진다.
+    expect(screen.queryByText("TEST110")).toBeNull();
+    expect(screen.getByText("TEST111")).toBeInTheDocument();
+    expect(screen.getByText("TEST310")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "↓ 내림차순" }));
+    // 오름차순 → 가장 큰 11건(TEST300 ~ TEST310)이 빠진다.
+    expect(screen.getByText("TEST100")).toBeInTheDocument();
+    expect(screen.getByText("TEST299")).toBeInTheDocument();
+    expect(screen.queryByText("TEST300")).toBeNull();
+    expect(bodyRowCount()).toBe(200);
+    expect(rangeText()).toBe("전체 211건 · 필터 결과 211건 · 표에 표시 200건 (지금 정렬의 앞 200건)");
+  });
+
+  it("고른 결과 0건이면 표 · 범위 줄 없음(안내 한 줄 그대로) · 요약 줄 필터 결과 0건", async () => {
+    await renderReady();
+    fireEvent.change(screen.getByPlaceholderText("코드 / ETF명"), { target: { value: "없는 이름" } });
+    expect(screen.getByText("필터 조건에 맞는 항목이 없습니다.")).toBeInTheDocument();
+    expect(screen.queryByTestId("ds-range")).toBeNull();
+    expect(screen.getByTestId("ds-count-filtered").textContent).toBe("0");
   });
 });

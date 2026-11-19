@@ -1,0 +1,5 @@
+{
+  "_note": "POC6-34 검증자 r1 R1-F1 — 보유 급등 · 급락 판정 경계(프로그램 고정값). 실행 코드 app/runtime_evidence/holdings_risk.py 의 _SURGE_BANDS(하한 포함 · 상한 제외) · _RISK_BANDS(상한 포함 · 하한 제외)에서 나온 값이다. 저장된 설정값(surge_threshold_pct · drop_threshold_pct)은 실행 코드가 읽지 않는다. 서버 시험(tests/test_holdings_risk_alert.py)은 이 값이 두 상수에서 나온 경계와 같은지, 화면 시험(frontend/app/components/approval/intradayCriteria.test.ts)은 화면 상수가 이 값과 같은지 본다. 한쪽만 바뀌면 그쪽 시험이 깨진다. 첫 값이 후보가 되는 경계다(급등 = 가장 낮은 하한 · 급락 = 0 에 가장 가까운 상한). 합성 값만(보유 자료 없음).",
+  "surge_lower_bounds_pct": [5.0, 7.0, 10.0],
+  "drop_upper_bounds_pct": [-5.0, -7.0, -10.0]
+}

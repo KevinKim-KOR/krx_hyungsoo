@@ -15,7 +15,7 @@
 //
 // 2026-09-27 사용자 직접 지시: 「승인·적용」과 「OCI 운영 상태」(`oci_status`)를
 //   한 화면 「OCI 운영·적용」으로 합쳤다. 위에서 아래로:
-//     ① 지금 OCI 상태 (읽기만) — OciStatusPanel(기동 시 1회 읽은 요약 + 표)
+//     ① 마지막 OCI 점검 (읽기만) — OciStatusPanel(기동 시 1회 읽은 요약 + 표 · POC6-34 이름)
 //     ② OCI 에 적용 (버튼으로 반영) — ThreePushParamCard → IntradayConfigCard
 //   읽기(①)와 쓰기(②)를 섹션 제목으로 갈라 둔다. 각 카드의 동작·계약은 그대로다.
 //
@@ -24,6 +24,7 @@
 
 import { useCallback, useState } from "react";
 
+import type { OciStartupStatus } from "@/lib/api";
 import OciAlertHeader from "./approval/OciAlertHeader";
 import OciStatusPanel from "./OciStatusView";
 import ThreePushParamCard from "./ThreePushParamCard";
@@ -34,17 +35,20 @@ export default function ApprovalTelegramView() {
   // 행이 적용 때 읽은 값으로 바로 바뀌게 한다(① 을 다시 읽을 때 OCI 는 다시 읽지 않는다).
   const [ociReload, setOciReload] = useState(0);
   const onDelivered = useCallback(() => setOciReload((k) => k + 1), []);
+  // POC6-34 I-8 — ① 이 받은 `GET /oci/startup-status` 응답(undefined = 응답 전 · null = 조회 실패).
+  // ② 「현재 운영 기준」 카드가 따로 부르지 않고 이 같은 응답을 쓴다.
+  const [ociStatus, setOciStatus] = useState<OciStartupStatus | null | undefined>(undefined);
   return (
     <section aria-labelledby="approval-h">
       {/* 화면 역할 안내 (① 읽기 · ② OCI 적용) */}
       <OciAlertHeader />
 
-      {/* ① 읽기만 — PC 백엔드 기동 시 1회 읽은 OCI 상태. 버튼 없음. */}
+      {/* ① 읽기만 — PC 백엔드가 시작될 때(재시작 포함) 1회 읽은 마지막 OCI 점검. 버튼 없음. */}
       <section className="ops-section" aria-labelledby="ops-now-h">
         <h2 id="ops-now-h" className="ops-section-h">
-          ① 지금 OCI 상태 (읽기만)
+          ① 마지막 OCI 점검 (읽기만)
         </h2>
-        <OciStatusPanel reloadKey={ociReload} />
+        <OciStatusPanel reloadKey={ociReload} onStatus={setOciStatus} />
       </section>
 
       {/* ② 버튼으로 반영 — 운영 기준 → 장중 급등락 설정 순서(설계자 배치 판단 (a)).
@@ -53,7 +57,8 @@ export default function ApprovalTelegramView() {
         <h2 id="ops-apply-h" className="ops-section-h">
           ② OCI 에 적용 (버튼으로 반영)
         </h2>
-        <ThreePushParamCard onDelivered={onDelivered} />
+        {/* POC6-34 I-8 — ① 과 같은 응답을 넘긴다(카드는 GET /oci/startup-status 를 따로 부르지 않음). */}
+        <ThreePushParamCard onDelivered={onDelivered} ociStatus={ociStatus} />
         <IntradayConfigCard />
       </section>
     </section>

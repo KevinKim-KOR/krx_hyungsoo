@@ -1,6 +1,6 @@
 "use client";
 
-// 「데이터 상태」 화면(data_status) — 2026-06-08 NAV / Discount Display FIX.
+// 「ETF NAV·괴리율 조회」 화면(data_status · POC6-34 전 이름 「데이터 상태」) — 2026-06-08 NAV / Discount Display FIX.
 //
 // 책임:
 // - 저장된 etf_nav_daily (네이버 ETF 목록 1회 조회 결과) 의 전체 ETF NAV /
@@ -20,6 +20,14 @@
 // - 요약 날짜 값 = 응답 asof(행 날짜 최댓값) 그대로 · 각 행은 그 행 날짜 · 이전 목록 재사용 행은 '재저장일'(I-9).
 //   그 최댓값 날짜에 이전 목록 재사용 행이 하나라도 있으면 라벨 '가장 최근 목록 날짜(재저장일 포함)',
 //   아니면 '가장 최근 기준일'(RESULT 판정 §3 I-9 · 응답 items 전체로 판정 · 고르기 · 검색 · 200건 표시와 무관).
+//
+// POC6-34(PLAN §2-2 N1 ~ N8 · 판정 Q7 ~ Q9 · I-27 ~ I-35) — 화면 이름 · 문구만(메뉴 key `data_status` · 조회 동작 그대로):
+// - h1 'ETF 순자산가치(NAV)·괴리율 조회'(첫 NAV 표기 = h1 · I-28) · 부제는 조회 범위 · 저장 자료 기준.
+// - 버튼 [저장 자료 다시 읽기] = 같은 GET 다시 읽기(새로 받지 않음) · 오류 문구도 같은 이름(RELOAD_LABEL 하나 · I-29).
+// - 안내 띠 = 새 자료 경로(「오늘의 투자 점검」 [최신 자료 갱신]) + 시장 갱신 성공 뒤 6시간 안에는 NAV 를 다시 받지 않음(I-30).
+// - 표 위 범위 줄 '전체 A건 · 필터 결과 B건 · 표에 표시 C건'(A = 응답 items · B = 검색 + 고르기 결과 · C = 실제 그린 행 ·
+//   B > 200 이면 ' (지금 정렬의 앞 200건)') · 표 아래는 B > 200 일 때 검색 · 필터 안내만(I-32 · I-33).
+// - 뜻 줄 셋째 = 기준일 = PC 가 목록 갱신을 시작한 날짜 · 이전 목록 재사용 행은 '재저장일'(I-31).
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -55,6 +63,10 @@ type SortKey = "ticker" | "discount" | "absdiscount";
 type SortOrder = "asc" | "desc";
 
 const DASH = "-";
+// 버튼 이름 — 버튼과 오류 문구가 같은 글자를 쓴다(POC6-34 N3).
+const RELOAD_LABEL = "저장 자료 다시 읽기";
+// 표에 그리는 행 수 상한(지금 정렬의 앞 N건).
+const MAX_ROWS = 200;
 
 // 수집 상태 고르기 · 요약 건수가 함께 쓰는 판정 하나(I-6).
 // 기타 = ok · unavailable 이 아닌 값(이전 목록 재사용 partial · 사전 밖 값 포함).
@@ -202,14 +214,15 @@ export default function DataStatusView() {
 
   return (
     <section aria-labelledby="data-status-h">
-      <h1 id="data-status-h">데이터 상태</h1>
+      <h1 id="data-status-h">ETF {NAV_TERM}·괴리율 조회</h1>
       <p className="subtitle">
-        전체 ETF의 {NAV_TERM} · 시장가 · 괴리율 조회 — 저장된 자료 기준(이 화면은 밖에서 새로 받아 오지 않음).
+        전체 ETF 의 저장 자료에서 수집 상태 · 큰 괴리를 찾아보는 조회용 표 — 저장된 자료 기준(이 화면은 새로 받지 않음).
       </p>
-      <div className="role-banner">
-        <strong>[보조 화면 — 자료 조회]</strong> 네이버 ETF 목록을 한 번 받아 저장한 전체 ETF의 NAV · 시장가 ·
-        괴리율을 한곳에서 검색 · 정렬합니다. 매수 · 매도 · 교체 판단 화면이 아닙니다. 값 갱신은 「오늘의 투자
-        점검」의 [최신 자료 갱신] 버튼을 사용합니다.
+      <div className="role-banner" data-testid="ds-banner">
+        <strong>[보조 화면 — 자료 조회]</strong> 네이버 ETF 목록을 받아 PC 에 저장한 전체 ETF 의 NAV · 시장가 ·
+        괴리율을 한곳에서 검색 · 정렬합니다. 매수 · 매도 · 교체 판단 화면이 아닙니다. [{RELOAD_LABEL}]는 PC 에
+        저장된 값만 다시 읽습니다(새로 받지 않음). 새 자료는 「오늘의 투자 점검」의 [최신 자료 갱신]으로 받습니다.
+        마지막 시장 갱신이 성공한 뒤 6시간 안에는 [최신 자료 갱신]을 눌러도 NAV 를 다시 받지 않습니다.
       </div>
 
       <NavDiscountControls
@@ -240,7 +253,7 @@ export default function DataStatusView() {
       {state.phase === "error" && (
         <div className="card">
           <div className="message error">
-            {state.summary} [다시 불러오기]로 다시 시도하세요.
+            {state.summary} [{RELOAD_LABEL}]로 다시 시도하세요.
           </div>
           <details className="ds-raw">
             <summary>자세히</summary>
@@ -260,7 +273,7 @@ export default function DataStatusView() {
       )}
 
       {state.phase === "ready" && state.data.status === "ok" && (
-        <NavDiscountTable items={filteredSorted} unknownRaw={unknownRaw} />
+        <NavDiscountTable items={filteredSorted} totalCount={allItems.length} unknownRaw={unknownRaw} />
       )}
 
       {/* 2026-06-11 UI 안전실행 (지시문 §5.1) — 화면 상단에서 ML evidence
@@ -369,7 +382,7 @@ function NavDiscountControls({
           {sortOrder === "desc" ? "↓ 내림차순" : "↑ 오름차순"}
         </button>
         <button type="button" onClick={onReload}>
-          다시 불러오기
+          {RELOAD_LABEL}
         </button>
       </div>
     </div>
@@ -401,7 +414,15 @@ function UnknownRawDetails({ raw }: { raw: UnknownRaw }) {
   );
 }
 
-function NavDiscountTable({ items, unknownRaw }: { items: NavDiscountItem[]; unknownRaw: UnknownRaw }) {
+function NavDiscountTable({
+  items,
+  totalCount,
+  unknownRaw,
+}: {
+  items: NavDiscountItem[];
+  totalCount: number;
+  unknownRaw: UnknownRaw;
+}) {
   if (items.length === 0) {
     return (
       <div className="card">
@@ -410,11 +431,17 @@ function NavDiscountTable({ items, unknownRaw }: { items: NavDiscountItem[]; unk
       </div>
     );
   }
-  // 너무 많으면 상위 200건만 렌더링 (검색/필터 후에도 1000+ 인 경우 대비).
-  const visible = items.slice(0, 200);
+  // 너무 많으면 지금 정렬의 앞 200건만 그린다(검색/필터 후에도 1000+ 인 경우 대비).
+  const visible = items.slice(0, MAX_ROWS);
+  const overLimit = items.length > MAX_ROWS;
   return (
     <div className="card market-topn-card ds-card">
       <h2>전체 ETF NAV / 괴리율</h2>
+      {/* 표시 범위(POC6-34 N5 · I-32) — A = 응답 전체 · B = 검색 + 고르기 결과 · C = 실제 그린 행 */}
+      <p className="helper" style={{ marginBottom: 8 }} data-testid="ds-range">
+        전체 {fmtCount(totalCount)}건 · 필터 결과 {fmtCount(items.length)}건 · 표에 표시 {fmtCount(visible.length)}건
+        {overLimit && ` (지금 정렬의 앞 ${fmtCount(MAX_ROWS)}건)`}
+      </p>
       <div className="ds-meaning">
         <div>
           <strong>수집 상태</strong> = 그 기준일에 NAV · 시장가 · 괴리율을 받았는지
@@ -422,6 +449,10 @@ function NavDiscountTable({ items, unknownRaw }: { items: NavDiscountItem[]; unk
         <div>
           <strong>괴리율 표시</strong> = 받은 값의 괴리율 절대값이 3% · 5% 이상인지(자료 확인용 · 매수 · 매도
           판단 아님) · 괴리율 양수 = 시장가가 NAV 보다 높음
+        </div>
+        <div>
+          <strong>기준일</strong> = PC 가 목록 갱신을 시작한 날짜(원자료의 산정일은 이 화면에서 확인할 수 없음) · 이전
+          목록 재사용 행은 ‘재저장일’로 표시
         </div>
       </div>
       <table className="market-topn-table">
@@ -476,10 +507,9 @@ function NavDiscountTable({ items, unknownRaw }: { items: NavDiscountItem[]; unk
         </tbody>
       </table>
       <UnknownRawDetails raw={unknownRaw} />
-      {items.length > visible.length && (
-        <p className="helper" style={{ marginTop: 8 }}>
-          상위 {fmtCount(visible.length)}건만 표시. 필터 / 검색을 좁히면 더 정확히 확인할 수
-          있습니다 (전체 {fmtCount(items.length)}건).
+      {overLimit && (
+        <p className="helper" style={{ marginTop: 8 }} data-testid="ds-narrow-hint">
+          필터 · 검색을 좁히면 앞 {fmtCount(MAX_ROWS)}건 밖의 ETF 도 표에서 볼 수 있습니다.
         </p>
       )}
     </div>

@@ -32,6 +32,10 @@ export interface OciStartupStatus {
   jobs: OciJobStatus[];
   note: string;
   schedule?: OciScheduleRow[];
+  // POC6-34 — 메모리에 있는 OCI 운영 기준 활성값을 읽은 시각(UTC ISO) · 출처(점검 때 / 적용 요청 때).
+  // 확인되지 않았으면 null. 칸 없음(옛 서버)도 null 과 같이 '확인 불가'로 다룬다.
+  param_read_at?: string | null;
+  param_source?: "startup" | "apply" | null;
 }
 
 export async function fetchOciStartupStatus(): Promise<OciStartupStatus> {

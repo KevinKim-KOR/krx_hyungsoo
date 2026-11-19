@@ -21,6 +21,8 @@
 // - 2026-11-17 POC6-32 V2(PLAN 판정 V2 Q1 (a) · PLAN §2 S1 · S4 · §9 I-4): 「오늘 확인」에 「주간 ETF 점검」(weekly_etf_check) 추가 ·
 //   「보유와 후보 비교」(holding_candidate_compare) · 「ETF 구성종목」(etf_exposure)은 메뉴에서 뺀 상세 화면(key 는 그대로) →
 //   메뉴 key 16개(정확히 1번) · 상세 key 2개(0번). 상세가 열린 동안 강조 = 넘겨받은 화면의 메뉴(상세 key 그대로면 「주간 ETF 점검」).
+// - 2026-11-19 POC6-34(PLAN 판정 Q7 · PLAN N1 · N2 · I-27): `data_status` 이름 「데이터 상태」 → 「ETF NAV·괴리율 조회」 ·
+//   힌트 '전체 ETF · 수집 상태 · 큰 괴리 찾기'(key · 자리 그대로).
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import LeftSidebar, {
@@ -479,5 +481,26 @@ describe("POC6-32 V2 「주간 ETF 점검」 · 상세 화면", () => {
     expect(screenLabelOf("holding_candidate_compare")).toBe("보유와 후보 비교");
     expect(screenLabelOf("weekly_etf_check")).toBe("주간 ETF 점검");
     expect(screenLabelOf("workbench_holdings")).toBe("보유");
+  });
+
+  it("POC6-34 Q7 — data_status 이름 「ETF NAV·괴리율 조회」 · 힌트 · 화면에 한 번 · 옛 이름 없음 · key · 자리 그대로", () => {
+    const diag = MENU_GROUPS.find((g) => g.title === "진단·상태")!;
+    const first = groupMenuItems(diag)[0];
+    expect([first.key, first.label, first.hint]).toEqual([
+      "data_status",
+      "ETF NAV·괴리율 조회",
+      "전체 ETF · 수집 상태 · 큰 괴리 찾기",
+    ]);
+    expect(screenLabelOf("data_status")).toBe("ETF NAV·괴리율 조회");
+    const { container } = render(<LeftSidebar active="data_status" onSelect={() => {}} />);
+    const labels = Array.from(container.querySelectorAll(".sidebar-menu-label")).map((e) => e.textContent);
+    expect(labels.filter((t) => t === "ETF NAV·괴리율 조회")).toHaveLength(1);
+    const hints = Array.from(container.querySelectorAll(".sidebar-menu-hint")).map((e) => e.textContent);
+    expect(hints.filter((t) => t === "전체 ETF · 수집 상태 · 큰 괴리 찾기")).toHaveLength(1);
+    expect(container.textContent).not.toContain("데이터 상태");
+    expect(container.textContent).not.toContain("전체 ETF NAV · 괴리율 · 수집 상태");
+    // 강조 = 그 메뉴(이름만 바뀜).
+    const current = screen.getAllByRole("button").filter((b) => b.getAttribute("aria-current") === "page");
+    expect(current.map((b) => b.querySelector(".sidebar-menu-label")?.textContent)).toEqual(["ETF NAV·괴리율 조회"]);
   });
 });

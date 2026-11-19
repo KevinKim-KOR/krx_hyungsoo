@@ -65,13 +65,17 @@ class ConfigStateResponse(BaseModel):
     changes: list[SectorChange] = []
     # **현재 운영 중인 active 정책**의 상태다. 후보 값을 여기 섞지 않는다 —
     # 승인 전인데 "발송 중" 으로 보이고 활성화 경고가 숨는다(검증자 P1).
-    policy_enabled: bool = False
+    # 켜짐 여부를 확인할 수 없으면(정책 `enabled` 가 없거나 bool 이 아님 · 저장 내용
+    # 손상) `None` 이다 — '켜짐' · '꺼짐' 으로 바꾸지 않는다(POC6-34 검증자 r2 R2-F4).
+    # 활성 버전이 아예 없으면 적용한 설정이 없다 — `False` 다.
+    policy_enabled: Optional[bool] = None
     policy_status: Optional[str] = None
     # **적용하면 어떻게 되는지.** 후보가 없으면 `None` 이다.
     candidate_policy_enabled: Optional[bool] = None
     candidate_policy_status: Optional[str] = None
     # OPS-03 §2 — 카드에 읽기 전용으로 보여줄 정책 키 12개와 산출 출처.
-    # 승인 대상 버전(후보가 있으면 후보, 없으면 active)의 값이다.
+    # 승인 대상 버전(후보가 있으면 후보, 없으면 active)의 값이다. 후보 정책에 없는
+    # 값은 `None` 이다 — active 값으로 메우지 않는다(POC6-34 r1 R1-F3).
     policy_values: list[PolicyValue] = []
     policy_rule_version: Optional[str] = None
     deploy_status: Optional[str] = None
@@ -125,6 +129,22 @@ def _payload(row: Optional[dict[str, Any]]) -> dict[str, Any]:
     return body
 
 
+def _policy_block(
+    payload: dict[str, Any], row: Optional[dict[str, Any]]
+) -> dict[str, Any]:
+    """정책 블록을 읽는다. 없거나 null 이면 빈 객체(값은 '확인 불가'),
+    객체가 아니면(목록 · 문자열 · 숫자) 손상이다 — `.get` 오류로 500 이 되거나
+    다른 값으로 메우지 않고 `PayloadCorrupt` 로 올린다(POC6-34 r1 검증 V-2)."""
+    block = payload.get("intraday_alert_policy")
+    if block is None:
+        return {}
+    if not isinstance(block, dict):
+        raise PayloadCorrupt(
+            f"{(row or {}).get('config_version_id')} 정책 블록이 객체가 아니다"
+        )
+    return block
+
+
 def _sectors(payload: dict[str, Any]) -> dict[str, str]:
     uni = payload.get("sector_representative_universe") or {}
     out: dict[str, str] = {}
@@ -152,6 +172,19 @@ def _diff(active: dict[str, Any], cand: dict[str, Any]) -> list[SectorChange]:
     return out
 
 
+def _enabled_or_none(policy: dict[str, Any]) -> Optional[bool]:
+    """정책의 `enabled` 를 그대로 읽는다. 없거나 bool 이 아니면 `None`(확인 불가)."""
+    value = policy.get("enabled")
+    return value if isinstance(value, bool) else None
+
+
+def _status_or_none(policy: dict[str, Any]) -> Optional[str]:
+    """정책의 `policy_status`. 문자열이 아니면 `None`(확인 불가) — 응답 모델 오류(500)로
+    올리지도, 다른 값으로 바꾸지도 않는다(POC6-34 검증자 r2 R2-F4)."""
+    value = policy.get("policy_status")
+    return value if isinstance(value, str) else None
+
+
 @router.get("/state", response_model=ConfigStateResponse)
 def get_state() -> ConfigStateResponse:
     active = store.get_active()
@@ -160,6 +193,8 @@ def get_state() -> ConfigStateResponse:
     cand, action_state = store.actionable_version()
     try:
         ap, cp = _payload(active), _payload(cand)
+        active_policy = _policy_block(ap, active)
+        cand_policy = _policy_block(cp, cand) if cand else {}
     except PayloadCorrupt as e:
         # 값을 지어내지 않는다 — 무엇이 깨졌는지 그대로 올린다.
         return ConfigStateResponse(
@@ -168,11 +203,12 @@ def get_state() -> ConfigStateResponse:
             action_state=action_state,
             payload_error=str(e),
         )
-    # 현재 상태와 적용 예정 상태를 **분리해서** 읽는다.
-    active_policy = ap.get("intraday_alert_policy") or {}
-    cand_policy = (cp.get("intraday_alert_policy") or {}) if cand else {}
-    # 「적용될 판정 기준」 은 승인 대상 기준이다 — 후보가 있으면 후보.
-    shown_policy = cand_policy or active_policy
+    # 현재 상태와 적용 예정 상태를 **분리해서** 읽는다(위 try 안 `_policy_block`).
+    # 「적용될 판정 기준」 은 승인 대상 기준이다 — 후보가 있으면 **후보 정책에서만**
+    # 읽는다. 후보의 정책 블록이 없거나 비어도 활성 값으로 메우지 않는다 — 빠진 값은
+    # `None`(화면 '확인 불가')이다. 전에는 `cand_policy or active_policy` 라 활성 값이
+    # '승인 시 적용될 기준' 으로 보였다(POC6-34 검증자 r1 R1-F3).
+    shown_policy = cand_policy if cand else active_policy
     # 배포 상태는 **지금 화면이 가리키는 버전** 것이다. 후보가 있으면 후보,
     # 없으면 **active** 다. 전에는 후보가 없으면 아예 읽지 않아, 승인이 끝나
     # 후보가 사라진 뒤에는 `deployed/ok` 인 운영 설정을 화면이 "아직 적용하지
@@ -193,10 +229,13 @@ def get_state() -> ConfigStateResponse:
         candidate_data_asof=uni_c.get("data_asof"),
         candidate_sector_count=len(uni_c.get("sectors") or []),
         changes=_diff(ap, cp) if cand else [],
-        policy_enabled=bool(active_policy.get("enabled")),
-        policy_status=active_policy.get("policy_status"),
-        candidate_policy_enabled=(bool(cand_policy.get("enabled")) if cand else None),
-        candidate_policy_status=(cand_policy.get("policy_status") if cand else None),
+        # 활성 · 후보 모두 같은 규칙이다 — 켜짐 여부가 없거나 bool 이 아니면 `None`,
+        # 상태가 문자열이 아니면 `None`. 전에는 활성만 `bool(...)` 이라 문자열 "false" 가
+        # '켜짐', 없음이 '꺼짐' 이었다(R2-F4 · 후보는 R1-F3). 활성 버전이 없으면 `False`.
+        policy_enabled=(_enabled_or_none(active_policy) if active else False),
+        policy_status=_status_or_none(active_policy),
+        candidate_policy_enabled=(_enabled_or_none(cand_policy) if cand else None),
+        candidate_policy_status=(_status_or_none(cand_policy) if cand else None),
         # 스키마가 요구하는 12개를 **그 순서대로** 내린다. 값이 없으면 `None`
         # 으로 내려 "빠졌다" 는 사실이 화면에서도 보이게 한다(0 으로 위장 금지).
         policy_values=[

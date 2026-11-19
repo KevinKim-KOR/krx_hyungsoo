@@ -25,7 +25,8 @@ export type IntradayConfigState = {
   candidate_sector_count: number;
   changes: SectorChange[];
   // **현재 운영 중인 active 정책** 상태. 후보 값이 아니다.
-  policy_enabled: boolean;
+  // 켜짐 여부를 읽지 못하면(값 없음 · bool 아님) null — 화면은 '확인 불가'(POC6-34 r2 R2-F4).
+  policy_enabled: boolean | null;
   policy_status: string | null;
   // **적용하면 어떻게 되는지.** 후보가 없으면 null.
   candidate_policy_enabled: boolean | null;

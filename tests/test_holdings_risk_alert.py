@@ -8,8 +8,11 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
+from pathlib import Path
 
 from app.runtime_evidence.holdings_risk import (
+    _RISK_BANDS,
+    _SURGE_BANDS,
     GROUP_ORDER,
     REASON_DAY_DROP,
     STATE_D5_7,
@@ -17,6 +20,7 @@ from app.runtime_evidence.holdings_risk import (
     STATE_D10_PLUS,
     RiskTicker,
     classify_day_drop,
+    classify_day_surge,
     previous_trading_day,
     select_risk_holdings,
     severity,
@@ -100,6 +104,46 @@ def test_band_just_above_threshold_is_not_selected():
     assert classify_day_drop(-9.9) == STATE_D7_10
     assert classify_day_drop(0.0) is None
     assert classify_day_drop(None) is None
+
+
+# POC6-34 검증자 r1 R1-F1 — 「OCI 운영·적용」 장중 판정 기준 표의 보유 급등 · 급락 문장은 저장된
+# 설정값(surge_threshold_pct · drop_threshold_pct · 실행 코드가 읽지 않음)이 아니라 이 고정 경계로
+# 만든다. 서버 상수 ↔ 공용 고정 자료는 여기서, 화면 상수 ↔ 같은 고정 자료는 frontend
+# approval/intradayCriteria.test.ts 가 대조한다(poc6_33_filtered_notes.json 과 같은 방식 · 합성 값).
+_BANDS_FIXTURE = json.loads(
+    (Path(__file__).parent / "fixtures" / "poc6_34_holdings_bands.json").read_text(
+        encoding="utf-8"
+    )
+)
+
+
+def test_fixed_band_edges_match_shared_screen_fixture():
+    """고정 자료 = `_SURGE_BANDS` · `_RISK_BANDS` 경계 · 화면 문장의 '포함 · 해당 없음' = 분류 함수."""
+    surge = sorted(low for _state, low, _high in _SURGE_BANDS)
+    drop = sorted((high for _state, _low, high in _RISK_BANDS), reverse=True)
+    assert surge and drop
+    assert surge == _BANDS_FIXTURE["surge_lower_bounds_pct"]
+    assert drop == _BANDS_FIXTURE["drop_upper_bounds_pct"]
+
+    # 화면의 '+5 ~ +7% · +7 ~ +10% · +10% 이상' — 구간은 끊김 없이 이어지고 마지막은 열려 있다.
+    surge_upper = {low: high for _state, low, high in _SURGE_BANDS}
+    assert [surge_upper[b] for b in surge] == surge[1:] + [None]
+    drop_lower = {high: low for _state, low, high in _RISK_BANDS}
+    assert [drop_lower[b] for b in drop] == drop[1:] + [None]
+
+    # '정확히 +5.0% 포함 · +4.9% 해당 없음'(급등 = 하한 포함) · 급락은 거울(상한 포함).
+    prev = None
+    for b in surge:
+        state = classify_day_surge(b)
+        assert state is not None and state != prev
+        assert classify_day_surge(round(b - 0.1, 1)) == prev
+        prev = state
+    prev = None
+    for b in drop:
+        state = classify_day_drop(b)
+        assert state is not None and state != prev
+        assert classify_day_drop(round(b + 0.1, 1)) == prev
+        prev = state
 
 
 def test_selection_uses_normalized_pct_at_exact_boundary():

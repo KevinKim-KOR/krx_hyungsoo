@@ -16,6 +16,9 @@ POC5-27 판정 §3: [현재 기준 OCI 적용] 요청 **안에서** 읽은 값�
 (명시 적용 결과 반영 — 이 엔드포인트가 OCI 를 다시 읽지는 않는다). 행이 200 으로 오는 것과
 '값 확인 성공 · 일치'는 다르다(상태 SUCCESS 만 일치).
 
+POC6-34 Q4: 그 OCI 활성값을 읽은 시각 · 경로를 `param_read_at` · `param_source` 로 싣는다(메모리의
+값 그대로 · 확인되지 않았으면 null · 기본값 null 이라 옛 소비자는 그대로).
+
 민감정보는 스냅샷 자체에 없다(app.oci_startup_status 가 담지 않음).
 """
 
@@ -51,6 +54,33 @@ class OciStartupStatusResponse(BaseModel):
     note: str
     # POC6-27 — 필수 3종 예약 상태(기동 스냅샷에서 · OCI 재조회 없음)
     schedule: list[OciScheduleRowModel] = []
+    # POC6-34 Q4 · I-7 — '운영 기준 활성' 행의 OCI 활성값을 실제로 읽은 시각(UTC ISO 원문)과
+    # 경로(startup = 기동 점검 · apply = [현재 기준 OCI 적용] 요청 안). 메모리에 이미 있는 값을
+    # 싣기만 한다(새 OCI 읽기 · 새 계산 없음). 확인되지 않았으면 둘 다 null.
+    param_read_at: str | None = None
+    param_source: str | None = None
+
+
+_PARAM_SOURCES = ("startup", "apply")
+
+
+def _param_read(
+    snap: oci_startup_status.OciStartupSnapshot, show: bool
+) -> tuple[str | None, str | None]:
+    """POC6-34 I-7 — OCI 활성값을 실제로 읽어 갖고 있을 때만 (읽은 시각, 경로).
+
+    행이 빠지는 조건(show)은 그대로 따른다. 확인 불가(unconfirmed)일 때 저장된 시각은 적용
+    요청이 끝난 시각이라 '읽은 시각'으로 내보내지 않는다. 그 밖은 (None, None).
+    """
+    if (
+        show
+        and snap.oci_param_values
+        and not snap.oci_param_unconfirmed
+        and snap.oci_param_read_at
+        and snap.oci_param_source in _PARAM_SOURCES
+    ):
+        return snap.oci_param_read_at, snap.oci_param_source
+    return None, None
 
 
 def _param_active_row(
@@ -79,6 +109,7 @@ def get_oci_startup_status() -> OciStartupStatusResponse:
     # POC5-27 — 기동 읽기가 실패했어도 적용 요청에서 읽은(또는 확인 못 한) 결과는 행으로 보인다.
     show = snap.reachable or snap.oci_param_source == "apply"
     jobs = [*snap.jobs, _param_active_row(snap)] if show else list(snap.jobs)
+    param_read_at, param_source = _param_read(snap, show)
     return OciStartupStatusResponse(
         checked_at=snap.checked_at,
         reachable=snap.reachable,
@@ -92,4 +123,6 @@ def get_oci_startup_status() -> OciStartupStatusResponse:
         schedule=[
             OciScheduleRowModel(**r) for r in oci_startup_status.schedule_rows(snap)
         ],
+        param_read_at=param_read_at,
+        param_source=param_source,
     )

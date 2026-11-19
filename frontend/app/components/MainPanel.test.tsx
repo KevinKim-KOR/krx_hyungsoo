@@ -7,7 +7,7 @@
 //
 // 2026-09-27 사용자 직접 지시: 「승인·적용」과 「OCI 운영 상태」(`oci_status`)가
 // 한 화면 「OCI 운영·적용」(`approval`)으로 합쳐졌다. 도착 화면은 그 화면의
-// ① 지금 OCI 상태 (읽기만) 섹션이다.
+// ① 마지막 OCI 점검 (읽기만) 섹션이다(POC6-34 이름).
 //
 // @/lib/api 는 부분 mock — 오늘 화면 · OCI 화면이 부르는 조회만 대역으로 바꾼다.
 // 시장 · 보유 자료는 일부러 실패시킨다(이 test 는 자료가 아니라 이동을 본다).
@@ -121,9 +121,9 @@ describe("MainPanel 라우팅 관통 (POC3-02D-OPS-02 3-1)", () => {
     ).toBeNull();
     // OCI 상세(①)가 실제로 그려진다(도착 화면이 빈 화면이 아님).
     expect(
-      screen.getByRole("heading", { level: 2, name: "① 지금 OCI 상태 (읽기만)" }),
+      screen.getByRole("heading", { level: 2, name: "① 마지막 OCI 점검 (읽기만)" }),
     ).toBeInTheDocument();
-    expect(await screen.findByText("정상 운영 중")).toBeInTheDocument();
+    expect(await screen.findByText("예약표에서 필수 3종 표기 확인")).toBeInTheDocument();
     expect(
       screen.getByText("시장 브리핑 · 보유 브리핑 · 장중 급등락"),
     ).toBeInTheDocument();
