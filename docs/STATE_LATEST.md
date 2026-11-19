@@ -512,7 +512,8 @@ POC6-33  보유 현황 · 종목 관리 · 확인 근거 · 데이터 상태 화
            최종본 검사 = tsc 0 · npm run lint 0 · vitest 99파일 1979 · act 경고 31줄(main 과 같음) · 전체 백엔드 회귀 6401 passed · 2 skipped(43분 · 2026-11-19)
          → 설계자 RESULT PASS · 운영 반영 승인 대기(판정 §4 조건 충족 · 개발자 기록 2026-11-19)
          → 설계자 RESULT PASS 확정(2026-11-19) → 구현 커밋 7eb7cd0c(51파일) · main 빨리 감기 · PROGRAM_TRUTH 반영일(최종 반영 2026-11-19 · 표시 28곳) · 운영 화면(3000) 네 곳 확인 완료(GET 만 · 결과서 §16) · 문서 커밋
-         다음 = push · 격리 서버(8001 · 3001) 정지 · 격리 작업 사본 · 브랜치 삭제(형수님 별도 승인) → 종료 기록
+         → 형수님 운영 확인(2026-11-19): 매매 입력 · 새 보유 추가 창의 칸 이름(거래일 · 거래 시각 · 체결단가 · 수량 · 메모 등)이 입력 칸 뒤에 가려지던 것 정정(전역 label 여백 · globals.css `.hmx-field > label` margin 0 · 원래부터 있던 문제) · 커밋 · push(형수님 승인)
+         격리 작업 사본 · 브랜치 · 서버는 정리하지 않음(형수님 결정 · ML 단계로 갈 때 형수님이 정리)
 POC6 다음  방향 문서 docs/ai_design/POC6/POC6_INVESTMENT_DECISION_AND_ML_DIRECTION_ROADMAP_2026-10-26.md(설계자 V1 · 2026-10-26 · handoff 아님)
          목표 = 한국 상장 ETF 후보 추천 · 보유 중 유지 · 축소 · 매도 검토 근거와 권고 · 사용자 최종 결정 · 주문(자동 주문 제외) · ML 효용 검증 뒤 연결
          추천 행동 · 성과 검증 계약 = docs/ai_design/POC6/POC6_RECOMMENDATION_ACTION_AND_PERFORMANCE_CONTRACT_V1.md(설계자 V1.1 · §2-1 A · B · C 확정 기록 · 최초 V1 = 75aad869)

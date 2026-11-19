@@ -3708,7 +3708,8 @@ button.hmx-x:hover:not(:disabled) { background: var(--border-soft); }
 .hmx-form { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 14px; }
 .hmx-field { display: grid; grid-template-rows: 18px 38px; gap: 4px; min-width: 0; }
 .hmx-field-wide { grid-column: 1 / -1; }
-.hmx-field > label, .hmx-field > .hmx-lbl { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* margin 0 — 전역 label 여백(위 10px · 아래 6px)이 18px 이름 칸을 넘쳐 이름이 입력 칸 뒤로 가려지던 것(2026-11-19 형수님 운영 확인) */
+.hmx-field > label, .hmx-field > .hmx-lbl { margin: 0; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hmx-field input, .hmx-field select, .hmx-field .hmx-out { font: inherit; font-size: 14px; height: 38px; padding: 0 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--card); color: var(--fg); min-width: 0; width: 100%; box-sizing: border-box; }
 .hmx-field .hmx-out { display: flex; align-items: center; background: var(--bg); font-variant-numeric: tabular-nums; }
 .hmx-field .hmx-out.hmx-right, .hmx-field input.hmx-num { justify-content: flex-end; text-align: right; font-variant-numeric: tabular-nums; }
