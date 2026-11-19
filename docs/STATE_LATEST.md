@@ -494,6 +494,25 @@ POC6-32  ETF 주간 검토 한 장 = 설계 수신(2026-11-17 · 처음 'POC6-31
          남은 일: 후속 I-18 같은 공식 기초지수 교체 대안 조회(실제 교체 대안이 필요할 때) · 운영 첫 일일 복사 때 브라우저 클립보드 확인 · 자동 후속 제안 금지
          결과서 docs/ai_result/POC6/POC6_32_ETF_WEEKLY_REVIEW_ONE_PAGE_RESULT.md
          설계 docs/ai_design/POC6/POC6_32_ETF_WEEKLY_REVIEW_ONE_PAGE_DESIGN_2026-11-17.md · 판정 …_PLAN_DECISION_2026-11-17.md · PLAN docs/ai_plan/POC6/POC6_32_ETF_WEEKLY_REVIEW_ONE_PAGE_PLAN_V1.md(확정) · 목업 …_MOCKUP.html(판정 반영 · 보유 이름 · 금액 없음)
+POC6-33  보유 현황 · 종목 관리 · 확인 근거 · 데이터 상태 화면 개선 = 설계 수신(2026-11-18 · 설계자 원본 HOLDINGS_UI_REVIEW_DEVELOPER_HANDOFF · 단계 번호 없음 → 개발자 임시 번호 POC6-33 · 설계자 확인 요청)
+         설계 docs/ai_design/POC6/POC6_33_HOLDINGS_UI_REVIEW_DESIGN_2026-11-18.md · 최신 main 대조 조사(네 화면) → 개발 PLAN V1 · 전체 화면 목업 제출(2026-11-18 · 독립 사실 확인 1회 반영 · 틀린 곳 10 · 빠진 곳 13 · 보유 고유 수치 가림 · 질문 Q0 ~ Q54) · 코드 변경 없음
+           확인 사실: 20일 수익률 시작 종가 10/21 ↔ 차트 첫 표시 10/22(역할 차이 · 결함 아님) · 옛 'Market Discovery TOP 10' = compute_topn 상위 10(공유 builder · PUSH 도 씀) · 보유 ETF 중 주간 상위 30 안 ○건 · 일괄 기준일 대상 ○건(보유 집계는 공개 문서 가림 · 2026-11-19 RESULT 판정 §4-1) · 기준일을 쓰는 그래프 없음 · 데이터 상태 괴리율 문구 세 벌
+           함께: PROGRAM_TRUTH 의 POC6-32 '반영 대기' 35줄 정정(POC6-32 마무리 누락 · 별도 커밋 e87ef4cc · push 완료 · RESULT 판정에서 수용)
+         → 설계자 PLAN 판정 조건부 PASS(2026-11-18 · docs/ai_design/POC6/POC6_33_HOLDINGS_UI_REVIEW_PLAN_DECISION_2026-11-18.md · 번호 POC6-33 확정 · Q0 ~ Q54 반영 기준 · Q55 PROGRAM_TRUTH POC6-32 정정은 별도 커밋 · push 허용)
+         → PLAN V1 확정 · 목업 갱신 · 격리 구현(작업 사본 krx_hyungsoo_wt_poc6_33 · 브랜치 poc6-33-holdings-ui · main e87ef4cc 로 빨리 감기 · 자료 사본 = 운영 state(ML 제외) · 격리 서버 8001 · 3001)
+         → 네 갈래 구현 · 통합 · 독립 검토(3관점 · 반박 검증) 정정 4건 · 격리 실화면 정정 2건 · 변이 99/99 · vitest 전체 99파일 1958 통과 · 전체 pytest 는 커밋 전 1회(미실행) · stage 전
+           결과서 docs/ai_result/POC6/POC6_33_HOLDINGS_UI_REVIEW_RESULT.md(설계자 확인 요청 §11 · EV-1 겹침 설명 글이 확정 PLAN I-4 와 다름 · I-2 · 「종목 관리」 'N종목' = 행 수 · 'FinanceDataReader' 원문)
+         → 형수님 격리 화면 확인(2026-11-19): 「보유 현황」 상세 현재가 = 요약 행과 반복 → 뺌(형수님 결정 · 판정 Q9 와 다름 · 1440 상세 한 줄) · 「확인 근거」 순서 ≠ 「후보리스트」 선정 순서 = 지금처럼 둠(설계자 RESULT 판정 §1 이 두 순서를 설명) · 추가매수 부분 확인
+         → 검증자 r1 REJECTED(2026-11-19 · F1 확인 근거 재진입 때 주간 순위를 새로 읽지 않음 · 다시 읽기 실패 표시 없음 · B-6 서버 시험이 프론트 소스에 묶임) → r1 정정(진입마다 같은 키로 1회 새로 읽기 · 조회 전 '불러오는 중' · stale = 조회 실패 · 공용 고정 자료 tests/fixtures/poc6_33_filtered_notes.json · 변이 10/10 · vitest 1963 · 결과서 §13)
+         → 검증자 r2 VERIFIED(2026-11-19 · 결과서 §14)
+         → 설계자 RESULT 판정 조건부 PASS(2026-11-19 · docs/ai_design/POC6/POC6_33_HOLDINGS_UI_REVIEW_RESULT_DECISION_2026-11-19.md · r2 VERIFIED 수용 · 상세 현재가 형수님 결정 수용 · 결과서 §11 확인 요청 · I-1 ~ I-15 모두 판정)
+           → 판정 §1 ~ §3 표시 보완(격리 사본 · 순위 '1개월 수익률 상위 30 중 n위' · '순위권 밖 · 1개월 수익률 상위 30 밖' · 구성종목 중복 '비교 범위 확인 불가' 먼저 · History · [시장 흐름 보기] '비교 시작일'(서버 원문 그대로 · 화면 사전) · 종목 관리 '보유 행 M개' · 거래량 원문은 [세부 흐름 보기] 도움말 · 「확인 근거」 '가격 기준일' · '마지막 저장일' · 'KODEX 200' · '기존 후보 목록 기준일' · 데이터 상태 '가장 최근 목록 날짜(재저장일 포함)')
+           → 독립 검토 4건 정정(stage · 결과서 · KILL_SWITCHES 보유 건수 가림 · 날짜 이름) · 공개 문서 보유 집계 가림(PLAN · 목업 · STATE · KILL_SWITCHES · PROGRAM_TRUTH) · 변이 이번 55 · 누적 165 잡힘 · vitest 99파일 1979 · 대상 pytest 50 · 격리 화면 · 주간 두 화면 같은 시각 대조(결과서 §15)
+           형수님 확인 = 보유 상세(완료) · 확인 근거 순서 지금처럼 · 추가매수 부분 / 개발자 확인 = History · 종목 관리 · 확인 근거 · 데이터 상태(결과서 §15-3)
+           최종본 검사 = tsc 0 · npm run lint 0 · vitest 99파일 1979 · act 경고 31줄(main 과 같음) · 전체 백엔드 회귀 6401 passed · 2 skipped(43분 · 2026-11-19)
+         → 설계자 RESULT PASS · 운영 반영 승인 대기(판정 §4 조건 충족 · 개발자 기록 2026-11-19)
+         → 설계자 RESULT PASS 확정(2026-11-19) → 구현 커밋 7eb7cd0c(51파일) · main 빨리 감기 · PROGRAM_TRUTH 반영일(최종 반영 2026-11-19 · 표시 28곳) · 운영 화면(3000) 네 곳 확인 완료(GET 만 · 결과서 §16) · 문서 커밋
+         다음 = push · 격리 서버(8001 · 3001) 정지 · 격리 작업 사본 · 브랜치 삭제(형수님 별도 승인) → 종료 기록
 POC6 다음  방향 문서 docs/ai_design/POC6/POC6_INVESTMENT_DECISION_AND_ML_DIRECTION_ROADMAP_2026-10-26.md(설계자 V1 · 2026-10-26 · handoff 아님)
          목표 = 한국 상장 ETF 후보 추천 · 보유 중 유지 · 축소 · 매도 검토 근거와 권고 · 사용자 최종 결정 · 주문(자동 주문 제외) · ML 효용 검증 뒤 연결
          추천 행동 · 성과 검증 계약 = docs/ai_design/POC6/POC6_RECOMMENDATION_ACTION_AND_PERFORMANCE_CONTRACT_V1.md(설계자 V1.1 · §2-1 A · B · C 확정 기록 · 최초 V1 = 75aad869)

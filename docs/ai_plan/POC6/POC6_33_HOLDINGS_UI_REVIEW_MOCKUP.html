@@ -1,0 +1,759 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>보유 화면 정리 목업 V1 확정</title>
+<style>
+  :root { --fg:#1a1d23; --muted:#6b7280; --card:#fff; --soft:#e8ebf0; --border:#d1d5db; --accent:#2563eb; --bg:#f5f6f8;
+          --warn:#b45309; --danger:#dc2626; --up:#d92d20; --down:#1570ef; --ok:#15803d; --amber:#f59e0b; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.55 -apple-system, "Apple SD Gothic Neo", "Pretendard", "Malgun Gothic", sans-serif; }
+  .page { max-width:1180px; margin:0 auto; padding:16px; display:grid; gap:18px; }
+  .note { background:#fffbe6; border:1px solid #f1d98a; border-radius:10px; padding:12px 16px; font-size:13px; }
+  .note h1 { font-size:17px; margin:0 0 6px; }
+  .note ul { margin:4px 0 0; padding-left:18px; }
+  .note li { margin:2px 0; }
+  .note code { overflow-wrap:anywhere; }
+  h2.part { margin:16px 0 0; font-size:17px; border-left:4px solid var(--accent); padding-left:8px; }
+  h2.part .sub { font-size:12px; color:var(--muted); font-weight:400; margin-left:6px; }
+  .frame { display:grid; grid-template-columns:180px minmax(0,1fr); gap:14px; align-items:start; }
+  @media (max-width:820px) { .frame { grid-template-columns:minmax(0,1fr); } .side { display:none; } }
+  .side { background:#fff; border:1px solid var(--border); border-radius:12px; padding:10px 12px; font-size:13px; display:grid; gap:3px; }
+  .side .g { color:var(--muted); font-size:12px; margin-top:6px; }
+  .side .i { padding:4px 8px; border-radius:6px; }
+  .side .on { background:var(--accent); color:#fff; }
+  section.screen { display:grid; gap:12px; min-width:0; }
+  .screen h1 { margin:0; font-size:22px; }
+  .subtitle { margin:-6px 0 0; color:var(--muted); font-size:13px; }
+  .card { background:var(--card); border:1px solid var(--soft); border-radius:12px; padding:14px 16px; display:grid; gap:12px; min-width:0; }
+  .card h2 { margin:0; font-size:16px; }
+  button { font:inherit; font-size:14px; font-weight:600; min-height:40px; padding:0 14px; border-radius:8px; border:1px solid var(--accent); background:#fff; color:var(--accent); white-space:nowrap; cursor:default; }
+  button.p { background:var(--accent); color:#fff; }
+  button.big { min-height:48px; font-size:16px; padding:0 16px; }
+  button.g { border-color:var(--border); color:var(--fg); background:#fff; }
+  button.on { background:var(--accent); color:#fff; }
+  .row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; min-width:0; }
+  .muted { color:var(--muted); }
+  .small { font-size:12px; }
+  .up { color:var(--up); } .down { color:var(--down); }
+  .num { font-variant-numeric:tabular-nums; }
+  .v, .vv { overflow-wrap:anywhere; }
+
+  /* 목업 표시(화면에 없음) */
+  .chg { outline:2px dashed var(--amber); outline-offset:3px; border-radius:8px; }
+  .tg { display:inline-block; font-size:11px; font-weight:700; color:#92400e; background:#fde68a; border-radius:4px; padding:0 6px; margin-left:6px; vertical-align:1px; white-space:nowrap; line-height:18px; }
+  .tg.keep { background:#e5e7eb; color:#4b5563; }
+  .tg.eg { background:#e0e7ff; color:#3730a3; }
+  .ann { font-size:12px; color:#78350f; background:#fffbeb; border-left:3px solid var(--amber); padding:5px 9px; border-radius:0 6px 6px 0; }
+  .ann b { color:#92400e; }
+  .nw { text-decoration:underline dotted #b45309; text-underline-offset:3px; }
+  .ex { border:1px dashed #c7d2fe; background:#f8faff; border-radius:8px; padding:8px 10px; font-size:12.5px; }
+  .ex ul { margin:4px 0 0; padding-left:18px; }
+  .ex li { margin:2px 0; }
+  .old { background:#f3f4f6; border:1px dashed var(--border); border-radius:10px; padding:10px 14px; color:#4b5563; font-size:13px; }
+  .gone { color:#9ca3af; text-decoration:line-through; font-size:13px; font-weight:600; border:1px dashed #d1d5db; border-radius:8px; padding:8px 12px; white-space:nowrap; }
+  .gone-line { font-size:12.5px; color:#6b7280; border:1px dashed #d1d5db; border-radius:8px; padding:6px 10px; }
+  .gone-line s { color:#9ca3af; }
+  .qm { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; border:1px solid var(--border); color:var(--muted); font-size:11px; font-weight:700; margin-left:4px; vertical-align:1px; }
+  details > summary { cursor:pointer; color:var(--accent); font-size:12px; }
+
+  /* 보유 현황 */
+  .hero { border:1px solid var(--soft); border-radius:14px; padding:16px 18px; }
+  .hero-top { display:flex; justify-content:space-between; align-items:flex-end; gap:16px; flex-wrap:wrap; }
+  .lbl { font-size:12px; color:var(--muted); }
+  .amt { font-size:26px; font-weight:800; }
+  .pamt { font-size:19px; font-weight:800; text-align:right; }
+  .pamt span { font-size:13px; margin-left:6px; }
+  .hero-sub { display:flex; gap:22px; margin-top:12px; padding-top:12px; border-top:1px solid #f1f3f6; flex-wrap:wrap; }
+  .kv .k { font-size:11.5px; color:var(--muted); }
+  .kv .v { font-size:14px; font-weight:700; }
+  .comp { margin-top:12px; padding-top:12px; border-top:1px solid #f1f3f6; }
+  .bar { display:flex; height:20px; border-radius:7px; overflow:hidden; background:#eef1f5; margin-top:6px; }
+  .legend { display:flex; gap:14px; margin-top:6px; font-size:11.5px; color:var(--muted); flex-wrap:wrap; }
+  .sw { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:4px; vertical-align:-1px; }
+  .cap { border:1px solid var(--border); border-radius:10px; padding:12px 14px; display:grid; gap:8px; min-width:0; background:#fff; }
+  .cap-head { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  .cap-title { font-size:15px; font-weight:700; }
+  .cap-tag { font-size:12px; font-weight:500; color:var(--muted); margin-left:8px; }
+  .cap-conc { font-size:14px; }
+  .cap-conc b { font-size:19px; }
+  .cap-conc .split { margin-left:10px; color:var(--muted); }
+  .cap-conc.none { color:var(--muted); }
+  .cbar { display:flex; height:10px; border-radius:5px; overflow:hidden; background:var(--soft); }
+  .cbar .h { background:#64748b; } .cbar .c { background:#a7f3d0; }
+  .cap-grid { display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:8px 14px; padding-top:10px; border-top:1px solid var(--soft); }
+  .cap-grid.one { grid-template-columns:minmax(0,1fr); }
+  .cap-grid .k { font-size:12px; color:var(--muted); }
+  .cap-grid .v { font-size:15px; font-weight:600; }
+  .cap-grid .v.na { color:var(--muted); font-weight:500; }
+  .cap-grid .s { font-size:11px; color:var(--muted); }
+  .cap-note { font-size:12px; color:var(--muted); }
+  .cap-help { font-size:12px; color:var(--muted); }
+  .cap-help p { margin:4px 0 0; }
+  .cap-warn { font-size:12px; color:#92400e; background:#fffbeb; border:1px solid #fde68a; border-radius:6px; padding:4px 8px; }
+  .variants { border:1px dashed #9ca3af; border-radius:12px; padding:10px 12px; display:grid; gap:10px; background:#fafafa; }
+  .vlabel { font-size:13px; font-weight:700; color:#374151; }
+  .vtitle { font-size:12px; font-weight:700; color:#3730a3; }
+  .sortbar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; font-size:13px; }
+  .seg { display:inline-flex; gap:0; flex-wrap:wrap; }
+  .seg button { border-radius:0; border-color:var(--border); color:var(--fg); font-weight:500; }
+  .seg button:first-child { border-radius:8px 0 0 8px; } .seg button:last-child { border-radius:0 8px 8px 0; }
+  .seg button + button { margin-left:-1px; }
+  .seg button.on { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .acct { border:1px solid var(--soft); border-radius:12px; overflow:hidden; }
+  .acct-head { display:flex; align-items:center; gap:10px; padding:10px 14px; background:#fafbfc; border-bottom:1px solid var(--soft); flex-wrap:wrap; }
+  .acct-tag { font-size:12px; font-weight:700; padding:1px 8px; border-radius:5px; background:#dbeafe; color:#1e40af; }
+  .acct-sub { margin-left:auto; font-size:12px; color:var(--muted); }
+  .hrow { padding:11px 14px; border-bottom:1px solid #f2f4f7; }
+  .hrow.open { background:#f8faff; }
+  .hrow .top, .hrow .bot { display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+  .hrow .bot { margin-top:5px; font-size:12px; color:var(--muted); }
+  .nm { font-weight:700; }
+  .b-hold { padding:1px 7px; border-radius:5px; font-size:10.5px; font-weight:700; background:rgba(37,99,235,.1); color:var(--accent); margin-left:6px; }
+  .pnl b { font-size:15px; }
+  .price b { color:var(--fg); }
+  .hdetail { padding:10px 14px 12px; border-bottom:1px solid #f2f4f7; background:#f8faff; display:grid; gap:8px; }
+  .dfields { list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(5, minmax(0,1fr)); gap:6px 16px; }
+  @media (max-width:820px) { .dfields { grid-template-columns:repeat(2, minmax(0,1fr)); } }
+  @media (max-width:480px) { .dfields { grid-template-columns:minmax(0,1fr); } .dfields li.wide2 { grid-column:auto; } }
+  .dfields li { display:flex; flex-direction:column; min-width:0; }
+  .dfields li.wide2 { grid-column:span 2; }
+  .dfields .k { font-size:11.5px; color:var(--muted); }
+  .dfields .v { font-weight:600; }
+  .dfields li.wide2 .v { word-break:keep-all; }
+
+  /* 종목 관리 */
+  .head-line { display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; }
+  .wrap { overflow-x:auto; min-width:0; }
+  table { border-collapse:collapse; width:100%; font-size:13px; }
+  th, td { border-bottom:1px solid var(--soft); padding:7px 6px; text-align:left; vertical-align:middle; }
+  th { color:var(--muted); font-weight:600; font-size:12px; white-space:nowrap; }
+  td.r, th.r { text-align:right; white-space:nowrap; }
+  tr.hot td { background:#eff6ff; }
+  tr.hot td:first-child { box-shadow:inset 4px 0 0 var(--accent); }
+  .dialog { border:1px solid var(--border); border-radius:12px; background:#fff; box-shadow:0 8px 24px rgba(0,0,0,.08); padding:14px 16px; display:grid; gap:10px; min-width:0; }
+  .dlg-head { display:flex; justify-content:space-between; gap:10px; align-items:flex-start; }
+  .cycle { border:1px solid var(--soft); border-radius:10px; padding:10px 12px; display:grid; gap:8px; min-width:0; }
+  .hmx-tag { display:inline-block; font-size:11.5px; padding:1px 8px; border-radius:999px; background:#f1f3f6; color:#374151; margin-left:6px; }
+  .ref-row { display:flex; flex-wrap:wrap; gap:12px; align-items:center; font-size:13px; }
+  .fake-input { display:inline-flex; align-items:center; min-height:40px; padding:0 10px; border:1px solid var(--border); border-radius:6px; background:#fff; font-variant-numeric:tabular-nums; }
+  .sum { display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:6px 12px; font-size:12.5px; }
+  .sum .k { display:block; color:var(--muted); font-size:11.5px; }
+  .flow { margin:0; padding-left:18px; font-size:13px; }
+
+  /* 확인 근거 */
+  .rsum { border:1px solid var(--soft); border-radius:12px; padding:12px 14px; display:grid; gap:10px; }
+  .rsum-head { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .rsum-head .k { color:var(--muted); font-size:13px; }
+  .rsum-head strong { font-size:17px; }
+  .stats { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:10px; }
+  .stat { border:1px solid var(--soft); border-radius:10px; padding:8px 10px; }
+  .stat .k { font-size:12px; color:var(--muted); }
+  .stat .v { font-size:16px; font-weight:700; }
+  .stat .s { font-size:11.5px; color:var(--muted); }
+  .bands { display:flex; flex-wrap:wrap; gap:6px 14px; font-size:12.5px; }
+  .aux { display:flex; flex-wrap:wrap; gap:4px 14px; font-size:12px; color:var(--muted); }
+  .quick { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  .elist { display:grid; gap:0; border:1px solid var(--soft); border-radius:12px; overflow:hidden; }
+  .ewrap { border-bottom:1px solid var(--soft); }
+  .ewrap:last-child { border-bottom:none; }
+  .ewrap.sel { box-shadow:inset 4px 0 0 var(--accent); }
+  .erow { display:grid; grid-template-columns:minmax(0,1fr) 250px; gap:12px; padding:11px 14px; align-items:center; }
+  .ewrap.sel .erow { background:#eff6ff; }
+  .ecard .top { display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; align-items:baseline; }
+  .ecard .facts { font-size:12px; color:var(--muted); margin-top:3px; }
+  .ecard .reason { font-size:12.5px; margin-top:4px; }
+  .ecard .reason .k { color:var(--muted); }
+  .rbadge { display:inline-block; padding:0 7px; border-radius:5px; font-size:12px; font-weight:700; background:#dbeafe; color:#1e40af; }
+  .rbadge.w { background:#fef3c7; color:#92400e; }
+  .emet { display:grid; gap:4px; font-size:12px; }
+  .emet .two { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+  .mc { border:1px solid var(--soft); border-radius:8px; padding:3px 8px; background:#fff; }
+  .mc .k { color:var(--muted); display:block; font-size:11px; }
+  .mc .v { font-weight:700; font-size:13.5px; }
+  .edetail { padding:4px 16px 14px 18px; display:grid; gap:10px; background:#fbfcff; border-top:1px dashed #bfdbfe; }
+  .dhead { display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; padding-top:8px; }
+  .dhead h3 { margin:0; font-size:15px; }
+  .dir { font-size:15px; padding:8px 10px; background:#fff; border:1px solid var(--soft); border-radius:8px; }
+  .dline { display:grid; grid-template-columns:150px minmax(0,1fr); gap:10px; font-size:13px; padding:6px 0; border-top:1px solid var(--soft); }
+  .dline .k { color:var(--muted); }
+  .step { display:inline-block; min-width:18px; height:18px; line-height:18px; text-align:center; border-radius:50%; background:#e0e7ff; color:#3730a3; font-size:11px; font-weight:700; margin-right:6px; }
+  @media (max-width:640px) { .dline { grid-template-columns:minmax(0,1fr); } .erow { grid-template-columns:minmax(0,1fr); } }
+  .groups { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:10px; }
+  .grp { border:1px solid var(--soft); border-radius:10px; padding:8px 10px; background:#fff; display:grid; gap:4px; align-content:start; }
+  .grp .t { font-weight:700; }
+  .grp .gg { display:grid; grid-template-columns:auto minmax(0,1fr); gap:2px 10px; font-size:12.5px; }
+  .grp .gg .k { color:var(--muted); }
+  .grp .gg .lead { font-weight:700; }
+  .grp .foot { font-size:11.5px; color:var(--muted); border-top:1px solid var(--soft); padding-top:4px; }
+  .roles { font-size:12.5px; color:#374151; background:#fff; border:1px solid var(--soft); border-radius:8px; padding:6px 10px; }
+  .roles div { margin:1px 0; }
+  .helpline { font-size:12px; color:var(--muted); }
+  .navgrid { display:grid; grid-template-columns:repeat(auto-fit, minmax(118px, 1fr)); gap:6px 12px; margin-top:2px; }
+  .navgrid .k { display:block; font-size:11.5px; color:var(--muted); }
+  .navgrid .v { font-weight:600; }
+  .flagw { color:var(--warn); font-size:11.5px; font-weight:600; }
+
+  /* 데이터 상태 */
+  .banner { background:#eef2ff; border:1px solid #c7d2fe; border-radius:10px; padding:10px 14px; font-size:13px; }
+  .meaning { font-size:13px; background:#f8fafc; border:1px solid var(--soft); border-radius:8px; padding:8px 10px; display:grid; gap:2px; }
+  .fake-sel { display:inline-flex; align-items:center; gap:10px; min-height:40px; padding:0 10px; border:1px solid var(--border); border-radius:6px; background:#fff; white-space:nowrap; }
+  .badge { display:inline-block; padding:1px 8px; border-radius:999px; font-size:12px; font-weight:700; white-space:nowrap; }
+  .badge.ok { background:#dcfce7; color:#166534; }
+  .badge.re { background:#fef3c7; color:#92400e; }
+  .badge.na { background:#fee2e2; color:#991b1b; }
+  .badge.unk { background:#f3f4f6; color:#374151; }
+  .flag { display:block; font-size:11.5px; color:var(--warn); white-space:nowrap; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="note">
+    <h1>POC6-33 목업 V1 확정 — 「보유 현황」 · 「종목 관리」 · 「확인 근거」 · 「데이터 상태」(설계자 PLAN 판정 2026-11-18 조건부 PASS 반영 · 2026-11-19 RESULT 판정 표시 반영)</h1>
+    <ul>
+      <li><b>읽는 법:</b> <span class="chg" style="padding:0 4px">주황 점선</span> + 노란 태그 = 이번에 바뀌는 곳(태그 = PLAN 표 항목 번호) · 회색 태그 <span class="tg keep" style="margin:0">그대로</span> = 지금 화면 그대로 · 파란 태그 <span class="tg eg" style="margin:0">예시</span> = 지금 운영 자료에는 없는 상태의 모양 · <span class="nw">점선 밑줄</span> = 새 낱말 · 노란 띠 = 목업 설명(화면에 나오지 않음).</li>
+      <li><b>값:</b> 날짜 · 시장 전체 건수는 11/18 조사 실측(다음 거래일 갱신 뒤 바뀌므로 실화면 때 다시 잼) · 보유 이름 = 보유 A · B · C · D · 계좌 = 계좌 1 · 2 …(<span class="tg eg" style="margin:0">합성 예시</span> · 실제 계좌 수와 무관) · 코드 · 수량 · 가격 · 금액 · 비중 · 보유 한 종목의 수익률 · KODEX 200 대비 · 괴리율 · 순위 상태 = ○ 또는 ‘모양 예시’ · <b>보유 집계(종목 수 · 보유 행 수 · 계좌 수 · 상태별 보유 건수 · 계산 가능 a/b)는 실제 값을 적지 않음 = 종목 N · 행 M · 그 밖 ○</b>(공개 저장소 · 11/19 RESULT 판정 §4-1) · 「데이터 상태」 ETF 이름 = ETF 가 · 나 ….</li>
+      <li><b>판정 글이 열어 둔 세부</b>(‘비교 시작일’ 범위 · 겹침 줄 모양 · ‘재저장일’ 자리 · ‘기타’ 계산 등)는 PLAN §9-1 개발자 적용 해석 I-1 ~ I-15 의 읽기로 그렸습니다(2026-11-19 RESULT 판정 §3 으로 확정).</li>
+      <li><b>11/19 갱신</b>(RESULT 판정 <code>docs/ai_design/POC6/POC6_33_HOLDINGS_UI_REVIEW_RESULT_DECISION_2026-11-19.md</code> · PLAN §9-2): 「보유 현황」 상세 현재가 뺌(형수님 결정) · 순위 줄 ‘1개월 수익률 상위 30 중 n위 / 밖’ · History ‘비교 시작일부터 종가 변화’ · 「종목 관리」 ‘보유 행 M개’ · 구성종목 중복 비교 규칙 · ‘기존 후보 목록 기준일’ · ‘가장 최근 목록 날짜(재저장일 포함)’ · 보유 집계 가림. 태그 <span class="tg" style="margin:0">11/19</span> = 이번에 바뀐 곳.</li>
+    </ul>
+  </div>
+
+  <!-- ═════════════════ ① 보유 현황 ═════════════════ -->
+  <h2 class="part">① 「보유 현황」<span class="sub">보유·자료 관리 › 보유 현황 · H1 ~ H9</span></h2>
+  <div class="frame">
+    <div class="side">
+      <div class="g">보유·자료 관리</div>
+      <div class="i on">보유 현황</div><div class="i">종목 관리</div><div class="i">확인 근거</div>
+      <div class="g">진단·상태</div>
+      <div class="i">데이터 상태</div>
+    </div>
+    <section class="screen" aria-label="보유 현황 목업">
+      <h1>보유 현황</h1>
+      <p class="subtitle">저장된 보유 종목의 평가 현황입니다. 종목 입력·수정은 ‘종목 관리’, 보유 ETF의 수치와 확인 근거는 ‘확인 근거’ 화면에서 확인합니다.</p>
+
+      <div class="card">
+        <div class="row">
+          <button class="p big chg">시세 갱신 (네이버)</button>
+          <button class="p big">종목 관리 →</button>
+          <button class="p big">확인 근거 보기 →</button>
+          <span class="tg">H9</span>
+        </div>
+        <div class="muted small chg">네이버 시세 갱신 완료 — 성공 ○건 (오후 ○:○○:○○)<span class="tg">H9</span> <span class="tg eg">누른 뒤</span></div>
+
+        <div class="hero">
+          <div class="hero-top">
+            <div><div class="lbl">총 평가금액</div><div class="amt num">○○,○○○,○○○원</div></div>
+            <div><div class="lbl" style="text-align:right">평가손익</div><div class="pamt num">○,○○○,○○○원<span>○.○○%</span></div></div>
+          </div>
+          <div class="hero-sub">
+            <div class="kv"><div class="k">총 매입금액</div><div class="v num">○○,○○○,○○○원</div></div>
+            <div class="kv chg"><div class="k">보유 종목<span class="tg">H6</span></div><div class="v">종목 N개 · 보유 행 M개</div></div>
+            <div class="kv"><div class="k">평가 계산</div><div class="v">○/M개</div></div>
+          </div>
+          <div class="comp">
+            <div class="lbl">계좌별 구성 (보유 평가액 기준 · 현금 제외) <span class="tg eg">합성 예시 · 실제 계좌 수와 무관</span></div>
+            <div class="bar"><div style="width:40%;background:#93c5fd"></div><div style="width:35%;background:#c4b5fd"></div><div style="width:25%;background:#a7f3d0"></div></div>
+            <div class="legend"><span><span class="sw" style="background:#93c5fd"></span>계좌 1 ○%</span><span><span class="sw" style="background:#c4b5fd"></span>계좌 2 ○%</span><span><span class="sw" style="background:#a7f3d0"></span>계좌 … ○%</span></div>
+          </div>
+        </div>
+
+        <!-- 자금 기준: 지금 운영 상태 = 미입력 -->
+        <div class="cap chg">
+          <div class="cap-head">
+            <div class="cap-title">자금 기준<span class="tg">H7</span></div>
+            <button class="p">입력</button>
+          </div>
+          <div class="cap-conc none">현금 미입력 — 보유 + 입력 현금 합계와 ‘입력 현금 포함’ 비중은 현금을 입력하면 계산합니다.</div>
+          <div class="cap-grid one">
+            <div><div class="k">보유 평가액 · 가격 기준일</div><div class="v num">○○,○○○,○○○원</div><div class="s">2026-11-18 · ○/M행</div></div>
+          </div>
+          <details class="cap-help chg" open><summary>자세히</summary>
+            <p>종목 행의 비중은 계좌 행마다 따로 계산합니다(같은 종목이 여러 계좌에 있으면 행마다 나옴) · 판단 근거 미리보기의 종목 비중은 같은 종목의 모든 계좌 합산입니다.<span class="tg">H8 · [자세히] 안으로</span></p>
+            <p>생활비 · 비상금은 넣지 않아도 됩니다. ‘총 매입금액’은 지금 보유분의 취득금액이며 넣은 원금이 아닙니다. … (지금 글 그대로)</p>
+          </details>
+        </div>
+
+        <div class="variants">
+          <div class="vlabel">같은 자리 · 다른 상태일 때(지금 운영은 위 미입력) <span class="tg keep">H8 칸 그대로</span> <span class="tg eg">예시</span></div>
+
+          <div class="cap">
+            <div class="vtitle">직접 입력한 0원</div>
+            <div class="cap-head">
+              <div class="cap-title">자금 기준<span class="cap-tag">직접 입력 · 확인일 2026-11-18</span></div>
+              <button class="p">입력·수정</button>
+            </div>
+            <div class="cap-conc">보유 + 입력 현금 합계 <b class="num">○○,○○○,○○○원</b><span class="split">보유 100% · 현금 0%</span></div>
+            <div class="cbar"><div class="h" style="width:100%"></div></div>
+            <div class="legend"><span><span class="sw" style="background:#64748b"></span>보유 평가액 100%</span><span><span class="sw" style="background:#a7f3d0"></span>입력 현금 0%</span></div>
+            <div class="cap-grid">
+              <div><div class="k">검토에 포함할 현금</div><div class="v">0원</div><div class="s">직접 입력한 0원</div></div>
+              <div><div class="k">이번 검토의 추가 투입 한도</div><div class="v na">미정</div><div class="s">현금 전액을 한도로 보지 않음</div></div>
+              <div><div class="k">현금 · 한도 확인일</div><div class="v">2026-11-18</div></div>
+              <div><div class="k">보유 평가액 · 가격 기준일</div><div class="v num">○○,○○○,○○○원</div><div class="s">2026-11-18 · ○/M행</div></div>
+            </div>
+            <div class="cap-note">직접 입력한 확인일 기준 값 · 거래 · 입출금 뒤 자동으로 바뀌지 않습니다 · 합계는 이 보유 목록과 입력 현금의 평가 합계이며 투자 총예산 · 전체 재산이 아닙니다.</div>
+            <details class="cap-help"><summary>자세히</summary><p>종목 행의 비중은 계좌 행마다 따로 계산합니다(…) · … / (지금 글 그대로)</p></details>
+          </div>
+
+          <div class="cap">
+            <div class="vtitle">현금 입력(0원보다 큼) · 확인일이 가격 기준일과 다를 때</div>
+            <div class="cap-head">
+              <div class="cap-title">자금 기준<span class="cap-tag">직접 입력 · 확인일 2026-11-17</span></div>
+              <button class="p">입력·수정</button>
+            </div>
+            <div class="cap-conc">보유 + 입력 현금 합계 <b class="num">○○,○○○,○○○원</b><span class="split">보유 ○○% · 현금 ○○%</span></div>
+            <div class="cbar"><div class="h" style="width:72%"></div><div class="c" style="width:28%"></div></div>
+            <div class="legend"><span><span class="sw" style="background:#64748b"></span>보유 평가액 ○○%</span><span><span class="sw" style="background:#a7f3d0"></span>입력 현금 ○○%</span></div>
+            <div class="cap-grid">
+              <div><div class="k">검토에 포함할 현금</div><div class="v num">○,○○○,○○○원</div></div>
+              <div><div class="k">이번 검토의 추가 투입 한도</div><div class="v num">○,○○○,○○○원</div><div class="s">합계에 더하지 않음</div></div>
+              <div><div class="k">현금 · 한도 확인일</div><div class="v">2026-11-17</div></div>
+              <div><div class="k">보유 평가액 · 가격 기준일</div><div class="v num">○○,○○○,○○○원</div><div class="s">2026-11-18 · ○/M행</div></div>
+            </div>
+            <div class="cap-warn">가격 기준일(2026-11-18)과 현금 확인일(2026-11-17)이 달라 <b>기준일이 다른 참고 합계 · 비중</b>입니다(종목 행의 ‘입력 현금 포함’ 비중 포함).</div>
+            <div class="cap-note">직접 입력한 확인일 기준 값 · 거래 · 입출금 뒤 자동으로 바뀌지 않습니다 · …</div>
+            <details class="cap-help"><summary>자세히</summary><p>종목 행의 비중은 계좌 행마다 따로 계산합니다(…) · … / (지금 글 그대로)</p></details>
+          </div>
+          <div class="ann">입력한 0원(‘0원 · 직접 입력한 0원’ + 합계 · 막대) ↔ 미입력(안내 한 줄)은 구별됨 · [비우기] 뒤는 미입력 모양 · 현금을 입력하면 종목 행 비중 아래 ‘입력 현금 포함 ○%’가 붙음(그대로).</div>
+        </div>
+
+        <p class="muted small chg" style="margin:0">저장된 네이버 시세 기준 평가. 갱신은 위의 [시세 갱신] 버튼.<span class="tg">H9</span></p>
+
+        <div class="sortbar">
+          <span class="muted">정렬</span>
+          <span class="seg"><button class="on">계좌순</button><button>종목명순</button><button>종목코드순</button></span>
+          <span class="muted small">계좌 순서: 일반 · ISA · 연금 · 오픈뱅킹 · 기타 (계좌 안은 종목명순)</span>
+          <span class="tg keep">그대로</span>
+        </div>
+
+        <div class="acct">
+          <div class="acct-head">
+            <span class="acct-tag">계좌 1</span><span class="muted small">○종목</span>
+            <span class="acct-sub">평가손익 <b class="num">○,○○○,○○○원</b> (○.○○%)</span>
+          </div>
+          <div class="hrow">
+            <div class="top"><div class="nm">보유 B<span class="b-hold">보유</span></div><div class="pnl num"><b>○○○,○○○원</b> ○.○○%</div></div>
+            <div class="bot">
+              <div class="chg">○○○○○○ / ○○주 / 보유 내 비중(평가 기준) <b style="color:#4b5563">○.○%</b><span class="tg">H2</span></div>
+              <div class="price num">매입 <b>○○,○○○원</b> → 현재 <b>○○,○○○원</b></div>
+            </div>
+          </div>
+          <div class="hrow open">
+            <div class="top"><div class="nm">보유 A<span class="b-hold">보유</span> <span class="muted small">▾ 펼침</span></div><div class="pnl num"><b>○○○,○○○원</b> ○.○○%</div></div>
+            <div class="bot">
+              <div>○○○○○○ / ○○주 / 보유 내 비중(평가 기준) <b style="color:#4b5563">○.○%</b></div>
+              <div class="price num">매입 <b>○○,○○○원</b> → 현재 <b>○○,○○○원</b></div>
+            </div>
+          </div>
+          <div class="hdetail">
+            <ul class="dfields chg">
+              <li><span class="k">매입금액</span><span class="v num">○,○○○,○○○원</span></li>
+              <li><span class="k">평가금액</span><span class="v num">○,○○○,○○○원</span></li>
+              <li><span class="k">매입 기준 비중</span><span class="v">○.○%</span></li>
+              <li class="wide2"><span class="k">가격 기준시각</span><span class="v">2026-11-18 15:54:12 KST · 네이버</span></li>
+            </ul>
+            <div class="small muted">상세 = 네 항목 한 줄(1440px · 좁은 화면은 줄바꿈) · 수량 · 평균 매입단가 · 현재가는 위 요약 행에서 읽음(상세에서 뺌)<span class="tg">H1</span><span class="tg">11/19 형수님 결정 · 상세 현재가 뺌</span></div>
+            <div class="ex"><b>다른 값일 때 같은 자리</b>
+              <ul>
+                <li>가격 기준시각이 날짜만 → ‘2026-08-11 · 네이버’ · 시각을 읽지 못함 → ‘확인 불가 · 네이버’ · 사전에 없는 출처 → ‘<span class="nw">기타 출처</span>’ · 시각 · 출처 둘 다 없음 → 줄 없음(지금과 같음)</li>
+                <li>매입 기준 비중 값 없음 → ‘비중 계산 불가’(H3)</li>
+                <li>시세 없음 → 상세 평가금액 ‘평가 불가’ · 요약 행 ‘현재 미확인’ · 배지 ‘시세 미확인’(그대로 · H5 · 상세에는 현재가 항목 없음)</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="muted small">다른 계좌 — 같은 모양(목업에서 생략)</div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ═════════════════ ② 종목 관리 ═════════════════ -->
+  <h2 class="part">② 「종목 관리」<span class="sub">보유·자료 관리 › 종목 관리 · M1 ~ M3 · [History] 를 연 모습</span></h2>
+  <div class="frame">
+    <div class="side">
+      <div class="g">보유·자료 관리</div>
+      <div class="i">보유 현황</div><div class="i on">종목 관리</div><div class="i">확인 근거</div>
+      <div class="g">진단·상태</div>
+      <div class="i">데이터 상태</div>
+    </div>
+    <section class="screen" aria-label="종목 관리 목업">
+      <h1>종목 관리</h1>
+      <p class="subtitle">현재 보유 · 매매 입력 · History · OCI 적용. 평가 · 확인 근거는 ‘보유 현황’ · ‘확인 근거’ 화면에서 확인합니다.</p>
+
+      <div class="card">
+        <div class="head-line">
+          <h2>1. 보유 종목</h2>
+          <div class="row chg">
+            <button class="p">새 보유 추가</button>
+            <button class="g">입력 정정</button>
+            <span class="gone">가격 비교 기준일 설정</span>
+            <span class="tg">M1 빠짐</span>
+          </div>
+        </div>
+        <p class="muted small" style="margin:0">보유 줄을 누르면 그 종목의 매매(추가매수 · 분할매도 · 전량매도)를 입력합니다. 저장하면 수량 · 평단과 History 가 함께 바뀝니다. 수량 · 평단을 직접 고치는 일은 ‘입력 정정’에서 합니다(매매가 아닌 정정으로 기록).</p>
+        <div class="wrap">
+          <table>
+            <thead><tr><th>종목</th><th>계좌</th><th class="r">수량</th><th class="r">평단</th><th class="r">매입금액</th><th class="r">수익률</th><th></th></tr></thead>
+            <tbody>
+              <tr class="hot">
+                <td>보유 A <span class="muted small">○○○○○○</span></td><td>계좌 1</td>
+                <td class="r num">○○</td><td class="r num">○○,○○○</td><td class="r num">○,○○○,○○○</td><td class="r num">○.○○%</td>
+                <td><div class="row" style="flex-wrap:nowrap"><button class="g">매매</button><button class="g">History</button></div></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="muted small chg" style="margin:0">보유 행 M개 · 수익률은 「보유 현황」과 같은 현재가 기준 값(현재가 없으면 —)<span class="tg">11/19 · 계좌별 행 단위</span></p>
+        <div class="ann">표 아래 건수는 계좌별 행을 셈 → ‘보유 행 M개’(지금 화면 ‘M종목’) · 「보유 현황」 배너 ‘종목 N개 · 보유 행 M개’와 같은 단위(같은 종목이 여러 계좌에 있으면 N &lt; M · RESULT 판정 §2-3). 나머지 행 · ‘과거 보유’ 묶음(과거 보유가 있을 때만)은 목업에서 생략.</div>
+      </div>
+
+      <div class="dialog" role="group" aria-label="History 창 목업">
+        <div class="dlg-head">
+          <div><b>History — 보유 A · 계좌 1</b><div class="muted small">체결단가 기준 · 수수료 · 세금 · 배당 미반영 · 이동평균 평단</div></div>
+          <button class="g" aria-label="닫기">×</button>
+        </div>
+        <div class="cycle">
+          <div><b>보유 중 · 매수일 미상</b><span class="hmx-tag">기준잔고 · 매수일 미상 · 입력 평단 기준</span><span class="hmx-tag">2026-○○-○○ 기록 시작</span></div>
+          <div class="ref-row chg">
+            <span>실제 매수일: 미상</span>
+            <span><span class="nw">비교 시작일</span>: <b>2026-01-02</b></span>
+            <button class="g">수정/해제</button>
+            <span class="tg">M3</span>
+          </div>
+          <div class="ann">‘비교 시작일’ = [시장 흐름 보기]의 종가 변화 설명(이 날짜 종가 → 마지막 저장일 종가)과 재진입 검토 창의 비교 출발일. <b>이 날짜를 쓰는 그래프는 없음</b> — 설계 §2 의 ‘그래프의 시작점’ 설명은 이렇게 정정(판정 Q19). 아래 흐름 줄도 같은 날짜를 같은 이름 ‘비교 시작일’로 읽음(11/19 RESULT 판정 §2-2 · 화면 표시에서 바꿈 · 날짜 · 비교 수치 · 저장 계약 · 서버 원문 그대로). 기준일 없는 새 잔고 등록 기간도 같은 줄(‘비교 시작일: 없음’ · [수정/해제])에서 설정.</div>
+          <div class="ex"><b>[수정/해제]를 누르면 같은 줄</b>
+            <div class="ref-row chg" style="margin-top:6px">
+              <span>실제 매수일: 미상</span><span>비교 시작일: <b>2026-01-02</b></span>
+              <span class="muted">비교 시작일</span><span class="fake-input">2026-01-02</span>
+              <button class="p">저장</button><button class="g">해제</button><button class="g">취소</button>
+            </div>
+          </div>
+          <div class="wrap">
+            <table>
+              <thead><tr><th>날짜</th><th>구분</th><th class="r">수량</th><th class="r">체결단가</th><th class="r">매매대금</th><th class="r">매도분 원가</th><th class="r">실현손익</th><th class="r">수익률</th><th class="r">잔량 · 평단</th><th>메모</th></tr></thead>
+              <tbody>
+                <tr><td>—</td><td>기준잔고</td><td class="r">○○</td><td class="r">○○,○○○</td><td class="r">—</td><td class="r">—</td><td class="r">—</td><td class="r">—</td><td class="r">○○ · ○○,○○○</td><td></td></tr>
+                <tr><td colspan="10" class="muted small">기록 시작 뒤 매매 없음 — [매매]로 입력하면 여기에 쌓입니다.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="sum">
+            <div><span class="k">잔량 · 평단</span>○○주 · ○○,○○○원</div>
+            <div><span class="k">남은 원가</span>○,○○○,○○○원</div>
+            <div><span class="k">미실현 (현재가 ○○,○○○)</span>○○○,○○○원 · ○.○○%</div>
+            <div><span class="k">누적 실현</span>0원</div>
+          </div>
+          <div class="row"><button class="g" aria-expanded="true">시장 흐름 접기</button></div>
+          <ul class="flow">
+            <li class="muted">실제 매수일: 미상 — 매수 전후 변화는 계산하지 않습니다(아래는 종가 비교).</li>
+            <li class="chg"><b><span class="nw">비교 시작일부터 종가 변화</span></b> · 2026-01-02(거래일 그대로) 종가 → 마지막 저장일 2026-11-18 종가: ○.○○% · 같은 날짜 KOSPI ○.○○%<span class="tg">11/19 · M3</span></li>
+          </ul>
+          <div class="muted small">비교 시작일은 종가 비교의 출발점이다 — 그날 보유 · 매수했다는 뜻이 아니며 개인 손익이 아니다. <span class="tg">11/19 · 같은 이름</span> · 끝난 기간 줄도 ‘비교 시작일 … → 마지막 매도일 종가 변화’</div>
+        </div>
+      </div>
+
+      <div class="old"><b>OCI 적용</b><span class="tg keep">그대로</span></div>
+    </section>
+  </div>
+
+  <!-- ═════════════════ ③ 확인 근거 ═════════════════ -->
+  <h2 class="part">③ 「확인 근거」<span class="sub">보유·자료 관리 › 확인 근거 · E1 ~ E12 · 보유 A 행을 누른 모습</span></h2>
+  <div class="frame">
+    <div class="side">
+      <div class="g">보유·자료 관리</div>
+      <div class="i">보유 현황</div><div class="i">종목 관리</div><div class="i on">확인 근거</div>
+      <div class="g">진단·상태</div>
+      <div class="i">데이터 상태</div>
+    </div>
+    <section class="screen" aria-label="확인 근거 목업">
+      <h1>확인 근거</h1>
+      <p class="subtitle">보유 ETF의 수치와 확인 근거입니다. 값을 수정하거나 저장하지 않는 읽기 전용 화면입니다.</p>
+
+      <div class="card">
+        <h2>보유 ETF 확인 근거</h2>
+        <p class="muted small" style="margin:-6px 0 0">보유 ETF 를 하나씩 이어서, 최근 5 · 20저장일 흐름과 같은 기간 KODEX 200 대비, 평가 정보를 한 화면에서 확인합니다. 값을 수정하거나 저장하지 않는 읽기 전용 확인 영역입니다.</p>
+
+        <div class="rsum chg">
+          <div class="rsum-head">
+            <span class="k">현재 보유 점검 상태</span>
+            <strong>보유 하락 구간 확인</strong><span class="qm">?</span>
+            <span class="tg">E1</span><span class="tg eg">문구 예시</span>
+          </div>
+          <div class="stats">
+            <div class="stat"><div class="k">PC 최근 20저장일 하락 구간</div><div class="v">○종목 · 보유 평가 비중 ○.○%</div></div>
+            <div class="stat"><div class="k">자료 확인 필요</div><div class="v">○종목</div></div>
+            <div class="stat"><div class="k">가격 기준일</div><div class="v">2026-11-18</div><div class="s">KODEX 200 마지막 저장일 · 5 · 20저장일 흐름과 하락 구간의 기준</div></div>
+          </div>
+          <div class="bands"><span><b>10% 이상</b> ○종목 · ○.○%</span><span><b>8~10%</b> ○종목 · ○.○%</span><span><b>5~8%</b> ○종목 · ○.○%</span></div>
+          <div class="aux">
+            <span><span class="nw">보유 저장 시각</span> 2026-11-06 ○○:○○ KST</span>
+            <span class="chg"><span class="nw">기존 후보 목록 기준일</span> 2026-○○-○○<span class="tg">11/19</span> <span class="tg eg">가격 기준일과 날짜가 다를 때만</span></span>
+            <span>계산 가능 ○/N종목</span><span>시장 국면 ○○</span><span>PC 저장 종가 기준</span>
+          </div>
+        </div>
+
+        <div class="quick"><button class="on">전체</button><button class="g">하락 구간 (○)</button><button class="g">자료 확인 필요 (○)</button><span class="tg keep">그대로</span></div>
+
+        <div class="sortbar">
+          <span class="muted">정렬</span>
+          <span class="seg"><button>평가 비중</button><button>손익률</button><button class="on">5저장일 변화</button><button>20저장일 변화</button></span>
+          <span class="muted small chg">작은 값부터 · 값이 없는 종목은 맨 뒤 · 이 목록 정렬 = 저장일 변화 기준(「주간 ETF 점검」 순위와 다름)<span class="tg">E2</span></span>
+        </div>
+
+        <div class="elist">
+          <!-- 보유 B -->
+          <div class="ewrap">
+            <div class="erow">
+              <div class="ecard">
+                <div class="top"><span class="nm">보유 B</span><span class="num"><b>○.○○%</b> <span class="muted small">손익률(계좌 합산)</span></span></div>
+                <div class="facts">○○○○○○ / 평가 비중(계좌 합산) <b>○.○%</b> / 평가 ○,○○○,○○○원</div>
+              </div>
+              <div class="emet">
+                <div class="two"><div class="mc"><span class="k">최근 5저장일</span><span class="v">○.○○%</span></div><div class="mc"><span class="k">20저장일</span><span class="v">○.○○%</span></div></div>
+                <div class="mc"><span class="k">같은 기간 KODEX 200 대비(%p)</span><span class="v">○.○○%p</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 보유 A · 선택 · 바로 아래 상세 -->
+          <div class="ewrap sel">
+            <div class="erow chg" aria-expanded="true">
+              <div class="ecard">
+                <div class="top"><span class="nm">보유 A <span class="muted small">▾ 펼침</span></span><span class="num"><b>○.○○%</b> <span class="muted small">손익률(계좌 합산)</span></span></div>
+                <div class="facts">○○○○○○ / 평가 비중(계좌 합산) <b>○.○%</b> / 평가 ○,○○○,○○○원</div>
+                <div class="reason"><span class="k">확인 사유 · </span><span class="rbadge">PC 20저장일 하락 ○ 구간</span></div>
+              </div>
+              <div class="emet">
+                <div class="two"><div class="mc"><span class="k">최근 5저장일</span><span class="v">○.○○%</span></div><div class="mc"><span class="k">20저장일</span><span class="v down">−○○.○○%</span></div></div>
+                <div class="mc"><span class="k">같은 기간 KODEX 200 대비(%p)</span><span class="v down">−○○.○○%p</span></div>
+              </div>
+            </div>
+
+            <div class="edetail">
+              <div class="dhead">
+                <h3>보유 A · ○○○○○○ <span class="tg">E3</span></h3>
+                <button class="g">세부 흐름 보기</button>
+              </div>
+
+              <!-- ① 가격 방향 -->
+              <div class="dir chg"><span class="step">1</span><b>최근 20저장일 <span class="down">−○○.○○%</span>(<span class="nw">내렸음</span>)</b> · 같은 기간 KODEX 200 대비 <b class="down">−○○.○○%p</b><span class="tg">E4</span></div>
+
+              <!-- ② 순위 -->
+              <div class="dline chg">
+                <span class="k"><span class="step">2</span>주간 후보 여부 · 순위</span>
+                <span class="v"><b>규칙상 제외</b> — 인버스 · 레버리지 · 합성 · 선물 제외 조건 · 가격 · 손익 근거는 아래 그대로<span class="tg eg">모양 예시</span><br />
+                  <span class="muted small">「주간 ETF 점검」과 같은 조회 · 1개월 수익률 상위 30 · 10/19 → 11/18 · 인버스 · 레버리지 · 합성 · 선물 제외</span><span class="tg">E5</span></span>
+              </div>
+              <div class="ex"><b>이 줄의 상태</b>(위는 ‘규칙상 제외’ 모양이며 보유 A 의 실제 상태는 적지 않음 · 상태별 보유 건수는 공개 문서라 적지 않음)
+                <ul>
+                  <li>후보 포함 → ‘<span class="nw">1개월 수익률 상위 30 중 n위</span> · 10/19 → 11/18 · 인버스 · 레버리지 · 합성 · 선물 제외’ (<span class="tg eg" style="margin:0">예시</span>)<span class="tg">11/19</span></li>
+                  <li>순위권 밖 → ‘순위권 밖 · <span class="nw">1개월 수익률 상위 30 밖</span> · 10/19 → 11/18’ (하위 30 에 든 종목도 여기로)<span class="tg">11/19</span></li>
+                  <li>위 두 줄은 끝 가격이 장중 저장값이면 뒤에 ‘ · 장중 저장값 기준’ · 마감 여부를 모르면 ‘ · 마감값 확인 필요’ (마감 뒤 저장이면 붙이지 않음)</li>
+                  <li>규칙상 제외 → 위 모양</li>
+                  <li>자료 확인 불가 → ‘자료 확인 불가 — 저장 가격 없음’ · ‘자료 확인 불가 — <span class="nw">같은 기간 수익률을 구하지 못함</span>’ · ‘자료 확인 불가 — 주간 순위 조회 실패’(이때도 아래 근거는 그대로) (<span class="tg eg" style="margin:0">예시</span>)</li>
+                  <li>개별 주식 → ‘<span class="nw">ETF 순위 대상 아님</span>(개별 주식)’</li>
+                </ul>
+                <div class="small muted">순위 계산 값 = 그 기간 가격 수익률 하나 · 이 목록(「확인 근거」)의 정렬은 ‘5저장일 변화’ 기본 · 「후보리스트」 기본 기간 1개월과 구별(RESULT 판정 §1)</div>
+              </div>
+
+              <!-- ③ 필요한 자료 안내 -->
+              <div class="dline chg">
+                <span class="k"><span class="step">3</span>필요한 자료 안내</span>
+                <span class="v muted">거른 뒤 남는 안내가 있을 때만 나옴 · 예: ‘단기 흐름은 데이터 부족으로 확인할 수 없습니다.’<span class="tg eg">예시</span><span class="tg">E6</span></span>
+              </div>
+
+              <!-- ④ 가격 · 거래량 · 흔들림 요약 -->
+              <div class="groups chg">
+                <div class="grp">
+                  <div class="t"><span class="step">4</span>가격 흐름<span class="qm">?</span></div>
+                  <div class="gg">
+                    <span class="k">최근 5저장일</span><span>○.○○%</span>
+                    <span class="k">20저장일</span><span class="down">−○○.○○%</span>
+                    <span class="k">같은 기간 KODEX 200 대비</span><span class="down">−○○.○○%p</span>
+                    <span class="k">하락 구간</span><span>○ 구간</span>
+                  </div>
+                  <div class="foot">마지막 저장일 2026-11-18 · PC 저장 종가</div>
+                </div>
+                <div class="grp">
+                  <div class="t">거래량<span class="qm">?</span></div>
+                  <div class="gg">
+                    <span class="k lead">평균 대비</span><span class="lead">○.○○배</span>
+                    <span class="k">거래량</span><span>○○○,○○○</span>
+                    <span class="k">직전 20개 저장일 평균</span><span>○○○,○○○</span>
+                  </div>
+                  <div class="foot">마지막 저장일 2026-11-18 · 비교 구간 10/21 ~ 11/17</div>
+                </div>
+                <div class="grp">
+                  <div class="t">가격 흔들림<span class="qm">?</span></div>
+                  <div class="gg">
+                    <span class="k lead">직전 대비</span><span class="lead">직전보다 커짐 <span class="tg eg" style="margin:0">예시</span></span>
+                    <span class="k">최근 20구간</span><span>○.○○%</span>
+                    <span class="k">직전 20구간</span><span>○.○○%</span>
+                  </div>
+                  <div class="foot">마지막 유효 가격일 2026-11-18 · 최근 구간 10/21 ~ 11/18</div>
+                </div>
+              </div>
+              <div class="roles chg">
+                <div>20저장일 수익률 = <span class="nw">시작 종가</span> 10/21 → <span class="nw">끝 종가</span> 11/18(종가 21개 · 변화 20구간)</div>
+                <div>[세부 흐름 보기] 차트 = 표시 기간 10/22 ~ 11/18 · 최근 20개 저장일</div>
+                <div>거래량 평균 = 비교 구간 10/21 ~ 11/17<span class="tg">E9</span></div>
+              </div>
+
+              <!-- ⑤ 차트 -->
+              <div class="old"><span class="step">5</span>가격 차트 — 기존 그대로(3개월 기본 · 기간 버튼 · ‘표시 기간 … · N개 저장일’)<span class="tg keep">그대로</span></div>
+
+              <!-- ⑥ 구성 -->
+              <div class="dline chg">
+                <span class="k"><span class="step">6</span>주요 편입</span>
+                <span class="v">구성 기준일 ○○/○○ · ‘전체 확인’ 등 기존 구성 상태 글 · 저장 ○행 · 구성 1 ○○.○% · 구성 2 ○○.○% · 구성 3 ○○.○%<span class="tg">E8</span><br />
+                  <span class="muted small">상태 글은 지금 그대로(미수집 · 원천 기준일 미확인 · 상위 N행만 확인 · 전체 확인 · 구성 자료를 읽지 못함) · 이 줄의 기준일은 이 자료의 기준일</span></span>
+              </div>
+              <div class="dline chg">
+                <span class="k">구성종목 중복</span>
+                <span class="v"><b><span class="nw">비교 범위 확인 불가</span></b><br />
+                  <span class="small">비교 목록: 1개월 상위 10개 후보(주간 순위 상위 30 과 따로 고른 목록) · 시작 10/19 → 끝 11/18 · 인버스 · 레버리지 · 합성 · 선물 제외</span><br />
+                  <span class="small muted">후보 둘 이상의 구성 상위 10행에 함께 나온 종목 ↔ 이 보유 ETF 구성 상위 10행 · 상위 10행 = 비교 상한 · 실제 비교에 쓴 구성 기준일 · 행 수는 이 응답에 없어 ‘중복 없음’ · 겹침 건수 · 비율은 보이지 않음</span><span class="tg">E7</span><span class="tg">11/19 · 실제 비교 규칙</span></span>
+              </div>
+              <div class="ex"><b>다른 경우 이 자리</b>
+                <ul>
+                  <li>겹친 종목을 찾음 → 위 안내 + ‘확인된 겹침: 구성 1 · <span class="nw">이 ETF 편입 비중</span> ○.○○%’(비중은 가리키는 대상을 응답으로 확인할 수 있을 때만 뜻을 붙여 · 건수 숫자 없음)<span class="tg">11/19</span></li>
+                  <li>구성 자료 없음 → ‘구성종목 확인 불가 — 이 ETF 의 저장 구성 자료 없음’ · ‘구성종목 확인 불가 — 비교 후보의 구성 자료 없음’(<span class="tg eg" style="margin:0">예시</span> · 영어 상태 글자 없음)</li>
+                </ul>
+              </div>
+
+              <!-- ⑦ NAV -->
+              <div class="dline chg">
+                <span class="k"><span class="step">7</span>순자산가치(NAV) · 괴리율<span class="qm">?</span></span>
+                <span class="v">
+                  <span class="navgrid">
+                    <span><span class="k">시장가</span><span class="v num">○○,○○○</span></span>
+                    <span><span class="k">NAV</span><span class="v num">○○,○○○</span></span>
+                    <span><span class="k">괴리율</span><span class="v num">○○.○○%</span></span>
+                    <span><span class="k">기준일</span><span class="v">2026-11-18</span></span>
+                    <span><span class="k">출처</span><span class="v">네이버</span></span>
+                    <span><span class="k">수집 상태</span><span class="v">수집됨</span></span>
+                  </span>
+                  <span class="helpline">? 안: NAV = 순자산가치 · 괴리율 양수는 그 기준 시점의 시장가가 NAV 보다 높았다는 뜻 · 절대값 3% · 5% 이상이면 ‘괴리 확인 필요(3% 이상)’ · ‘괴리 주의(5% 이상)’가 붙음</span>
+                  <span class="tg">E10</span>
+                </span>
+              </div>
+              <div class="gone-line"><s>전체 ETF NAV·괴리율 보기 →</s> <span class="tg">E11 빠짐</span> — 전체 표는 메뉴 「진단·상태 › 데이터 상태」</div>
+              <div class="ex"><b>다른 종목 · 다른 자료일 때 이 자리</b>
+                <ul>
+                  <li>개별 주식 → 순위 줄 ‘ETF 순위 대상 아님(개별 주식)’ · ⑥ · ⑦ 대신 ‘NAV·ETF 구성종목 해당 없음(개별 주식)’ 한 줄 · 영어 안내 · 상태 원문 없음(E12)</li>
+                  <li>이전 목록을 다시 쓴 NAV → 기준일 칸 ‘<span class="nw">재저장일</span> 2026-11-18’ · 수집 상태 ‘<span class="nw">이전 목록 재사용</span>’ · ▸ 자세히(받은 안내 원문) (<span class="tg eg" style="margin:0">예시</span>)</li>
+                  <li>괴리율 절대값 3% 이상 → 괴리율 아래 <span class="flagw">괴리 확인 필요(3% 이상)</span> · 5% 이상 → <span class="flagw">괴리 주의(5% 이상)</span> (<span class="tg eg" style="margin:0">예시</span>)</li>
+                  <li>사전에 없는 출처 · 상태 → ‘<span class="nw">기타 출처</span>’ · ‘<span class="nw">상태 확인 필요</span>’ · ▸ 자세히(원문) (<span class="tg eg" style="margin:0">예시</span>)</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- 보유 C · 자료 확인 필요(예시) -->
+          <div class="ewrap">
+            <div class="erow">
+              <div class="ecard">
+                <div class="top"><span class="nm">보유 C <span class="tg eg">예시</span></span><span class="num"><b>○.○○%</b> <span class="muted small">손익률(계좌 합산)</span></span></div>
+                <div class="facts">○○○○○○ / 평가 비중(계좌 합산) <b>○.○%</b> / 평가 ○,○○○,○○○원</div>
+                <div class="reason"><span class="k">확인 사유 · </span><span class="rbadge w">자료 확인 필요</span></div>
+              </div>
+              <div class="emet">
+                <div class="two"><div class="mc"><span class="k">최근 5저장일</span><span class="v">—</span></div><div class="mc"><span class="k">20저장일</span><span class="v">—</span></div></div>
+                <div class="mc"><span class="k">같은 기간 KODEX 200 대비(%p)</span><span class="v">—</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 보유 D · 개별 주식 -->
+          <div class="ewrap">
+            <div class="erow">
+              <div class="ecard">
+                <div class="top"><span class="nm">보유 D</span><span class="num"><b>○.○○%</b> <span class="muted small">손익률(계좌 합산)</span></span></div>
+                <div class="facts">○○○○○○ / 평가 비중(계좌 합산) <b>○.○%</b> / 평가 ○,○○○,○○○원</div>
+              </div>
+              <div class="emet">
+                <div class="two"><div class="mc"><span class="k">최근 5저장일</span><span class="v">○.○○%</span></div><div class="mc"><span class="k">20저장일</span><span class="v">○.○○%</span></div></div>
+                <div class="mc"><span class="k">같은 기간 KODEX 200 대비(%p)</span><span class="v">○.○○%p</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="muted small">… 나머지 행(목업에서 생략) · 보유 D = 개별 주식 하나(누르면 그 행 바로 아래에 위 ‘개별 주식’ 모양) · 같은 행을 다시 누르면 닫힘 · 위 행 상세를 연 채 아래 행을 눌러도 누른 행은 화면에서 같은 자리</div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ═════════════════ ④ 데이터 상태 ═════════════════ -->
+  <h2 class="part">④ 「데이터 상태」<span class="sub">진단·상태 › 데이터 상태 · D1 ~ D7</span></h2>
+  <div class="frame">
+    <div class="side">
+      <div class="g">보유·자료 관리</div>
+      <div class="i">보유 현황</div><div class="i">종목 관리</div><div class="i">확인 근거</div>
+      <div class="g">진단·상태</div>
+      <div class="i on">데이터 상태</div>
+    </div>
+    <section class="screen" aria-label="데이터 상태 목업">
+      <h1 class="chg" style="justify-self:start">데이터 상태<span class="tg">D3</span></h1>
+      <p class="subtitle chg">전체 ETF의 순자산가치(NAV) · 시장가 · 괴리율 조회 — 저장된 자료 기준(이 화면은 밖에서 새로 받아 오지 않음).</p>
+      <div class="banner chg"><b>[보조 화면 — 자료 조회]</b> 네이버 ETF 목록을 한 번 받아 저장한 전체 ETF의 NAV · 시장가 · 괴리율을 한곳에서 검색 · 정렬합니다. 매수 · 매도 · 교체 판단 화면이 아닙니다. 값 갱신은 「오늘의 투자 점검」의 [최신 자료 갱신] 버튼을 사용합니다.<span class="tg">D3</span></div>
+
+      <div class="card">
+        <h2>조회 옵션</h2>
+        <p class="muted small chg" style="margin:0">전체 1,212건 · 수집됨 1,212 · 확인 불가 0 · 기타 0 · <span class="nw">가장 최근 기준일</span> 2026-11-18 · 출처 네이버 · 필터 결과 1,212건<span class="tg">D1 · D3 · D4</span></p>
+        <div class="row">
+          <span>검색</span><span class="fake-input muted" style="min-width:170px">코드 / ETF명</span>
+          <span>수집 상태</span><span class="fake-sel">전체 ▾</span>
+          <span>정렬</span><span class="fake-sel">괴리율 절대값 ▾</span>
+          <button class="p">↓ 내림차순</button>
+          <button class="p">다시 불러오기</button>
+        </div>
+        <div class="muted small">고르기 목록 · 수집 상태 = 전체 · 수집됨 · 확인 불가 · 기타 / 정렬 = 괴리율 절대값 · 괴리율(부호 포함) · 코드</div>
+        <div class="ann">요약의 ‘기타’ 건수 = 수집 상태 ‘기타’(이전 목록 재사용 포함)를 고른 결과 건수 — 같은 목록 · 같은 조건으로 화면이 셈(D1).</div>
+        <div class="ex chg"><b>요약 날짜 이름</b><span class="tg">11/19 · I-9</span>
+          <ul>
+            <li>최댓값 날짜가 일반 기준일만 → ‘가장 최근 기준일 2026-11-18’(위 모양 · 지금 운영)</li>
+            <li>최댓값 날짜에 재저장일이 들어 있음 → ‘<span class="nw">가장 최근 목록 날짜(재저장일 포함)</span> 2026-11-18’(재저장일을 새 원천 자료일로 읽지 않게 · <span class="tg eg" style="margin:0">예시</span>)</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>전체 ETF NAV / 괴리율</h2>
+        <div class="meaning chg">
+          <div><b>수집 상태</b> = 그 기준일에 NAV · 시장가 · 괴리율을 받았는지</div>
+          <div><b>괴리율 표시</b> = 받은 값의 괴리율 절대값이 3% · 5% 이상인지(자료 확인용 · 매수 · 매도 판단 아님) · 괴리율 양수 = 시장가가 NAV 보다 높음<span class="tg">D5</span></div>
+        </div>
+        <div class="wrap">
+          <table>
+            <thead><tr><th>코드</th><th>ETF명</th><th class="r">NAV</th><th class="r">시장가</th><th class="r">괴리율</th><th>기준일</th><th>출처</th><th>수집 상태</th></tr></thead>
+            <tbody>
+              <tr><td class="num">○○○○○○</td><td>ETF 가</td><td class="r num">○○,○○○</td><td class="r num">○○,○○○</td><td class="r num" style="color:var(--danger)">○.○○%<span class="flag">괴리 주의(5% 이상)</span></td><td>2026-11-18</td><td class="muted">네이버</td><td><span class="badge ok">수집됨</span></td></tr>
+              <tr><td class="num">○○○○○○</td><td>ETF 나</td><td class="r num">○○,○○○</td><td class="r num">○○,○○○</td><td class="r num" style="color:var(--warn)">○.○○%<span class="flag">괴리 확인 필요(3% 이상)</span></td><td>2026-11-18</td><td class="muted">네이버</td><td><span class="badge ok">수집됨</span></td></tr>
+              <tr><td class="num">○○○○○○</td><td>ETF 다</td><td class="r num">○○,○○○</td><td class="r num">○○,○○○</td><td class="r num">○.○○%</td><td>2026-06-23</td><td class="muted">네이버</td><td><span class="badge ok">수집됨</span></td></tr>
+              <tr class="chg"><td class="num">○○○○○○</td><td>ETF 라 <span class="tg eg">예시</span></td><td class="r num">○○,○○○</td><td class="r num">○○,○○○</td><td class="r num">○.○○%</td><td><span class="nw">재저장일</span> 2026-11-18</td><td class="muted">네이버</td><td><span class="badge re">이전 목록 재사용</span></td></tr>
+              <tr class="chg"><td class="num">○○○○○○</td><td>ETF 마 <span class="tg eg">예시</span></td><td class="r num">-</td><td class="r num">○○,○○○</td><td class="r num">-</td><td>2026-11-18</td><td class="muted">네이버</td><td><span class="badge na">확인 불가</span></td></tr>
+              <tr class="chg"><td class="num">○○○○○○</td><td>ETF 바 <span class="tg eg">예시</span></td><td class="r num">○○,○○○</td><td class="r num">○○,○○○</td><td class="r num">○.○○%</td><td>2026-11-18</td><td class="muted"><span class="nw">기타 출처</span></td><td><span class="badge unk"><span class="nw">상태 확인 필요</span></span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <details class="chg" style="font-size:12px"><summary>자세히 — 사전에 없는 원문 (사전 밖 값이 있을 때만 · <span class="tg eg" style="margin:0">예시</span>)</summary>
+          <div class="small muted">출처 원문 ○○○ · ○건 / 수집 상태 원문 ○○○ · ○건</div>
+        </details>
+        <p class="muted small" style="margin:0">상위 200건만 표시. 필터 / 검색을 좁히면 더 정확히 확인할 수 있습니다 (전체 1,212건). <span class="tg keep">그대로</span></p>
+        <div class="ex"><b>수집 상태 글자</b>(지금 운영 자료는 모두 ‘수집됨’ · 옛 기준일 22행도 ‘수집됨’ · 기준일 칸으로 읽음 · 위 ETF 다 모양)
+          <ul>
+            <li>수집됨 = 받은 목록에 NAV · 시장가 · 괴리율이 모두 있음</li>
+            <li><span class="nw">이전 목록 재사용</span> = 이번 조회가 실패해 이전에 받은 목록을 새 날짜로 다시 저장함 → 그 행의 날짜는 ‘재저장일’ (0건)</li>
+            <li>확인 불가 = 목록에는 있으나 NAV 또는 시장가가 없음 (0건)</li>
+            <li>사전에 없는 출처 · 상태 → ‘기타 출처’ · ‘상태 확인 필요’ · 원문은 표 아래 [자세히]</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+  </div>
+
+</div>
+</body>
+</html>
