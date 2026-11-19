@@ -125,14 +125,14 @@ function collectExceptions(
       list.push({
         text: vixNotice.text,
         action: "diagnostics",
-        actionLabel: "진단·상태 확인",
+        actionLabel: "개발·실험용 확인",
       });
     }
     if (vix?.availability === "unavailable") {
       list.push({
         text: "VIX unavailable",
         action: "diagnostics",
-        actionLabel: "진단·상태 확인",
+        actionLabel: "개발·실험용 확인",
       });
       anyUnavailable = true;
     }
@@ -224,7 +224,7 @@ function collectExceptions(
     list.push({
       text: "NAV 조회 실패",
       action: "diagnostics",
-      actionLabel: "진단·상태 확인",
+      actionLabel: "개발·실험용 확인",
     });
     anyUnavailable = true;
   }

@@ -21,6 +21,8 @@
 //   → 같은 날 보완(보완 PLAN 판정 Q-R5 · RESULT 판정 §4): 사이드바 「진단·상태 › 미사용 기능 › 신규 ETF 관찰 점검」
 //   (`unused_universe_watch` · UnusedFeatureView)으로 다시 옮겼다. 이 화면에는 옮긴 곳 한 줄과 이동 버튼만 남는다.
 //   그 결과는 계속 아래 미리보기의 [저장된 보유 종목으로 초안 만들기] · PUSH-3 급등락 관찰 신호 초안이 읽는다.
+// 2026-11-19 형수님 직접 지시(메뉴 위치): 이 화면(「개발·실험용」)은 「진단·상태」에서 「미사용 기능」 그룹
+//   (「신규 ETF 관찰 점검」 다음)으로 옮겼다. 「미사용 기능」 · 「ML 연구」는 폴더가 아니라 그룹이다.
 
 import ManualPreviewSection from "./approval/ManualPreviewSection";
 import DevCompatSection from "./approval/DevCompatSection";
@@ -43,9 +45,10 @@ export default function DiagnosticsView({ run, setRun, onNavigate }: Props) {
         참고용 이전 화면(LEGACY)을 이곳에서 관리합니다. ETF NAV·괴리율 조회와 ML 연구는
         각각 별도 메뉴로, OCI 운영 상태는 「OCI 운영·적용」으로 옮겼습니다.
       </p>
-      {/* POC6-29 보완(Q-R5): 미사용 기능은 사이드바 폴더로 옮겼다 — 옮긴 곳 한 줄 + 이동 버튼. */}
+      {/* POC6-29 보완(Q-R5): 미사용 기능은 사이드바로 옮겼다 — 옮긴 곳 한 줄 + 이동 버튼.
+          2026-11-19 형수님 직접 지시: 이 화면도 「미사용 기능」 그룹으로 옮겨 같은 메뉴에 있다는 한 줄로 바꿈(버튼 그대로). */}
       <div className="message info" data-testid="diag-unused-moved">
-        미사용 기능은 「진단·상태 › 미사용 기능」으로 옮겼습니다.
+        「신규 ETF 관찰 점검」은 같은 「미사용 기능」 메뉴에 있습니다.
         <button
           type="button"
           className="wb-btn btn-md ec-inline"

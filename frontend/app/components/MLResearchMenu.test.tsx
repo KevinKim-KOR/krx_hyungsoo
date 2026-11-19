@@ -1,9 +1,10 @@
-// POC6-15 — 「진단·상태 › ML 연구」 두 화면 관통 시험(실제 MainPanel · 사이드바 · MLView · 카드 · 가짜 응답).
+// POC6-15 — 「ML 연구」 두 화면 관통 시험(실제 MainPanel · 사이드바 · MLView · 카드 · 가짜 응답).
+// 2026-11-19 형수님 직접 지시: 「진단·상태」 안 폴더 → 한 단계 올린 그룹(「승인·운영」 다음) · 접기 · 펼치기 = 그룹 제목 버튼.
 //
 // 설계자 PLAN 판정(2026-11-01) §5 시험 묶음:
 // - 두 화면 분배: 예측과 결과 비교(`ml` · 카드 1) · 이전 자료·실험(`ml_legacy` · 카드 5) · 고른 화면의 카드만 조회.
 // - 기존 `ml` key 진입 = 예측과 결과 비교.
-// - 폴더 접기 · 펼치기는 본문을 다시 그리지 않음(조회 추가 0 · 고른 기준일 그대로).
+// - 그룹(그때는 폴더) 접기 · 펼치기는 본문을 다시 그리지 않음(조회 추가 0 · 고른 기준일 그대로).
 // - 메뉴 이동만으로 명령(이전 자료 다시 만들기 · 참고점수 계산) 호출 0.
 //
 // @/lib/api 는 부분 mock — 오늘 화면이 부르는 조회는 실패시키고(이동만 본다), ML 조회는 호출 수를 센다.
@@ -76,7 +77,9 @@ async function renderPanel() {
   });
   return r;
 }
-const folder = () => screen.getByText("ML 연구").closest("button")!;
+const sidebar = () => screen.getByRole("complementary", { name: "좌측 메뉴" });
+// 2026-11-19 — 「ML 연구」 = 그룹 제목 버튼(폴더 아님).
+const group = () => within(sidebar()).getByText("ML 연구").closest("button")!;
 
 describe("POC6-15 ML 연구 두 화면", () => {
   it("예측과 결과 비교(`ml`) = 전향 카드 1개만 · 이전 자료 카드 조회 0", async () => {
@@ -123,30 +126,39 @@ describe("POC6-15 ML 연구 두 화면", () => {
     for (const f of LEGACY_FETCHES) expect(f).toHaveBeenCalledTimes(2);
   });
 
-  it("폴더 접기 · 펼치기 = 본문 그대로(조회 추가 0 · 고른 기준일 유지)", async () => {
+  it("그룹 접기 · 펼치기 = 본문 그대로(조회 추가 0 · 고른 기준일 유지) · 접힌 그룹에는 메뉴가 안 보임", async () => {
     await renderPanel();
     fireEvent.click(menu("예측과 결과 비교"));
     const select = await screen.findByRole("combobox");
     fireEvent.change(select, { target: { value: "2026-10-27" } });
     expect(await screen.findByRole("combobox")).toHaveValue("2026-10-27");
     const calls = fetchForwardComparison.mock.calls.length;
-    fireEvent.click(folder());
-    expect(folder()).toHaveAttribute("aria-expanded", "false");
-    expect(folder()).toHaveTextContent("· 예측과 결과 비교");
-    fireEvent.click(folder());
+    expect(group()).toHaveClass("sidebar-group-title");
+    fireEvent.click(group());
+    expect(group()).toHaveAttribute("aria-expanded", "false");
+    expect(within(sidebar()).queryByText("예측과 결과 비교")).toBeNull();
+    expect(within(sidebar()).queryByText("이전 자료·실험")).toBeNull();
+    expect(screen.getByRole("combobox")).toHaveValue("2026-10-27");
+    expect(screen.getByRole("heading", { level: 1, name: "예측과 결과 비교" })).toBeInTheDocument();
+    fireEvent.click(group());
+    expect(group()).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByRole("combobox")).toHaveValue("2026-10-27");
     expect(fetchForwardComparison.mock.calls.length).toBe(calls);
     expect(screen.getByRole("heading", { level: 1, name: "예측과 결과 비교" })).toBeInTheDocument();
   });
 
-  it("사이드바에 「ML 실험」은 없고 진단·상태 안 ML 연구 폴더 아래 두 화면", async () => {
+  it("사이드바에 「ML 실험」은 없고 「ML 연구」 그룹(「승인·운영」 다음) 아래 두 화면 · 폴더 줄 없음", async () => {
     await renderPanel();
     expect(screen.queryByText("ML 실험")).toBeNull();
-    const sub = document.getElementById(folder().getAttribute("aria-controls")!)!;
-    expect(within(sub).getAllByRole("button").map((b) => b.querySelector(".sidebar-menu-label")?.textContent)).toEqual([
+    const box = group().closest(".sidebar-group") as HTMLElement;
+    const items = box.querySelector("ul.sidebar-menu") as HTMLElement;
+    expect(within(items).getAllByRole("button").map((b) => b.querySelector(".sidebar-menu-label")?.textContent)).toEqual([
       "예측과 결과 비교",
       "이전 자료·실험",
     ]);
+    const prev = box.previousElementSibling as HTMLElement;
+    expect(prev.querySelector(".sidebar-group-name")?.textContent).toBe("승인·운영");
+    expect(sidebar().querySelector(".sidebar-folder")).toBeNull();
   });
 
   it("MLView 단독 — page 마다 제목 · 카드만(고르지 않은 화면 카드의 조회 0)", async () => {

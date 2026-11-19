@@ -1,5 +1,6 @@
-// POC6-29 보완 — 「진단·상태 › 미사용 기능 › 신규 ETF 관찰 점검」(보완 PLAN 판정 2026-11-12 Q-R5 · RESULT 판정 §4 ·
+// POC6-29 보완 — 「미사용 기능 › 신규 ETF 관찰 점검」(보완 PLAN 판정 2026-11-12 Q-R5 · RESULT 판정 §4 ·
 // PLAN §9-4 · 목업 R4).
+// 2026-11-19 형수님 직접 지시: 「미사용 기능」은 「진단·상태」 안 폴더 → 한 단계 올린 그룹(마지막) · 「개발·실험용」도 이 그룹.
 //
 // - 펼치지 않고 읽는다: 제목 · 「미사용 기능」 배지 · 세 줄(어떤 기능이었는지 · 왜 빠졌는지 · 지금 어디서) · 실행 버튼 ·
 //   [「개발·실험용」으로].
@@ -163,7 +164,7 @@ async function renderPanel() {
 }
 
 describe("MainPanel 「미사용 기능 › 신규 ETF 관찰 점검」 관통", () => {
-  it("메뉴 → 페이지(요청 0) · 사이드바 현재 위치 = 그 메뉴 하나 · 폴더 펼침", async () => {
+  it("메뉴 → 페이지(요청 0) · 사이드바 현재 위치 = 그 메뉴 하나 · 「미사용 기능」 그룹 펼침 · 활성", async () => {
     await renderPanel();
     fireEvent.click(menu("신규 ETF 관찰 점검"));
     expect(await screen.findByRole("heading", { level: 1, name: "신규 ETF 관찰 점검" })).toBeInTheDocument();
@@ -175,9 +176,12 @@ describe("MainPanel 「미사용 기능 › 신규 ETF 관찰 점검」 관통",
       .filter((b) => b.getAttribute("aria-current") === "page");
     expect(current).toHaveLength(1);
     expect(current[0].textContent).toContain("신규 ETF 관찰 점검");
-    const folder = within(sidebar()).getByText("미사용 기능").closest("button")!;
-    expect(folder).toHaveAttribute("aria-expanded", "true");
-    expect(folder.closest("li")?.className).toContain("active-folder");
+    // 2026-11-19 — 「미사용 기능」 = 그룹 제목 버튼(폴더 아님).
+    const group = within(sidebar()).getByText("미사용 기능").closest("button")!;
+    expect(group).toHaveClass("sidebar-group-title");
+    expect(group).toHaveAttribute("aria-expanded", "true");
+    expect(group.closest(".sidebar-group")?.className).toContain("active-group");
+    expect(sidebar().querySelectorAll(".sidebar-group.active-group")).toHaveLength(1);
   });
 
   it("페이지 → 「개발·실험용」 → 안내 줄 버튼 → 다시 페이지 · 갱신 요청 0", async () => {
@@ -187,6 +191,12 @@ describe("MainPanel 「미사용 기능 › 신규 ETF 관찰 점검」 관통",
     fireEvent.click(screen.getByRole("button", { name: "「개발·실험용」으로" }));
     expect(await screen.findByRole("heading", { level: 1, name: "개발·실험용" })).toBeInTheDocument();
     expect(screen.getByText("미리보기 자리")).toBeInTheDocument();
+    // 2026-11-19 — 「개발·실험용」도 같은 「미사용 기능」 그룹(사이드바 강조 · 그룹 활성).
+    const current = within(sidebar())
+      .getAllByRole("button")
+      .filter((b) => b.getAttribute("aria-current") === "page");
+    expect(current.map((b) => b.querySelector(".sidebar-menu-label")?.textContent)).toEqual(["개발·실험용"]);
+    expect(within(sidebar()).getByText("미사용 기능").closest(".sidebar-group")?.className).toContain("active-group");
     expect(screen.queryByRole("button", { name: "신규 ETF 관찰 후보 갱신" })).toBeNull();
     const line = screen.getByTestId("diag-unused-moved");
     fireEvent.click(within(line).getByRole("button", { name: "「신규 ETF 관찰 점검」으로" }));

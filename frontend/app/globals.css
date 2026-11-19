@@ -3683,7 +3683,7 @@ details.ops-details[open] > summary {
   }
 }
 
-/* POC5-03 설계 개정 2 — 「진단·상태 > 받은 알림 기록」(AlertRecordsView · alert_records/).
+/* POC5-03 설계 개정 2 — 「승인·운영 > 받은 알림 기록」(AlertRecordsView · alert_records/ · 2026-11-19 「진단·상태」에서 옮김).
    매일 보는 화면이 아니라 사후 검토 기록이라 일반 화면 양식(.card · h1 · .subtitle)을 따른다.
    결과 수익률에는 성공 · 실패 색을 쓰지 않는다(설계 §5). */
 .ar-toolbar { display: flex; align-items: center; gap: 10px 14px; flex-wrap: wrap; }

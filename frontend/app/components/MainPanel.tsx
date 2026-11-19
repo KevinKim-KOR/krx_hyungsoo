@@ -112,7 +112,8 @@ function renderView(
       // 2026-08-16 — POC3-07 이 diagnostics 로 흡수했던 것을 정상 업무 조회로 복원.
       return <DataStatusView />;
     case "unused_universe_watch":
-      // 2026-11-12 POC6-29 보완(Q-R5) — 「진단·상태 › 미사용 기능 › 신규 ETF 관찰 점검」(기능마다 같은 틀 · 열 때 요청 0).
+      // 2026-11-12 POC6-29 보완(Q-R5) — 「미사용 기능 › 신규 ETF 관찰 점검」(기능마다 같은 틀 · 열 때 요청 0 ·
+      //   2026-11-19 형수님 직접 지시로 「진단·상태」 안 폴더 → 그룹).
       return <UnusedFeatureView key="unused-universe-watch" feature="universe_watch" onNavigate={onNavigate} />;
   }
 }
@@ -137,7 +138,7 @@ export default function MainPanel() {
   // 2026-11-17 POC6-32 V2 — 지금 화면 + 숨겨 둔 보낸 화면 기록(lib/detailNav · 이 탭 메모리만).
   const [nav, setNav] = useState<NavState<MenuKey>>(() => navStart<MenuKey>("today_check"));
   const active = nav.active;
-  // run state 는 진단·상태(DiagnosticsView)의 미리보기·샘플 영역이 controlled 로 공유.
+  // run state 는 「개발·실험용」(DiagnosticsView · 2026-11-19 부터 「미사용 기능」 그룹)의 미리보기·샘플 영역이 controlled 로 공유.
   //   2026-08-05 POC3-07: 미리보기·샘플이 승인·적용에서 진단·상태로 이동하며 run 공유
   //   대상도 DiagnosticsView 로 옮겨졌다. 자동 발송 아님(PREVIEW/TEST).
   const [run, setRun] = useState<Run | null>(null);
