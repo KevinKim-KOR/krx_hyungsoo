@@ -542,6 +542,22 @@ MENU-2026-11-19  좌측 메뉴 순서 · 단계 정리(형수님 직접 지시 �
          격리 사본 브랜치 menu-reorg-2026-11-19 → 커밋 4fc36600(12파일) · main 빨리 감기 · 운영 화면 3000 메뉴 확인(GET 만 · 일곱 그룹 · 옮긴 메뉴 이동 · 강조 그룹 정상) · push(형수님 승인)
          화면 시험 100파일 2,261 passed · tsc 0 · lint 0 · 변이 5/5 · 독립 검토 결함 없음 · 접힌 그룹은 지금 화면 이름을 보이지 않음(폴더 때와 다름 · 폴더 틀 코드는 남김)
          형수님 말씀(2026-11-19): '제가 원하는 UI는 거의 다 된 것 같습니다.'
+POC6-35  장중 재진입 알림 누락(K2) 정정 = 설계 V1 수신(2026-11-19 · docs/ai_design/POC6/POC6_35_INTRADAY_REENTRY_ALERT_DELIVERY_DESIGN_V1_2026-11-19.md · 번호 겹침 없음)
+         → 사실 조사 · K2 메모리 재현(같은 원인: 전송 실패 · 부분 전송 · 보유 급등 잘림) → PLAN V1(docs/ai_plan/POC6/POC6_35_INTRADAY_REENTRY_ALERT_DELIVERY_PLAN_V1.md · Q1 ~ Q11)
+         → 설계자 PLAN 판정 보완 후 구현 승인(A1 · 보완 1 성공 전달 기록 · 보완 2 다음 회차 대기 · 보완 3 운영 근거 · docs/ai_design/POC6/POC6_35_INTRADAY_REENTRY_ALERT_DELIVERY_PLAN_DECISION_2026-11-19.md) → PLAN V1 확정
+         → 원장 사본 점검 종료(형수님 [원장 새로고침] 2026-11-20 00:02:04 성공 · 사본 341건 · 최신 11/19 15:40 · 운영 K2 의심 건 0건 / 정규 장중 217회 · PLAN §0-1)
+         → 격리 구현(작업 사본 krx_hyungsoo_wt_poc6_34 · 브랜치 poc6-35-reentry) · 새 시험 55건(변경 전 50 실패 · 5 통과 → 변경 후 55 통과) · 관련 37파일 617 passed · 변이 백엔드 17/17 · 화면 3/3 · 독립 검토 2관점 PASS → 지적 처리(B-1 대신 저장 실패 시 관측 보존 등) → 재검증 VERIFIED
+         결과서 docs/ai_result/POC6/POC6_35_INTRADAY_REENTRY_ALERT_DELIVERY_RESULT.md · 화면 문장(「OCI 운영·적용」 ② '구역별 최대') 형수님 격리 화면 확인 완료(2026-11-20)
+         → 검증자 r1 REJECTED(F1 P2 · 대신 저장이 상태 파일을 한 번 못 읽으면 앞선 전달 기록 · 발송 수를 지우고 성공 보고 → 일일 상한 초과 · 결과서 §12)
+         → 정정(결과서 §13): 세 상태 쓰기가 쓰기 직전 다시 읽기 실패면 이번 회차가 아는 상태(조립 때 · 첫 저장이 쓴 상태) 위에 씀(load_merge_base)
+           형수님 결정 2건(2026-11-20) = intraday_alert_flow.py 2줄 추가 · PLAN 차이 명시 / 같은 원인 기존 두 경로(첫 저장 · 매 회차 관측 저장)도 함께
+           새 시험 70건(main 65 실패 · r1 제출본 29 실패 → 70 통과) · 관련 38파일 677 passed · 변이 백엔드 32/32
+         → 검증자 r2 VERIFIED(2026-11-20 · 결과서 §14 · 독립 재현 3건 · 677 passed · 남는 것 = 형수님 승인 PLAN 차이 2건 · 조립 읽기 실패 기존 한계 §5-8)
+         → 설계자 RESULT PASS(2026-11-20 · docs/ai_design/POC6/POC6_35_INTRADAY_REENTRY_ALERT_DELIVERY_RESULT_DECISION_2026-11-20.md · PLAN 차이 2건 수용 · 후속 운영 검토 후보 2건)
+         → 커밋 전 전체 백엔드 회귀 6532 passed · 2 skipped(격리 사본 · 28분 26초) · 화면 vitest 100파일 2,261 passed · tsc · lint 0
+         → 형수님 커밋 · push 승인(2026-11-20) → 구현 커밋 f0e0c945(격리 브랜치 poc6-35-reentry · 9파일) · main 빨리 감기 · PROGRAM_TRUTH 'main 반영 2026-11-20 · OCI 반영 대기' · 운영 화면 3000 새 문장 확인 · 문서 커밋 · push
+           (형수님이 push 전 16시대에 한 OCI pull · [원장 새로고침]은 새 커밋 없음 = 반영 전 기록)
+         다음 = OCI pull(형수님 · push 뒤 다시) → OCI revision 확인 → 반영 뒤 첫 정규 장중 회차 2026-11-23(월) 09:30 → [원장 새로고침] → 원장 · PC 사본 대조 · 운영 확인 기록 → 종료
 POC6 다음  방향 문서 docs/ai_design/POC6/POC6_INVESTMENT_DECISION_AND_ML_DIRECTION_ROADMAP_2026-10-26.md(설계자 V1 · 2026-10-26 · handoff 아님)
          목표 = 한국 상장 ETF 후보 추천 · 보유 중 유지 · 축소 · 매도 검토 근거와 권고 · 사용자 최종 결정 · 주문(자동 주문 제외) · ML 효용 검증 뒤 연결
          추천 행동 · 성과 검증 계약 = docs/ai_design/POC6/POC6_RECOMMENDATION_ACTION_AND_PERFORMANCE_CONTRACT_V1.md(설계자 V1.1 · §2-1 A · B · C 확정 기록 · 최초 V1 = 75aad869)
