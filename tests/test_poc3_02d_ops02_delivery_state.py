@@ -659,7 +659,9 @@ def test_unit_legacy_entry_pinned_on_success_path_then_cut_change_is_sent():
     "continuous, delivered, observed, expected",
     [
         (False, ER, AC, False),  # 회복 뒤 미전달 Y — 회복 기록 유지(리뷰 지적)
-        (False, ER, ER, True),  # 회복 뒤 전달 상태로 재진입 — 예전과 같다
+        # 회복 뒤 전달 상태로 재진입 · 이번 회차 후보 아님(예: 대기 억제) — 예전과 같다
+        # (후보였는데 미전달이면 False 유지 — POC6-35 · test_poc6_35_reentry_delivery)
+        (False, ER, ER, True),
         (True, ER, AC, True),  # 회복 없이 Y(Q3 경로) — 예전과 같다
         (False, None, AC, True),  # 전달 이력 없음 — 예전과 같다
         (None, None, AC, True),  # 새 entry — 예전과 같다

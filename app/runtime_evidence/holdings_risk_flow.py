@@ -5,7 +5,8 @@
 **발송 진척 상태는 여기서 전진시키지 않는다.** 러너가 Telegram 전체 발송 성공을
 확인한 뒤에 전진시킨다(OPS-01A 와 같은 계약 — 미발송 악화가 발송 완료로 기록되면
 안 된다). 장중(02C-OPS-02)의 **관측 상태**는 여기서 쓸 내용만 정하고, 러너 Gate
-를 통과한 회차에 `apply_intraday_records()` 가 쓴다(설계자 D3).
+를 통과한 회차에 `apply_intraday_records()` 가 쓴다(설계자 D3). 전체 전송 성공인데
+러너의 장중 첫 저장이 끝나지 않았을 때만 그 함수가 같은 병합을 대신 한다(POC6-35).
 
 비거래일 판정·완전성 가드는 **OPS-01A 것을 그대로 재사용**한다. 신규 발명 금지.
 """
@@ -350,6 +351,7 @@ def assemble_holdings_risk_push(
     # 않는다(설계 §9).
     try:
         from app.runtime_evidence.intraday_alert_flow import assemble_intraday_alert
+        from app.runtime_evidence.sector_signal_state import send_candidates
 
         held_drop = list(outcome.changes.new) + [i for i, _ in outcome.changes.worsened]
         intraday = assemble_intraday_alert(
@@ -406,6 +408,9 @@ def assemble_holdings_risk_push(
                 "observed": list(intraday.observed or []),
                 "unevaluable": set(intraday.unevaluable or set()),
                 "runtime_kst": runtime_kst,
+                # POC6-35 K2 — 전송 성공 저장(`runner_evidence`)과 같은 후보 집합.
+                "candidates": send_candidates(intraday.changes, intraday.surge_changes),
+                "state_snapshot": getattr(intraday, "previous", None),  # r1 F1 기준
             }
         if intraday.skip_reason:
             out.diagnostics["intraday_skip_reason"] = intraday.skip_reason
@@ -466,6 +471,10 @@ def assemble_holdings_risk_push(
             # 러너는 전체 전송 성공 뒤 `intraday.sent_signals`(본문에 실린 것)만
             # 발송 완료로 기록한다(`runner_evidence`).
             out.intraday = intraday
+            # POC6-35 보완 1 — 첫 저장과 같은 조건 · 같은 목록. 첫 저장이 끝나지 않은
+            # 전체 전송 성공 회차에 `apply_intraday_records()` 가 대신 저장한다.
+            if out.intraday_records is not None:
+                out.intraday_records["sent_signals"] = list(intraday.sent_signals or [])
             # C4 — 러너는 `outcome`(`_rasm.outcome`)의 `save_entries` 를 저장한다.
             # `out`(`RiskAssembly`)에 넣으면 새 속성만 붙고 저장에 반영되지 않는다.
             if carried_save is not None:
@@ -517,6 +526,10 @@ def apply_intraday_records(
     """관측·집계를 **실제로** 쓴다. 러너의 모든 종료 지점에서 한 번 호출된다.
 
     쓰기 실패가 발송 결과를 뒤집으면 안 되므로 예외를 삼키고 진단만 남긴다.
+    POC6-35 보완 1 — 최종 `sent` · 부분 전송 아님 · 통합 본문 회차(pending 에
+    `sent_signals`)인데 첫 저장 표식(`intraday_state_saved`)이 없으면 관측 저장이 같은
+    병합을 대신 하고 `intraday_state_saved_by_observation=True` 를 남긴다. 그 병합이
+    실패하면 관측만 쓰고 `intraday_state_save_fallback_error`(예외 형)를 남긴다.
     """
     pending = record.pop(PENDING_KEY, None)
     if not pending:
@@ -530,12 +543,29 @@ def apply_intraday_records(
     try:
         from app.runtime_evidence.sector_signal_state import save_observation
 
-        save_observation(
+        sent = pending.get("sent_signals")
+        fallback = (
+            sent is not None
+            and status == "sent"
+            and not record.get("partial_delivery")
+            and not record.get("intraday_state_saved")
+        )
+        wrote, fallback_error, base = save_observation(
             pending["sector_state_path"],
             observed=list(pending.get("observed") or []),
             today_kst=pending["today_kst"],
             unevaluable=set(pending.get("unevaluable") or set()),
+            candidates=pending.get("candidates"),
+            sent=list(sent) if fallback else None,
+            now_kst=_now_kst(pending.get("runtime_kst")) if fallback else None,
+            snapshot=pending.get("state_snapshot"),
         )
+        if base:
+            record["intraday_observation_base"] = base
+        if fallback_error:
+            record["intraday_state_save_fallback_error"] = fallback_error
+        if wrote == "sent":
+            record["intraday_state_saved_by_observation"] = True
         record["intraday_observation_saved"] = len(pending.get("observed") or [])
         record["intraday_observation_preserved"] = len(pending.get("unevaluable") or [])
     except Exception as e:  # noqa: BLE001 - 발송 결과를 뒤집지 않는다

@@ -103,6 +103,8 @@ class IntradayAssembly:
     config_version_id: Optional[str] = None
     # POC5-01B — 보유 급등 선정이 예외로 격리됐으면 예외 종류(원장이 '급등 미평가' 로 읽음).
     surge_error: Optional[str] = None
+    # POC6-35 r1 F1 — 이번 회차 판정에 쓴 상태. 저장 직전 다시 읽기가 실패하면 기준.
+    previous: Any = None
 
     def will_send(self) -> bool:
         return bool(self.message_text)
@@ -489,7 +491,7 @@ def assemble_intraday_alert(
         sector.representatives.to_dict() if sector.representatives else None
     )
 
-    previous = load_sector_state(state_path, today_kst=today_kst)
+    previous = out.previous = load_sector_state(state_path, today_kst=today_kst)
     out.unevaluable = _unevaluable_tickers(
         sector=sector,
         sector_error=sector_error,
