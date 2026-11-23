@@ -5,7 +5,7 @@
 ## POC7 — 판단 품질 연구 (PC 연구 · 연구 중 운영 기능 동결)
 
 ```text
-상태     = POC6 종료(POC6-35 AC3 PASS · CLOSED 2026-11-23) / POC7-01 CLOSED(2026-11-22 · 커밋 c32f13a5 · push · 판정 C · 운영 미채택) / POC7-02 PLAN PASS · 맥북 구현 · 검증자 r5 VERIFIED 수용 · 설계 검토 완료 · Windows 실측 예정(2026-11-24)
+상태     = POC6 종료(POC6-35 AC3 PASS · CLOSED 2026-11-23) / POC7-01 CLOSED(2026-11-22 · 커밋 c32f13a5 · push · 판정 C · 운영 미채택) / POC7-02 PLAN PASS · 맥북 구현 r5 VERIFIED · Windows 실측 완료(2026-11-24) · AC4 품질 미달 → 설계자 결과 판정 대기
 총괄 설계 = docs/ai_design/POC7/POC7_MASTER_DESIGN_V1_2026-11-20.md(총괄 설계자 V1 · 2026-11-20 · 원문 보관 · 설계자 보관 · STATE 기록 수용 · 원본과 바이트 단위 일치 확인 2026-11-21)
            머리 PREDECESSOR · §7 의 'POC6-35 종료 선행' 문구는 POC7-01 PLAN 판정 §1 로 대체(설계서 머리에 개발자 기록 한 줄)
 POC7-01  주간 ETF 신규 후보의 즉시 참여와 한 주 보류 비교 = PLAN PASS(설계자 2026-11-22) · 형수님 착수 지시(2026-11-22) → PC 연구 구현 · 시험 · 공식 실행 1회
@@ -83,7 +83,12 @@ POC7-02  로컬 AI 주간 ETF 검토 한 장 요약(정확성 · 사용 시간 �
          → 설계자 실행 전 판정(2026-11-23 · docs/ai_design/POC7/POC7_02_WEEKLY_REVIEW_LOCAL_AI_SUMMARY_PRE_RUN_DECISION_2026-11-23.md
             · r5 VERIFIED 수용 · Windows 실측 승인 · 질문 19건 판정 · 이번 전달 USB(소스는 git) · 개발자 반복 시간 직접 측정 · 하한만으로 절감 판정 금지(Q-R → report 정정 예정)
             · POC6 인계서는 POC7-02 마감 문서 묶음에)
-         다음 = 형수님 후보 고르기 → 보관 · 채점 메모 잠금 → 묶음 · USB · Windows 실행(본 요약은 사례당 한 번) → 회수 → 읽기 비교(L → U) → Q-R 정정 · 검증자 확인 → 비교표 → 설계자 → 형수님 후보 고르기 → 보관 · 채점 메모 잠금 → 묶음 · USB · Windows 실행
+         → Windows 실측(2026-11-24 · 결과서 §20 · KODEX 인도Nifty50(453810) · 보관 01:44(11/23 국내 자료 공개 전 · 형수님 결정)
+            · 전달 = 맥북 공용 폴더(SMB · 같은 와이파이 · 형수님 결정 · 판정서 Q-D USB 와 다름) · Ollama 0.40.17 · RTX 4070 SUPER GPU 근거 있음 · 본 요약 COMPLETED · 회수 대조 통과
+            · 한 장 본문 399자(생각 글 23,504자) · 중요한 오류 7건(대상 · 방향 · 의미 · 날짜 4 + 필수 누락 3) → AC1 충족 · AC2 미달 · AC4 품질 미달
+            · L 직접 7분 · 전체 20분 · 다시 열기 1 · 다시 쓰겠는가 아니오 · L · U 모두 세 답을 내지 못함(형수님: 원문은 숫자 · 내용이 많아 이해 어려움 · 한 장은 너무 짧음)
+            · 커밋 전 전체 백엔드 회귀 7,070 passed · 2 skipped · 실패 0(2026-11-24))
+         다음 = 설계자 결과 판정(결과서 §20-5 질문 R1 ~ R3 · 형수님 의견 원문 §20-4) → 형수님 후보 고르기 → 보관 · 채점 메모 잠금 → 묶음 · USB · Windows 실행
 방향 의견 = docs/ai_design/POC7/POC7_DIRECTION_OPINIONS_LOG.md(의견 1 = 총괄 설계자 앞선 답변 · 개발자 사실 대조 · 질문 7 · 처리 = 총괄 설계 V1)
 ML_OPERATION_PROMOTION = NOT_APPROVED · CURRENT_DEPLOYABLE_ML_MODEL = none · ASSUMPTIONS Q6 OPEN 유지
 ```
