@@ -5,7 +5,7 @@
 ## POC7 — 판단 품질 연구 (PC 연구 · 연구 중 운영 기능 동결)
 
 ```text
-상태     = POC6 운영 전환 · POC6-35 AC3 확인 대기(따로 진행) / POC7-01 검증자 r1 ~ r6 REJECTED → 정정 실행 6회 · 검증자 r7 VERIFIED · 설계자 RESULT PASS · 판정 C · 운영 미채택 · 최종 전체 회귀 통과 · 커밋 확인 대기(2026-11-22)
+상태     = POC6 종료(POC6-35 AC3 PASS · CLOSED 2026-11-23) / POC7-01 CLOSED(2026-11-22 · 커밋 c32f13a5 · push · 판정 C · 운영 미채택)
 총괄 설계 = docs/ai_design/POC7/POC7_MASTER_DESIGN_V1_2026-11-20.md(총괄 설계자 V1 · 2026-11-20 · 원문 보관 · 설계자 보관 · STATE 기록 수용 · 원본과 바이트 단위 일치 확인 2026-11-21)
            머리 PREDECESSOR · §7 의 'POC6-35 종료 선행' 문구는 POC7-01 PLAN 판정 §1 로 대체(설계서 머리에 개발자 기록 한 줄)
 POC7-01  주간 ETF 신규 후보의 즉시 참여와 한 주 보류 비교 = PLAN PASS(설계자 2026-11-22) · 형수님 착수 지시(2026-11-22) → PC 연구 구현 · 시험 · 공식 실행 1회
@@ -41,7 +41,7 @@ POC7-01  주간 ETF 신규 후보의 즉시 참여와 한 주 보류 비교 = PL
          → 설계자 RESULT PASS(2026-11-22 · docs/ai_design/POC7/POC7_01_WEEKLY_ENTRY_TIMING_BREADTH_RESULT_DECISION_2026-11-22.md · 판정 C · 해당 규칙 연구 종료 · 운영 미채택
             · 코드 'US '(끝 공백 한 칸) 수용 → PLAN §2-1 표기 맞춤 · Finder .DS_Store = 실행 폴더 · runs/ 에서 불일치 처리 유지 · 코드 변경 없음)
          → 최종 전체 백엔드 회귀(r7 검증 코드 · 잠금 6 코드 해시 17개 같음) 6635 passed · 2 skipped · 종료 0(2026-11-22 19:44 · 결과서 §10)
-         다음 = 커밋 묶음 형수님 확인 · push 별도 승인
+         → 형수님 승인 · 커밋 c32f13a5(23개 파일) · origin/main push(2026-11-22) = CLOSED
          비교 = 항상 즉시 참여 · 항상 한 주 보류 · 상승 확산 규칙(국내 주식형 상승이 여러 기초지수에 퍼졌는지) · 같은 기간 KODEX 200(설계서 §3)
          후속 후보 = POC7-01 종료 뒤 한 건씩(동시에 열지 않음) · 텍스트 · 로컬 AI 요약(기본 다음 순위) · Windows GPU 시계열 모델(조건부 · 설계서 §6)
          운영 = 자료 갱신 · 주간 검토 · AI 세션 · 알림 계속 · 후보 순위 변경 · OCI 반영 · Telegram 발송은 별도 운영 결정(설계서 §1)
@@ -49,7 +49,7 @@ POC7-01  주간 ETF 신규 후보의 즉시 참여와 한 주 보류 비교 = PL
 ML_OPERATION_PROMOTION = NOT_APPROVED · CURRENT_DEPLOYABLE_ML_MODEL = none · ASSUMPTIONS Q6 OPEN 유지
 ```
 
-## POC6 — 시장 흐름 통합 · ML 고도화 (PC · OCI·PUSH 영향 0)
+## POC6 — 시장 흐름 통합 · ML 고도화 (PC · OCI·PUSH 영향 0) · 종료(2026-11-23 · 마지막 POC6-35 CLOSED)
 
 ```text
 POC6-01  시장 흐름 통합(수급 · 환율 · 유가) = IMPLEMENTED_VERIFIED_CLOSED(2026-10-21 · 커밋 e525dc37 · push 완료)
@@ -605,7 +605,12 @@ POC6-35  장중 재진입 알림 누락(K2) 정정 = 설계 V1 수신(2026-11-19
          → 형수님 커밋 · push 승인(2026-11-20) → 구현 커밋 f0e0c945(격리 브랜치 poc6-35-reentry · 9파일) · main 빨리 감기 · PROGRAM_TRUTH 'main 반영 2026-11-20 · OCI 반영 대기' · 운영 화면 3000 새 문장 확인 · 문서 커밋 · push
            (형수님이 push 전 16시대에 한 OCI pull · [원장 새로고침]은 새 커밋 없음 = 반영 전 기록)
          → OCI pull(형수님 · push 뒤) · OCI revision 확인(2026-11-20 17:18 · HEAD 42ce760f · app · scripts = HEAD · 바뀐 네 모듈 import 정상 · 읽기 전용)
-         다음 = 반영 뒤 첫 정규 장중 회차 2026-11-23(월) 09:30 → 그 뒤 형수님 [원장 새로고침] → 원장 · PC 사본 대조 · 수신 대조 · K2 의심 질의 · 운영 확인 기록 → AC3 근거 결과서 설계자 회신 → 설계자 종료 판정(11-20 회차는 모두 반영 전 코드 · 커밋은 뒤에 한꺼번에 · push 별도 승인)
+         → 운영 확인 AC3(2026-11-23 · 결과서 §16): OCI HEAD c32f13a5(f0e0c945 포함 · 작업 트리 같음) · 첫 정규 회차 09:30 sent · 10:30 sent
+            · [원장 새로고침] 11:01:59 성공(앞 성공 11/20 16:46:27) · 같은 event_id 4건 세 표 해시 OCI = PC · sent_today 2(상태 파일 = 실행 기록)
+            · K2 의심 0건 · K2 조합 1건(회복 · 마지막 전달과 같은 상태 · 구역 한도로 잘림)이 다음 회차에 실림 · 반복 억제 그대로 · 대신 저장 없음
+            · 텔레그램 수신 = 형수님 확인(09:30 · 10:30 두 메시지 · '푸시 받았습니다')
+         → 설계자 종료 판정 AC3 PASS · CLOSED(2026-11-23 · docs/ai_design/POC6/POC6_35_INTRADAY_REENTRY_ALERT_DELIVERY_CLOSEOUT_DECISION_2026-11-23.md)
+         추적 = 11/20 RESULT 판정서 조건 그대로(조립 때 최초 상태 읽기 실패 시 일일 상한 · 전달 성공 기록 저장 장애)
 POC6 다음  방향 문서 docs/ai_design/POC6/POC6_INVESTMENT_DECISION_AND_ML_DIRECTION_ROADMAP_2026-10-26.md(설계자 V1 · 2026-10-26 · handoff 아님)
          목표 = 한국 상장 ETF 후보 추천 · 보유 중 유지 · 축소 · 매도 검토 근거와 권고 · 사용자 최종 결정 · 주문(자동 주문 제외) · ML 효용 검증 뒤 연결
          추천 행동 · 성과 검증 계약 = docs/ai_design/POC6/POC6_RECOMMENDATION_ACTION_AND_PERFORMANCE_CONTRACT_V1.md(설계자 V1.1 · §2-1 A · B · C 확정 기록 · 최초 V1 = 75aad869)
