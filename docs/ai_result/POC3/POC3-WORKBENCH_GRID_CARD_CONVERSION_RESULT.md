@@ -91,7 +91,7 @@
 | `docs/PROGRAM_TRUTH.md` | 수정 (§5.1 workbench 행 + 헤더 최종 반영) |
 | `docs/STATE_LATEST.md` | 수정 (이번 작업 섹션 추가) |
 | `docs/ai_result/POC3/POC3-WORKBENCH_GRID_CARD_CONVERSION_RESULT.md` | 신규 (본 문서) |
-| `docs/handoff/MACBOOK_DEV_ENV_AND_DUAL_MACHINE_CAUTIONS.md` | 수정 (PC 에서 가져올 것 목록 · 이후 해소 반영) |
+| `docs/handoff/OPS/MACBOOK_DEV_ENV_AND_DUAL_MACHINE_CAUTIONS.md` | 수정 (PC 에서 가져올 것 목록 · 이후 해소 반영) |
 
 **커밋 분할**: 카드 전환 본체는 `08ceb771` 로 커밋됨 (코드 4파일 · 489 insertions /
 238 deletions 실측). §1.1 의 실화면 지적 반영분은 후속 커밋 (코드 4파일 ·

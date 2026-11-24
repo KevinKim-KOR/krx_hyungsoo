@@ -39,7 +39,7 @@
 
 - 실제 저장소의 `docs/STATE_LATEST.md`
 - 실제 저장소의 `docs/backlog/BACKLOG.md`
-- 실제 저장소의 `docs/handoff/STATE_LATEST.md`
+- 실제 저장소의 `docs/handoff/POC2/STATE_LATEST.md`
 - 기존 POC3-00 V1 또는 POC3 마스터 문서
 - 현재 Git revision과 실제 소스·테스트·운영 근거
 
@@ -90,7 +90,7 @@
 
 - `docs/STATE_LATEST.md`
 - `docs/backlog/BACKLOG.md`
-- `docs/handoff/STATE_LATEST.md`
+- `docs/handoff/POC2/STATE_LATEST.md`
 - POC3-01 개발 결과서
 - POC3-02 최신 conclusion 또는 handoff
 - POC3-REF-01 결과서
@@ -214,7 +214,7 @@
 - V1을 V2로 교체할 경우 유실되는 현재 유효 결정이 있는지
 - `STATE_LATEST_UPDATE_PROPOSAL`이 기존 history를 훼손하지 않는지
 - `BACKLOG_UPDATE_PROPOSAL`이 조건부 보류 65개 외 항목을 잘못 남기거나 삭제하지 않는지
-- `docs/handoff/STATE_LATEST.md`를 redirect로 정리할 때 필요한 최신 정보가 유실되지 않는지
+- `docs/handoff/POC2/STATE_LATEST.md`를 redirect로 정리할 때 필요한 최신 정보가 유실되지 않는지
 - 임시 갱신안 두 파일을 반영 후 제거해도 참조가 깨지지 않는지
 
 ---

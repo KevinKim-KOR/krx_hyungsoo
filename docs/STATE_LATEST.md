@@ -88,14 +88,15 @@ POC7-02  로컬 AI 주간 ETF 검토 한 장 요약(정확성 · 사용 시간 �
             · 한 장 본문 399자(생각 글 23,504자) · 중요한 오류 7건(대상 · 방향 · 의미 · 날짜 4 + 필수 누락 3) → AC1 충족 · AC2 미달 · AC4 품질 미달
             · L 직접 7분 · 전체 20분 · 다시 열기 1 · 다시 쓰겠는가 아니오 · L · U 모두 세 답을 내지 못함(형수님: 원문은 숫자 · 내용이 많아 이해 어려움 · 한 장은 너무 짧음)
             · 커밋 전 전체 백엔드 회귀 7,070 passed · 2 skipped · 실패 0(2026-11-24))
-         다음 = 설계자 결과 판정(결과서 §20-5 질문 R1 ~ R3 · 형수님 의견 원문 §20-4) → 형수님 후보 고르기 → 보관 · 채점 메모 잠금 → 묶음 · USB · Windows 실행
+         다음 = 설계자 결과 판정(결과서 §20-5 질문 R1 ~ R3 · 형수님 의견 원문 §20-4)
 방향 의견 = docs/ai_design/POC7/POC7_DIRECTION_OPINIONS_LOG.md(의견 1 = 총괄 설계자 앞선 답변 · 개발자 사실 대조 · 질문 7 · 처리 = 총괄 설계 V1)
+문서 정리 = docs/handoff 최상위 문서 34개를 POC2 ~ POC6 · OPS(운영 절차) 하위 폴더로 이동(2026-11-24 · 형수님 요청 · git mv · 문서 · 스크립트 74곳 경로 글자 일괄 수정 · 옛 경로 0곳) · 최상위에는 형수님 총괄 인계서 · 개발자 인계 양식만 남김
 ML_OPERATION_PROMOTION = NOT_APPROVED · CURRENT_DEPLOYABLE_ML_MODEL = none · ASSUMPTIONS Q6 OPEN 유지
 ```
 
 ## POC6 — 시장 흐름 통합 · ML 고도화 (PC · OCI·PUSH 영향 0) · 종료(2026-11-23 · 마지막 POC6-35 CLOSED)
 
-인계 = docs/handoff/POC6_CLOSEOUT_AND_POC7_HANDOFF_2026-11-23.md(설계자 · POC6 종료 · 남은 확인 POC6-31 AC4 PARTIAL · 이후 운영 재확인 6항목 · POC7-02 진행)
+인계 = docs/handoff/POC6/POC6_CLOSEOUT_AND_POC7_HANDOFF_2026-11-23.md(설계자 · POC6 종료 · 남은 확인 POC6-31 AC4 PARTIAL · 이후 운영 재확인 6항목 · POC7-02 진행)
 
 ```text
 POC6-01  시장 흐름 통합(수급 · 환율 · 유가) = IMPLEMENTED_VERIFIED_CLOSED(2026-10-21 · 커밋 e525dc37 · push 완료)
@@ -681,7 +682,7 @@ ML_OPERATION_PROMOTION = NOT_APPROVED · CURRENT_DEPLOYABLE_ML_MODEL = none · A
 ```text
 POC5-00  MASTER PLAN            = 확정 — 설계자 PASS_WITH_MANDATORY_AMENDMENT 2026-09-26 · Q1~Q30 확정
 사용자 승인                      = OCI 전용 원장 state/decision/decision_evidence.sqlite 생성 · PC 기존 decision_evidence.sqlite 테이블 추가 (2026-09-26)
-다음                            = **`POC5-02` 첫 결과 행(2026-10-09 08:10 배치 · +1 MATURED 458) · `POC5-03` 가격 결과 표시 = 확인 2026-10-12 · 둘 다 `IMPLEMENTED_VERIFIED_DEPLOYED_OPERATION_CONFIRMED` 종료 · 공식 R0 = 2026-10-23 실행 · COLLECTION_OK(`POC5-04` 결과서 §10) · `POC5-06` 수동 재진입 검토 · ML 근거 = 종료 2026-10-10(`IMPLEMENTED_VERIFIED_DEPLOYED_CLOSED` · 커밋 `21706285` · 인계 `docs/handoff/POC5-06_MANUAL_REENTRY_REVIEW_AND_ML_EVIDENCE_HANDOFF_2026-10-10.md`) · `POC5-07` 기존 보유의 가격 비교 기준일(2026-01-02 사용자 제안 → 설계) = 종료 2026-10-11(`IMPLEMENTED_VERIFIED_DEPLOYED_CLOSED` · 커밋 `89f90f0f` · 인계 `docs/handoff/POC5-07_HOLDINGS_REFERENCE_DATE_HANDOFF_2026-10-11.md`) · `POC5-UI-01` 버튼 크기 통일 = 완료 2026-10-11(커밋 `8ac6f41f` · 사용자 실화면 확인) · 완료 = `POC5-08` 알림의 ML 사후평가(설계 V1 · PLAN `PASS` 2026-10-11 · 검증자 r2 VERIFIED · 설계자 RESULT `PASS_TO_DEPLOY` · 커밋 `f1951812` · 종료 2026-10-12 · OCI 변경 0) · `POC5-09` 저장 거래량 확인 근거 + PC 가격 흐름 기준일 정정 = 종료 2026-10-13(`IMPLEMENTED_VERIFIED_CLOSED` · 검증자 r2 VERIFIED · 실화면 통과 · 결과서 `docs/ai_result/POC5/POC5-09_STORED_VOLUME_EVIDENCE_RESULT.md`) · `POC5-10` PC 보유 개별주 수집 대상 보완 = 종료 2026-10-13(`IMPLEMENTED_VERIFIED_CLOSED` · 검증자 r2 VERIFIED · 실제 수집 3종목 08-12 → 10-13 · `DEF-PRICE-EQUITY-REFRESH` 수집 원인 해소 · 인계 `docs/handoff/POC5-09-10_STORED_VOLUME_AND_HOLDINGS_EQUITY_REFRESH_HANDOFF_2026-10-13.md`) · 다음 차례 = 설계자 「오늘의 투자 점검」 정보량 판단(메모 `docs/ai_result/POC5/POC5_TODAY_SCREEN_DENSITY_NOTE_2026-10-13.md`) → `POC5-UI-03` 으로 처리 · 종료 2026-10-14(커밋 `ff4279e8`) · `POC5-UI-02` 기존 보유 점검 화면 정정 = 종료 2026-10-12(`IMPLEMENTED_VERIFIED_CLOSED` · 1차 커밋 `9cfb535f` · 실화면 의견 2건 → 설계자 보완 판정 §11 · 보완 검증자 VERIFIED · 실화면 통과 · 인계 `docs/handoff/POC5-UI-02_EXISTING_CHECK_FLOW_CORRECTIONS_HANDOFF_2026-10-12.md`) · 조건부 후속 = PC FDR 수동 갱신 보호(필요 시) · seed 정합(사용자 결정 대기 · 차이표 = UI-02 PLAN 부록) · 다음 = 10-23 배치 뒤 공식 R0 1회**(`POC5-04` 종료 2026-10-08 · `POC5-05` 보유 · 매매 이력 통합 종료 2026-10-09 · 인계 `docs/handoff/POC5-05_PERSONAL_HOLDINGS_TRADE_HISTORY_HANDOFF_2026-10-09.md`) · `POC5-01B` = `IMPLEMENTED_VERIFIED_DEPLOYED_OPERATION_CONFIRMED`(2026-10-08) · (이전 기록) **`POC5-01B` 운영 원장** — PLAN `PASS_WITH_MANDATORY_AMENDMENTS`(설계자 2026-10-06 · 보정 5 · Q-A ~ Q-H · 원문 = 설계서 끝) → 로컬 구현(2026-10-07 · 원장 모듈 4 `ledger_store` · `ledger_items` · `ledger_market` · `ledger_context` · 읽기 전용 대조 CLI `scripts/run_decision_ledger_reconcile.py` · 러너 517 → 529(`@_ledger.boundary` · begin · `_finish` 안 finalize · attach_assembly · attach_send) · flow 수집 자리 8파일(기본값이면 동작 동일)) → 개발자 자체 검증 → 검증자 r1 `REJECTED`(2026-10-07) → 정정(원장 테스트 71) → 검증자 r2 `REJECTED`(결과서 줄 수 1건) → **검증자 r3 `VERIFIED`**(2026-10-07) → 커밋 · push(사용자 승인 2026-10-07) → 설계자 RESULT `PASS_TO_DEPLOY`(2026-10-07) → OCI pull + `.env` 한 줄(사용자 · 거래일 15:45 이후나 비거래일) → 첫 거래일 확인. PC 는 같은 경로에 기존 AI Sessions DB 가 있고 원장은 PC 에서 비활성(PC 테이블은 POC5-03). 설계서 `docs/ai_design/POC5/POC5-01B_OPERATIONAL_DECISION_EVENT_LEDGER_DESIGN_V1.md` · PLAN `docs/ai_plan/POC5/POC5-01B_OPERATIONAL_DECISION_EVENT_LEDGER_PLAN_V1.md` · 결과서 `docs/ai_result/POC5/POC5-01B_OPERATIONAL_DECISION_EVENT_LEDGER_RESULT.md` · 앞 단계: **`POC5-01A` 세 PUSH 러너 기계 분리 — PLAN 1차 `REVISE_AND_RESUBMIT` → 보정 4건 반영 재제출 → **재판정 `PASS`**(설계자 2026-10-03 · 로컬 구현 승인 · Q1~Q6 (a) 확정) → **로컬 구현 완료(2026-10-03 · 러너 646 → 517줄 · 새 모듈 `runner_record` · `runner_preflight` · `runner_dispatch` · 동등성 검증 `scripts/poc5_01a/runner_split_equivalence.py` 49 시나리오 다름 0) → 설계자 RESULT `PASS_TO_VERIFIER`(2026-10-04 · 코드 재작업 없음) → 검증자 r1 `REJECTED`(A-2 · A-3 — 러너에 쓰는 테스트 고정 이름 13개 → 실제 14개 · `is_already_sent` 누락 · 코드 결함 아님) → 런타임 전수 기록으로 14개 정정 · 검증 스크립트 보강 → **검증자 재검증 `VERIFIED`(2026-10-04 · 위험 NONE · 범위 폭주 NONE)** → 커밋 · push(사용자 승인 2026-10-04 · 선행 문서 커밋 `a0a2c514` 와 함께) → OCI pull(사용자 2026-10-04 · 휴장 중) → 개발자 OCI 읽기 전용 확인 완료(2026-10-04 · OCI 커밋 `87238e1e` · 러너 · 새 모듈 3개 blob = 저장소 · 러너 517줄 · import 정상 · cron 변경 없음) → **10-06(화) 첫 거래일 확인 통과**(실행 11회 · 08:30 · 09:15 · 12:30 · 15:40 sent · 장중 4회 sent + 일일 상한 3회 · 기록 키 수 10-02 와 같음 · Traceback 0) → 종료 인계 `docs/handoff/POC5-01A_THREE_PUSH_RUNNER_MECHANICAL_SPLIT_HANDOFF_2026-10-06.md` → **설계자 종료 수용 `ACCEPTED_CLOSED`(2026-10-06 · 다음 = OPS-04 검증자 재검증 → VERIFIED → OPS-04 RESULT 판정 → POC5-01B)** · 결과서 `docs/ai_result/POC5/POC5-01A_THREE_PUSH_RUNNER_MECHANICAL_SPLIT_RESULT.md` · **설계자 판단 요청(2026-10-04 등재 · `docs/backlog/BACKLOG.md` §11)**: PC 「OCI 운영·적용」 '현재 운영 기준 적용'은 OCI 의 `latest_runtime_param.json` 만 바꾸고 OCI 러너가 읽는 활성 PARAM(DB `runtime_param_active` · JSON fallback 없음)은 바꾸지 않는다 — 10-04 기준 OCI DB 활성 `param-20260907T152806-255383` · JSON `param-20261004T020942-999570` · 값 14키 차이 0(운영 영향 없음) · 값을 바꾸는 적용 전에 해소 필요** — 설계서 `docs/ai_design/POC5/POC5-01A_THREE_PUSH_RUNNER_MECHANICAL_SPLIT_DESIGN_V1.md`(설계자 정정 원문 2026-10-02 · 러너 646 → 570줄 이하 · 동작 변경 0) · PLAN `docs/ai_plan/POC5/POC5-01A_THREE_PUSH_RUNNER_MECHANICAL_SPLIT_PLAN_V1.md`. **설계자 정정(2026-10-02)**: 처음 `POC5-01A` 로 받은 원장 설계는 **`POC5-01B`** 로 옮김(`docs/ai_design/POC5/POC5-01B_OPERATIONAL_DECISION_EVENT_LEDGER_DESIGN_V1.md` · PLAN 은 그 뒤 2026-10-06 작성 → 위 01B 문서) · 원장 DB 경로 = POC5-00 확정 `state/decision/decision_evidence.sqlite` 복원(`state/decision_ledger/…` 폐기 · 사용자 재승인 불필요). **`POC3-02D-OPS-04`**(**`IMPLEMENTED_VERIFIED_DEPLOYED_OPERATION_CONFIRMED`(2026-10-07) — 로컬 구현 2026-10-06 · 검증자 r1 `REJECTED` 정정 + 재제출 전 점검 재작업(개별주 = ETF 와 독립된 곁 작업 · 사용자 결정 '유지') · 검증자 r2 `VERIFIED` · 커밋 · push(2026-10-06) · 설계자 RESULT `PASS_TO_DEPLOY` · OCI pull 2026-10-06 21:40 · 첫 KRX 거래일 2026-10-07 확인 통과 · 종료(사용자 결정 2026-10-07)** — 결과서 `docs/ai_result/POC3/POC3-02D-OPS-04_REMAINING_OPERATIONAL_CORRECTIONS_RESULT.md` · 인계 `docs/handoff/POC3-02D-OPS-04_REMAINING_OPERATIONAL_CORRECTIONS_HANDOFF_2026-10-07.md` · 화면 목업 사용자 확정 2026-10-06 · 검토(조사 · 백엔드 · 화면 · 재작업) · 파괴 시험 · OCI pull 은 사용자 · **PLAN `PASS` 2026-10-04** — 설계자 `CONDITIONAL_PASS` · Q1~Q8 확정 + 사용자 승인 2건(기존 `market_data.sqlite` 에 공식 주식 일별 가격 표 1개 · KRX `sto/stk_bydd_trd`) · 설계서 `docs/ai_design/POC3/POC3-02D-OPS-04_REMAINING_OPERATIONAL_CORRECTIONS_DESIGN_V1.md` · PLAN `docs/ai_plan/POC3/POC3-02D-OPS-04_REMAINING_OPERATIONAL_CORRECTIONS_PLAN_V1.md` · 여섯 항목(앞 5건 + PARAM '적용' 의미) · 로컬 구현 착수(사용자 결정 2026-10-04) · 커밋 · 배포는 POC5-01A 종료 뒤 · 처음 확정 5건 — 개별주 KRX 공식 일별 · FDR 실패 고지 제거 · 대표 ETF 화면 행 · ETF 가격 단절 가드 · 누락일 09:20 재시도 1회 · 원문 = OPS-03 설계서 끝)는 POC5-01A 뒤 · **POC5-01B 배포 전 완료**(표본 섞임 방지 · 순서는 사용자 결정 항목 아님 · POC5-01A 와 섞지 않음). 설계자 OPS-03 종료 수용(2026-10-02 · `RECHECK_20261006 = WAIVED_BY_USER` · `7d507951` 은 2026-10-02 17:56 KST OCI pull 로 반영(2026-10-03 확인) · OPS-03 재개방 없음). POC3-02D-OPS-03 `IMPLEMENTED_VERIFIED_DEPLOYED_OPERATION_CONFIRMED`(2026-10-02 · 커밋 `7feddf2c` · OCI pull + cron 3줄 2026-10-01 · 첫 거래일 실측 통과 · 사용자 결정으로 10-06 재실측 생략) · 운영 상태 `OPERATING` · 한국 거래일 계약 정정 종료 커밋 OCI 반영 완료(2026-10-02 17:56 KST · cron 변경 없음) · OPS-02 첫 자연 발송 관측 완료(2026-09-30 09:30 · `OBSERVED`) · **그 뒤 `POC5-11` ~ `POC5-26` · `POC5-UI-03` · `POC5-UI-04`(2026-10-14 ~ 10-20) = 모두 종료(각 `IMPLEMENTED_VERIFIED_CLOSED` · 경과 · 종료 커밋은 맨 위 '최종 업데이트' 줄 · `git log`) · 다음 = `POC5-27` PC 에서 OCI 운영 기준 실제 활성화(#50) PLAN V1 · 목업 사용자 확인 · 원격 쓰기 승인(2026-10-20) → 설계자 PLAN 판정(맨 위 줄) · 그 뒤 #48(POC5-25 RESULT 판정 §4 · POC5-26 RESULT 판정 §3)**
+다음                            = **`POC5-02` 첫 결과 행(2026-10-09 08:10 배치 · +1 MATURED 458) · `POC5-03` 가격 결과 표시 = 확인 2026-10-12 · 둘 다 `IMPLEMENTED_VERIFIED_DEPLOYED_OPERATION_CONFIRMED` 종료 · 공식 R0 = 2026-10-23 실행 · COLLECTION_OK(`POC5-04` 결과서 §10) · `POC5-06` 수동 재진입 검토 · ML 근거 = 종료 2026-10-10(`IMPLEMENTED_VERIFIED_DEPLOYED_CLOSED` · 커밋 `21706285` · 인계 `docs/handoff/POC5/POC5-06_MANUAL_REENTRY_REVIEW_AND_ML_EVIDENCE_HANDOFF_2026-10-10.md`) · `POC5-07` 기존 보유의 가격 비교 기준일(2026-01-02 사용자 제안 → 설계) = 종료 2026-10-11(`IMPLEMENTED_VERIFIED_DEPLOYED_CLOSED` · 커밋 `89f90f0f` · 인계 `docs/handoff/POC5/POC5-07_HOLDINGS_REFERENCE_DATE_HANDOFF_2026-10-11.md`) · `POC5-UI-01` 버튼 크기 통일 = 완료 2026-10-11(커밋 `8ac6f41f` · 사용자 실화면 확인) · 완료 = `POC5-08` 알림의 ML 사후평가(설계 V1 · PLAN `PASS` 2026-10-11 · 검증자 r2 VERIFIED · 설계자 RESULT `PASS_TO_DEPLOY` · 커밋 `f1951812` · 종료 2026-10-12 · OCI 변경 0) · `POC5-09` 저장 거래량 확인 근거 + PC 가격 흐름 기준일 정정 = 종료 2026-10-13(`IMPLEMENTED_VERIFIED_CLOSED` · 검증자 r2 VERIFIED · 실화면 통과 · 결과서 `docs/ai_result/POC5/POC5-09_STORED_VOLUME_EVIDENCE_RESULT.md`) · `POC5-10` PC 보유 개별주 수집 대상 보완 = 종료 2026-10-13(`IMPLEMENTED_VERIFIED_CLOSED` · 검증자 r2 VERIFIED · 실제 수집 3종목 08-12 → 10-13 · `DEF-PRICE-EQUITY-REFRESH` 수집 원인 해소 · 인계 `docs/handoff/POC5/POC5-09-10_STORED_VOLUME_AND_HOLDINGS_EQUITY_REFRESH_HANDOFF_2026-10-13.md`) · 다음 차례 = 설계자 「오늘의 투자 점검」 정보량 판단(메모 `docs/ai_result/POC5/POC5_TODAY_SCREEN_DENSITY_NOTE_2026-10-13.md`) → `POC5-UI-03` 으로 처리 · 종료 2026-10-14(커밋 `ff4279e8`) · `POC5-UI-02` 기존 보유 점검 화면 정정 = 종료 2026-10-12(`IMPLEMENTED_VERIFIED_CLOSED` · 1차 커밋 `9cfb535f` · 실화면 의견 2건 → 설계자 보완 판정 §11 · 보완 검증자 VERIFIED · 실화면 통과 · 인계 `docs/handoff/POC5/POC5-UI-02_EXISTING_CHECK_FLOW_CORRECTIONS_HANDOFF_2026-10-12.md`) · 조건부 후속 = PC FDR 수동 갱신 보호(필요 시) · seed 정합(사용자 결정 대기 · 차이표 = UI-02 PLAN 부록) · 다음 = 10-23 배치 뒤 공식 R0 1회**(`POC5-04` 종료 2026-10-08 · `POC5-05` 보유 · 매매 이력 통합 종료 2026-10-09 · 인계 `docs/handoff/POC5/POC5-05_PERSONAL_HOLDINGS_TRADE_HISTORY_HANDOFF_2026-10-09.md`) · `POC5-01B` = `IMPLEMENTED_VERIFIED_DEPLOYED_OPERATION_CONFIRMED`(2026-10-08) · (이전 기록) **`POC5-01B` 운영 원장** — PLAN `PASS_WITH_MANDATORY_AMENDMENTS`(설계자 2026-10-06 · 보정 5 · Q-A ~ Q-H · 원문 = 설계서 끝) → 로컬 구현(2026-10-07 · 원장 모듈 4 `ledger_store` · `ledger_items` · `ledger_market` · `ledger_context` · 읽기 전용 대조 CLI `scripts/run_decision_ledger_reconcile.py` · 러너 517 → 529(`@_ledger.boundary` · begin · `_finish` 안 finalize · attach_assembly · attach_send) · flow 수집 자리 8파일(기본값이면 동작 동일)) → 개발자 자체 검증 → 검증자 r1 `REJECTED`(2026-10-07) → 정정(원장 테스트 71) → 검증자 r2 `REJECTED`(결과서 줄 수 1건) → **검증자 r3 `VERIFIED`**(2026-10-07) → 커밋 · push(사용자 승인 2026-10-07) → 설계자 RESULT `PASS_TO_DEPLOY`(2026-10-07) → OCI pull + `.env` 한 줄(사용자 · 거래일 15:45 이후나 비거래일) → 첫 거래일 확인. PC 는 같은 경로에 기존 AI Sessions DB 가 있고 원장은 PC 에서 비활성(PC 테이블은 POC5-03). 설계서 `docs/ai_design/POC5/POC5-01B_OPERATIONAL_DECISION_EVENT_LEDGER_DESIGN_V1.md` · PLAN `docs/ai_plan/POC5/POC5-01B_OPERATIONAL_DECISION_EVENT_LEDGER_PLAN_V1.md` · 결과서 `docs/ai_result/POC5/POC5-01B_OPERATIONAL_DECISION_EVENT_LEDGER_RESULT.md` · 앞 단계: **`POC5-01A` 세 PUSH 러너 기계 분리 — PLAN 1차 `REVISE_AND_RESUBMIT` → 보정 4건 반영 재제출 → **재판정 `PASS`**(설계자 2026-10-03 · 로컬 구현 승인 · Q1~Q6 (a) 확정) → **로컬 구현 완료(2026-10-03 · 러너 646 → 517줄 · 새 모듈 `runner_record` · `runner_preflight` · `runner_dispatch` · 동등성 검증 `scripts/poc5_01a/runner_split_equivalence.py` 49 시나리오 다름 0) → 설계자 RESULT `PASS_TO_VERIFIER`(2026-10-04 · 코드 재작업 없음) → 검증자 r1 `REJECTED`(A-2 · A-3 — 러너에 쓰는 테스트 고정 이름 13개 → 실제 14개 · `is_already_sent` 누락 · 코드 결함 아님) → 런타임 전수 기록으로 14개 정정 · 검증 스크립트 보강 → **검증자 재검증 `VERIFIED`(2026-10-04 · 위험 NONE · 범위 폭주 NONE)** → 커밋 · push(사용자 승인 2026-10-04 · 선행 문서 커밋 `a0a2c514` 와 함께) → OCI pull(사용자 2026-10-04 · 휴장 중) → 개발자 OCI 읽기 전용 확인 완료(2026-10-04 · OCI 커밋 `87238e1e` · 러너 · 새 모듈 3개 blob = 저장소 · 러너 517줄 · import 정상 · cron 변경 없음) → **10-06(화) 첫 거래일 확인 통과**(실행 11회 · 08:30 · 09:15 · 12:30 · 15:40 sent · 장중 4회 sent + 일일 상한 3회 · 기록 키 수 10-02 와 같음 · Traceback 0) → 종료 인계 `docs/handoff/POC5/POC5-01A_THREE_PUSH_RUNNER_MECHANICAL_SPLIT_HANDOFF_2026-10-06.md` → **설계자 종료 수용 `ACCEPTED_CLOSED`(2026-10-06 · 다음 = OPS-04 검증자 재검증 → VERIFIED → OPS-04 RESULT 판정 → POC5-01B)** · 결과서 `docs/ai_result/POC5/POC5-01A_THREE_PUSH_RUNNER_MECHANICAL_SPLIT_RESULT.md` · **설계자 판단 요청(2026-10-04 등재 · `docs/backlog/BACKLOG.md` §11)**: PC 「OCI 운영·적용」 '현재 운영 기준 적용'은 OCI 의 `latest_runtime_param.json` 만 바꾸고 OCI 러너가 읽는 활성 PARAM(DB `runtime_param_active` · JSON fallback 없음)은 바꾸지 않는다 — 10-04 기준 OCI DB 활성 `param-20260907T152806-255383` · JSON `param-20261004T020942-999570` · 값 14키 차이 0(운영 영향 없음) · 값을 바꾸는 적용 전에 해소 필요** — 설계서 `docs/ai_design/POC5/POC5-01A_THREE_PUSH_RUNNER_MECHANICAL_SPLIT_DESIGN_V1.md`(설계자 정정 원문 2026-10-02 · 러너 646 → 570줄 이하 · 동작 변경 0) · PLAN `docs/ai_plan/POC5/POC5-01A_THREE_PUSH_RUNNER_MECHANICAL_SPLIT_PLAN_V1.md`. **설계자 정정(2026-10-02)**: 처음 `POC5-01A` 로 받은 원장 설계는 **`POC5-01B`** 로 옮김(`docs/ai_design/POC5/POC5-01B_OPERATIONAL_DECISION_EVENT_LEDGER_DESIGN_V1.md` · PLAN 은 그 뒤 2026-10-06 작성 → 위 01B 문서) · 원장 DB 경로 = POC5-00 확정 `state/decision/decision_evidence.sqlite` 복원(`state/decision_ledger/…` 폐기 · 사용자 재승인 불필요). **`POC3-02D-OPS-04`**(**`IMPLEMENTED_VERIFIED_DEPLOYED_OPERATION_CONFIRMED`(2026-10-07) — 로컬 구현 2026-10-06 · 검증자 r1 `REJECTED` 정정 + 재제출 전 점검 재작업(개별주 = ETF 와 독립된 곁 작업 · 사용자 결정 '유지') · 검증자 r2 `VERIFIED` · 커밋 · push(2026-10-06) · 설계자 RESULT `PASS_TO_DEPLOY` · OCI pull 2026-10-06 21:40 · 첫 KRX 거래일 2026-10-07 확인 통과 · 종료(사용자 결정 2026-10-07)** — 결과서 `docs/ai_result/POC3/POC3-02D-OPS-04_REMAINING_OPERATIONAL_CORRECTIONS_RESULT.md` · 인계 `docs/handoff/POC3/POC3-02D-OPS-04_REMAINING_OPERATIONAL_CORRECTIONS_HANDOFF_2026-10-07.md` · 화면 목업 사용자 확정 2026-10-06 · 검토(조사 · 백엔드 · 화면 · 재작업) · 파괴 시험 · OCI pull 은 사용자 · **PLAN `PASS` 2026-10-04** — 설계자 `CONDITIONAL_PASS` · Q1~Q8 확정 + 사용자 승인 2건(기존 `market_data.sqlite` 에 공식 주식 일별 가격 표 1개 · KRX `sto/stk_bydd_trd`) · 설계서 `docs/ai_design/POC3/POC3-02D-OPS-04_REMAINING_OPERATIONAL_CORRECTIONS_DESIGN_V1.md` · PLAN `docs/ai_plan/POC3/POC3-02D-OPS-04_REMAINING_OPERATIONAL_CORRECTIONS_PLAN_V1.md` · 여섯 항목(앞 5건 + PARAM '적용' 의미) · 로컬 구현 착수(사용자 결정 2026-10-04) · 커밋 · 배포는 POC5-01A 종료 뒤 · 처음 확정 5건 — 개별주 KRX 공식 일별 · FDR 실패 고지 제거 · 대표 ETF 화면 행 · ETF 가격 단절 가드 · 누락일 09:20 재시도 1회 · 원문 = OPS-03 설계서 끝)는 POC5-01A 뒤 · **POC5-01B 배포 전 완료**(표본 섞임 방지 · 순서는 사용자 결정 항목 아님 · POC5-01A 와 섞지 않음). 설계자 OPS-03 종료 수용(2026-10-02 · `RECHECK_20261006 = WAIVED_BY_USER` · `7d507951` 은 2026-10-02 17:56 KST OCI pull 로 반영(2026-10-03 확인) · OPS-03 재개방 없음). POC3-02D-OPS-03 `IMPLEMENTED_VERIFIED_DEPLOYED_OPERATION_CONFIRMED`(2026-10-02 · 커밋 `7feddf2c` · OCI pull + cron 3줄 2026-10-01 · 첫 거래일 실측 통과 · 사용자 결정으로 10-06 재실측 생략) · 운영 상태 `OPERATING` · 한국 거래일 계약 정정 종료 커밋 OCI 반영 완료(2026-10-02 17:56 KST · cron 변경 없음) · OPS-02 첫 자연 발송 관측 완료(2026-09-30 09:30 · `OBSERVED`) · **그 뒤 `POC5-11` ~ `POC5-26` · `POC5-UI-03` · `POC5-UI-04`(2026-10-14 ~ 10-20) = 모두 종료(각 `IMPLEMENTED_VERIFIED_CLOSED` · 경과 · 종료 커밋은 맨 위 '최종 업데이트' 줄 · `git log`) · 다음 = `POC5-27` PC 에서 OCI 운영 기준 실제 활성화(#50) PLAN V1 · 목업 사용자 확인 · 원격 쓰기 승인(2026-10-20) → 설계자 PLAN 판정(맨 위 줄) · 그 뒤 #48(POC5-25 RESULT 판정 §4 · POC5-26 RESULT 판정 §3)**
 PRIMARY 시작 조건                = POC3-02D-OPS-01 pull(완료 2026-09-27) + POC3-02D-OPS-02 완료(배포 2026-09-29) + **POC3-02D-OPS-03 `IMPLEMENTED_VERIFIED_DEPLOYED_OPERATION_CONFIRMED`**(충족 2026-10-02) + **POC3-02D-OPS-04 `IMPLEMENTED_VERIFIED_DEPLOYED_OPERATION_CONFIRMED`**(충족 2026-10-07) + POC5-01B 코드 pull + OCI `.env` `DECISION_LEDGER_ENABLED=true`(사용자 · 거래일 15:45 이후나 비거래일 · PLAN 보정 3 · Q-F) 뒤 첫 활성 · 예정 시각 · KRX 거래일 실행 = 원장 `ledger_meta.primary_start_date`(1회 기록) · PRIMARY 통계 = `cohort='PRIMARY_LIVE' AND off_schedule=0`
 순서(설계자 정정 2026-10-02)      = POC5-01A 러너 기계 분리 → POC3-02D-OPS-04 운영 보완 5건 → POC5-01B 운영 원장 → 02 결과 성숙 → 03 PC 동기화·피드백 → 04 R0/R1
 ```
@@ -721,9 +722,9 @@ POC4-04·05 = NOT_OPENED_BY_KILL_GATE (POC4-03 REJECT · 설계서 V2 §17 · �
 - **POC4 남은 비차단 부채**: POC4-03 검증자 메모 2건(러너를 다시 쓸 때만 보완) · smoke 폴더는 사용자 삭제 승인 전까지 보존.
 - **테스트**: 저장소에서 전체 pytest 가능(라이브 쓰기 가드 · 2,229 passed · 2026-09-26). **새 테스트는 라이브 DB 를 열 수 없다** — 자체
   tmp DB·고정 fixture. 기존 229건만 읽기 전용 세션 사본(비차단 기술부채).
-- 인계: `docs/handoff/POC4-03_RF_VS_MOMENTUM_KILL_GATE_HANDOFF_2026-09-26.md`(최신) · 결과서:
+- 인계: `docs/handoff/POC4/POC4-03_RF_VS_MOMENTUM_KILL_GATE_HANDOFF_2026-09-26.md`(최신) · 결과서:
   `docs/ai_result/POC4/POC4-03_RF_VS_MOMENTUM_FINAL_KILL_GATE_RESULT.md` ·
-  직전 챕터 `docs/handoff/POC4-02_PARALLEL_RESEARCH_TRACKS_HANDOFF_2026-09-25.md`(결과서 02A · 02B)
+  직전 챕터 `docs/handoff/POC4/POC4-02_PARALLEL_RESEARCH_TRACKS_HANDOFF_2026-09-25.md`(결과서 02A · 02B)
 
 ## 현재 상태 (POC3)
 
@@ -758,12 +759,12 @@ POC3 = IN_PROGRESS / OPERATIONAL_PUSH = 3_OF_3
 | **02C-OPS-01** 장중 설정 구조(사업군·대표 ETF) | **`CLOSED`** | 검증자 `VERIFIED`(r9). 자동 분류 27개 사업군 + 승인·OCI 적용 경로. 화면 「승인·적용 > 장중 급등락 설정」 |
 | **02C-OPS-02** 장중 급등락·진입 검토/회피 | **`CLOSED`** | 검증자 `VERIFIED`(2026-09-21). 판정·본문·억제·상태 저장 엔진. 신규 push_kind·cron 0 |
 | **02C-OPS-03** 장중 알림 활성화 경로 | **`CLOSED`** | 검증자 `VERIFIED_WITH_NOTES`(2026-09-22). 정책을 번들에 실어 켤 수 있게 + 15:40 비활성 요약 결함 수정 |
-| └ **02C 통합 종료** | **`IMPLEMENTED_VERIFIED_ACTIVATED`** | 첫 운영일 2026-09-22 — 7/7틱 · 알림 4건 · 일일 상한 작동 · 커버리지 27/27 · 오류 0. `docs/handoff/POC3-02C_CLOSEOUT_2026-09-23.md` |
+| └ **02C 통합 종료** | **`IMPLEMENTED_VERIFIED_ACTIVATED`** | 첫 운영일 2026-09-22 — 7/7틱 · 알림 4건 · 일일 상한 작동 · 커버리지 27/27 · 오류 0. `docs/handoff/POC3/POC3-02C_CLOSEOUT_2026-09-23.md` |
 | └ **KS10-TRIGGER-FILE-SPLIT** | **`CLOSED`** | 테스트 1548줄 → `tests/low_frequency_push/` 11파일(최대 420) · 프론트 907줄 → `today/` 8파일 + 잔존 141줄. 검증자 r3 `VERIFIED` · 사용자 실화면 확인 완료 · `BUILD = PASS` |
 | **02D-OPS-01** PRIMARY 전 운영 정정 C1~C7 | **`IMPLEMENTED_VERIFIED_DEPLOYED_OPERATION_CONFIRMED`** | 설계자 `PASS_TO_VERIFIER` · 검증자 `VERIFIED`(2026-09-27) · 캘린더 09-28 정정 검증자 `VERIFIED_WITH_NOTES` · OCI pull 2026-09-27 · 첫 거래일 2026-09-28 07:20 · 08:00 운영 확인. 08:00 공식 CSV 공용 resolver · pending · `refresh_due` · 판정 창 검사 · 새 CSV `20260927` / OCI 상태 필수 3종 / 장중 '현재가' 시각 · 잘린 보유 급락 재판정 · `send_failed` · 본문 길이 기록 / KOSPI stale 을 `failed` 로 기록 |
 | **02D-OPS-02** 장중 전달 상태 · 운영 UI 정합성 | **`IMPLEMENTED_VERIFIED_DEPLOYED`**(설계자 RESULT `PASS`(2026-09-29 · 앞서 M1 · M2 반영) · 사용자 구현 화면 확인 2026-09-28 · 검증자 `VERIFIED` r2 2026-09-29 · 커밋 `eff609a0` · OCI pull · 배포 확인 2026-09-29 · 첫 자연 발송 관측 `OBSERVED` 2026-09-30 09:30) | 설계자 Q1~Q6 확정(2026-09-28) · 3-4 문구 계약 사용자 초안(목업) 승인 + 설계자 규칙 · 구현 화면 사용자 확인 완료(2026-09-28). 3-1 OCI 링크(`b5b15509`) · 3-2 억제 비교 = 마지막 성공 전달 상태 `last_delivered_state` · 조립 뒤 예외 회차 장중 기록 0 · 3-3 낡은 역검증 ⑦ · 목업 ⑦ 정리 · 3-4 KOSPI 상태 배지 · 기준 줄 · 사유 줄(두 화면 공용). 백엔드 전체 2,430 passed · 프론트 261 · 결과서 `docs/ai_result/POC3/POC3-02D-OPS-02_RUNTIME_STATE_AND_OPERATIONAL_UI_CORRECTIONS_RESULT.md` |
-| **02D-OPS-03** 운영 데이터 최신성 · 자료원 복구 | **`IMPLEMENTED_VERIFIED_DEPLOYED_OPERATION_CONFIRMED`**(2026-10-02 · 설계자 RESULT `PASS_WITH_MANDATORY_AMENDMENTS`(2026-09-30) → 필수 보완 STEP 1~6 구현 → 보완 화면 · 새 문구 사용자 확인 완료(2026-10-01) → 검증자 `VERIFIED` r3(2026-10-01 · 설계자 재판정 없음) → 커밋 `7feddf2c` · push → OCI pull + cron 3줄(2026-10-01 · read-back 16:32) → 첫 거래일 실측 통과(2026-10-02) · 10-06 재실측은 사용자 결정으로 생략 · 운영 상태 `OPERATING`) | 설계자 PLAN 판정 `PASS_WITH_MANDATORY_AMENDMENTS`(2026-09-29 · 확정 계약 15항 · KRX KOSPI 조회 사용자 승인). 시간 계약 명시 개정 — 배치 07:20 → 08:10 · KRX 목표일(T-1) 시도 08:10 · 08:15 · 08:20 · 08:24 · 마감 08:27 · 시장 브리핑 08:00 → 08:30 · 09:20 KRX 전용 보강 1회. 국내 최신성 = 기준일 == 기대 T-1(없으면 기초지수 구역 생략 + 설계자 문구 1줄 · 장중 「신규 진입 검토」만 생략 + `추세 기준 YYYY-MM-DD 종가` · 15:40 생략 집계) · 5일 · 20일 = 거래일 날짜 · 배치 단계 격리 · FDR timeout · 배치 실패 고지 하루 1회 · KOSPI KRX `idx/kospi_dd_trd`(C7 `lag ≤ 1` 폐기 · 09-17 정정 증거 · 차트 · AI 복사 텍스트 같은 판정) · S&P500 = 가장 최근 완료 NYSE 세션(NYSE 휴장 CSV) · 보유 20거래일 기준일 = 캘린더 · 「OCI 운영·적용」 거래일 행(종료 커밋에서 한국 `거래일 기준` · `미국 휴장일 달력` 두 행). **설계자 RESULT 필수 보완(2026-09-30)**: STEP 1 보유 PUSH 가격 기준 `ETF_KRX_UNADJUSTED__STOCK_FDR` — ETF 20거래일 전 · 구간 종가 = KRX 무조정 표(FDR fallback · 혼합 없음) · 개별주 20거래일 수익률 · 고점 대비는 늘 닫음(FDR 개별주 일봉 ≠ KRX 정규장 종가 +0.9 ~ +1.4% · 09-29 KRX `sto/stk_bydd_trd` 1회 읽기 전용 확인 · 설계자 STEP 1-7) → **확정 계약 10 `DONE`** · STEP 2 KRX 적재 성공 조건에서 대표 ETF 제외 · 대표 커버리지는 기록만(`krx_representatives` · `representatives_refresh_due`) · 장중 「신규 진입 검토」만 대표 27종 T-1 100% 관문 · 설정 읽기 실패 `intraday_config_unavailable` · STEP 3 KOSPI 08:15 · 08:20 · 08:24 재시도(마감 08:27 · ETF 와 독립) · STEP 4 KOSPI 제목 `KOSPI (보조)` · `출처: 한국거래소(KRX)` · KOSPI 카드 기준일 = KOSPI 기준일 · 정비 큐 KOSPI 항목 · STEP 5 `frontend/lib/kospiStatus.ts`(lib → app/components 금지 · eslint + vitest 검사) · STEP 6 창 빈 날 채우기 같은 날짜 하루 1회(`state/market/krx_backfill_ledger.json`) · 역검증 ④ 기술부채 `docs/backlog/BACKLOG.md` §16. **첫 거래일(2026-10-02 · OCI 읽기 전용)**: 08:10:31 KRX T-1(10-01) 1,171행 · read-back 일치 · 대표 27/27 · KOSPI 09-17 정정(6,724.34 → 6,715.41 · 증거 JSON) · 10-01 까지 8일 적재 · 배치 `success` · 08:30 `sent` 국내 T-1 · S&P500 fresh · 09:20 `already_loaded` · 09:30 추세 기준 T-1 usable · 오류 0(결과서 §8-5). **한국 거래일 계약 정정(설계자 2026-10-02 · 종료 커밋 `7d507951` · OCI 반영 2026-10-02 17:56 KST)**: 연도 파일은 보조자료 · 없으면 평일 기본 운영(주말 · 5월 1일 · 12월 31일 제외) · 저장 자료 없는 평일은 휴장으로 건너뜀(`unconfirmed_days` 창 닫기 삭제) · 다음 해 준비 상태는 미국만 · 「OCI 운영·적용」 한국 행 `거래일 기준` 늘 정상(결과서 §11). 새 테스트 백엔드 10파일 292건(`pytest --collect-only` 2026-10-02 · 커밋 `7feddf2c` 때 286) · 프론트 `KospiStatusSurfaces.test.tsx` 21 · `lib/dependencyDirection.test.ts` 2 · 백엔드 전체 2,703 passed(커밋 `7feddf2c` · 371.31s · 2026-10-01 15:4x · PC state · logs 226파일 hash 전후 동일 · 종료 커밋 회귀는 결과서 §11) · 프론트 vitest 24파일 287 · tsc · eslint rc 0 · production build rc 0(저장소 밖 사본 · 저장소 `frontend/.next` 불변). 계약 `docs/PROGRAM_TRUTH.md` 프로세스 **C-1**(가격 기준) · **C-4** · 인계 `docs/handoff/POC3-02D-OPS-03_OPERATIONAL_DATA_FRESHNESS_AND_SOURCE_RECOVERY_HANDOFF_2026-10-02.md` |
-| **02D-OPS-04** 남은 운영 정정 6건 | **`IMPLEMENTED_VERIFIED_DEPLOYED_OPERATION_CONFIRMED`**(2026-10-07 · 검증자 r2 `VERIFIED` 2026-10-06 · 설계자 RESULT `PASS_TO_DEPLOY` · 커밋 `a308353c` · OCI pull 2026-10-06 21:40 · 첫 거래일 10-07 확인 통과) | 보유 코스피 개별주 KRX 공식 종가(새 표 `krx_stock_daily_price_unadjusted` · 08:10 곁 작업) · 08:30 고지에서 FDR 실패 제외 · 「OCI 운영·적용」 `장중 대표 ETF` · `운영 기준 활성` 행 · 09:20 일시 오류 보강 1회 · 단절 가드 확인. 보유 브리핑은 선정 0건인 날 미발송(10-07 09:15 · 계약대로). 인계 `docs/handoff/POC3-02D-OPS-04_REMAINING_OPERATIONAL_CORRECTIONS_HANDOFF_2026-10-07.md` |
+| **02D-OPS-03** 운영 데이터 최신성 · 자료원 복구 | **`IMPLEMENTED_VERIFIED_DEPLOYED_OPERATION_CONFIRMED`**(2026-10-02 · 설계자 RESULT `PASS_WITH_MANDATORY_AMENDMENTS`(2026-09-30) → 필수 보완 STEP 1~6 구현 → 보완 화면 · 새 문구 사용자 확인 완료(2026-10-01) → 검증자 `VERIFIED` r3(2026-10-01 · 설계자 재판정 없음) → 커밋 `7feddf2c` · push → OCI pull + cron 3줄(2026-10-01 · read-back 16:32) → 첫 거래일 실측 통과(2026-10-02) · 10-06 재실측은 사용자 결정으로 생략 · 운영 상태 `OPERATING`) | 설계자 PLAN 판정 `PASS_WITH_MANDATORY_AMENDMENTS`(2026-09-29 · 확정 계약 15항 · KRX KOSPI 조회 사용자 승인). 시간 계약 명시 개정 — 배치 07:20 → 08:10 · KRX 목표일(T-1) 시도 08:10 · 08:15 · 08:20 · 08:24 · 마감 08:27 · 시장 브리핑 08:00 → 08:30 · 09:20 KRX 전용 보강 1회. 국내 최신성 = 기준일 == 기대 T-1(없으면 기초지수 구역 생략 + 설계자 문구 1줄 · 장중 「신규 진입 검토」만 생략 + `추세 기준 YYYY-MM-DD 종가` · 15:40 생략 집계) · 5일 · 20일 = 거래일 날짜 · 배치 단계 격리 · FDR timeout · 배치 실패 고지 하루 1회 · KOSPI KRX `idx/kospi_dd_trd`(C7 `lag ≤ 1` 폐기 · 09-17 정정 증거 · 차트 · AI 복사 텍스트 같은 판정) · S&P500 = 가장 최근 완료 NYSE 세션(NYSE 휴장 CSV) · 보유 20거래일 기준일 = 캘린더 · 「OCI 운영·적용」 거래일 행(종료 커밋에서 한국 `거래일 기준` · `미국 휴장일 달력` 두 행). **설계자 RESULT 필수 보완(2026-09-30)**: STEP 1 보유 PUSH 가격 기준 `ETF_KRX_UNADJUSTED__STOCK_FDR` — ETF 20거래일 전 · 구간 종가 = KRX 무조정 표(FDR fallback · 혼합 없음) · 개별주 20거래일 수익률 · 고점 대비는 늘 닫음(FDR 개별주 일봉 ≠ KRX 정규장 종가 +0.9 ~ +1.4% · 09-29 KRX `sto/stk_bydd_trd` 1회 읽기 전용 확인 · 설계자 STEP 1-7) → **확정 계약 10 `DONE`** · STEP 2 KRX 적재 성공 조건에서 대표 ETF 제외 · 대표 커버리지는 기록만(`krx_representatives` · `representatives_refresh_due`) · 장중 「신규 진입 검토」만 대표 27종 T-1 100% 관문 · 설정 읽기 실패 `intraday_config_unavailable` · STEP 3 KOSPI 08:15 · 08:20 · 08:24 재시도(마감 08:27 · ETF 와 독립) · STEP 4 KOSPI 제목 `KOSPI (보조)` · `출처: 한국거래소(KRX)` · KOSPI 카드 기준일 = KOSPI 기준일 · 정비 큐 KOSPI 항목 · STEP 5 `frontend/lib/kospiStatus.ts`(lib → app/components 금지 · eslint + vitest 검사) · STEP 6 창 빈 날 채우기 같은 날짜 하루 1회(`state/market/krx_backfill_ledger.json`) · 역검증 ④ 기술부채 `docs/backlog/BACKLOG.md` §16. **첫 거래일(2026-10-02 · OCI 읽기 전용)**: 08:10:31 KRX T-1(10-01) 1,171행 · read-back 일치 · 대표 27/27 · KOSPI 09-17 정정(6,724.34 → 6,715.41 · 증거 JSON) · 10-01 까지 8일 적재 · 배치 `success` · 08:30 `sent` 국내 T-1 · S&P500 fresh · 09:20 `already_loaded` · 09:30 추세 기준 T-1 usable · 오류 0(결과서 §8-5). **한국 거래일 계약 정정(설계자 2026-10-02 · 종료 커밋 `7d507951` · OCI 반영 2026-10-02 17:56 KST)**: 연도 파일은 보조자료 · 없으면 평일 기본 운영(주말 · 5월 1일 · 12월 31일 제외) · 저장 자료 없는 평일은 휴장으로 건너뜀(`unconfirmed_days` 창 닫기 삭제) · 다음 해 준비 상태는 미국만 · 「OCI 운영·적용」 한국 행 `거래일 기준` 늘 정상(결과서 §11). 새 테스트 백엔드 10파일 292건(`pytest --collect-only` 2026-10-02 · 커밋 `7feddf2c` 때 286) · 프론트 `KospiStatusSurfaces.test.tsx` 21 · `lib/dependencyDirection.test.ts` 2 · 백엔드 전체 2,703 passed(커밋 `7feddf2c` · 371.31s · 2026-10-01 15:4x · PC state · logs 226파일 hash 전후 동일 · 종료 커밋 회귀는 결과서 §11) · 프론트 vitest 24파일 287 · tsc · eslint rc 0 · production build rc 0(저장소 밖 사본 · 저장소 `frontend/.next` 불변). 계약 `docs/PROGRAM_TRUTH.md` 프로세스 **C-1**(가격 기준) · **C-4** · 인계 `docs/handoff/POC3/POC3-02D-OPS-03_OPERATIONAL_DATA_FRESHNESS_AND_SOURCE_RECOVERY_HANDOFF_2026-10-02.md` |
+| **02D-OPS-04** 남은 운영 정정 6건 | **`IMPLEMENTED_VERIFIED_DEPLOYED_OPERATION_CONFIRMED`**(2026-10-07 · 검증자 r2 `VERIFIED` 2026-10-06 · 설계자 RESULT `PASS_TO_DEPLOY` · 커밋 `a308353c` · OCI pull 2026-10-06 21:40 · 첫 거래일 10-07 확인 통과) | 보유 코스피 개별주 KRX 공식 종가(새 표 `krx_stock_daily_price_unadjusted` · 08:10 곁 작업) · 08:30 고지에서 FDR 실패 제외 · 「OCI 운영·적용」 `장중 대표 ETF` · `운영 기준 활성` 행 · 09:20 일시 오류 보강 1회 · 단절 가드 확인. 보유 브리핑은 선정 0건인 날 미발송(10-07 09:15 · 계약대로). 인계 `docs/handoff/POC3/POC3-02D-OPS-04_REMAINING_OPERATIONAL_CORRECTIONS_HANDOFF_2026-10-07.md` |
 | **UI** 「OCI 운영·적용」 한 화면 | **`CLOSED`** | 사용자 직접 지시(2026-09-27) · UI 전용. 「OCI 운영 상태」 요약 + 표(`62425b4c`) → 「승인·적용」과 합침 · MenuKey 13→12 · 적용 카드 2장 배치 정리 · 「오늘의 투자 점검」 링크 → 「OCI 운영·적용」(`b5b15509` · OPS-02 3-1 포함) · 사용자 실화면 확인 |
 
 ### OPS-02B-2 운영 계약 (요약 · 2026-09-13 검증자 VERIFIED)
@@ -826,9 +827,9 @@ DAY_DROP = runtime 현재가 / 직전 거래일 종가 - 1
 |---|---|
 | OCI HEAD | **수동 `git pull` 이다 — 자동 배포 장치가 없다**(2026-09-22 실측: user crontab 에 git 항목 0건 · 관련 systemd timer 0건 · `.git/FETCH_HEAD` 가 마지막 pull 시각). SHA 를 여기 적지 않는다 — 커밋할 때마다 낡는다. 확인: `ssh oci-krx "cd /home/ubuntu/krx_hyungsoo && git log --oneline -1"`. **푸시 후 사용자가 pull 하지 않으면 OCI 는 옛 코드로 돈다** |
 | 활성 PARAM | `param-20260907T152806-255383` — `enabled_push_kinds` 4종 |
-| cron | 러너 11건 + 배치 2건 = 13줄(PATH 제외) → **2026-10-22 POC6-05 `40 9 * * * … run_ml_evidence.py collect-daily`(매일 · 사용자 추가) = 14줄** · 급락 알림 7틱, spike 호출 0건. **`POC3-02D-OPS-03` 3줄 적용(2026-10-01 · 사용자 · 리드 read-back 16:32)**: 서버 시간대 `Asia/Seoul`(KST) · 배치 `10 8 * * 1-5`(옛 `20 7`) · 시장 브리핑 `30 8 * * 1-5`(옛 `0 8`) · KRX 전용 보강 `20 9 * * 1-5 … run_oci_market_data_batch.py --krx-only` 추가 · 나머지 10줄(보유 브리핑 09:15 · 12:30 · 15:40 · 급락 알림 7틱) 그대로. 옛 구성 = 2026-09-30 읽기 전용 12줄 · `docs/handoff/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md` OPS-03 절 |
+| cron | 러너 11건 + 배치 2건 = 13줄(PATH 제외) → **2026-10-22 POC6-05 `40 9 * * * … run_ml_evidence.py collect-daily`(매일 · 사용자 추가) = 14줄** · 급락 알림 7틱, spike 호출 0건. **`POC3-02D-OPS-03` 3줄 적용(2026-10-01 · 사용자 · 리드 read-back 16:32)**: 서버 시간대 `Asia/Seoul`(KST) · 배치 `10 8 * * 1-5`(옛 `20 7`) · 시장 브리핑 `30 8 * * 1-5`(옛 `0 8`) · KRX 전용 보강 `20 9 * * 1-5 … run_oci_market_data_batch.py --krx-only` 추가 · 나머지 10줄(보유 브리핑 09:15 · 12:30 · 15:40 · 급락 알림 7틱) 그대로. 옛 구성 = 2026-09-30 읽기 전용 12줄 · `docs/handoff/OPS/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md` OPS-03 절 |
 | 발송 플래그 | `PUSH_AUTOSEND_ENABLED=true` · `HOLDINGS_BRIEFING`·`HOLDINGS_RISK_ALERT`=`true` · `MARKET_BRIEFING`=`true` · `SPIKE`=`false` (2026-09-21 실측) |
-| 장중 정책 | **`enabled=true` · `policy_status=CONFIGURED` · 사업군 27개** — 2026-09-21 23:48 사용자 승인으로 활성화(OCI 읽기 전용 실측, `02C-OPS-03` 결과서 §14-1). 첫 운영일 2026-09-22 실측: 7/7틱 · 알림 4건 · 오류 0(`docs/handoff/POC3-02C_CLOSEOUT_2026-09-23.md`) |
+| 장중 정책 | **`enabled=true` · `policy_status=CONFIGURED` · 사업군 27개** — 2026-09-21 23:48 사용자 승인으로 활성화(OCI 읽기 전용 실측, `02C-OPS-03` 결과서 §14-1). 첫 운영일 2026-09-22 실측: 7/7틱 · 알림 4건 · 오류 0(`docs/handoff/POC3/POC3-02C_CLOSEOUT_2026-09-23.md`) |
 | 시장 DB | 2026-09-28 07:20 실측 — `etf_daily_price`(승인 대상 41종목) 최신 `2026-09-23` · `krx_etf_daily_price_unadjusted` 최신 `2026-09-22`(07:20 KRX 기준일 · 실행일보다 2거래일 늦음) · ticker 1,175 · KOSPI `2026-09-17`(upstream 정지). 2026-09-30 05:4x 읽기 전용(마지막 배치 09-29 07:20 · 그 실행일 기준) — `etf_daily_price` 최신 `2026-09-28`(T-1) · `krx_etf_daily_price_unadjusted` 최신 `2026-09-23`(T-2) · KOSPI `2026-09-17`. **2026-10-02 08:10 배치 뒤**(읽기 전용 · OPS-03 첫 거래일) — `etf_daily_price` price_data_as_of `2026-10-01`(T-1) · `krx_etf_daily_price_unadjusted` 최신 `2026-10-01`(T-1 · 1,171행) · KOSPI `2026-10-01`(KRX 공식 종가 · 09-17 정정) |
 
 ### OPS-02B-1 Gate 결론 (2026-09-10)
@@ -852,7 +853,7 @@ KOSPI_VIX_INTEGRITY  = PASS
 
 **`POC3-02D-OPS-01` — `IMPLEMENTED_VERIFIED_DEPLOYED_OPERATION_CONFIRMED`**(2026-09-28 연휴 뒤 첫 거래일 실측).
 결과서 `docs/ai_result/POC3/POC3-02D-OPS-01_PRE_PRIMARY_OPERATIONAL_CORRECTIONS_RESULT.md` ·
-인계 `docs/handoff/POC3-02D-OPS-01_PRE_PRIMARY_OPERATIONAL_CORRECTIONS_HANDOFF_2026-09-27.md`.
+인계 `docs/handoff/POC3/POC3-02D-OPS-01_PRE_PRIMARY_OPERATIONAL_CORRECTIONS_HANDOFF_2026-09-27.md`.
 
 - **배포**: 기능 `4dd7e526` · 인계 `f3a56508`(OCI pull 2026-09-27 17:13) · 거래일 캘린더 09-28 정정
   `3e13fbec`(검증자 제한 재검증 `VERIFIED_WITH_NOTES` · OCI pull 17:49). PC 백엔드 재기동 17:18:31 →
@@ -881,7 +882,7 @@ KOSPI_VIX_INTEGRITY  = PASS
    - 3-2 · 3-3 · 3-4: 설계자 Q1~Q6 확정(2026-09-28) 뒤 구현 · 개발자 전체 검증(STEP 5) 완료 · 검증자 `VERIFIED`(r2 · 2026-09-29). 3-4 는 PC
      화면이라 PC 에는 이미 떠 있다(백엔드 `--reload` · 프론트 dev) — 사용자 실화면 확인 완료(2026-09-28).
    - 배포: 커밋 `eff609a0` · push · OCI pull(2026-09-29 밤 · 사용자) · 배포 확인 5항목 `CONFIRMED`. 인계
-     `docs/handoff/POC3-02D-OPS-02_RUNTIME_STATE_AND_OPERATIONAL_UI_CORRECTIONS_HANDOFF_2026-09-29.md`.
+     `docs/handoff/POC3/POC3-02D-OPS-02_RUNTIME_STATE_AND_OPERATIONAL_UI_CORRECTIONS_HANDOFF_2026-09-29.md`.
    - 첫 자연 발송 관측 `RUNTIME_FIELD_OBSERVED = OBSERVED`(2026-09-30 09:30 틱 · OCI 읽기 전용): 장중 통합 본문 `sent` · 부분 전송 없음 ·
      `sent_today` 1 · 관측 4종 모두 `last_delivered_state` = 전달 상태 · `last_sent_at` 09:30 — 설계자 STEP 3 판정 기준 1~4 충족.
      (그날 「신규 진입 검토」 추세는 옛 코드라 KRX T-2 였다 — `POC3-02D-OPS-03` 배포(2026-10-01) 전.)
@@ -894,7 +895,7 @@ KOSPI_VIX_INTEGRITY  = PASS
    27/27 · 오류 · 중복 0). **사용자 결정(2026-10-02)**: 10-06 재실측 없이 이 실측으로 종료(1인 운영). 운영 상태 `OPERATING_DEGRADED`
    해제. 계약 `docs/PROGRAM_TRUTH.md` 프로세스 C-1 · C-4 · 결과서
    `docs/ai_result/POC3/POC3-02D-OPS-03_OPERATIONAL_DATA_FRESHNESS_AND_SOURCE_RECOVERY_RESULT.md` · 인계
-   `docs/handoff/POC3-02D-OPS-03_OPERATIONAL_DATA_FRESHNESS_AND_SOURCE_RECOVERY_HANDOFF_2026-10-02.md`.
+   `docs/handoff/POC3/POC3-02D-OPS-03_OPERATIONAL_DATA_FRESHNESS_AND_SOURCE_RECOVERY_HANDOFF_2026-10-02.md`.
    - **종료 커밋(설계자 2026-10-02 한국 거래일 계약 정정)**: 「OCI 운영·적용」 한국 `거래일 기준` 행(늘 정상) · 미국 `미국 휴장일
      달력` 행 분리 · 연도 파일 없는 해 5월 1일 · 12월 31일 휴장 · 저장 자료 없는 평일 건너뛰기 · 달력 준비 경고는 미국만. 화면 행은
      PC 백엔드에 바로 적용 · 나머지는 2026-10-02 17:56 KST OCI pull 로 반영(연도 파일 없는 해에만 차이 · cron 변경 없음).
@@ -920,7 +921,7 @@ KOSPI 카드 기준일 = KOSPI 기준일(STEP 4). OCI 전 행 대조(2026-09-30 
 3,052행 · 공식 기준값과 공통 2,716일) 불일치는 09-17 하루뿐 — 2026-10-02 08:10 첫 배치가 증거 JSON 을 남기고 6,715.41 로 정정했다(실측 · 09-18 ~ 10-01 8일 새로 채움). KOSPI 는 PC 화면 전용이라
 Telegram 고지는 없다(`docs/PROGRAM_TRUTH.md` §8 · §13-4).
 
-**`02C` 는 종료됐다**(`docs/handoff/POC3-02C_CLOSEOUT_2026-09-23.md`).
+**`02C` 는 종료됐다**(`docs/handoff/POC3/POC3-02C_CLOSEOUT_2026-09-23.md`).
 02C 기준으로 남은 것은 아래 두 **비차단 운영 항목**이다. **단**, 02C 장중 엔진의 사업군 ·
 급등 상태 저장 결함 2건(`02D-OPS-01` 결과서 §8)은 비차단이 아니다 — 위 '다음' 1번
 `POC3-02D-OPS-02` 에서 PRIMARY 전에 고쳤다(설계자 결정 2026-09-27 · 2026-09-28 구현 · OCI 반영 2026-09-29).
@@ -990,12 +991,12 @@ RESULT STEP 1(2026-09-30)로 보유 PUSH 가격 기준을 정했다 — ETF 과�
 - **02C-OPS-02**: `docs/ai_design|ai_plan|ai_result/POC3/POC3-02C-OPS-02_INTRADAY_SURGE_DROP_ALERT_*`
   · 상태 저장 계약은 설계서 **§15-2** 가 정본(D2 3상태 · D3 기록 Gate)
   · 메시지 목업·15:40 요약은 결과서 **§7**
-  · **종료·인계** `docs/handoff/POC3-02C-OPS-02_CLOSEOUT_2026-09-21.md`
+  · **종료·인계** `docs/handoff/POC3/POC3-02C-OPS-02_CLOSEOUT_2026-09-21.md`
 - **02C-OPS-03**: `docs/ai_design|ai_result/POC3/POC3-02C-OPS-03_INTRADAY_ALERT_ACTIVATION_*`
-- **02C 통합 종료**: `docs/handoff/POC3-02C_CLOSEOUT_2026-09-23.md` — 첫 운영일 실측·계약 3개·운영 방법
-- **02D-OPS-01**: `docs/ai_design|ai_plan|ai_result/POC3/POC3-02D-OPS-01_PRE_PRIMARY_OPERATIONAL_CORRECTIONS_*` · **인계** `docs/handoff/POC3-02D-OPS-01_PRE_PRIMARY_OPERATIONAL_CORRECTIONS_HANDOFF_2026-09-27.md`(STEP 7 절차 · 09-28 확인표 · OPS-02 범위) · 계약 `docs/PROGRAM_TRUTH.md` 프로세스 **C-3**(08:00 공식 CSV) · 「장중 급등락」 절 2026-09-27 정정 · §8 KOSPI 적재 정지
-- **02D-OPS-03**: `docs/ai_design|ai_plan/POC3/POC3-02D-OPS-03_OPERATIONAL_DATA_FRESHNESS_AND_SOURCE_RECOVERY_*_V1.md`(설계자 원문 · PLAN 판정 원문과 설계자 RESULT 판정 원문(2026-09-30 · STEP 1~8)은 설계서 끝 · PLAN 맨 위 '확정 계약' 15항) · 결과서 `docs/ai_result/POC3/POC3-02D-OPS-03_OPERATIONAL_DATA_FRESHNESS_AND_SOURCE_RECOVERY_RESULT.md` · 계약 `docs/PROGRAM_TRUTH.md` 프로세스 **C-1**(보유 가격 기준) · **C-4** · 기술부채 `docs/backlog/BACKLOG.md` §16(역검증 ④) · 목업 `docs/ai_result/POC3/POC3-OPS-02B-2_MARKET_BRIEFING_MOCKUPS.md` 「POC3-02D-OPS-03 재생성본」 · cron `docs/handoff/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md` OPS-03 절
-- **02D-OPS-04**: `docs/ai_design|ai_plan|ai_result/POC3/POC3-02D-OPS-04_REMAINING_OPERATIONAL_CORRECTIONS_*`(설계자 판정 원문 · 사용자 결정은 설계서 끝 · 첫 거래일 실측은 결과서 §10-5) · **인계** `docs/handoff/POC3-02D-OPS-04_REMAINING_OPERATIONAL_CORRECTIONS_HANDOFF_2026-10-07.md` · 계약 `docs/PROGRAM_TRUTH.md` 프로세스 **C-1**(보유 가격 기준) · **C-4**(08:10 곁 작업 · 09:20 보강)
+- **02C 통합 종료**: `docs/handoff/POC3/POC3-02C_CLOSEOUT_2026-09-23.md` — 첫 운영일 실측·계약 3개·운영 방법
+- **02D-OPS-01**: `docs/ai_design|ai_plan|ai_result/POC3/POC3-02D-OPS-01_PRE_PRIMARY_OPERATIONAL_CORRECTIONS_*` · **인계** `docs/handoff/POC3/POC3-02D-OPS-01_PRE_PRIMARY_OPERATIONAL_CORRECTIONS_HANDOFF_2026-09-27.md`(STEP 7 절차 · 09-28 확인표 · OPS-02 범위) · 계약 `docs/PROGRAM_TRUTH.md` 프로세스 **C-3**(08:00 공식 CSV) · 「장중 급등락」 절 2026-09-27 정정 · §8 KOSPI 적재 정지
+- **02D-OPS-03**: `docs/ai_design|ai_plan/POC3/POC3-02D-OPS-03_OPERATIONAL_DATA_FRESHNESS_AND_SOURCE_RECOVERY_*_V1.md`(설계자 원문 · PLAN 판정 원문과 설계자 RESULT 판정 원문(2026-09-30 · STEP 1~8)은 설계서 끝 · PLAN 맨 위 '확정 계약' 15항) · 결과서 `docs/ai_result/POC3/POC3-02D-OPS-03_OPERATIONAL_DATA_FRESHNESS_AND_SOURCE_RECOVERY_RESULT.md` · 계약 `docs/PROGRAM_TRUTH.md` 프로세스 **C-1**(보유 가격 기준) · **C-4** · 기술부채 `docs/backlog/BACKLOG.md` §16(역검증 ④) · 목업 `docs/ai_result/POC3/POC3-OPS-02B-2_MARKET_BRIEFING_MOCKUPS.md` 「POC3-02D-OPS-03 재생성본」 · cron `docs/handoff/OPS/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md` OPS-03 절
+- **02D-OPS-04**: `docs/ai_design|ai_plan|ai_result/POC3/POC3-02D-OPS-04_REMAINING_OPERATIONAL_CORRECTIONS_*`(설계자 판정 원문 · 사용자 결정은 설계서 끝 · 첫 거래일 실측은 결과서 §10-5) · **인계** `docs/handoff/POC3/POC3-02D-OPS-04_REMAINING_OPERATIONAL_CORRECTIONS_HANDOFF_2026-10-07.md` · 계약 `docs/PROGRAM_TRUTH.md` 프로세스 **C-1**(보유 가격 기준) · **C-4**(08:10 곁 작업 · 09:20 보강)
 - 계약: `docs/PROGRAM_TRUTH.md` 프로세스 **C-1**(본문 계약) · **C-2**(플래그 상태)
   · 프로세스 C 「배포로 지금 바뀐 동작 2건」 · §13-7(활성화 경로 부재) · 부록 A
 
@@ -1773,7 +1774,7 @@ K6 방어 정책(지시문 §4)"*. **조회가 아니라 저장 시점** 제한.
 
 **기존 실패 2건 — 2026-08-16 해소**: `tests/test_factor_signals.py` 2건이 POC3-08 종목코드 6자리 검증 때문에 `AAA` 티커 PUT 이 422 로 막혀 실패했다. 개발자가 "설계 판단 필요"로 분류해 미수정으로 두었으나 **사용자가 오분류를 지적** — 검증 약화가 아니라 fixture 문제이고, "2 failed" 상시화는 진짜 실패를 가린다. **검증은 그대로 두고 fixture 티커만 실제 형식으로 교체**(`069500`/`360750`/`379810`, fallback 테스트는 `999999`). 백엔드 전체 **1139 passed · 실패 0건**.
 
-상세: `docs/handoff/MACBOOK_DEV_ENV_AND_DUAL_MACHINE_CAUTIONS.md`
+상세: `docs/handoff/OPS/MACBOOK_DEV_ENV_AND_DUAL_MACHINE_CAUTIONS.md`
 
 ---
 
@@ -2001,7 +2002,7 @@ K6 방어 정책(지시문 §4)"*. **조회가 아니라 저장 시점** 제한.
 - **표시 규칙**: VIX/수익률 소수점 둘째 · 지수/가격 천 단위 · 금액 요약 단위(억/만) · 기준일 KST · 결측 정직성(전체결측=확인 불가, 부분=N/M건 기준). 재조회 실패 시 이전 성공값 stale 명시.
 - **최소 UI 테스트 (Vitest+RTL+jsdom)**: `npm run test` 스크립트 추가. queryCache 8 + DashboardView 13 + dashboardInvalidation 7 = **28 passed**.
 
-**변경 파일 (수정 8 + 신규 7 = 15)**: 수정 코드 6 — DashboardView.tsx · globals.css · package.json · package-lock.json · HoldingsClient.tsx · MarketDiscoveryView.tsx. 수정 문서 2 — docs/STATE_LATEST.md · docs/handoff/STATE_LATEST.md. 신규 7 — queryCache.ts · dashboardKeys.ts · queryCache.test.ts · DashboardView.test.tsx · dashboardInvalidation.test.ts · vitest.config.ts · vitest.setup.ts.
+**변경 파일 (수정 8 + 신규 7 = 15)**: 수정 코드 6 — DashboardView.tsx · globals.css · package.json · package-lock.json · HoldingsClient.tsx · MarketDiscoveryView.tsx. 수정 문서 2 — docs/STATE_LATEST.md · docs/handoff/POC2/STATE_LATEST.md. 신규 7 — queryCache.ts · dashboardKeys.ts · queryCache.test.ts · DashboardView.test.tsx · dashboardInvalidation.test.ts · vitest.config.ts · vitest.setup.ts.
 
 **무효화 연결 (REJECTED r1 정정 · A-1(1))**: Holdings 저장 성공(`HoldingsClient.tsx`)→보유·Evidence 읽기 무효화, Market 갱신 완료(`MarketDiscoveryView.tsx`)→시장 읽기 무효화. **변경 실패 분기에서는 무효화 안 함**. 공유 키·무효화 그룹은 `dashboardKeys.ts`.
 
@@ -2035,7 +2036,7 @@ K6 방어 정책(지시문 §4)"*. **조회가 아니라 저장 시점** 제한.
 - 기준일 분리 (시장 asof / holdings_asof / market_asof / NAV asof / VIX as_of_date). VIX 는 시장 기준일보다 이전이면 stale 경고 (날짜 하드코딩 없이 실제 응답 비교).
 - unavailable/warning 을 0/정상으로 치환하지 않음. 예외 우선 · 건수 요약.
 
-**변경 파일 (총 4개 = 코드 2 + 문서 2)**: 코드 — `frontend/app/components/DashboardView.tsx` · `frontend/app/globals.css` (표·예외목록 클래스 2개 추가). 문서 — `docs/STATE_LATEST.md` · `docs/handoff/STATE_LATEST.md`.
+**변경 파일 (총 4개 = 코드 2 + 문서 2)**: 코드 — `frontend/app/components/DashboardView.tsx` · `frontend/app/globals.css` (표·예외목록 클래스 2개 추가). 문서 — `docs/STATE_LATEST.md` · `docs/handoff/POC2/STATE_LATEST.md`.
 
 **검증**: eslint 전체 통과 · `next build` 성공 (타입 체크 포함). frontend test 스크립트 부재 → lint+build 만 수행 (지시 §11). backend·API·다른 View·산식 무변경.
 
@@ -2177,7 +2178,7 @@ next_step_gate = LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1
 - `docs/MASTER_PLAN.md` (canonical 순서 이번 STEP 삽입 · Telegram 운영 경계 섹션)
 - `docs/KILL_SWITCHES.md` (KS-11 변경 근거 이력 추가 · KS 자체 미변경)
 - `docs/STATE_LATEST.md` (본 문서)
-- `docs/handoff/STATE_LATEST.md` (pointer)
+- `docs/handoff/POC2/STATE_LATEST.md` (pointer)
 - `docs/handoff/POC2/POC2_B_NEXT_ACTIONS.md` (문서 우선순위 · §0)
 - `docs/backlog/BACKLOG.md` (현재 활성 · 다음 STEP 이관 · 계속 보류 재분류)
 
@@ -2241,7 +2242,7 @@ next_step_gate = LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1
 - `docs/PROJECT_ORIGIN_INTENT.md` (모바일 UI 트리거 기반 → DEFERRED_BY_USER 정정)
 - `docs/ASSUMPTIONS.md` (Mobile 항목 TELEGRAM_PUSH_ONLY 정정)
 - `docs/STATE_LATEST.md` (본 문서)
-- `docs/handoff/STATE_LATEST.md` (pointer)
+- `docs/handoff/POC2/STATE_LATEST.md` (pointer)
 - `docs/handoff/POC2/POC2_B_NEXT_ACTIONS.md` (§0 + canonical 순서 변경)
 - `docs/backlog/BACKLOG.md` (모바일 항목 5건 재검토 트리거 정정)
 
@@ -2276,8 +2277,8 @@ next_step_gate = LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1
 - `docs/PROJECT_ORIGIN_INTENT.md` (모바일 후순위 → 트리거 기반)
 - `docs/ASSUMPTIONS.md` (§5.1 제품 평면별 역할 · 최소 사용자 개입 원칙)
 - `docs/MASTER_PLAN.md` (모바일 판단 운영 순서 앵커 섹션 신설)
-- `docs/handoff/PC_OCI_ARCHITECTURE_DIRECTION.md` (OCI 경계 정정)
-- `docs/STATE_LATEST.md` · `docs/handoff/STATE_LATEST.md` · `docs/handoff/POC2/POC2_B_NEXT_ACTIONS.md` (상태/pointer/§0 반영)
+- `docs/handoff/OPS/PC_OCI_ARCHITECTURE_DIRECTION.md` (OCI 경계 정정)
+- `docs/STATE_LATEST.md` · `docs/handoff/POC2/STATE_LATEST.md` · `docs/handoff/POC2/POC2_B_NEXT_ACTIONS.md` (상태/pointer/§0 반영)
 - `docs/backlog/BACKLOG.md` (5개 항목 상태/트리거 정정)
 - `docs/KILL_SWITCHES.md` (KS-11 변경 근거 기록, KS 자체 미변경)
 
@@ -2992,7 +2993,7 @@ next_step_gate = LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1
 
 - **Canonical state file**: `docs/STATE_LATEST.md` (본 파일)
 - **Step detail files**: `docs/handoff/<step_file>.md` (Step 종료 후에만 생성)
-- **Past accumulation archive**: [docs/handoff/STATE_LATEST_ARCHIVE.md](handoff/STATE_LATEST_ARCHIVE.md)
+- **Past accumulation archive**: [docs/handoff/POC2/STATE_LATEST_ARCHIVE.md](handoff/POC2/STATE_LATEST_ARCHIVE.md)
   — 2026-05-14 ~ 2026-06-07 사이 시간순 누적 본문. 본 정리 이후로는 더 이상 append 하지 않는다.
 - 본 파일에는 현재 상태 / history 요약 / Open decisions / Index 만 둔다. **Step 상세는 append 하지 않는다.**
 
@@ -3175,7 +3176,7 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
   - **신규 backend 모듈 3종**: `app/three_push_runtime_param.py` (246 라인 — PARAM contract), `app/three_push_runner_common.py` (245 라인 — .env 로더 / Telegram / forbidden wording / secret 가드 / registry helper 공통 추출), `app/three_push_runtime_message_builder.py` (158 라인 — OCI runtime 전용 단순 빌더, 외부 API 호출 없음, 모든 source 기본 unavailable, runtime timestamp + param_id + data availability + 매매 지시 없음 면책 포함).
   - **신규 entrypoint 1종**: `scripts/run_three_push_runtime_oci.py` (286 라인) — PARAM runtime 정식 runner. PC package message_text 의존 없음. duplicate key = `push_kind::param_id::KST_date`. status/history 별도 경로 (`state/three_push/oci_runtime_status_latest.json` / `oci_runtime_history.jsonl` / `oci_runtime_sent_registry.json`).
   - **신규 PARAM 스크립트 3종**: `scripts/create_three_push_runtime_param.py` (manual_seed PARAM 생성 + --approve 시 latest 승격, history/<param_id>.json 보존) / `scripts/sync_three_push_runtime_param.py` (PC → OCI scp + atomic rename + remote verify) / `scripts/verify_three_push_param_oci.py` (OCI 측 stand-alone 검증, stdlib only).
-  - **수정 문서 2종**: `docs/handoff/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md` — 정식 crontab 을 runtime entrypoint 로 변경 (`run_three_push_runtime_oci.py` 호출). `scripts/run_three_push_oci.py` 호출은 manual recovery template 으로 분리. `docs/handoff/PC_THREE_PUSH_SYNC_TASKSCHEDULER.md` — 정식 운영에서 격하 명시 + 기존 등록 schtasks 비활성화/제거 안내.
+  - **수정 문서 2종**: `docs/handoff/OPS/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md` — 정식 crontab 을 runtime entrypoint 로 변경 (`run_three_push_runtime_oci.py` 호출). `scripts/run_three_push_oci.py` 호출은 manual recovery template 으로 분리. `docs/handoff/OPS/PC_THREE_PUSH_SYNC_TASKSCHEDULER.md` — 정식 운영에서 격하 명시 + 기존 등록 schtasks 비활성화/제거 안내.
   - **OCI 실측 (2026-06-18)**: PC PARAM approve + sync → OCI verify status=ok. OCI dry-run 3종 dry_run_success (msg_len market 581 / holdings 542 / spike 489). PUSH-1 send → status=sent, telegram_sent=true, duplicate_key=`market_briefing::param-20260618T142511-622384::2026-06-18`. 즉시 재실행 → status=skipped, reason=duplicate_runtime. latest PARAM 부재 시 → status=failed, reason=missing_latest_param (fail-closed). PUSH_AUTOSEND_HOLDINGS_BRIEFING_ENABLED=false 시 → status=skipped, reason=push_kind_disabled.
   - **기존 산출물 보존 (격하)**: `scripts/run_three_push_oci.py` / `scripts/sync_three_push_packages.py` / `scripts/run_three_push_sync_task.ps1` / PC Task Scheduler 등록 절차는 삭제 없이 보존하되 manual recovery / smoke test 용도로 격하. 정식 자동 발송 경로는 PARAM runtime 만 사용.
   - **회귀**: 기존 package runner / sync script / message builder / 산식 코드 변경 0건. 신규 모듈만 추가. backend pytest 533 passed + 1 failed (직전 Step부터 동일한 기존 회귀 `test_generate_spike_alert_via_unified_endpoint`, 본 Step 무관 — BACKLOG CONSOLIDATED_BACKLOG_DEBT_CLEANUP 에 기록). black / flake8 PASS. frontend lint / build PASS.
@@ -3183,8 +3184,8 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
   - **검증자 판정**: 1차 commit `60912493` REJECTED → FIX r1 commit `18394f09` (중첩 forbidden key 재귀 검사 + 신규 테스트 39 케이스 + 문서 정합성 정정) → **VERIFIED_WITH_NOTES** 통과 (2026-06-19). NOTES는 사용자 승인 없는 push 절차 위반 1건 — 코드/기능/구조 위반 없음. 본 위반은 사후 사용자 보고 + 메모리 영구 규칙 (`feedback_git_lifecycle.md`) 재확인.
 - **이전 STEP**: **OCI 3-PUSH 운영 등록** (2026-06-18, PARTIAL — 개발자 산출물 + 수동 등가 실행 완료, 사용자 OS 등록 + scheduled run 도달 대기).
   - PC → OCI 3-PUSH package sync와 OCI runner Telegram autosend를 KST 07:50/12:20/15:20 sync → 08:00/12:30/15:30 send 운영 스케줄로 연결할 수 있도록 PC PowerShell wrapper + Task Scheduler 등록 절차 + OCI crontab template 최신화. 수동 등가 실행으로 Telegram 1회 발송 + duplicate guard 모두 실측 통과.
-  - **신규 산출물 3종**: `scripts/run_three_push_sync_task.ps1` (PowerShell wrapper, `.venv\Scripts\python.exe scripts/sync_three_push_packages.py` 호출, `logs/three_push_sync_task.log` stdout append, PS 5.1 stderr-as-error 회피를 위해 `2>&1` 미사용), `docs/handoff/PC_THREE_PUSH_SYNC_TASKSCHEDULER.md` (schtasks CLI 명령 3종 + GUI 절차 + 트러블슈팅), `docs/handoff/POC2/POC2_OCI_THREE_PUSH_OPERATION_REGISTRATION_CONCLUSION.md` (conclusion).
-  - **수정 문서 1종**: `docs/handoff/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md` — venv 경로 `venv/bin/python` 명시 / .env 자동 로드 안내 / PC sync 선행 시간표 / 수동 등가 실행 절차 보강.
+  - **신규 산출물 3종**: `scripts/run_three_push_sync_task.ps1` (PowerShell wrapper, `.venv\Scripts\python.exe scripts/sync_three_push_packages.py` 호출, `logs/three_push_sync_task.log` stdout append, PS 5.1 stderr-as-error 회피를 위해 `2>&1` 미사용), `docs/handoff/OPS/PC_THREE_PUSH_SYNC_TASKSCHEDULER.md` (schtasks CLI 명령 3종 + GUI 절차 + 트러블슈팅), `docs/handoff/POC2/POC2_OCI_THREE_PUSH_OPERATION_REGISTRATION_CONCLUSION.md` (conclusion).
+  - **수정 문서 1종**: `docs/handoff/OPS/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md` — venv 경로 `venv/bin/python` 명시 / .env 자동 로드 안내 / PC sync 선행 시간표 / 수동 등가 실행 절차 보강.
   - **OCI 실측 (2026-06-18)**: PC sync `status=success` (3/3 upload + manifest + verify success) / OCI dry-run 3종 `dry_run_success` (msg_len: market 997, holdings 1606, spike 878) / `--push-kind market_briefing --mode send` → `status=sent, telegram_sent=true` / 동일 package_id 재실행 → `status=skipped, reason=duplicate_package, telegram_attempted=false` / token/chat_id 미노출.
   - **stale 사례 (참고)**: 첫 dry-run에서 `asof_date=2026-06-17` 기반 36.7h stale 감지 → PC re-sync로 `asof_date=2026-06-18` 갱신 후 정상화. 운영 시 PC sync가 발송 직전 매번 실행되면 fresh 보장.
   - **사용자 수행 대기 (DONE 격상 조건)**: (1) PC Task Scheduler 3 task 등록 (schtasks CLI 또는 GUI), (2) OCI crontab 3 entry 등록 (`crontab -e`), (3) 첫 scheduled run 자동 trigger 결과 확인.
@@ -3193,7 +3194,7 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 - **이전 STEP**: **OCI 3-PUSH Crontab Runner & Telegram Autosend** (2026-06-16 FIX r4 최종).
   - OCI 에서 crontab 으로 PUSH-1 / PUSH-2 / PUSH-3 를 자동 실행하고 조건 충족 시 Telegram 발송하는 runner 구현.
   - **신규 스크립트 1종**: `scripts/run_three_push_oci.py` — `--push-kind {market_briefing|holdings_briefing|spike_or_falling_alert} --mode {dry-run|send}`. guard 7종 (global enable flag / push_kind별 enable flag / generation_status=failed 차단 / 최신성 36h guard / 중복 발송 방지 / 금지 문구 검사 / token/chat_id 비노출). stdlib 전용 (추가 패키지 0건).
-  - **신규 문서 1종**: `docs/handoff/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md` — push_kind 3종 crontab entry + 환경변수 설명 + dry-run 먼저 확인 절차.
+  - **신규 문서 1종**: `docs/handoff/OPS/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md` — push_kind 3종 crontab entry + 환경변수 설명 + dry-run 먼저 확인 절차.
   - **수정 모듈 1종**: `app/three_push_package_exporter.py` — `build_holdings_briefing_package` 에 message_text 동기화 추가 (직전 Step 누락 bug fix — holdings package message_text 가 빈 문자열로 저장되던 문제).
   - **신규 상태 파일 경로** (gitignored): `state/three_push/oci_runner_status_latest.json` / `state/three_push/oci_runner_history.jsonl` / `state/three_push/oci_sent_registry.json`.
   - **FIX r4 (2026-06-16)**: `_load_dotenv_file()` stdlib .env 파서 추가 (OCI crontab 환경에서 .env 자동 로드) / HTTPError 404→`malformed_telegram_api_url`, 401→`invalid_or_placeholder_bot_token`, 기타→`other_non_secret_error` 분류 / .env 로드 실패 시 silent pass → stderr 경고 출력.
@@ -3359,14 +3360,14 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 | 2026-06-08 Market Discovery UI / Perf 후속 정리 | DONE | CandidateTable 컬럼 정리 + 6m/12m/1y/3y 추가 + TopControlsRow 통합 + MarketContextCard 표기 정정 + 응답 2.4s→0.85s. | commits `6c3728ec`…`8fad2bb4` / [feedback note](handoff/POC2/POC2_MARKET_DISCOVERY_UI_PERF_USER_FEEDBACK_NOTE.md) |
 | 2026-06-08 NAV / Discount Display FIX | DONE | GET /market/nav-discount/latest 신규 + Data Status 전체 ETF NAV 표 + MD/ETF Exposure/Holdings 표시 보강. 표시 매트릭스 충족. | [conclusion](handoff/POC2/POC2_NAV_DISCOUNT_DISPLAY_FIX_CONCLUSION.md) |
 | 2026-06-08 Naver ETF Universe NAV / 괴리율 연동 | DONE | universe 1회 호출(`etfItemList.nhn`) → `etf_nav_daily` upsert + 3개 화면 NAV 표시. TTL 30s + stale 재사용. 신규 API 0건. | [conclusion](handoff/POC2/POC2_NAVER_ETF_UNIVERSE_NAV_INTEGRATION_CONCLUSION.md) |
-| 2026-06-07 ETF NAV / Discount Source Diagnosis 1차 (FIX) | DONE | NAV/괴리율 source 5건 실측. adopt 0 / hold_unstable 2 / unusable 3. flat_records + timeout 명시 + asof 키 확장 FIX. | commit `b5a80a3f` / [archive](handoff/STATE_LATEST_ARCHIVE.md) |
-| 2026-06-06 ETF Exposure Data Unfolding 1차 | DONE | 구성종목 펼쳐보기 + 반복 핵심 종목 + 중복률 + Holdings Evidence State Bridge + ML readiness 9축. ML 방향성 2축 문서화. | commit `bce8f7fd` / [archive#0.1](handoff/STATE_LATEST_ARCHIVE.md) |
+| 2026-06-07 ETF NAV / Discount Source Diagnosis 1차 (FIX) | DONE | NAV/괴리율 source 5건 실측. adopt 0 / hold_unstable 2 / unusable 3. flat_records + timeout 명시 + asof 키 확장 FIX. | commit `b5a80a3f` / [archive](handoff/POC2/STATE_LATEST_ARCHIVE.md) |
+| 2026-06-06 ETF Exposure Data Unfolding 1차 | DONE | 구성종목 펼쳐보기 + 반복 핵심 종목 + 중복률 + Holdings Evidence State Bridge + ML readiness 9축. ML 방향성 2축 문서화. | commit `bce8f7fd` / [archive#0.1](handoff/POC2/STATE_LATEST_ARCHIVE.md) |
 
 > 직전 5개를 제외한 이전 STEP (2026-06-01 이전 — Market Discovery Closeout / Constituents Naver Integration /
 > Constituents Diagnosis / Constituents & Overlap / Market Regime / AI Sessions / Decision Evidence /
 > AI 투자세션 복사용 문구 / Grid 사용성 FIX / 통합 후보 테이블 / 후보 정제 / SQLite Direct Refresh /
 > TOP N 최소 표시 / PC UI Shell / FDR+SQLite Foundation / B 방향 전환 등) 은
-> [docs/handoff/STATE_LATEST_ARCHIVE.md](handoff/STATE_LATEST_ARCHIVE.md) 에 전문 보존되어 있다.
+> [docs/handoff/POC2/STATE_LATEST_ARCHIVE.md](handoff/POC2/STATE_LATEST_ARCHIVE.md) 에 전문 보존되어 있다.
 
 ## 4. Current evidence flow
 
@@ -3429,15 +3430,15 @@ docs/STATE_LATEST.md 에는 요약만 남기고, 상세는 docs/handoff/<step_fi
 
 - [docs/handoff/POC2/POC2_B_NEXT_ACTIONS.md](handoff/POC2/POC2_B_NEXT_ACTIONS.md) — 빈자리 후속 원칙 + 다음 분기 후보
 - [docs/handoff/POC2/POC2_FEATURE_INVENTORY.md](handoff/POC2/POC2_FEATURE_INVENTORY.md) — 기능 인벤토리
-- [docs/handoff/PC_OCI_ARCHITECTURE_DIRECTION.md](handoff/PC_OCI_ARCHITECTURE_DIRECTION.md) — PC·OCI 운영 평면 분리 결정 원본 기록 (2026-06-20). PROJECT_ORIGIN_INTENT §7 / ASSUMPTIONS §3 A-6 / MASTER_PLAN 6단계 와 동기화.
+- [docs/handoff/OPS/PC_OCI_ARCHITECTURE_DIRECTION.md](handoff/OPS/PC_OCI_ARCHITECTURE_DIRECTION.md) — PC·OCI 운영 평면 분리 결정 원본 기록 (2026-06-20). PROJECT_ORIGIN_INTENT §7 / ASSUMPTIONS §3 A-6 / MASTER_PLAN 6단계 와 동기화.
 
 Active Reference:
 3-PUSH Runtime Package Contract
-- path: docs/handoff/THREE_PUSH_RUNTIME_PACKAGE_CONTRACT.md
+- path: docs/handoff/OPS/THREE_PUSH_RUNTIME_PACKAGE_CONTRACT.md
 - purpose: PC/OCI가 공유하는 three_push_runtime_package.v1 schema 계약
 - usage: PUSH 후속 Step에서는 evidence package / runtime snapshot / message_text 설계 시 이 문서를 기준으로 한다.
-- [docs/handoff/ETF_NAV_DISCOUNT_SOURCE_DIAGNOSIS.md](handoff/ETF_NAV_DISCOUNT_SOURCE_DIAGNOSIS.md) — NAV 진단 1차 결과
-- [docs/handoff/ETF_CONSTITUENTS_SOURCE_DIAGNOSIS.md](handoff/ETF_CONSTITUENTS_SOURCE_DIAGNOSIS.md) — 구성종목 source 진단
+- [docs/handoff/POC2/ETF_NAV_DISCOUNT_SOURCE_DIAGNOSIS.md](handoff/POC2/ETF_NAV_DISCOUNT_SOURCE_DIAGNOSIS.md) — NAV 진단 1차 결과
+- [docs/handoff/POC2/ETF_CONSTITUENTS_SOURCE_DIAGNOSIS.md](handoff/POC2/ETF_CONSTITUENTS_SOURCE_DIAGNOSIS.md) — 구성종목 source 진단
 - [docs/backlog/BACKLOG.md](backlog/BACKLOG.md) — Backlog (2026-06-29 전수 감사 후 Measure-Object -Line 기준 451 라인 / 16 카테고리 4필드 통일 포맷 91 항목)
 - [docs/handoff/POC2/POC2_BACKLOG_AUDIT_CONCLUSION.md](handoff/POC2/POC2_BACKLOG_AUDIT_CONCLUSION.md) — BACKLOG 전수 감사 결과 (2026-06-29, 4필드 91 항목, 완료 23/폐기 11/중복 9/결함 escalate 2)
 - [docs/ref/FRIEND_PROJECT_DATA_SOURCES_ANALYSIS.md](ref/FRIEND_PROJECT_DATA_SOURCES_ANALYSIS.md) — 친구 프로젝트 source / 주기 분석
@@ -3473,13 +3474,13 @@ POC2 Step 8 (3-PUSH 운영 1주기 검증) + 별도 Foundation:
 - 2026-06-14 3-PUSH Message Text Runtime Evidence 반영 → [conclusion](handoff/POC2/POC2_THREE_PUSH_MESSAGE_TEXT_RUNTIME_EVIDENCE_CONCLUSION.md)
 
 2026-06-01 이후 (가장 최근 5개 STEP — §3 참조 + ARCHIVE 전문):
-- 2026-06-07 NAV / Discount Source Diagnosis 1차 (FIX) → [STATE_LATEST_ARCHIVE §0](handoff/STATE_LATEST_ARCHIVE.md)
-- 2026-06-06 ETF Exposure Data Unfolding 1차 → [ARCHIVE §0.1](handoff/STATE_LATEST_ARCHIVE.md)
-- 2026-06-06 Operational UI Cleanup 1차 → [ARCHIVE §0.1](handoff/STATE_LATEST_ARCHIVE.md)
-- 2026-06-03 Holdings × Market Discovery Evidence 1차 → [ARCHIVE §0.1](handoff/STATE_LATEST_ARCHIVE.md)
-- 2026-06-03 KS-10 Cleanup (API Client / Type 책임 분리) → [ARCHIVE §0.1](handoff/STATE_LATEST_ARCHIVE.md)
-- 2026-06-01 이전 16개 STEP 시간순 누적 → [STATE_LATEST_ARCHIVE.md](handoff/STATE_LATEST_ARCHIVE.md) 전문
+- 2026-06-07 NAV / Discount Source Diagnosis 1차 (FIX) → [STATE_LATEST_ARCHIVE §0](handoff/POC2/STATE_LATEST_ARCHIVE.md)
+- 2026-06-06 ETF Exposure Data Unfolding 1차 → [ARCHIVE §0.1](handoff/POC2/STATE_LATEST_ARCHIVE.md)
+- 2026-06-06 Operational UI Cleanup 1차 → [ARCHIVE §0.1](handoff/POC2/STATE_LATEST_ARCHIVE.md)
+- 2026-06-03 Holdings × Market Discovery Evidence 1차 → [ARCHIVE §0.1](handoff/POC2/STATE_LATEST_ARCHIVE.md)
+- 2026-06-03 KS-10 Cleanup (API Client / Type 책임 분리) → [ARCHIVE §0.1](handoff/POC2/STATE_LATEST_ARCHIVE.md)
+- 2026-06-01 이전 16개 STEP 시간순 누적 → [STATE_LATEST_ARCHIVE.md](handoff/POC2/STATE_LATEST_ARCHIVE.md) 전문
 
 ### Deprecated / redirect
 
-- [docs/handoff/STATE_LATEST.md](handoff/STATE_LATEST.md) — 6줄 redirect stub. 본 파일과 ARCHIVE 로 안내. 더 이상 append 하지 않는다.
+- [docs/handoff/POC2/STATE_LATEST.md](handoff/POC2/STATE_LATEST.md) — 6줄 redirect stub. 본 파일과 ARCHIVE 로 안내. 더 이상 append 하지 않는다.

@@ -145,7 +145,7 @@ PLAN                 docs/ai_plan/POC3/POC3-02D-OPS-01_PRE_PRIMARY_OPERATIONAL_C
 상위 설계            docs/ai_design/POC5/POC5-00_OPERATIONAL_DECISION_LEDGER_MASTER_DESIGN_V1.md (보완 판정 · C1~C7 분류)
 현행 동작             docs/PROGRAM_TRUTH.md (C-3 · 「장중 급등락」 절 · §5.2 · §8 · §9-D)
 현재 상태             docs/STATE_LATEST.md (POC3 절 '다음')
-직전 챕터             docs/handoff/POC4-03_RF_VS_MOMENTUM_KILL_GATE_HANDOFF_2026-09-26.md
+직전 챕터             docs/handoff/POC4/POC4-03_RF_VS_MOMENTUM_KILL_GATE_HANDOFF_2026-09-26.md
 ```
 
 ## 8. 사용자 확인

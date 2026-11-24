@@ -296,4 +296,4 @@ unlocked lock`, (b) `JOB_STATUS_PATH` 가 모듈 전역이라 이미 **다음 �
 | `docs/ai_result/POC3/POC3-PNL_COLOR_AND_BADGE_CONSISTENCY_RESULT.md` | 손익 색 전환 + 배지 통일 (7섹션) |
 | `docs/ai_result/POC3/POC3-MARKET_DISCOVERY_CARD_CONVERSION_RESULT.md` | 요즘 잘 오르는 ETF 카드 전환 (7섹션) |
 | `docs/backlog/BACKLOG.md` | 백로그 69→68, 갱신 3건 |
-| `docs/handoff/MACBOOK_DEV_ENV_AND_DUAL_MACHINE_CAUTIONS.md` | 맥/PC 병행 작업 환경·주의사항 |
+| `docs/handoff/OPS/MACBOOK_DEV_ENV_AND_DUAL_MACHINE_CAUTIONS.md` | 맥/PC 병행 작업 환경·주의사항 |

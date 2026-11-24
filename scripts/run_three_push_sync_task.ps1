@@ -1,6 +1,6 @@
 # run_three_push_sync_task.ps1
 # 용도: Windows Task Scheduler에서 호출하는 PC → OCI 3-PUSH package sync wrapper.
-# 사용처: docs/handoff/PC_THREE_PUSH_SYNC_TASKSCHEDULER.md 참조.
+# 사용처: docs/handoff/OPS/PC_THREE_PUSH_SYNC_TASKSCHEDULER.md 참조.
 # 동작:
 #   1. 프로젝트 루트로 이동
 #   2. .venv Python으로 scripts/sync_three_push_packages.py 실행

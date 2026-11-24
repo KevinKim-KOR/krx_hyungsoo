@@ -51,7 +51,7 @@ POC3-02 UI-2 Judgment Workbench 의 **검증자 4차 REJECTED** 를 수정 완�
 
 수정(M):
 - `app/api.py` (price-series 라우터 등록)
-- `docs/STATE_LATEST.md`, `docs/handoff/STATE_LATEST.md`
+- `docs/STATE_LATEST.md`, `docs/handoff/POC2/STATE_LATEST.md`
 - `frontend/app/components/LeftSidebar.tsx`, `MainPanel.tsx` (Workbench 진입)
 - `frontend/app/globals.css` (wb-* 스타일 + r4 오버플로 수정)
 - `frontend/lib/api/dashboardInvalidation.test.ts`, `dashboardKeys.ts`, `index.ts`

@@ -1030,7 +1030,7 @@ message_text 생성 전의 evidence package를 보존하고 preview해야 하기
 권장 등록 위치:
 
 ```text
-docs/handoff/STATE_LATEST.md
+docs/handoff/POC2/STATE_LATEST.md
 docs/STATE_LATEST.md
 docs/handoff/POC2/POC2_B_NEXT_ACTIONS.md
 ```
@@ -1039,7 +1039,7 @@ docs/handoff/POC2/POC2_B_NEXT_ACTIONS.md
 
 ```text
 3-PUSH Runtime Package Contract:
-docs/handoff/THREE_PUSH_RUNTIME_PACKAGE_CONTRACT.md
+docs/handoff/OPS/THREE_PUSH_RUNTIME_PACKAGE_CONTRACT.md
 
 PC/OCI가 공유하는 three_push_runtime_package.v1 schema 계약.
 PUSH 후속 Step에서는 이 문서를 기준으로 evidence package / runtime snapshot / message_text 생성을 설계한다.

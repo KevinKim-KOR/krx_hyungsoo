@@ -3,7 +3,7 @@
 작성 2026-10-12 · 작성자: 개발자(VSCode Claude) · 수신: 검증자(Codex)
 
 ```text
-STATUS            = IMPLEMENTED_VERIFIED_CLOSED(2026-10-12) — 1차 = 검증자 VERIFIED(2026-10-12 · 위험 NONE · 범위 폭주 NONE · 격리 사본 vitest 414 · tsc · eslint 0 · 결과서 §4-2 · §6-4 표현은 검증자가 직접 정정 = §6-3) · 설계자 RESULT PASS(2026-10-12) · 커밋 `9cfb535f` push · 실화면 = 계약 항목 통과 · 사용자 의견 2건 → 설계자 보완 판정(2026-10-12 · 설계서 §11 · UI-02 안에서 보완 · PLAN 재제출 · 재판정 없음) → 보완 로컬 구현(§11-2) → 검증자 변경분 VERIFIED(2026-10-12 · 위험 NONE · 범위 폭주 NONE · 격리 사본 vitest 423 · tsc · eslint 0 · 머리 BASE_COMMIT · SCOPE 는 검증자가 직접 정정 = §11-3) → 실화면 통과(2026-10-12 · 사용자 새로고침 확인 · 'KODEX200 대비' 정렬 제거 확인 뒤 네 가지 유지 결정 · §11-2 7)) → 보완 · 종료 커밋 push(사용자 승인 2026-10-12 · 커밋 번호 = `git log`) → 종료 · 인계 `docs/handoff/POC5-UI-02_EXISTING_CHECK_FLOW_CORRECTIONS_HANDOFF_2026-10-12.md`(§12)
+STATUS            = IMPLEMENTED_VERIFIED_CLOSED(2026-10-12) — 1차 = 검증자 VERIFIED(2026-10-12 · 위험 NONE · 범위 폭주 NONE · 격리 사본 vitest 414 · tsc · eslint 0 · 결과서 §4-2 · §6-4 표현은 검증자가 직접 정정 = §6-3) · 설계자 RESULT PASS(2026-10-12) · 커밋 `9cfb535f` push · 실화면 = 계약 항목 통과 · 사용자 의견 2건 → 설계자 보완 판정(2026-10-12 · 설계서 §11 · UI-02 안에서 보완 · PLAN 재제출 · 재판정 없음) → 보완 로컬 구현(§11-2) → 검증자 변경분 VERIFIED(2026-10-12 · 위험 NONE · 범위 폭주 NONE · 격리 사본 vitest 423 · tsc · eslint 0 · 머리 BASE_COMMIT · SCOPE 는 검증자가 직접 정정 = §11-3) → 실화면 통과(2026-10-12 · 사용자 새로고침 확인 · 'KODEX200 대비' 정렬 제거 확인 뒤 네 가지 유지 결정 · §11-2 7)) → 보완 · 종료 커밋 push(사용자 승인 2026-10-12 · 커밋 번호 = `git log`) → 종료 · 인계 `docs/handoff/POC5/POC5-UI-02_EXISTING_CHECK_FLOW_CORRECTIONS_HANDOFF_2026-10-12.md`(§12)
 DESIGNER_RESULT   = PASS(2026-10-12 · 재작업 0 · 결과서 §4 추가 변경 6건 수용 · §5 한계 수용 · 두 카드 제거 · 파일 삭제 계속 보류 · 거래량 · 종합 위험 감지 · seed · FDR 보호는 종료 범위와 구분 · OCI pull 없음) — 원문 = 설계서 §10 · 끝에 전달문 원문
 STEP_ID           = POC5-UI-02 기존 보유 점검 화면 정정
 DESIGN            = docs/ai_design/POC5/POC5-UI-02_EXISTING_CHECK_FLOW_CORRECTIONS_DESIGN_V1.md (V1 개정 1 · §9 설계자 PLAN 부분 판정 PARTIAL_PASS 원문 · 끝에 전달문 원문 2건)
@@ -211,5 +211,5 @@ MOCKUP            = 없음(설계 §7 · 새 폼 · 창 없음)
 ## 12. 종료 (2026-10-12)
 
 - 보완 코드 · 시험 · 문서 · 종료 기록 · 인계를 한 커밋으로 push했다(사용자 승인 2026-10-12 · 설계자 재판정 없음 · 설계서 §11-5). PC 화면은 자동 다시 읽기로 이미 반영됐다. OCI pull은 하지 않는다.
-- 인계: `docs/handoff/POC5-UI-02_EXISTING_CHECK_FLOW_CORRECTIONS_HANDOFF_2026-10-12.md`.
+- 인계: `docs/handoff/POC5/POC5-UI-02_EXISTING_CHECK_FLOW_CORRECTIONS_HANDOFF_2026-10-12.md`.
 - 종료 범위 밖(유지): 두 안내 카드 제거 · 파일 삭제 보류 · 거래량 흐름 · 종합 위험 감지 · seed 정합(사용자 결정 대기) · PC FDR 수동 갱신 보호(조건부).

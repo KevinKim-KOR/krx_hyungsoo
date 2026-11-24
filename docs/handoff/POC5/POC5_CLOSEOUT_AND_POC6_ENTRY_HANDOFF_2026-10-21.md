@@ -4,7 +4,7 @@
 - **독자**: 다음 세션 개발자 · 총괄 설계자 — POC5 를 닫고 POC6(첫 작업 POC6-01 종료) 다음 차례 = ML 고도화 설계로 넘어가는 시점
 - **정본 우선순위**: 지금 실제 동작 = `docs/PROGRAM_TRUTH.md` · 현재 상태 = `docs/STATE_LATEST.md` · 개발 규칙 = `CLAUDE.md`(= DEV_RULES). 이 문서는 요약 · 길잡이이며 충돌하면 정본이 이긴다.
 - **입력**
-  - POC5 진입 계약: `docs/handoff/POC5-00_INVESTMENT_MODEL_V2_MASTER_DESIGNER_HANDOFF_2026-10-03.md` · `docs/ai_design/POC5/POC5-00_OPERATIONAL_DECISION_LEDGER_MASTER_DESIGN_V1.md`
+  - POC5 진입 계약: `docs/handoff/POC5/POC5-00_INVESTMENT_MODEL_V2_MASTER_DESIGNER_HANDOFF_2026-10-03.md` · `docs/ai_design/POC5/POC5-00_OPERATIONAL_DECISION_LEDGER_MASTER_DESIGN_V1.md`
   - 단계별 설계 · PLAN · 결과서: `docs/ai_design/POC5/`(50) · `docs/ai_plan/POC5/`(32) · `docs/ai_result/POC5/`(결과서 32)
   - POC6: `docs/ai_design/POC6/POC6-01_MARKET_FLOW_INTEGRATION_SCOPE_AND_SOURCE_DECISION_2026-10-20.md` · 결과서 `docs/ai_result/POC6/POC6-01_MARKET_FLOW_INTEGRATION_RESULT.md`(§12 = 설계자 RESULT 판정 원문)
   - 백로그 `docs/backlog/BACKLOG.md` 머리 '현재 처리 요약'
@@ -129,7 +129,7 @@ ML 상태      ML_OPERATION_PROMOTION = NOT_APPROVED · CURRENT_DEPLOYABLE_ML_MO
 | 재진입 검토 D20 | POC5-06(연구 예외 · ETF 하나) |
 | 근거 조합 과거 사례 대조 | POC5-20 CLI(관측 대조 · 판정 아님) |
 | R0 · R1 리포트 | POC5-04 CLI(R1 = 연구 · 검토 때 수동) |
-| POC4 결론 | Track A(수익 예측) · Track B(하락 조기경보) 모두 REJECT — `docs/handoff/POC4-03_RF_VS_MOMENTUM_KILL_GATE_HANDOFF_2026-09-26.md` |
+| POC4 결론 | Track A(수익 예측) · Track B(하락 조기경보) 모두 REJECT — `docs/handoff/POC4/POC4-03_RF_VS_MOMENTUM_KILL_GATE_HANDOFF_2026-09-26.md` |
 | 시장 흐름 표 | POC6-01(비PIT · 입력 여부는 별도 판단) |
 
 **ML 설계 때 함께 결정하기로 미뤄 둔 것**(백로그)
@@ -147,7 +147,7 @@ ML 상태      ML_OPERATION_PROMOTION = NOT_APPROVED · CURRENT_DEPLOYABLE_ML_MO
 
 ### 4-1. 공식 R0 1회 — 2026-10-23(금) 배치 완료 뒤 (개발자)
 
-절차 전문 = `docs/handoff/POC5-04_COLLECTION_AND_RAW_OUTCOME_REPORTS_HANDOFF_2026-10-08.md` §2. 요약:
+절차 전문 = `docs/handoff/POC5/POC5-04_COLLECTION_AND_RAW_OUTCOME_REPORTS_HANDOFF_2026-10-08.md` §2. 요약:
 1. **조건**: 09:30 이라는 시각이 아니라 실제 배치 완료 근거다. OCI 읽기 전용으로 `logs/oci_market_data_batch.log` 의 10-23 08:10 · 09:20 결과 줄 · 원장 오류 · 10-08 ~ 10-22 PUSH 실패를 확인한다.
 2. **대조 근거**: `ssh oci-krx '… scripts/run_decision_ledger_reconcile.py'` 결과를 scratchpad 에 저장한다. 시각을 같은 명령에서 붙인다.
 3. **운영 근거 파일**: scratchpad · 저장소에 두지 않는다.

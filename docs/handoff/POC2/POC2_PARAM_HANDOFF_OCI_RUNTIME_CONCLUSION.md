@@ -69,8 +69,8 @@ Step: `PARAM_HANDOFF_OCI_RUNTIME_3PUSH`
 | `docs/handoff/POC2/POC2_B_NEXT_ACTIONS.md` | §0 본 Step 결과 + 다음 분기 후보 4건 |
 | `docs/handoff/POC2/POC2_FEATURE_INVENTORY.md` | §2.27 신규 (PARAM runtime 정식 항목) + §2.26 격하 표기 |
 | `docs/backlog/BACKLOG.md` | `CONSOLIDATED_BACKLOG_DEBT_CLEANUP` 1건 (5건 sub-bullet 통합 — 지시문 §16 중복 확장 금지 준수) |
-| `docs/handoff/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md` | §0 정식 운영 경로 변경 안내 + §3 정식 (runtime) / §3-fallback (package manual recovery) 분리 + §4 PARAM handoff 시간표 + §5/§6/§9 모두 runtime 명령으로 갱신 |
-| `docs/handoff/PC_THREE_PUSH_SYNC_TASKSCHEDULER.md` | §0 격하 안내 + 기존 등록 schtasks 비활성화/제거 명령 + §1 이하 manual recovery 참고 절차 |
+| `docs/handoff/OPS/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md` | §0 정식 운영 경로 변경 안내 + §3 정식 (runtime) / §3-fallback (package manual recovery) 분리 + §4 PARAM handoff 시간표 + §5/§6/§9 모두 runtime 명령으로 갱신 |
+| `docs/handoff/OPS/PC_THREE_PUSH_SYNC_TASKSCHEDULER.md` | §0 격하 안내 + 기존 등록 schtasks 비활성화/제거 명령 + §1 이하 manual recovery 참고 절차 |
 | `docs/handoff/POC2/POC2_PARAM_HANDOFF_OCI_RUNTIME_CONCLUSION.md` | 신규 (본 문서) |
 
 ### 2.4 격하된 산출물 (보존)

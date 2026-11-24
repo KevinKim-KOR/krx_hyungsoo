@@ -116,7 +116,7 @@ abf833ee  test  세션 사본 조건 · AC-8 NAV JSON 계약 · 라이브 커버
 | `tests/test_ml_score_validity_cli.py` · `tests/test_ml_score_validity_contracts.py` | 수정 — 스냅샷으로 실행 · 평가일 목록 계약 |
 
 `02a0f7c5` (문서): `docs/ai_result/POC4/…_RESULT.md`(신규) · `docs/ai_plan/POC4/…_PLAN_V1.md` · `docs/PROGRAM_TRUTH.md`
-(§7.1 연구 저장소 2종 · §8 KRX Open API) · `docs/handoff/POC4-01_BASELINE_SNAPSHOT_KRX_UNIVERSE_HANDOFF_2026-09-24.md`(신규 ·
+(§7.1 연구 저장소 2종 · §8 KRX Open API) · `docs/handoff/POC4/POC4-01_BASELINE_SNAPSHOT_KRX_UNIVERSE_HANDOFF_2026-09-24.md`(신규 ·
 중간 인계) · `state/ml/baselines/relative_upside_v1_snap_20260921/{dataset_manifest.json, runs/run1, runs/run2 run_manifest.json}`(신규).
 
 `71d50d15` (수정 · 작업 6 코드):

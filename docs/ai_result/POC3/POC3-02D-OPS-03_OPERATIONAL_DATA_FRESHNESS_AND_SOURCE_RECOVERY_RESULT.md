@@ -69,7 +69,7 @@ KS10_TRIGGER              = 0 (러너 646줄 변경 0 · 변경 백엔드 모듈
 |---|---|
 | A-1 · B-6 — 같은 날짜에 행이 하나라도 있으면 건수 · 내용 비교 없이 `kept_existing` 성공(`krx_target_checks.py:183` · 테스트가 40행 저장 + 39행 응답을 성공으로 기대) | 정정 — `_save_and_read_back` 이 저장분 `{종목: 종가}` 를 이번 snapshot 과 비교한다. 같을 때만 그대로 둔다. 다르면 `krx_store.replace_date`(한 트랜잭션: 그 날짜 DELETE + INSERT)로 바꿔 쓰고, 새 쓰기 · 바꿔 쓰기 모두 `krx_store.rows_on` 으로 다시 읽어 종목 · 종가 · 건수가 같아야 성공이다. 어긋나면 그 날짜를 비우고 `readback_mismatch` 실패(fail-closed). 판정까지 끝난 T-1 은 이 경로에 오지 않는다(`already_loaded` · 확정 계약 2 그대로). 테스트: 같으면 유지 · 다르면 교체 3가지(부분 저장 · 저장분이 더 많음 · 값 다름) · 교체 뒤 read-back 어긋남 → 날짜 비움 · 교체는 한 트랜잭션. 무력화(옛 '행 있으면 유지' 복원) → 새 테스트 4건 실패 확인 · 원본 cmp 복구 |
 | 같은 표에 쓰는 다른 경로 | `krx_store.upsert_snapshot` 호출처 grep — 운영 경로는 `krx_target_checks` 하나. 옛 함수 `krx_sync.sync_krx_daily`(옛 역탐색) · `initial_backfill` 의 호출처 전수(`grep -rn 'sync_krx_daily(\|initial_backfill(' --include='*.py' .` · 2026-10-01 · r2 A-2 정정): 운영 코드(`app/` · `scripts/` · `deploy/`) **0** · 테스트 2파일 — `tests/test_market_briefing_batch.py`(`sync_krx_daily` 11곳 · `initial_backfill` 3곳) · `tests/test_market_briefing_flow_through.py:445`(`sync_krx_daily` 1곳). 그 밖의 언급은 호출이 아니다 — `tests/conftest.py:562` · `:567` 주석 · `app/market_briefing/krx_target_sync.py:173` docstring · `krx_sync.py:358` docstring · `__all__`. 옛 계약 테스트용으로 남아 있고 OPS-03 ⑤ 대상 경로가 아니다. 목업 · 역검증 스크립트는 tmp DB |
-| A-2 — 결과서 §2 · §8 · STATE_LATEST · PROGRAM_TRUTH 의 `untracked` 표기가 실제 staged 와 충돌 | 정정 — `grep -n untracked` 로 결과서 · `docs/STATE_LATEST.md` · `docs/PROGRAM_TRUTH.md` · `docs/handoff/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md` 전부 찾아 이번 단계 파일의 표기를 'git 에 추가됨(staged)' 으로 바꿨다. 남은 `untracked` 는 사용자 소유 master handoff(실제 untracked) · `--untracked-files=all` 명령 · 옛 단계 이력 줄뿐 |
+| A-2 — 결과서 §2 · §8 · STATE_LATEST · PROGRAM_TRUTH 의 `untracked` 표기가 실제 staged 와 충돌 | 정정 — `grep -n untracked` 로 결과서 · `docs/STATE_LATEST.md` · `docs/PROGRAM_TRUTH.md` · `docs/handoff/OPS/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md` 전부 찾아 이번 단계 파일의 표기를 'git 에 추가됨(staged)' 으로 바꿨다. 남은 `untracked` 는 사용자 소유 master handoff(실제 untracked) · `--untracked-files=all` 명령 · 옛 단계 이력 줄뿐 |
 | A-2 — 조건 ⑤ 를 DONE 으로 보고했으나 기존 행 분기는 검증하지 않음 | 위 정정으로 코드가 계약과 같아졌다 · §1-1 계약 3 행 · PROGRAM_TRUTH C-4 ⑤ 서술을 실제 동작으로 교체 |
 
 ### 1-1. 확정 계약 15항목 (설계자 RESULT 판정 개정 반영 · 코드 · 테스트)
@@ -291,7 +291,7 @@ OCI 읽기 전용 실측(2026-09-30 05:4x KST · `ssh oci-krx` · sqlite `mode=r
 
 **문서 — 신규**: 설계서 685(설계자 RESULT 판정 원문 포함) · PLAN 384 · 이 결과서
 
-**문서 — 수정**: `docs/PROGRAM_TRUTH.md` 696 → 887 · `docs/STATE_LATEST.md` 2764 → 2822 · `docs/KILL_SWITCHES.md` 188 → 188 · `docs/PROJECT_ORIGIN_INTENT.md` 367 → 367 · `docs/ASSUMPTIONS.md` 342 → 342 · `docs/MASTER_PLAN.md` 216 → 216(시장 브리핑 08:00 → 08:30 개정 표기 · 줄 수 불변) · `docs/backlog/BACKLOG.md` 697 → 704(§16 기술부채) · `docs/ai_result/POC3/POC3-OPS-02B-2_MARKET_BRIEFING_MOCKUPS.md` 223 → 557 · `docs/handoff/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md` 346 → 378(OPS-03 cron 3줄 절) · OPS-02 첫 자연 발송 관측 기록 — `docs/ai_result/POC3/POC3-02D-OPS-02_RUNTIME_STATE_AND_OPERATIONAL_UI_CORRECTIONS_RESULT.md` 662 → 662 · `docs/handoff/POC3-02D-OPS-02_RUNTIME_STATE_AND_OPERATIONAL_UI_CORRECTIONS_HANDOFF_2026-09-29.md` 144 → 144
+**문서 — 수정**: `docs/PROGRAM_TRUTH.md` 696 → 887 · `docs/STATE_LATEST.md` 2764 → 2822 · `docs/KILL_SWITCHES.md` 188 → 188 · `docs/PROJECT_ORIGIN_INTENT.md` 367 → 367 · `docs/ASSUMPTIONS.md` 342 → 342 · `docs/MASTER_PLAN.md` 216 → 216(시장 브리핑 08:00 → 08:30 개정 표기 · 줄 수 불변) · `docs/backlog/BACKLOG.md` 697 → 704(§16 기술부채) · `docs/ai_result/POC3/POC3-OPS-02B-2_MARKET_BRIEFING_MOCKUPS.md` 223 → 557 · `docs/handoff/OPS/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md` 346 → 378(OPS-03 cron 3줄 절) · OPS-02 첫 자연 발송 관측 기록 — `docs/ai_result/POC3/POC3-02D-OPS-02_RUNTIME_STATE_AND_OPERATIONAL_UI_CORRECTIONS_RESULT.md` 662 → 662 · `docs/handoff/POC3/POC3-02D-OPS-02_RUNTIME_STATE_AND_OPERATIONAL_UI_CORRECTIONS_HANDOFF_2026-09-29.md` 144 → 144
 
 **이번 단계 아님**: `docs/handoff/INVESTMENT_MODEL_V2_MASTER_HANDOFF_2026-07-26.md`(untracked · 사용자 소유 · 커밋 제외 · 손대지 않음)
 
@@ -411,7 +411,7 @@ pull 과 cron 변경 사이에 옛 07:20 cron 이 새 코드를 돌리면 KRX �
 - 바꿨다: `0 8 * * 1-5 … --push-kind market_briefing --mode send >> logs/low_freq_push_cron.log 2>&1` → `30 8 * * 1-5 …`
 - 추가했다: `20 9 * * 1-5 cd /home/ubuntu/krx_hyungsoo && venv/bin/python scripts/run_oci_market_data_batch.py --krx-only >> logs/oci_market_data_batch.log 2>&1`
 - 나머지(09:15 · 12:30 · 15:40 보유 브리핑 · 09:30 ~ 15:20 보유 위험) 그대로.
-- 저장소 `docs/handoff/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md` §0 ~ §10 은 UTC 기준 옛 이력(`00 23 * * 0-4`) — 실제 서버는 KST 다. 파일 앞 'OPS-03. cron 3줄' 절(KST · 2026-10-01 적용).
+- 저장소 `docs/handoff/OPS/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md` §0 ~ §10 은 UTC 기준 옛 이력(`00 23 * * 0-4`) — 실제 서버는 KST 다. 파일 앞 'OPS-03. cron 3줄' 절(KST · 2026-10-01 적용).
 - 「OCI 운영·적용」 화면은 `--push-kind` 줄만 본다(`oci_startup_status.py:170-171` 추출 · :111-115 필수 3종) — 08:10 · 09:20 배치 줄 누락은 화면에 안 보이므로 read-back 이 유일한 확인이다.
 
 ### 8-3. 첫 OCI 실행 예상 (코드 근거 · 배포 전 기록 — 실측은 8-5)
@@ -518,7 +518,7 @@ OCI 읽기 전용(리드 · 08:54 · 10:26 · 배치 상태 JSON · 09:20 보강
 
 **검증**: OPS-03 새 테스트 10파일 `pytest --collect-only` 292건(briefing_calendar 45 · krx_batch 47) · 프론트 `OciStatusView.test.tsx` 7 passed · tsc 0 · eslint 0(바뀐 2파일) · 백엔드 전체 회귀 = 2,709 passed / 0 failed(exit 0 · 393.21s · 2026-10-02 10:4x · 종료 커밋 코드 전부 뒤 마지막 1회 · PC `state/` · `logs/` 226파일 sha256 전후 동일) · 프론트 전체 vitest 24파일 287 · tsc 0 · eslint 0.
 
-**문서**(같은 커밋): 설계서(끝 절 설계자 정정 · 사용자 결정 원문 기록) · 이 결과서(종료 갱신) · `docs/STATE_LATEST.md` · `docs/PROGRAM_TRUTH.md` · PLAN(확정 계약 11 정정 주석) · `docs/handoff/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md`(OPS-03 절 적용 기록) · 신규 인계 `docs/handoff/POC3-02D-OPS-03_OPERATIONAL_DATA_FRESHNESS_AND_SOURCE_RECOVERY_HANDOFF_2026-10-02.md`. `docs/backlog/BACKLOG.md` 에는 한국 다음 연도 달력 항목이 없었다(grep 0 · 변경 없음). 커밋 SHA 는 `git log` 로 확인한다.
+**문서**(같은 커밋): 설계서(끝 절 설계자 정정 · 사용자 결정 원문 기록) · 이 결과서(종료 갱신) · `docs/STATE_LATEST.md` · `docs/PROGRAM_TRUTH.md` · PLAN(확정 계약 11 정정 주석) · `docs/handoff/OPS/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md`(OPS-03 절 적용 기록) · 신규 인계 `docs/handoff/POC3/POC3-02D-OPS-03_OPERATIONAL_DATA_FRESHNESS_AND_SOURCE_RECOVERY_HANDOFF_2026-10-02.md`. `docs/backlog/BACKLOG.md` 에는 한국 다음 연도 달력 항목이 없었다(grep 0 · 변경 없음). 커밋 SHA 는 `git log` 로 확인한다.
 
 ## 12. 2026-10-03 후속 배포 확인
 

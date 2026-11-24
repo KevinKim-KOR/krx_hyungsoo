@@ -10,7 +10,7 @@
   - 같이 종료한 운영 확인
     - `docs/ai_result/POC5/POC5-02_PRICE_OUTCOME_MATURITY_RESULT.md` §11
     - `docs/ai_result/POC5/POC5-03_PC_LEDGER_SYNC_AND_FEEDBACK_RESULT.md` §10
-  - 직전 인계 `docs/handoff/POC5-07_HOLDINGS_REFERENCE_DATE_HANDOFF_2026-10-11.md` · 정본 `docs/PROGRAM_TRUTH.md` · 상태 `docs/STATE_LATEST.md`
+  - 직전 인계 `docs/handoff/POC5/POC5-07_HOLDINGS_REFERENCE_DATE_HANDOFF_2026-10-11.md` · 정본 `docs/PROGRAM_TRUTH.md` · 상태 `docs/STATE_LATEST.md`
 
 ```text
 POC5-08   IMPLEMENTED_VERIFIED_DEPLOYED_CLOSED (2026-10-12)

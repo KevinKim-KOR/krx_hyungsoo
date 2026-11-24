@@ -265,7 +265,7 @@ AST 전수 스캔(`tests/` · poc4 러너 제외 · fixture 로 받은 `runner` 
 
 ### 1-11. OCI 전용 모듈 import 제약 (항목 11)
 
-- OCI 는 API 서버를 돌리지 않아 `pydantic` 이 없다(`docs/handoff/POC3-02D-OPS-02_RUNTIME_STATE_AND_OPERATIONAL_UI_CORRECTIONS_HANDOFF_2026-09-29.md:47`). OPS-03 배포 read-back 도 fastapi · pydantic · starlette 를 막고 새 모듈 import 를 확인했다(OPS-03 결과서 :399).
+- OCI 는 API 서버를 돌리지 않아 `pydantic` 이 없다(`docs/handoff/POC3/POC3-02D-OPS-02_RUNTIME_STATE_AND_OPERATIONAL_UI_CORRECTIONS_HANDOFF_2026-09-29.md:47`). OPS-03 배포 read-back 도 fastapi · pydantic · starlette 를 막고 새 모듈 import 를 확인했다(OPS-03 결과서 :399).
 - PC 실측(2026-10-02 · `.venv` Python 3.12.13 · 세 패키지를 meta_path 로 차단): 러너 import 정상 · 새로 올라온 `app`/`scripts` 모듈 67개 · 외부 패키지 0개 · `three_push_runtime` 은 7개(registry_key · runner_diagnostics · runner_duplicate · runner_evidence · runner_market_briefing · runner_spike · target_tickers)이고 5개(price_refresh · spike_freshness · spike_body · non_trading_day · market_data_batch)는 지연 import.
 - **제약**: 새 운영 모듈은 이 67개 안의 모듈만 모듈 머리에서 import 한다. 지연 import 는 지연 그대로 옮긴다. 구현 뒤 같은 차단 실측으로 '67 + 새 3 = 70' 과 외부 패키지 0 을 보고한다. 검증 스크립트는 운영 경로에서 import 되지 않는다.
 - 새 운영 모듈은 `.env` 를 읽지 않는다 — 러너 56행 `load_dotenv_file()` 뒤에 import 되므로 환경변수 적재 순서도 그대로다.
@@ -493,4 +493,4 @@ python -m pytest -q -p no:cacheprovider \
 
 - 규칙: `CLAUDE.md`(저장소 루트)
 - 설계: `docs/ai_design/POC5/POC5-00_OPERATIONAL_DECISION_LEDGER_MASTER_DESIGN_V1.md` · `docs/ai_design/POC5/POC5-01A_THREE_PUSH_RUNNER_MECHANICAL_SPLIT_DESIGN_V1.md` · `docs/ai_design/POC5/POC5-01B_OPERATIONAL_DECISION_EVENT_LEDGER_DESIGN_V1.md`
-- 직전 운영 단계: `docs/ai_design|ai_plan|ai_result/POC3/POC3-02D-OPS-0{1,2,3}_*` · 인계 `docs/handoff/POC3-02D-OPS-0{1,2,3}_*_HANDOFF_*.md` · `docs/handoff/POC3-02C_CLOSEOUT_2026-09-23.md`
+- 직전 운영 단계: `docs/ai_design|ai_plan|ai_result/POC3/POC3-02D-OPS-0{1,2,3}_*` · 인계 `docs/handoff/POC3-02D-OPS-0{1,2,3}_*_HANDOFF_*.md` · `docs/handoff/POC3/POC3-02C_CLOSEOUT_2026-09-23.md`

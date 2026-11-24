@@ -1090,9 +1090,9 @@ template 최신화. 수동 등가 실행으로 Telegram 1회 발송 + duplicate 
 ### 결과 요약
 
 - **신규 산출물 3종**: `scripts/run_three_push_sync_task.ps1` (PS wrapper) /
-  `docs/handoff/PC_THREE_PUSH_SYNC_TASKSCHEDULER.md` (schtasks CLI + GUI 절차) /
+  `docs/handoff/OPS/PC_THREE_PUSH_SYNC_TASKSCHEDULER.md` (schtasks CLI + GUI 절차) /
   `docs/handoff/POC2/POC2_OCI_THREE_PUSH_OPERATION_REGISTRATION_CONCLUSION.md` (conclusion).
-- **수정 문서 1종**: `docs/handoff/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md` — venv 경로
+- **수정 문서 1종**: `docs/handoff/OPS/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md` — venv 경로
   `venv/bin/python` 명시 + .env 자동 로드 + PC sync 선행 시간표 + 수동 등가 실행 절차.
 - **수동 등가 실행 실측**: PC sync `status=success` / OCI dry-run 3종 `dry_run_success` /
   PUSH-1 send → `status=sent, telegram_sent=true` / 동일 package 재실행 →
@@ -1131,7 +1131,7 @@ template 최신화. 수동 등가 실행으로 Telegram 1회 발송 + duplicate 
 
 OCI 에서 crontab 으로 PUSH-1 / PUSH-2 / PUSH-3 를 자동 실행하고 조건 충족 시
 Telegram 발송하는 runner 구현. (요약: 신규 `scripts/run_three_push_oci.py` + guard 7종
-+ `docs/handoff/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md`. FIX r4에서 .env 자동 로드 + HTTPError
++ `docs/handoff/OPS/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md`. FIX r4에서 .env 자동 로드 + HTTPError
 원인 분류 추가. OCI 실측 send → telegram_sent=true / 중복 재실행 → duplicate guard.)
 
 ---
@@ -1815,7 +1815,7 @@ source 진단을 수행. 운영 fetcher 교체 X, source integration X.
 
 ### (이전) ETF Constituents Naver Source Integration (DONE 2026-05-31)
 
-본 STEP 의 산출물은 [docs/handoff/STATE_LATEST_ARCHIVE.md](STATE_LATEST_ARCHIVE.md) §0.1 (2026-05-31 ETF Constituents Naver Source Integration) 참조.
+본 STEP 의 산출물은 [docs/handoff/POC2/STATE_LATEST_ARCHIVE.md](STATE_LATEST_ARCHIVE.md) §0.1 (2026-05-31 ETF Constituents Naver Source Integration) 참조.
 
 - `naver_stock_etf_component` 를 1차 source 로 채택. service 의 cache key 도
   새 source 매칭.
@@ -1947,6 +1947,6 @@ PROJECT_ORIGIN_INTENT 에 기록 후 변경.
 
 Active Reference:
 3-PUSH Runtime Package Contract
-- path: docs/handoff/THREE_PUSH_RUNTIME_PACKAGE_CONTRACT.md
+- path: docs/handoff/OPS/THREE_PUSH_RUNTIME_PACKAGE_CONTRACT.md
 - purpose: PC/OCI가 공유하는 three_push_runtime_package.v1 schema 계약
 - usage: PUSH 후속 Step에서는 evidence package / runtime snapshot / message_text 설계 시 이 문서를 기준으로 한다.

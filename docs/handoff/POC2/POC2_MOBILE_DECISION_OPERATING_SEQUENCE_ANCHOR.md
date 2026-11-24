@@ -173,7 +173,7 @@ Telegram 설정 변경 은 허용하지 않는다.
 - 현재 활성 Step: Mobile Decision Cockpit v1
 - 잠금된 다음 순서: Low-Frequency Mobile Alert Operation → First Real Decision Cycle → Decision Outcome Ledger → 판단 품질 개선
 
-### docs/handoff/STATE_LATEST.md
+### docs/handoff/POC2/STATE_LATEST.md
 
 STATE_LATEST의 동일 내용을 curated mirror로 반영한다.
 

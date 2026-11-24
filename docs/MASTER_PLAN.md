@@ -189,7 +189,7 @@ Phase 1에서 살려온 독립 ML 자산을 새 구조에 연결하고, 첫 fact
 평면과 OCI 운영·조회 평면을 분리해, OCI 가 외부 / 모바일에서 마지막 published
 데이터와 운영 상태를 조회할 수 있는 **read-only 환경**으로 확장한다.
 
-- 연결 결정 기록: **`docs/handoff/PC_OCI_ARCHITECTURE_DIRECTION.md`** (원본),
+- 연결 결정 기록: **`docs/handoff/OPS/PC_OCI_ARCHITECTURE_DIRECTION.md`** (원본),
   `docs/PROJECT_ORIGIN_INTENT.md` §7 운영 원칙 (PC 분석 평면 / OCI 운영·조회
   평면 분리), `docs/ASSUMPTIONS.md` §3 A-6.
 - 관련 Kill Switch: **KS-1 (자동 매매 금지), KS-2 (인간 승인 게이트)** — 본

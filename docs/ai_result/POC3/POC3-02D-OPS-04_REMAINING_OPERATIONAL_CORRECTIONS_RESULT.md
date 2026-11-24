@@ -3,7 +3,7 @@
 작성 2026-10-06 · 갱신 2026-10-06(검증자 r1 정정 · 설계자 2026-10-06 판정 반영 · 재제출 전 점검 재작업) · 2026-10-07(첫 거래일 운영 확인 · 종료) · 작성자: 개발자(VSCode Claude) · 수신: 검증자(Codex)
 
 ```text
-STATUS                 = IMPLEMENTED_VERIFIED_DEPLOYED_OPERATION_CONFIRMED — 검증자 r2 VERIFIED(2026-10-06 · 위험 LOW · 범위 폭주 NONE) · 커밋 · push(사용자 승인 2026-10-06) · 설계자 RESULT `PASS_TO_DEPLOY`(2026-10-06 · 코드 수정 없음 · 한계 2건 수용) · OCI pull 2026-10-06 21:40 KST(사용자 · fast-forward) · 첫 KRX 거래일 2026-10-07 운영 확인 통과(§10-5 · 설계자 지정 5항목 + 08:30 · 독립 검증 3관점) · 종료(사용자 결정 2026-10-07 '지금 종료' · 인계 `docs/handoff/POC3-02D-OPS-04_REMAINING_OPERATIONAL_CORRECTIONS_HANDOFF_2026-10-07.md`)
+STATUS                 = IMPLEMENTED_VERIFIED_DEPLOYED_OPERATION_CONFIRMED — 검증자 r2 VERIFIED(2026-10-06 · 위험 LOW · 범위 폭주 NONE) · 커밋 · push(사용자 승인 2026-10-06) · 설계자 RESULT `PASS_TO_DEPLOY`(2026-10-06 · 코드 수정 없음 · 한계 2건 수용) · OCI pull 2026-10-06 21:40 KST(사용자 · fast-forward) · 첫 KRX 거래일 2026-10-07 운영 확인 통과(§10-5 · 설계자 지정 5항목 + 08:30 · 독립 검증 3관점) · 종료(사용자 결정 2026-10-07 '지금 종료' · 인계 `docs/handoff/POC3/POC3-02D-OPS-04_REMAINING_OPERATIONAL_CORRECTIONS_HANDOFF_2026-10-07.md`)
 VERIFIER               = r2 VERIFIED(2026-10-06 · A-1 ~ A-4 통과 · B-1 ~ B-6 없음 · 위험 LOW — §5-2 · §5-3 한계는 코드와 일치 · 설계자 RESULT 판정에 함께 전달 · 범위 폭주 NONE) ← r1 REJECTED(2026-10-06 · A-1 · A-2 · A-3) → 처리 §6-0-1: ① 보강 = 09:20 회차 창에 시작한 실행만(설계자 수용 2026-10-06) ② `RemoteProtocolError` — r1 정정에서 뺐다가 설계자 결정(2026-10-06)으로 일시 오류에 포함 ③ 줄 수 재실측(§8-1)
 SELF_CHECK             = 재제출 전 개발자 점검(2026-10-06): PLAN §2-1 2 · 3 이탈 2건 → 사용자 결정 '유지'로 PLAN 원문대로 재작업(§6-0-2 · 개별주 = ETF 와 독립된 곁 작업) · 문구 과대 1건 정정 + 한계 기록(§5-2)
 DESIGNER_RESULT        = PASS_TO_DEPLOY(2026-10-06 · 코드 수정 없음 · 한계 2건 수용 · OCI pull 승인 · 종료 = 첫 거래일 확인 뒤) — 원문 = 설계서 끝

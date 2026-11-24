@@ -43,8 +43,8 @@ scheduled run 시각이 아직 도래하지 않아 자동 trigger 도달은 미�
 | 파일 | 종류 | 내용 |
 |---|---|---|
 | `scripts/run_three_push_sync_task.ps1` | 신규 | PC PowerShell wrapper. `.venv\Scripts\python.exe scripts/sync_three_push_packages.py` 실행 후 `logs/three_push_sync_task.log`에 append. exit code 전달. PS 5.1 NativeCommandError 회피를 위해 `2>&1` 대신 `*>`로 stdout+stderr 모두 동일 파일로 redirect (sync 스크립트가 INFO 로그를 stderr에 쏘는 특성 때문) |
-| `docs/handoff/PC_THREE_PUSH_SYNC_TASKSCHEDULER.md` | 신규 | schtasks CLI 명령 3종 (월~금 07:50/12:20/15:20) + GUI 절차 + 등록 확인 / 수동 트리거 / 중단·재개 / 트러블슈팅 |
-| `docs/handoff/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md` | 수정 | venv 경로 `venv/bin/python` 명시 / .env 자동 로드 (FIX r4 이후 동작) / PC sync 선행 시간표 / dry-run/send 등가 실행 절차 / 운영 중단 절차 |
+| `docs/handoff/OPS/PC_THREE_PUSH_SYNC_TASKSCHEDULER.md` | 신규 | schtasks CLI 명령 3종 (월~금 07:50/12:20/15:20) + GUI 절차 + 등록 확인 / 수동 트리거 / 중단·재개 / 트러블슈팅 |
+| `docs/handoff/OPS/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md` | 수정 | venv 경로 `venv/bin/python` 명시 / .env 자동 로드 (FIX r4 이후 동작) / PC sync 선행 시간표 / dry-run/send 등가 실행 절차 / 운영 중단 절차 |
 | `docs/handoff/POC2/POC2_OCI_THREE_PUSH_OPERATION_REGISTRATION_CONCLUSION.md` | 신규 | 본 문서 |
 | `docs/STATE_LATEST.md` | 수정 | §1 최신 STEP entry 추가 + 갱신 일자 변경 |
 | `docs/handoff/POC2/POC2_B_NEXT_ACTIONS.md` | 수정 | 직전 STEP 완료 표시 + 다음 후보 갱신 |
@@ -69,7 +69,7 @@ schtasks /Create /TN "KRX_ThreePushSync_SpikeOrFallingAlert" `
   /SC WEEKLY /D MON,TUE,WED,THU,FRI /ST 15:20 /RU $U /RL HIGHEST /F
 ```
 
-상세 절차는 `docs/handoff/PC_THREE_PUSH_SYNC_TASKSCHEDULER.md` §3 참조.
+상세 절차는 `docs/handoff/OPS/PC_THREE_PUSH_SYNC_TASKSCHEDULER.md` §3 참조.
 
 #### B-2. OCI crontab 등록
 
@@ -88,7 +88,7 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 30 06 * * 1-5 cd /home/ubuntu/krx_hyungsoo && venv/bin/python scripts/run_three_push_oci.py --push-kind spike_or_falling_alert --mode send >> logs/three_push_cron.log 2>&1
 ```
 
-상세 절차는 `docs/handoff/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md` §3 참조.
+상세 절차는 `docs/handoff/OPS/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md` §3 참조.
 
 ### C. 사용자가 실제 수행 완료한 작업
 
@@ -153,8 +153,8 @@ OCI runner가 `status=sent, telegram_sent=true` 반환. 사용자 단말기에�
 | 파일 | 종류 |
 |---|---|
 | `scripts/run_three_push_sync_task.ps1` | 신규 |
-| `docs/handoff/PC_THREE_PUSH_SYNC_TASKSCHEDULER.md` | 신규 |
-| `docs/handoff/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md` | 수정 |
+| `docs/handoff/OPS/PC_THREE_PUSH_SYNC_TASKSCHEDULER.md` | 신규 |
+| `docs/handoff/OPS/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md` | 수정 |
 | `docs/handoff/POC2/POC2_OCI_THREE_PUSH_OPERATION_REGISTRATION_CONCLUSION.md` | 신규 |
 | `docs/STATE_LATEST.md` | 수정 (§1에 entry 추가, 갱신 일자 변경) |
 | `docs/handoff/POC2/POC2_B_NEXT_ACTIONS.md` | 수정 |
@@ -196,7 +196,7 @@ backend 코드, frontend 코드, runner 동작은 **변경 0건**.
 
 - 본 STEP은 OS 레벨 등록 작업이 사용자 수행 단계에 걸쳐 있어 자동 trigger 도달이 PARTIAL의 핵심 사유다. 검증자는 "DONE이 아닌 사유"를 §2H와 §6 기준으로 판단해주기 바람.
 - wrapper 스크립트 (`scripts/run_three_push_sync_task.ps1`) 가 PS 5.1의 stderr 처리 특성 때문에 `2>&1`을 사용하지 않는 점은 의도된 설계. 회귀가 아닌 초기 설계 선택.
-- conclusion §1 AC-5 / AC-7 / AC-8 의 실측 값은 OCI 측에서 직접 채집한 결과이며, 동일 명령은 `docs/handoff/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md` §9에 정리되어 있음.
+- conclusion §1 AC-5 / AC-7 / AC-8 의 실측 값은 OCI 측에서 직접 채집한 결과이며, 동일 명령은 `docs/handoff/OPS/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md` §9에 정리되어 있음.
 - runner 코드 / sync 코드 / message_text / 산식 변경 0건. 본 STEP은 OS 레벨 운영 등록 + 문서 + wrapper 3종.
 
 ---

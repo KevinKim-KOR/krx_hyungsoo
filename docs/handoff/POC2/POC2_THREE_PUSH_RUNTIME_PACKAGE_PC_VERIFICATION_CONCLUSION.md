@@ -2,7 +2,7 @@
 
 작성일: 2026-06-13
 관련 commit: (이번 STEP)
-기준 문서: [docs/handoff/THREE_PUSH_RUNTIME_PACKAGE_CONTRACT.md](THREE_PUSH_RUNTIME_PACKAGE_CONTRACT.md)
+기준 문서: [docs/handoff/OPS/THREE_PUSH_RUNTIME_PACKAGE_CONTRACT.md](THREE_PUSH_RUNTIME_PACKAGE_CONTRACT.md)
 지시문: 개발자 최종 지시문 — 3-PUSH Runtime Package PC 검증 (2026-06-13)
 사용자 결정 (Q1~Q5): docs 본문 참조 (질의 답변 — Clarification).
 

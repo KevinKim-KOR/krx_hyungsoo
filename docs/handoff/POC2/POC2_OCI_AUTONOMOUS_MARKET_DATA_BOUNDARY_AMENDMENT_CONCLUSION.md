@@ -116,7 +116,7 @@ Market·Holdings 기존 운영은 유지
 - `docs/MASTER_PLAN.md` (OCI 자율 시장 데이터 경계 정정 섹션 신설)
 - `docs/KILL_SWITCHES.md` (KS-11 변경 근거 기록 · KS 자체 미변경)
 - `docs/STATE_LATEST.md` (이번 STEP 요약 + 상태 앵커)
-- `docs/handoff/STATE_LATEST.md` (redirect 최신화)
+- `docs/handoff/POC2/STATE_LATEST.md` (redirect 최신화)
 - `docs/handoff/POC2/POC2_B_NEXT_ACTIONS.md` (§0 상태 반영)
 - `docs/backlog/BACKLOG.md` (저빈도 scheduler 항목 상태 정정)
 - 신규: 본 문서

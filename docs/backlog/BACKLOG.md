@@ -210,7 +210,7 @@ P-12 공격 · 방어 구성 표시와 P-13 SuperTrend 는 기존 제외 기록�
 
 ## 반영 이력 (2026-08-24 · BACKLOG 정합 R2.1)
 
-`docs/handoff/BACKLOG_RECONCILIATION_V2_CONCLUSION.md`(검증자 VERIFIED · 커밋 `a22ddae5`)
+`docs/handoff/POC3/BACKLOG_RECONCILIATION_V2_CONCLUSION.md`(검증자 VERIFIED · 커밋 `a22ddae5`)
 결과를 본 원장에 기계적으로 반영했다. **67건 → 55건.**
 
 | 처리 | 건수 | 항목 |
@@ -240,7 +240,7 @@ P-12 공격 · 방어 구성 표시와 P-13 SuperTrend 는 기존 제외 기록�
 `PARAM_HANDOFF_OCI_RUNTIME_3PUSH` 로 전환됐다. **기존 sync 산출물
 (`scripts/sync_three_push_packages.py` · `scripts/run_three_push_sync_task.ps1`)은
 보존**되며 manual recovery · smoke test · OCI 파일 전달 검증 · 비상 fallback 용도로 계속
-쓴다(`docs/handoff/PC_THREE_PUSH_SYNC_TASKSCHEDULER.md` §0.2 · `docs/STATE_LATEST.md:1793`).
+쓴다(`docs/handoff/OPS/PC_THREE_PUSH_SYNC_TASKSCHEDULER.md` §0.2 · `docs/STATE_LATEST.md:1793`).
 
 **`UNKNOWN` 0건** — 대기 중인 실측 없음.
 
@@ -250,7 +250,7 @@ P-12 공격 · 방어 구성 표시와 P-13 SuperTrend 는 기존 제외 기록�
 
 **BACKLOG 는 "지금 안 하는 게 맞는 미래 과제" 를 담는다. 아래는 그것이 아니라
 "지금 제공하기로 되어 있는데 동작하지 않는 것" 이라 원장에서 분리한다.**
-근거: `docs/handoff/BACKLOG_RECONCILIATION_V2_CONCLUSION.md` §4 (검증자 VERIFIED · 커밋 `a22ddae5`).
+근거: `docs/handoff/POC3/BACKLOG_RECONCILIATION_V2_CONCLUSION.md` §4 (검증자 VERIFIED · 커밋 `a22ddae5`).
 
 **결함 상태 (2026-10-12 · `POC5-UI-02` 정정 · 근거 `docs/ai_result/POC5/POC5_BACKLOG_SOURCE_AUDIT_2026-10-12.md`)** — 이 절에 등재된 결함만의 상태다(자료 전체의 결함 개수가 아니다):
 `DEF-FDR-TIMEOUT` = OCI 배치 경로 해소(`POC3-02D-OPS-03` · 2026-10-01 배포 · 10-02 운영 확인) · **PC 버튼 경로 보호 구현(`POC5-17` · 구현 2026-10-16 · 검증자 r2 VERIFIED(2026-10-16) · 설계자 RESULT PASS · 종료 2026-10-16 · 요청 timeout 20초 · 연속 timeout 중단 · DNS · 느린 연속 응답에 대한 전체 종료 보장 없음)** · PC 터미널 수동 스크립트는 그대로(판정 Q3) ·
@@ -756,7 +756,7 @@ P-12 공격 · 방어 구성 표시와 P-13 SuperTrend 는 기존 제외 기록�
 - **해소 (2026-10-09 · `POC5-05` 보유 · 매매 이력 통합 · 배포 · 종료)**: 「종목 관리」 보유 줄 매매 입력 → 거래일 · 시각(선택) · 단가 · 수량 · 메모 · 보유 기간(position · cycle) · 실현손익을 PC 보유 문서(`state/holdings/holdings_latest.json` v2)에 기록 · 기존 32줄은 매수일 미상 기준잔고. OCI 에는 현재 보유 5필드만(개인 이력 · 금액은 원장 · OCI 에 없음). 목표가는 이번 범위 밖(별도 요구 시 새 항목).
 
 
-- **사용자 제안 (2026-10-10 · `POC5-06` 종료 직후 · 설계자 판단 대기)**: "지금 보유하고 있는 종목들의 최초 거래일시를 모르니 2026-01-02로 해두면 어떨까 싶습니다." (실제 매매 내역을 더 넣어 가며 쓸 계획.) 사실 — 기존 32줄은 기준잔고(BASELINE)이고 기준잔고 · 잔고 등록(REGISTER) 기록은 수량 · 평단 두 칸만 허용(`app/holdings_book.py :: PAYLOAD_KEYS` · 다른 칸이 있으면 무결성 검사에서 손상). 방법별 의미 — (가) 기준잔고에 '기준일' 칸 추가(매수일 아님 표기 · 기록 형식 변경) / (나) 2026-01-02 매수(BUY)로 바꿔 쓰기(실제와 다른 매수 기록 · 05 시장 흐름이 그 날 종가 기준 '매수 전후 변화' 계산) / (다) 그대로 두고 앞으로의 실제 매매만 입력(현재 구조로 가능). OCI 적용 5필드 · 06 ML(D20) 영향 없음. 상세 `docs/handoff/POC5-06_MANUAL_REENTRY_REVIEW_AND_ML_EVIDENCE_HANDOFF_2026-10-10.md` §4.
+- **사용자 제안 (2026-10-10 · `POC5-06` 종료 직후 · 설계자 판단 대기)**: "지금 보유하고 있는 종목들의 최초 거래일시를 모르니 2026-01-02로 해두면 어떨까 싶습니다." (실제 매매 내역을 더 넣어 가며 쓸 계획.) 사실 — 기존 32줄은 기준잔고(BASELINE)이고 기준잔고 · 잔고 등록(REGISTER) 기록은 수량 · 평단 두 칸만 허용(`app/holdings_book.py :: PAYLOAD_KEYS` · 다른 칸이 있으면 무결성 검사에서 손상). 방법별 의미 — (가) 기준잔고에 '기준일' 칸 추가(매수일 아님 표기 · 기록 형식 변경) / (나) 2026-01-02 매수(BUY)로 바꿔 쓰기(실제와 다른 매수 기록 · 05 시장 흐름이 그 날 종가 기준 '매수 전후 변화' 계산) / (다) 그대로 두고 앞으로의 실제 매매만 입력(현재 구조로 가능). OCI 적용 5필드 · 06 ML(D20) 영향 없음. 상세 `docs/handoff/POC5/POC5-06_MANUAL_REENTRY_REVIEW_AND_ML_EVIDENCE_HANDOFF_2026-10-10.md` §4.
 - **진행 (2026-10-11)**: 설계자가 (가)안 = **가격 비교 기준일**(REFERENCE_DATE · 실제 매수일은 미상 유지 · 2026-01-02 는 입력 제안값)으로 설계 → `POC5-07` PLAN `PASS_TO_IMPLEMENT` · 검증자 VERIFIED · 설계자 RESULT `PASS_TO_DEPLOY` · 사용자 실제 설정(2026-01-02 · 32기간) · **종료 2026-10-11(커밋 `89f90f0f` · 해소)**(`docs/ai_design/POC5/POC5-07_HOLDINGS_REFERENCE_DATE_DESIGN_V1.md`).
 - **상태 (2026-10-12 · `POC5-UI-02` 정리)**: 사용자 요구분(매수 시점 · 금액 기록 · 기존 보유 기준일) 해소. 목표가 등 요구하지 않은 필드는 완료가 아니다(별도 요구 시 새 항목). 등록은 보존한다.
 ---

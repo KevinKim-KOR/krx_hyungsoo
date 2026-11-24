@@ -138,7 +138,7 @@ B 방향 PC 작업 1~2단계 (한국 상장 ETF 전체 universe 조회 → 일�
 |---|---|
 | `docs/PROJECT_ORIGIN_INTENT.md` §8 | FDR / SQLite 자산 추가, pykrx ETF universe 자동 조회 경로 폐기 명시 |
 | `docs/backlog/BACKLOG.md` | "FDR + SQLite Market Data Foundation 후 신규 (2026-05-15)" 섹션 신규. 4건 항목: decision evidence / FDR 약관·timeout / Category 라벨 / SQLite 영구 보존 |
-| `docs/handoff/STATE_LATEST.md` §0 | 현재 상태 = FDR+SQLite 1차 완료 (라인 수 실측 표기) |
+| `docs/handoff/POC2/STATE_LATEST.md` §0 | 현재 상태 = FDR+SQLite 1차 완료 (라인 수 실측 표기) |
 | `docs/STATE_LATEST.md` (포인터) | 변경 없음 (포인터 stub 정책 준수) |
 
 ---
@@ -241,7 +241,7 @@ B 방향 PC 작업 1~2단계 (한국 상장 ETF 전체 universe 조회 → 일�
     "requirements.txt",
     "docs/PROJECT_ORIGIN_INTENT.md",
     "docs/backlog/BACKLOG.md",
-    "docs/handoff/STATE_LATEST.md"
+    "docs/handoff/POC2/STATE_LATEST.md"
   ],
   "operational_data_locally_created_but_gitignored": [
     "state/market/market_data.sqlite",

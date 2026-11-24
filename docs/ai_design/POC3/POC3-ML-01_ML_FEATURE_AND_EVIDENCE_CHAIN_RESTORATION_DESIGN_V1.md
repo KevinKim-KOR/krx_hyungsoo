@@ -8,7 +8,7 @@
 - **개정**: 2026-08-24 **모호점 확정**(M-1~M-5) + **구현 결정 확정**(D-1~D-4) + **최종 판정**(§18).
   최초 수신 원문에서 바뀐 문장은 각 절에 `[확정 2026-08-24]` 로 표시했다.
 - **개발자 회신**: `docs/ai_plan/POC3/POC3-ML-01_ML_FEATURE_AND_EVIDENCE_CHAIN_RESTORATION_PLAN_V1.md`
-- **선행**: `docs/handoff/BACKLOG_RECONCILIATION_V2_CONCLUSION.md`
+- **선행**: `docs/handoff/POC3/BACKLOG_RECONCILIATION_V2_CONCLUSION.md`
   (BACKLOG 정합 R2.1 · 검증자 VERIFIED) — 본 Step 은 그 결과의 `DEF-ML-CHAIN` 을 대상으로 한다.
 
 ---

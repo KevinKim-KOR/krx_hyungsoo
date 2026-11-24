@@ -197,7 +197,7 @@ C3 은 PLAN 에서 '발생 추정'이었다. 사용자가 실수신 원문(`현�
 | `docs/ai_result/POC3/POC3-02D-OPS-01_PRE_PRIMARY_OPERATIONAL_CORRECTIONS_RESULT.md` | 신규 — 이 문서 |
 | `docs/ai_design/POC5/POC5-00_OPERATIONAL_DECISION_LEDGER_MASTER_DESIGN_V1.md` · `docs/ai_plan/POC5/POC5-00_OPERATIONAL_DECISION_LEDGER_MASTER_PLAN_V1.md` | 수정 — 설계자 보완 판정(C1~C7 분류) 기록 |
 | `docs/PROGRAM_TRUTH.md` | 수정 — 머리글 · §4 · §5.2 · §7.2 · §8 · §9 C-3(신규) · 장중 급등락 절 · §9-D · §11 · §13-4 · §13 뒤 'UNKNOWN / 별도 확인' 블록 · 부록 A |
-| `docs/handoff/OCI_LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1_CRONTAB.md` | 수정 — SUPERSEDED 1줄 |
+| `docs/handoff/OPS/OCI_LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1_CRONTAB.md` | 수정 — SUPERSEDED 1줄 |
 | `docs/STATE_LATEST.md` | 수정 — 검증자 `VERIFIED` 뒤 1차 갱신(POC3 Step 표 · 다음 순서 · PRIMARY 조건) |
 
 ---

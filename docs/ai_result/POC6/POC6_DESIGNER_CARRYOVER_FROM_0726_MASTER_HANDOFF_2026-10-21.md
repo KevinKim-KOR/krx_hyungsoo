@@ -45,7 +45,7 @@
   - `docs/MASTER_PLAN.md:175 · 178` '실제 연산 부하 · 4070s 실제 배치 실행 로그 또는 사용 증거'.
   - `docs/ASSUMPTIONS.md:208` L-2 'GPU/큰 ML이 현재 병목을 해결하는가?'(OPEN).
 - **CPU 를 실제 한계까지 쓰고 싶다는 희망은 어디에도 없다.**
-- ML 설계 인계(`docs/handoff/POC5_CLOSEOUT_AND_POC6_ENTRY_HANDOFF_2026-10-21.md` §3)도 CPU · GPU 실사용 목표를 ML 설계 항목으로 잇지 않는다.
+- ML 설계 인계(`docs/handoff/POC5/POC5_CLOSEOUT_AND_POC6_ENTRY_HANDOFF_2026-10-21.md` §3)도 CPU · GPU 실사용 목표를 ML 설계 항목으로 잇지 않는다.
 
 **판단 요청**: ML 고도화의 목표 · 평가 · 채택 기준 설계에 'RTX 4070 SUPER · CPU 실사용'을 목표 또는 제약으로 넣을지 정한다. 원문 주의는 '단순 부하 테스트가 아니라 판단 품질 개선 산출물로 연결'이다. 넣는다면 PROJECT_ORIGIN_INTENT 성공 기준(지금은 GPU 만)에 CPU 를 함께 적을지도 정한다.
 

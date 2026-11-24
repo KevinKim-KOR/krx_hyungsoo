@@ -15,7 +15,7 @@ PLAN_Q1~Q6     = CONFIRMED (설계자 판정 2026-09-28 · 문서 끝 원문) �
 RESULT_DECISION = PASS_WITH_MANDATORY_AMENDMENT (설계자 2026-09-28 · 문서 끝 원문) — RESULT 판정 Q1~Q3(구파일 다음 정상 저장 · 회복 → 미전달 Y → X · KOSPI 최신성) APPROVED · 필수 보완 M1 · M2 반영
 ```
 
-이 문서는 설계자 지시 원문을 그대로 옮긴 기록이다. 원문은 OPS-01 운영 확인(STEP 0~2)과 OPS-02(STEP 3~6)를 한 지시로 묶었다. OPS-01 부분의 처리 기록은 `docs/STATE_LATEST.md` 와 `docs/handoff/POC3-02D-OPS-01_PRE_PRIMARY_OPERATIONAL_CORRECTIONS_HANDOFF_2026-09-27.md` 에 있다.
+이 문서는 설계자 지시 원문을 그대로 옮긴 기록이다. 원문은 OPS-01 운영 확인(STEP 0~2)과 OPS-02(STEP 3~6)를 한 지시로 묶었다. OPS-01 부분의 처리 기록은 `docs/STATE_LATEST.md` 와 `docs/handoff/POC3/POC3-02D-OPS-01_PRE_PRIMARY_OPERATIONAL_CORRECTIONS_HANDOFF_2026-09-27.md` 에 있다.
 
 > 개발자 기록(2026-09-27): §0 '첫 거래일 2026-09-28' 을 확인하다가, 저장소 거래일 캘린더(`state/market_meta/krx_trading_days_2026.csv`)가 09-28 을 '추석 대체공휴일'로 빼고 있음을 발견했다. 그대로면 09-28 08:00 시장 브리핑이 휴장일로 건너뛴다. 사용자 승인으로 같은 날 정정했다(커밋 `3e13fbec` · 캘린더 1줄 추가 · 전체 회귀 2,347 passed). OCI 반영은 09-28 07:15 전 재 pull.
 

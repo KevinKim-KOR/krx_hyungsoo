@@ -9,7 +9,7 @@
   - 결과서 `docs/ai_result/POC5/POC5-UI-02_EXISTING_CHECK_FLOW_CORRECTIONS_RESULT.md`
     - §6-2 독립 검토 반영 · §6-3 · §11-3 검증자 문서 정정 · §11 실화면 · 사용자 의견 판단 · §11-2 보완 처리 결과
   - 출발 자료: 설계자 리뷰 `docs/ai_design/POC5/POC5_BACKLOG_AND_REMAINING_FEATURES_REVIEW_2026-10-12.md` · 개발자 대조표 `docs/ai_result/POC5/POC5_BACKLOG_SOURCE_AUDIT_2026-10-12.md`
-  - 직전 인계 `docs/handoff/POC5-08_ALERT_RETROSPECTIVE_ML_EVALUATION_HANDOFF_2026-10-12.md` · 정본 `docs/PROGRAM_TRUTH.md` · 상태 `docs/STATE_LATEST.md`
+  - 직전 인계 `docs/handoff/POC5/POC5-08_ALERT_RETROSPECTIVE_ML_EVALUATION_HANDOFF_2026-10-12.md` · 정본 `docs/PROGRAM_TRUTH.md` · 상태 `docs/STATE_LATEST.md`
 
 ```text
 POC5-UI-02  IMPLEMENTED_VERIFIED_CLOSED (2026-10-12)

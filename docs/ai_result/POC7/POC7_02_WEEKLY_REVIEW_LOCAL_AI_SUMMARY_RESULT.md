@@ -70,7 +70,7 @@
 - KS-10: 구현 파일 모두 600줄 미만(최대 `runner_win.py` 584줄). r3 정정 중 `merge.py` 가 659줄이 돼 공통 원값 대조(`_check_body`)를 `merge_checks.py` 로 더 옮겼다. r2 정정 중 `merge.py`(671줄)와 `runner_win.py`(658줄)가 발동 선(650줄)을 넘어, 원값 대조를 `merge_checks.py` 로, 파일 쓰기 · 앞 결과 읽기를 `runner_files.py` 로 나눴다(§14-4). 시험 1,249 · 543 · 1,106 · 1,211 · 979줄(시험 임계 1,500줄 미만).
 - 기존 모듈 수정 없음. `app.entry_timing.protocol`(POC7-01 위치 · 한 번 쓰기 도구)과 `app.ml_evidence.store`(해시)는 가져다 쓰기만 한다.
 - 연구 산출물 `state/ml/research/poc7_02/` 는 git 제외(`.gitignore` `state/ml/research/`). 아직 실제 사례 · 묶음은 만들지 않았다(폴더 없음).
-- 같은 index 에 함께 stage 된 POC6 종료 인계 문서 `docs/handoff/POC6_CLOSEOUT_AND_POC7_HANDOFF_2026-11-23.md`(설계자 원문 보관 · 44줄)는 POC7-02 변경이 아니다(§10).
+- 같은 index 에 함께 stage 된 POC6 종료 인계 문서 `docs/handoff/POC6/POC6_CLOSEOUT_AND_POC7_HANDOFF_2026-11-23.md`(설계자 원문 보관 · 44줄)는 POC7-02 변경이 아니다(§10).
 
 ## 3. 구현 내용
 
@@ -312,7 +312,7 @@ Windows PC  묶음 해시 → 앞 결과 확인(같은 묶음만) → 환경(Pyt
 - **U1:** Windows PC 에 Ollama 가 없어 형수님 승인 뒤 공식 Windows 판과 지정 모델 하나를 설치 · 수신했다(2026-11-24 · 설치 시간은 기록 받지 못함).
 - **전달 방법 제안(형수님 · 2026-11-23):** '소스는 git, 자료는 공유 폴더' → 판정서 Q-D: 소스는 git, 이번 실측 자료 전달은 USB 직접 왕복. 공유 폴더는 반복 사용 때 검토.
 - **실측 전달 방법 변경(형수님 결정 · 2026-11-24):** USB 가 어려워 같은 집 와이파이의 맥북 '공용 폴더'(SMB 파일 공유)로 묶음 · 결과를 옮겼다. 형수님이 '설계자 안 거침 · 공용으로'라고 정했다(판정서 Q-D 와 다름 · §20-1). 제3 서버(클라우드 · 메일)는 거치지 않았다.
-- **POC6 인계 문서:** `docs/handoff/POC6_CLOSEOUT_AND_POC7_HANDOFF_2026-11-23.md` → 판정서: POC7-02 마감 때 문서 묶음과 함께 커밋한다(실측 전 커밋에는 넣지 않음).
+- **POC6 인계 문서:** `docs/handoff/POC6/POC6_CLOSEOUT_AND_POC7_HANDOFF_2026-11-23.md` → 판정서: POC7-02 마감 때 문서 묶음과 함께 커밋한다(실측 전 커밋에는 넣지 않음).
 
 ## 11. 검증자 r1 판정 (Codex · 2026-11-23)
 

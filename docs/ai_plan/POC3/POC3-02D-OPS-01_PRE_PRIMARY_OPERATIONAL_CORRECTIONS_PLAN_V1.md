@@ -697,7 +697,7 @@ LEGACY_OUTCOME_BACKFILL = PROHIBITED
   - 「OCI 운영 상태」 필수 판정 · 위치 stale.
   - KOSPI 적재 stale 기록.
   - 작업 전 §5.1 · §6.1 · §9 · §11 · §13 · §15 · 부록 전 섹션을 grep 한 뒤 일괄 반영한다.
-- `docs/handoff/OCI_LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1_CRONTAB.md`: 머리에 SUPERSEDED 1줄(Q15).
+- `docs/handoff/OPS/OCI_LOW_FREQUENCY_TELEGRAM_PUSH_OPERATION_V1_CRONTAB.md`: 머리에 SUPERSEDED 1줄(Q15).
 - POC5 원장 문서(POC5-01 PLAN 때):
   - outcome 값 집합에 `send_failed` 추가.
   - '배포일 이전 `holdings_risk_alert` 의 `message_text_length=0` = 미기록 · 길이 > 0 ≠ 발송'.

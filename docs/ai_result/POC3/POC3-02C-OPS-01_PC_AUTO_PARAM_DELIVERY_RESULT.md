@@ -150,7 +150,7 @@ frontend/app/components/ThreePushParamCard.tsx  무변경
 | `scripts/verify_three_push_param_oci.py` | 복제 허용목록 갱신 (§20-2) |
 | `tests/test_remote_script_execution_contracts.py` | 신규 · §21-1 에서 재작성 |
 | `.gitignore` | 런타임 산출물 2건 |
-| `docs/handoff/POC3-02C-OPS-01_CLOSEOUT_2026-09-18.md` | 종료 문서 |
+| `docs/handoff/POC3/POC3-02C-OPS-01_CLOSEOUT_2026-09-18.md` | 종료 문서 |
 | `docs/ai_result/POC3/POC3-02C-OPS-01_PC_AUTO_PARAM_DELIVERY_RESULT.md` | **이 문서** |
 
 ```bash

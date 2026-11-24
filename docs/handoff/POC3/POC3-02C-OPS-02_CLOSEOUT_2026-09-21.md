@@ -240,7 +240,7 @@ max_sends_per_day           (4)   [1, 50]       max_items_per_section     (3)  [
 | 설계서 (상태 저장 계약 **정본 = §15-2**) | `docs/ai_design/POC3/POC3-02C-OPS-02_INTRADAY_SURGE_DROP_ALERT_DESIGN_V1.md` |
 | 개발 PLAN | `docs/ai_plan/POC3/POC3-02C-OPS-02_INTRADAY_SURGE_DROP_ALERT_PLAN_V1.md` |
 | 결과서 (목업 §7 · D2/D3 §23 · 교차 결함 §24) | `docs/ai_result/POC3/POC3-02C-OPS-02_INTRADAY_SURGE_DROP_ALERT_RESULT.md` |
-| 직전 챕터 종료 | `docs/handoff/POC3-02C-OPS-01_CLOSEOUT_2026-09-18.md` |
+| 직전 챕터 종료 | `docs/handoff/POC3/POC3-02C-OPS-01_CLOSEOUT_2026-09-18.md` |
 | 지금 실제 동작 | `docs/PROGRAM_TRUTH.md` 프로세스 C · §13-7 · 부록 A |
 | 상태 앵커 | `docs/STATE_LATEST.md` |
 

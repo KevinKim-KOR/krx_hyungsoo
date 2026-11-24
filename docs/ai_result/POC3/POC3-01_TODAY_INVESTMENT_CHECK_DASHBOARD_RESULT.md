@@ -244,6 +244,6 @@
 **파일 삭제 승인**: 위 삭제 3건(ONBOARDING · cleanup_fix_r7 2파일)은 **사용자 직접 지시**로 수행 (룰상 파일 삭제는 사용자 승인 필수 → 충족).
 
 **stale 참조 처리 (A-3 정정 · 정확히 재보고)**:
-- grep 전수 확인 결과 옛 경로를 참조하는 문서는 3부류: (1) 본 결과서·PLAN(내 문서) — 새 경로로 정정 완료. (2) `docs/ops/POC2_STEP8_OPERATION_LOG.md` 를 가리키는 **과거 POC2 문서 2건** (`docs/handoff/POC2/POC2_STEP8_..._VALIDATION.md`, `docs/handoff/STATE_LATEST_ARCHIVE.md`).
+- grep 전수 확인 결과 옛 경로를 참조하는 문서는 3부류: (1) 본 결과서·PLAN(내 문서) — 새 경로로 정정 완료. (2) `docs/ops/POC2_STEP8_OPERATION_LOG.md` 를 가리키는 **과거 POC2 문서 2건** (`docs/handoff/POC2/POC2_STEP8_..._VALIDATION.md`, `docs/handoff/POC2/STATE_LATEST_ARCHIVE.md`).
 - (2)는 **완료된 POC2 STEP 의 역사적 기록**이라 사용자 결정으로 **그대로 보존**한다 (사용자 2026-07-29 "(가) 역사적 기록 유지" 확정). archive 는 원래 프리즈 대상이므로 사후 경로 정정하지 않는다.
 - 따라서 "전수 정정" 이 아니라 **"활성 문서만 정정 · 과거 기록은 의도적 보존"** 이 정확한 상태다.

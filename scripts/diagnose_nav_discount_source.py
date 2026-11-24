@@ -21,7 +21,7 @@
 
 진단 결과:
 - state/market/nav_discount_source_diagnosis_latest.json
-- docs/handoff/ETF_NAV_DISCOUNT_SOURCE_DIAGNOSIS.md
+- docs/handoff/POC2/ETF_NAV_DISCOUNT_SOURCE_DIAGNOSIS.md
 
 실행: ./.venv/Scripts/python.exe scripts/diagnose_nav_discount_source.py
 """
@@ -95,7 +95,7 @@ HTTP_USER_AGENT = (
 )
 
 ARTIFACT_JSON_PATH = Path("state/market/nav_discount_source_diagnosis_latest.json")
-ARTIFACT_MD_PATH = Path("docs/handoff/ETF_NAV_DISCOUNT_SOURCE_DIAGNOSIS.md")
+ARTIFACT_MD_PATH = Path("docs/handoff/POC2/ETF_NAV_DISCOUNT_SOURCE_DIAGNOSIS.md")
 
 
 def _utcnow_iso() -> str:

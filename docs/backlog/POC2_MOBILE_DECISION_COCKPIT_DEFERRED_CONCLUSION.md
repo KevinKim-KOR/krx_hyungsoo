@@ -187,7 +187,7 @@ Low-Frequency Telegram Push Operation v1
 - `docs/PROJECT_ORIGIN_INTENT.md`
 - `docs/ASSUMPTIONS.md`
 - `docs/STATE_LATEST.md`
-- `docs/handoff/STATE_LATEST.md`
+- `docs/handoff/POC2/STATE_LATEST.md`
 - `docs/handoff/POC2/POC2_B_NEXT_ACTIONS.md`
 - `docs/backlog/BACKLOG.md`
 - `docs/handoff/POC2/POC2_MOBILE_DECISION_OPERATING_SEQUENCE_ANCHOR.md`

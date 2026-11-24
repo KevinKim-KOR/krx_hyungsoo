@@ -499,8 +499,8 @@
 | guard 목록 | (1) global enable flag (2) push_kind별 enable flag (3) generation_status=failed 차단 (4) 최신성 36h guard (5) 중복 발송 방지 (package_id 기반) (6) 금지 문구 검사 (7) token/chat_id 비노출. |
 | 중복 발송 registry | `state/three_push/oci_sent_registry.json` — push_kind + package_id 키로 sent 기록. |
 | status 기록 | `state/three_push/oci_runner_status_latest.json` + `state/three_push/oci_runner_history.jsonl` + `logs/three_push_cron.log`. |
-| crontab template | `docs/handoff/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md` (2026-06-18 최신화 — venv 경로 `venv/bin/python` 명시 + .env 자동 로드 안내 + PC sync 선행 시간표 + dry-run/send 등가 실행 절차). |
-| PC sync 운영 등록 안내 | `docs/handoff/PC_THREE_PUSH_SYNC_TASKSCHEDULER.md` (2026-06-18 신규 — schtasks CLI 명령 3종 + GUI 절차 + 등록 확인 / 수동 트리거 / 중단·재개 / 트러블슈팅). |
+| crontab template | `docs/handoff/OPS/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md` (2026-06-18 최신화 — venv 경로 `venv/bin/python` 명시 + .env 자동 로드 안내 + PC sync 선행 시간표 + dry-run/send 등가 실행 절차). |
+| PC sync 운영 등록 안내 | `docs/handoff/OPS/PC_THREE_PUSH_SYNC_TASKSCHEDULER.md` (2026-06-18 신규 — schtasks CLI 명령 3종 + GUI 절차 + 등록 확인 / 수동 트리거 / 중단·재개 / 트러블슈팅). |
 | PC sync wrapper | `scripts/run_three_push_sync_task.ps1` (2026-06-18 신규 — Task Scheduler 호출용. `.venv\Scripts\python.exe scripts/sync_three_push_packages.py` 실행 + `logs/three_push_sync_task.log` append + exit code 전달). |
 | 테스트 | pytest **534 passed** (직전 STEP 시점 / 본 STEP 코드 변경 0건). 2026-06-18 본 STEP 검증 시점에 1 failed (`test_generate_spike_alert_via_unified_endpoint`, Clean tree에서도 동일 실패하는 기존 회귀, 본 STEP 무관). black / flake8 PASS. OCI 실측 (2026-06-18): dry-run 3종 PASS (msg_len market 997 / holdings 1606 / spike 878). send → telegram_sent=true / duplicate guard → status=skipped, reason=duplicate_package PASS. |
 | 테스트용/임시 여부 | 운영용 — OCI crontab + PC Task Scheduler 등록으로 하루 3회 자동 실행 가능. |
@@ -526,7 +526,7 @@
 | OCI 측 검증 CLI | `scripts/verify_three_push_param_oci.py --path <PATH>` (stdlib only) |
 | guard 7종 | (1) latest PARAM 부재 fail-closed (2) PARAM schema 검증 (3) PARAM secret 비노출 (4) PARAM 의 enabled_push_kinds 확인 (5) PUSH_AUTOSEND_{global,KIND}_ENABLED (6) duplicate guard (key = `push_kind::param_id::KST_date`) (7) forbidden wording / token noexposure. |
 | status 기록 | `state/three_push/oci_runtime_status_latest.json` + `oci_runtime_history.jsonl` + `oci_runtime_sent_registry.json` + `logs/three_push_runtime_cron.log` (정식). |
-| crontab template | `docs/handoff/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md` §3 (정식 운영) + §3-fallback (manual recovery). |
+| crontab template | `docs/handoff/OPS/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md` §3 (정식 운영) + §3-fallback (manual recovery). |
 | 다음 조치 | (1) 사용자 OCI 에서 `crontab -e` 로 정식 entry 3종 갱신 (`run_three_push_oci.py` → `run_three_push_runtime_oci.py`). (2) PARAM 변경 운영 사이클 검증 (manual_seed → baseline_static 등). (3) runtime data source 점진 확장 (BACKLOG CONSOLIDATED_BACKLOG_DEBT_CLEANUP). |
 
 ### 2.28 PUSH 사용자 표현 정리 + PARAM 적용 UI 연결 (2026-06-20 신규)
@@ -903,7 +903,7 @@
 
 - 진단 실측 (직전 source diagnosis): `state/market/constituents_source_diagnosis_latest.json`
 - 진단 리포트 (직전 STEP, 현재는 stale — Naver 통합 완료 상태에서는 §2.10 의
-  현재 상태 표가 우선): `docs/handoff/ETF_CONSTITUENTS_SOURCE_DIAGNOSIS.md`
+  현재 상태 표가 우선): `docs/handoff/POC2/ETF_CONSTITUENTS_SOURCE_DIAGNOSIS.md`
 - 다음 STEP 후보: `docs/handoff/POC2/POC2_B_NEXT_ACTIONS.md`
 - BACKLOG: `docs/backlog/BACKLOG.md`
 

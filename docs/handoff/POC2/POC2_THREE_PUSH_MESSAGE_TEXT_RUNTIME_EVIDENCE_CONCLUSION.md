@@ -2,7 +2,7 @@
 
 작성일: 2026-06-14
 관련 commit: (이번 STEP)
-기준 문서: [docs/handoff/THREE_PUSH_RUNTIME_PACKAGE_CONTRACT.md](THREE_PUSH_RUNTIME_PACKAGE_CONTRACT.md)
+기준 문서: [docs/handoff/OPS/THREE_PUSH_RUNTIME_PACKAGE_CONTRACT.md](THREE_PUSH_RUNTIME_PACKAGE_CONTRACT.md)
 지시문: 개발자 최종 지시문 — 3-PUSH Message Text Runtime Evidence 반영 (2026-06-14)
 
 ---
@@ -296,7 +296,7 @@ market_view 연결.
 | AC-9 기존 delivery 흐름 유지 | PASS | PENDING_APPROVAL → DELIVERING → COMPLETED / FAILED 흐름 변경 0건. delivery.py 변경 0건 (직전 STEP r6 이후 유지). |
 | AC-10 기존 계산 산식 불변 | PASS | holdings / Market Discovery / ML baseline / NAV·괴리율 / universe momentum / data quality 산식 변경 0건. push_context 는 기존 builder 결과 dict 를 그대로 읽기만 함. |
 | AC-11 실제 Telegram 발송 0 | PASS | 테스트는 `delivery.deliver` autouse stub (기존). 라이브 검증은 PENDING_APPROVAL 까지만 도달. |
-| AC-12 문서 갱신 | PASS (partial) | STATE_LATEST / POC2_B_NEXT_ACTIONS / POC2_FEATURE_INVENTORY / 본 conclusion 갱신. **handoff/STATE_LATEST.md 는 6줄 redirect stub 이라 미갱신 — 캐노니컬 state 는 docs/STATE_LATEST.md 단독 유지 (§7 참조)**. |
+| AC-12 문서 갱신 | PASS (partial) | STATE_LATEST / POC2_B_NEXT_ACTIONS / POC2_FEATURE_INVENTORY / 본 conclusion 갱신. **handoff/POC2/STATE_LATEST.md 는 6줄 redirect stub 이라 미갱신 — 캐노니컬 state 는 docs/STATE_LATEST.md 단독 유지 (§7 참조)**. |
 
 ---
 
@@ -313,7 +313,7 @@ market_view 연결.
   trigger 까지 34 라인 여유. 다음 변경 시 trigger 진입 가능성 — Cleanup STEP
   범위에 함께 포함 권고 (단일 Cleanup STEP 으로 push_context + draft_message
   책임 분리).
-- **`docs/handoff/STATE_LATEST.md` 미갱신**: 본 파일은 6줄 redirect stub
+- **`docs/handoff/POC2/STATE_LATEST.md` 미갱신**: 본 파일은 6줄 redirect stub
   ("본 파일과 ARCHIVE 로 안내" 만 포함). 본 STEP 에서는 변경하지 않았다 (stub
   자체가 변경 대상 아님). 캐노니컬 state 는 `docs/STATE_LATEST.md` 가 단독
   유지 — 본 conclusion §8 / 보고서 JSON 의 `handoff_state_latest_updated` 는

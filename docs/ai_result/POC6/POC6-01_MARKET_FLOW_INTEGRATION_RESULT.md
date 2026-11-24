@@ -248,7 +248,7 @@ A  docs/ai_design/POC6/POC6-01_MARKET_FLOW_INTEGRATION_SCOPE_AND_SOURCE_DECISION
 A  docs/ai_plan/POC5/POC5-28_MARKET_FLOW_FX_AND_OIL_CONTEXT_PLAN_V1.md
 AM docs/ai_result/POC6/POC6-01_MARKET_FLOW_INTEGRATION_RESULT.md
 M  docs/backlog/BACKLOG.md
-A  docs/handoff/POC5_CLOSEOUT_AND_POC6_ENTRY_HANDOFF_2026-10-21.md
+A  docs/handoff/POC5/POC5_CLOSEOUT_AND_POC6_ENTRY_HANDOFF_2026-10-21.md
 M  frontend/app/components/ETFExposureView.tsx
 M  frontend/app/components/MarketDiscoveryView.tsx
 M  frontend/app/components/TransferToAISessionsCard.tsx
@@ -436,7 +436,7 @@ NEXT             = 설계자 RESULT 판정 → 사용자 커밋·push 승인
   - 승인 범위 46개 파일 + 종료 문서 변경을 한 커밋으로. 커밋 · push = 사용자 승인. 사용자 소유 handoff 문서 제외.
   - 커밋 번호를 적으려는 후속 문서 커밋 없음.
   - 문서 정리만으로 검증자에게 다시 넘기지 않음. OCI pull · 새 거래일 대기 없음.
-  - 인계 문서는 종료 조건이 아니었으나, 사용자 요청(2026-10-21 · POC5 → POC6 단계 이동)으로 POC5 종료 · POC6 진입 인계 `docs/handoff/POC5_CLOSEOUT_AND_POC6_ENTRY_HANDOFF_2026-10-21.md` 를 같은 커밋에 넣었다.
+  - 인계 문서는 종료 조건이 아니었으나, 사용자 요청(2026-10-21 · POC5 → POC6 단계 이동)으로 POC5 종료 · POC6 진입 인계 `docs/handoff/POC5/POC5_CLOSEOUT_AND_POC6_ENTRY_HANDOFF_2026-10-21.md` 를 같은 커밋에 넣었다.
 - **다음 주요 작업**(판정 §5): ML 고도화의 목표 · 평가 · 채택 기준 설계.
   - 시장 흐름에 지표 · 자료원을 보태는 것은 기본 후속이 아니다.
   - 기존 알림 사후평가 · 가격 결과 · 선택 사용자 평가를 우선 활용하고, 평가 없는 알림도 쓴다.

@@ -128,7 +128,7 @@ smoke_pit_last2    비공식 smoke(마지막 2개 평가일 · official=false ·
 3. **5분위 스프레드의 경계 동점은 종목코드 순서로 갈린다** — 판정 미사용 보고 지표다.
 4. 러너 562줄 · 리포트 498줄 · eval 495줄 — 600줄에 가깝다. 붙이기 **전에** 분리한다.
 
-**앞 챕터에서 넘어와 아직 열린 것** (상세는 `docs/handoff/POC4-02_PARALLEL_RESEARCH_TRACKS_HANDOFF_2026-09-25.md` §6)
+**앞 챕터에서 넘어와 아직 열린 것** (상세는 `docs/handoff/POC4/POC4-02_PARALLEL_RESEARCH_TRACKS_HANDOFF_2026-09-25.md` §6)
 5. `scripts/run_poc4_02a_pit_bias.py` 586줄 KS-10 근접 · 02A 거래량 0 기록 범위 · 02B exact-k 진단 이름.
 6. POC4-01 기존 테스트 229건 고정 fixture 전환.
 7. `ASSUMPTIONS Q6` 운영 계약 OPEN.
@@ -180,7 +180,7 @@ PLAN                 docs/ai_plan/POC4/POC4-03_RF_VS_MOMENTUM_FINAL_KILL_GATE_PL
 Master Plan          docs/ai_plan/POC4/POC4-00_ML_QUANT_ADVANCEMENT_MASTER_PLAN_V1.md §11 (단계 상태표)
 현행 동작             docs/PROGRAM_TRUTH.md §7.1 (KRX 연구 DB consumer)
 현재 상태             docs/STATE_LATEST.md
-직전 챕터             docs/handoff/POC4-02_PARALLEL_RESEARCH_TRACKS_HANDOFF_2026-09-25.md
+직전 챕터             docs/handoff/POC4/POC4-02_PARALLEL_RESEARCH_TRACKS_HANDOFF_2026-09-25.md
 ```
 
 ## 9. 사용자 확인

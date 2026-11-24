@@ -46,7 +46,7 @@ PYKRX_SOURCE_LABEL = "pykrx/get_etf_portfolio_deposit_file"
 NAVER_SOURCE_LABEL = "naver_mobile_etf_component"
 
 ARTIFACT_JSON_PATH = Path("state/market/constituents_source_diagnosis_latest.json")
-ARTIFACT_MD_PATH = Path("docs/handoff/ETF_CONSTITUENTS_SOURCE_DIAGNOSIS.md")
+ARTIFACT_MD_PATH = Path("docs/handoff/POC2/ETF_CONSTITUENTS_SOURCE_DIAGNOSIS.md")
 
 
 def _utcnow_iso() -> str:

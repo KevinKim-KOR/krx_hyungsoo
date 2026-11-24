@@ -45,7 +45,7 @@ POC3-REF-02 소스 사실 검증(SOURCE_CONFLICT 2건 반환) → 설계자 재�
 - `docs/STATE_LATEST.md` — 최상단 REF-02 STEP 블록 추가(08-01 기준·CANONICAL_APPLICATION_AWAITING_VERIFICATION) · POC3-01 COMPLETED 유지 · BACKLOG 반영 표현
 - `docs/backlog/BACKLOG.md` — 본문 40개 제거·조건부 보류 65개만 유지 · 관리블록 추가
 - `docs/handoff/POC3/POC3_PC_JUDGMENT_UI_RECOMPOSITION_MASTER_DESIGN_V1.md` — 상단 SUPERSEDED_FOR_CURRENT_PLANNING 안내(본문 무변경)
-- `docs/handoff/STATE_LATEST.md` — 6줄 redirect 로 축약
+- `docs/handoff/POC2/STATE_LATEST.md` — 6줄 redirect 로 축약
 
 신규(A · 1):
 - `docs/ai_design/POC3/POC3-00_PC_JUDGMENT_UI_INTEGRATED_IMPLEMENTATION_MAP_V2.md` — 통합지도 V2 canonical

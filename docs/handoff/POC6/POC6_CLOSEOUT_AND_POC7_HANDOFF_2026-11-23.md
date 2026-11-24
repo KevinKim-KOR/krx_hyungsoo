@@ -2,7 +2,7 @@
 
 2026-11-23 KST · 총괄 설계자 · 형수님과 개발자
 
-보관 경로 `docs/handoff/POC6_CLOSEOUT_AND_POC7_HANDOFF_2026-11-23.md`
+보관 경로 `docs/handoff/POC6/POC6_CLOSEOUT_AND_POC7_HANDOFF_2026-11-23.md`
 
 ## POC6 운영 마감
 

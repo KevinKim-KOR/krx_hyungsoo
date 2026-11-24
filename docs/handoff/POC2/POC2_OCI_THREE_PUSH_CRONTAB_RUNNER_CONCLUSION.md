@@ -21,7 +21,7 @@ OCI 에서 crontab 으로 PUSH-1 / PUSH-2 / PUSH-3 를 자동 실행하고
 | 파일 | 역할 |
 |---|---|
 | `scripts/run_three_push_oci.py` | OCI runner entrypoint — `--push-kind / --mode` 인자, guard 7종, Telegram 발송, status 기록. stdlib 전용 |
-| `docs/handoff/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md` | push_kind 3종 crontab entry + 환경변수 설명 + dry-run 확인 절차 |
+| `docs/handoff/OPS/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md` | push_kind 3종 crontab entry + 환경변수 설명 + dry-run 확인 절차 |
 
 ### 수정 파일
 
@@ -55,7 +55,7 @@ OCI 에서 crontab 으로 PUSH-1 / PUSH-2 / PUSH-3 를 자동 실행하고
 | AC-9 | 최신성 guard | DONE — 36h 기본, `THREE_PUSH_MAX_PACKAGE_AGE_HOURS` override |
 | AC-10 | 중복 발송 방지 | DONE — `oci_sent_registry.json` push_kind+package_id 키 |
 | AC-11 | Telegram secret 비노출 | DONE — token/chat_id 로그/status/error 에 출력 안 함, message_text 노출 시 발송 차단 |
-| AC-12 | crontab template | DONE — `docs/handoff/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md` |
+| AC-12 | crontab template | DONE — `docs/handoff/OPS/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md` |
 | AC-13 | status/log 기록 | DONE — `oci_runner_status_latest.json` + `oci_runner_history.jsonl` + `logs/three_push_cron.log` |
 | AC-14 | 기존 package sync 구조 유지 | DONE — `sync_three_push_packages.py` 변경 0건 |
 | AC-15 | 기존 PC Approval 구조 유지 | DONE — draft.py / delivery.py 변경 0건 |
@@ -155,7 +155,7 @@ FIX r4 OCI 실측값: **1793** 자 (2026-06-16 시황 반영 재생성).
 
 ## 8. 다음 단계 (사용자 결정 대기)
 
-1. **OCI crontab 등록** — `docs/handoff/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md` 참고,
+1. **OCI crontab 등록** — `docs/handoff/OPS/OCI_THREE_PUSH_CRONTAB_TEMPLATE.md` 참고,
    발송 시간 확정 후 OCI `crontab -e` 로 3 entry 등록.
 2. **PC sync 주기 확립** — runner 의 36h stale guard 만료 전 PC 에서
    `python scripts/sync_three_push_packages.py` 를 하루 1회 이상 실행.

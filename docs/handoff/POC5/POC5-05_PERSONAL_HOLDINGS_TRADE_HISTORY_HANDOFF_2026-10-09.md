@@ -5,7 +5,7 @@
   - 설계서 `docs/ai_design/POC5/POC5-05_PERSONAL_HOLDINGS_TRADE_HISTORY_DESIGN_V1.md` — 개정 2 · §11 PLAN 판정 · §12 RESULT 판정 · 전달문 원문
   - PLAN `docs/ai_plan/POC5/POC5-05_PERSONAL_HOLDINGS_TRADE_HISTORY_PLAN_V1.md`
   - 결과서 `docs/ai_result/POC5/POC5-05_PERSONAL_HOLDINGS_TRADE_HISTORY_RESULT.md` — §6-3 ~ §6-7 검증자 r1 ~ r4 정정 · §10 배포 · 종료 기록
-  - 직전 인계 `docs/handoff/POC5-04_COLLECTION_AND_RAW_OUTCOME_REPORTS_HANDOFF_2026-10-08.md`(10-23 공식 R0 절차) · 정본 `docs/PROGRAM_TRUTH.md` · 상태 `docs/STATE_LATEST.md` · `docs/backlog/BACKLOG.md` §8
+  - 직전 인계 `docs/handoff/POC5/POC5-04_COLLECTION_AND_RAW_OUTCOME_REPORTS_HANDOFF_2026-10-08.md`(10-23 공식 R0 절차) · 정본 `docs/PROGRAM_TRUTH.md` · 상태 `docs/STATE_LATEST.md` · `docs/backlog/BACKLOG.md` §8
 
 ```text
 POC5-05   IMPLEMENTED_VERIFIED_DEPLOYED_CLOSED (2026-10-09)

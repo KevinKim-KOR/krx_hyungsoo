@@ -173,7 +173,7 @@ python scripts/run_ledger_report.py r1 --end <종료일>
 - `??` 1 = `docs/handoff/INVESTMENT_MODEL_V2_MASTER_HANDOFF_2026-07-26.md` — 사용자 소유 · 이 작업과 무관 · stage 하지 않는다(작업 중 `git add -A docs/` 로 한 번 올라갔다가 `git restore --staged` 로 내림 · 파일 내용 불변)
 - 배포 경로(OCI) 파일 0 — PC 수동 도구
 
-## 10. 공식 R0 실행 기록 (2026-10-23 · 인계 `docs/handoff/POC5-04_COLLECTION_AND_RAW_OUTCOME_REPORTS_HANDOFF_2026-10-08.md` §2 절차 · 개발자 1회)
+## 10. 공식 R0 실행 기록 (2026-10-23 · 인계 `docs/handoff/POC5/POC5-04_COLLECTION_AND_RAW_OUTCOME_REPORTS_HANDOFF_2026-10-08.md` §2 절차 · 개발자 1회)
 
 **판정: `COLLECTION_OK`** — 수집 계약 점검 결과이며 투자 효과를 뜻하지 않는다. `not_ready_reasons` 0 · `problems` 0.
 

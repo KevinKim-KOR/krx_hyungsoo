@@ -289,7 +289,7 @@ PROJECT_ORIGIN_INTENT.md §4 의 장기 성공 기준 "와이프가 이해할 �
 | AC-1 | Step8 설계서가 `docs/handoff/POC2/POC2_STEP8_3PUSH_FIRST_OPERATIONAL_CYCLE_VALIDATION.md` 에 저장된다. |
 | AC-2 | Step8 운영 기록 문서가 `docs/ops/POC2_STEP8_OPERATION_LOG.md` 에 생성된다. |
 | AC-3 | 운영 기록 템플릿과 종료 회고 템플릿이 포함된다. |
-| AC-4 | `docs/handoff/STATE_LATEST.md` 에 Step8 진입 상태가 반영된다. |
+| AC-4 | `docs/handoff/POC2/STATE_LATEST.md` 에 Step8 진입 상태가 반영된다. |
 | AC-5 | 코드 / API / UI / Telegram / 데이터 계약 변경이 없다. |
 | AC-6 | `docs/STATE_LATEST.md` 포인터 파일 정책이 지켜진다 (본문 변경 없음). |
 

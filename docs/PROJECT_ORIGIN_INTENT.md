@@ -119,7 +119,7 @@ MDD 10% 같은 숫자 목표는 2차 기준. 1차는 위 두 가지.
   알림 횟수는 구분**한다 (평가 다회 실행이라도 신호 없으면 알림 0회). OCI 작업은
   알림 배관 유지용이며 메인 의사결정 입력이 아니다. 상세: `docs/handoff/POC2/POC2_TELEGRAM_PUSH_OPERATING_BOUNDARY_AMENDMENT_V1_CONCLUSION.md`.
 - **PC 분석 평면 / OCI 운영·조회 평면 분리** (2026-06-20 추가, 본 문서
-  `docs/handoff/PC_OCI_ARCHITECTURE_DIRECTION.md` 참조):
+  `docs/handoff/OPS/PC_OCI_ARCHITECTURE_DIRECTION.md` 참조):
   - **PC = 분석·판단 평면**: 시장 데이터 SQLite 관리, ETF universe 갱신, 후보
     ETF 검토, ML 학습·백테스트·feature 실험, AI 투자세션, 사용자 승인, approved
     PARAM 과 published data snapshot 생성. PC 는 24시간 상시 실행을 전제로

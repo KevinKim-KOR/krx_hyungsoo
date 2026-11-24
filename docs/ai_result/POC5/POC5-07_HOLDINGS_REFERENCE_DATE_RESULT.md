@@ -206,5 +206,5 @@ BACKEND_FULL_REGRESSION= 3312 passed / 0 failed · exit 0 · 404.44s(2026-10-11 
 - **부수효과(개발자 확인)**: 최종 화면 확인 전후 `state/holdings/holdings_latest.json` · `state/holdings/holdings_apply_status_latest.json` sha256 같음 · 보유 문서 revision 1 · 기록 `BASELINE 32 · REFERENCE_DATE 32` 그대로.
 - **종료 조건(설계 §10-2)**: 코드 변경 없이 최종 화면 통과 → `IMPLEMENTED_VERIFIED_DEPLOYED_CLOSED`(설계자 · 검증자 재왕복 없음).
 - **후속**: 버튼 크기 통일 = `POC5-UI-01`(설계 §10-3 · 큰 48px 기본 · 중간 40px · 07 종료 조건 아님) · `app/holdings_market_flow.py` 647줄 — 다음 기능 추가 때 문구 · 상수 분리 먼저.
-- **인계**: `docs/handoff/POC5-07_HOLDINGS_REFERENCE_DATE_HANDOFF_2026-10-11.md`.
+- **인계**: `docs/handoff/POC5/POC5-07_HOLDINGS_REFERENCE_DATE_HANDOFF_2026-10-11.md`.
 

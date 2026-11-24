@@ -266,4 +266,4 @@ BACKEND_FULL_REGRESSION= 3301 passed / 0 failed · exit 0 · 406.27s(2026-10-10 
 - **부수효과(개발자 확인)**: 실화면 전후 `state/holdings/holdings_latest.json` · `state/holdings/holdings_apply_status_latest.json`(OCI 적용 기록) · `state/decision/decision_evidence.sqlite`(원장 사본) · `state/market/market_data.sqlite` sha256 4개 모두 같음.
 - **종료 조건(설계 §11-4)**: PC 재기동 · §11-3 확인 통과 → `IMPLEMENTED_VERIFIED_DEPLOYED_CLOSED`. 모델 MAE 우위 · 새 거래 · 원장 동기화 · +20 성숙 · 시세 갱신은 종료 조건이 아니다.
 - **종료 뒤 사용자 제안(2026-10-10 · 다음 설계 후보 · 이번 단계 변경 0)**: "지금 보유하고 있는 종목들의 최초 거래일시를 모르니 2026-01-02로 해두면 어떨까" — 현재 기준잔고(BASELINE) · 잔고 등록(REGISTER) 기록은 수량 · 평단 두 칸뿐이라 날짜를 넣을 자리가 없다(`app/holdings_book.py` 기록 종류별 허용 칸). 넣는 방법에 따라 의미가 달라져(기준일 칸 추가 = 기록 형식 변경 / 2026-01-02 매수(BUY)로 바꿔 쓰기 = 실제와 다른 매수 기록 · 05 시장 흐름이 '매수 전후 변화'로 계산됨) 설계자 판단 대상 — 인계 §4 · `docs/backlog/BACKLOG.md` §8.
-- **인계**: `docs/handoff/POC5-06_MANUAL_REENTRY_REVIEW_AND_ML_EVIDENCE_HANDOFF_2026-10-10.md`.
+- **인계**: `docs/handoff/POC5/POC5-06_MANUAL_REENTRY_REVIEW_AND_ML_EVIDENCE_HANDOFF_2026-10-10.md`.

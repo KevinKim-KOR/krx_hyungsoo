@@ -79,7 +79,7 @@
 | S-04 | POC3-REF-01 친구 프로젝트 소스 사실 조사 | **VERIFIED / CLOSED** · commit `16d56702` push 완료 | 최신 결과서 표기와 일치 |
 | S-05 | First Real Decision Cycle v1 | 운영 관찰 활성 · formal PASS 근거 없음 | Decision Outcome Ledger 선행 진입 금지 유지 **[2026-09-26 POC5-00 Q27]** superseded — 원장은 POC5(운영 신호·판단 결과 원장)가 이어받는다 · POC5 가 이 사이클을 만드는 단계라 선행조건이 될 수 없다 |
 | S-06 | BACKLOG 항목 수 | 현재 105개 | 감사 당시 91개 표기는 STALE. 이후 14개 추가 반영 필요 |
-| S-07 | `docs/handoff/STATE_LATEST.md` | 비정규 pointer 문서 | redirect 외 Step 본문을 제거하고 canonical `docs/STATE_LATEST.md`만 갱신해야 함 |
+| S-07 | `docs/handoff/POC2/STATE_LATEST.md` | 비정규 pointer 문서 | redirect 외 Step 본문을 제거하고 canonical `docs/STATE_LATEST.md`만 갱신해야 함 |
 | S-08 | POC3 번호 충돌 | 과거 문서명은 이력으로 유지 | 새 Step은 `POC3-03`부터 신규 순번으로 진행하고 `POC3-01/02`를 다시 쓰지 않음 |
 
 최신 사용자·검증 결과보다 오래된 문서 상태를 우선하지 않는다. 과거 conclusion과 handoff는 역사적 증거로 유지하되, 현재 gate 판정에는 사용하지 않는다.

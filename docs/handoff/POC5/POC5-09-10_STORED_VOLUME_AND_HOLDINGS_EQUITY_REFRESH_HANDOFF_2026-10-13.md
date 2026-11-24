@@ -13,7 +13,7 @@
     - `docs/ai_result/POC5/POC5-09_STORED_VOLUME_EVIDENCE_RESULT.md`(§6-3 검증자 r1 정정 · §7 실화면 · §10 종료)
     - `docs/ai_result/POC5/POC5-10_PC_HOLDINGS_EQUITY_PRICE_REFRESH_RESULT.md`(§6-3 검증자 r1 정정 · §7 실제 수집 · §10 종료)
   - 설계자용 메모(미처리) `docs/ai_result/POC5/POC5_TODAY_SCREEN_DENSITY_NOTE_2026-10-13.md`
-  - 직전 인계 `docs/handoff/POC5-UI-02_EXISTING_CHECK_FLOW_CORRECTIONS_HANDOFF_2026-10-12.md` · 정본 `docs/PROGRAM_TRUTH.md` · 상태 `docs/STATE_LATEST.md`
+  - 직전 인계 `docs/handoff/POC5/POC5-UI-02_EXISTING_CHECK_FLOW_CORRECTIONS_HANDOFF_2026-10-12.md` · 정본 `docs/PROGRAM_TRUTH.md` · 상태 `docs/STATE_LATEST.md`
 
 ```text
 POC5-09  IMPLEMENTED_VERIFIED_CLOSED (2026-10-13)

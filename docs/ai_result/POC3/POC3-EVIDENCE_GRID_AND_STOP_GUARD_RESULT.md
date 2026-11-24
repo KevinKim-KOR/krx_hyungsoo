@@ -69,7 +69,7 @@
 | `docs/PROGRAM_TRUTH.md` | 수정 |
 | `docs/STATE_LATEST.md` | 수정 |
 | `docs/ai_result/POC3/POC3-EVIDENCE_GRID_AND_STOP_GUARD_RESULT.md` | 신규 (본 문서) |
-| `docs/handoff/MACBOOK_DEV_ENV_AND_DUAL_MACHINE_CAUTIONS.md` | 수정 (§1.4 가드 반영) |
+| `docs/handoff/OPS/MACBOOK_DEV_ENV_AND_DUAL_MACHINE_CAUTIONS.md` | 수정 (§1.4 가드 반영) |
 
 `git diff --stat` 실측 (docs 제외, 5파일): **216 insertions / 56 deletions**.
 

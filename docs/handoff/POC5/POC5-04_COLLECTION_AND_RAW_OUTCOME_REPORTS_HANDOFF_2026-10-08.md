@@ -5,7 +5,7 @@
   - 설계서 `docs/ai_design/POC5/POC5-04_COLLECTION_AND_RAW_OUTCOME_REPORTS_DESIGN_V1.md` — 개정 1 · 끝에 PLAN 판정 · RESULT 판정(PASS) · 전달문 원문
   - PLAN `docs/ai_plan/POC5/POC5-04_COLLECTION_AND_RAW_OUTCOME_REPORTS_PLAN_V1.md` — §7 판정 정정 · §8 구현 중 확정 · §9 검증자 r1 정정
   - 결과서 `docs/ai_result/POC5/POC5-04_COLLECTION_AND_RAW_OUTCOME_REPORTS_RESULT.md`
-  - 직전 인계 `docs/handoff/POC5-01B_OPERATIONAL_DECISION_EVENT_LEDGER_HANDOFF_2026-10-08.md`(01B 종료 · 02 · 03 남은 확인) · 정본 `docs/PROGRAM_TRUTH.md` · 상태 `docs/STATE_LATEST.md`
+  - 직전 인계 `docs/handoff/POC5/POC5-01B_OPERATIONAL_DECISION_EVENT_LEDGER_HANDOFF_2026-10-08.md`(01B 종료 · 02 · 03 남은 확인) · 정본 `docs/PROGRAM_TRUTH.md` · 상태 `docs/STATE_LATEST.md`
 
 ```text
 POC5-04   IMPLEMENTED_VERIFIED_CLOSED (2026-10-08)

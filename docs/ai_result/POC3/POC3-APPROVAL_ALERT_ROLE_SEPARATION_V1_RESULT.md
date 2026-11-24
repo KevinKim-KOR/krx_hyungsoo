@@ -101,7 +101,7 @@
 검증자 VERIFIED 후 설계서 §10·§1대로 Closeout 반영 완료:
 - 통합지도 V2: P-05 Operations Panel **제외·폐기** · POC3-04 Operations Panel Lane **삭제** · B-072 조회 가능 범위만 흡수(잔여 조건부 보류) · Operations Panel 통합키 삭제 · §0·P-18 정정.
 - `docs/STATE_LATEST.md`: 이번 STEP(승인·알림 역할분리 = `OCI 적용·알림`) PASS/CLOSED 블록 추가, POC3-03 → 직전 강등.
-- `docs/handoff/STATE_LATEST.md`: redirect 유지, 미수정.
+- `docs/handoff/POC2/STATE_LATEST.md`: redirect 유지, 미수정.
 
 ---
 

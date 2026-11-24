@@ -75,10 +75,10 @@ AC-12: 기존 테스트 PASS (pytest)                            = DONE (379 pas
 **신규 (3)**:
 - `scripts/diagnose_nav_discount_source.py` — 진단 script (운영 API / 정기 job 연결 X)
 - `state/market/nav_discount_source_diagnosis_latest.json` — JSON artifact (source별 summary)
-- `docs/handoff/ETF_NAV_DISCOUNT_SOURCE_DIAGNOSIS.md` — Markdown report (판정 + 사유)
+- `docs/handoff/POC2/ETF_NAV_DISCOUNT_SOURCE_DIAGNOSIS.md` — Markdown report (판정 + 사유)
 
 **수정 (3)**:
-- `docs/handoff/STATE_LATEST.md` — 본 섹션
+- `docs/handoff/POC2/STATE_LATEST.md` — 본 섹션
 - `docs/handoff/POC2/POC2_B_NEXT_ACTIONS.md` — 다음 분기 후보 추가
 - `docs/backlog/BACKLOG.md` — Naver 안정성 추가 진단 / FDR 결합 / KRX 인증 후보 등록
 
@@ -154,7 +154,7 @@ AC-13: 문서 5건 갱신                                            = DONE
 - `frontend/app/globals.css` — ml-readiness-* / bridge-status-* CSS
 
 **Docs 수정 (5)**:
-- `docs/handoff/STATE_LATEST.md` — 본 STEP 결과 (본 섹션)
+- `docs/handoff/POC2/STATE_LATEST.md` — 본 STEP 결과 (본 섹션)
 - `docs/PROJECT_ORIGIN_INTENT.md` — ML 2축 (상승 후보 발굴 / 위험 구간 분류) 기록
 - `docs/ASSUMPTIONS.md` — 위험 감지 축 Open Question 기록 (활성 ≤3 준수)
 - `docs/handoff/POC2/POC2_B_NEXT_ACTIONS.md` — 다음 기능 STEP 은 빈자리 중 하나로 제한
@@ -484,7 +484,7 @@ files_750_plus_after   (활성) = ["tests/test_holdings_message_text.py" (924)]
 - `frontend/lib/api.ts` (993 → 제거; 도메인 책임이 위 8 파일로 이전).
 
 수정 (1):
-- `docs/handoff/STATE_LATEST.md` (본 §0 추가 + 직전 §0 → §0.1 demote).
+- `docs/handoff/POC2/STATE_LATEST.md` (본 §0 추가 + 직전 §0 → §0.1 demote).
 
 `POC2_FEATURE_INVENTORY.md` 는 본 STEP 이 Cleanup (기능 변경 0건) 이므로 갱신
 안 함 (지시문 §8 마지막 문단).
@@ -678,7 +678,7 @@ fetch wrapper `request` 가 `index.ts` 의 `export * from "./core"` 로 인해
 - `tests/test_market_topn_api.py` — 응답 계약 회귀 +1.
 - `docs/handoff/POC2/POC2_FEATURE_INVENTORY.md` — 신규 기능 등록.
 - `docs/handoff/POC2/POC2_B_NEXT_ACTIONS.md` — 다음 큰 방향.
-- `docs/handoff/STATE_LATEST.md` (본 §0).
+- `docs/handoff/POC2/STATE_LATEST.md` (본 §0).
 
 ### 이번 STEP 에서 의도적으로 하지 않은 것 (지시문 §22)
 
@@ -869,7 +869,7 @@ fetch wrapper `request` 가 `index.ts` 의 `export * from "./core"` 로 인해
   — source 상수 갱신 (PYKRX → NAVER).
 - `docs/handoff/POC2/POC2_FEATURE_INVENTORY.md` — ETF Exposure / Refresh / Overlap
   3 기능을 사용 가능으로 전환 + AI 문구 부분 가능 → 사용 가능.
-- `docs/handoff/STATE_LATEST.md` (본 §0).
+- `docs/handoff/POC2/STATE_LATEST.md` (본 §0).
 - `docs/handoff/POC2/POC2_B_NEXT_ACTIONS.md` (최우선 작업 = Naver 통합 완료).
 - `docs/backlog/BACKLOG.md` (ETF 구성종목 source 항목 update).
 
@@ -912,7 +912,7 @@ fetch wrapper `request` 가 `index.ts` 의 `export * from "./core"` 로 인해
     Design** (지시문 §21.C — 두 source 모두 unusable).
 - **artifact**:
   - `state/market/constituents_source_diagnosis_latest.json` — 실측 raw data.
-  - `docs/handoff/ETF_CONSTITUENTS_SOURCE_DIAGNOSIS.md` — 사람이 읽는 리포트.
+  - `docs/handoff/POC2/ETF_CONSTITUENTS_SOURCE_DIAGNOSIS.md` — 사람이 읽는 리포트.
 - **기능 인벤토리 신규**: `docs/handoff/POC2/POC2_FEATURE_INVENTORY.md` (지시문
   §11). 15개 기능 + 3 Context Bridge 모두 누락 없이 기록. ETF Exposure /
   Constituents Refresh / Overlap Analysis 3 기능은 **사용 불가 (테스트용)**
@@ -930,11 +930,11 @@ fetch wrapper `request` 가 `index.ts` 의 `export * from "./core"` 로 인해
 신규:
 - `scripts/diagnose_constituents_source.py` (455) — 진단 script.
 - `state/market/constituents_source_diagnosis_latest.json` — 실측 raw.
-- `docs/handoff/ETF_CONSTITUENTS_SOURCE_DIAGNOSIS.md` — 진단 리포트.
+- `docs/handoff/POC2/ETF_CONSTITUENTS_SOURCE_DIAGNOSIS.md` — 진단 리포트.
 - `docs/handoff/POC2/POC2_FEATURE_INVENTORY.md` — 기능 인벤토리.
 
 수정:
-- `docs/handoff/STATE_LATEST.md` (본 §0).
+- `docs/handoff/POC2/STATE_LATEST.md` (본 §0).
 - `docs/handoff/POC2/POC2_B_NEXT_ACTIONS.md` (다음 STEP 후보 C 확정).
 - `docs/backlog/BACKLOG.md` (ETF 구성종목 source 후보 항목 보강).
 
@@ -1250,7 +1250,7 @@ black PASS / flake8 PASS / frontend lint PASS / frontend build PASS.
 - `frontend/app/components/AISessionsCreateTab.tsx` — POST payload 확장.
 - `frontend/app/components/AISessionsListTab.tsx` — 상세에 시장 문맥 섹션.
 - `frontend/app/globals.css` — `.market-context-card` / regime 라벨 스타일.
-- `docs/handoff/STATE_LATEST.md` / `docs/handoff/POC2/POC2_B_NEXT_ACTIONS.md` /
+- `docs/handoff/POC2/STATE_LATEST.md` / `docs/handoff/POC2/POC2_B_NEXT_ACTIONS.md` /
   `docs/backlog/BACKLOG.md`.
 
 ### 이번 STEP 에서 의도적으로 하지 않은 것 (지시문 §16)
@@ -1364,7 +1364,7 @@ black PASS / flake8 PASS / frontend lint PASS / frontend build PASS.
   `.decision-answer-badges` 스타일.
 - `tests/test_decision_evidence_store.py` + `tests/test_decision_sessions_api.py`
   — 3 답변 필드 / has_* / 그룹 필수 / 마이그레이션 검증 (기존 18 갱신 + 신규 8).
-- `docs/handoff/STATE_LATEST.md` / `docs/handoff/POC2/POC2_B_NEXT_ACTIONS.md` /
+- `docs/handoff/POC2/STATE_LATEST.md` / `docs/handoff/POC2/POC2_B_NEXT_ACTIONS.md` /
   `docs/backlog/BACKLOG.md` — 본 STEP 반영.
 
 ### 이번 STEP 에서 의도적으로 하지 않은 것 (지시문 §14)
@@ -1507,7 +1507,7 @@ black PASS / flake8 PASS / frontend lint PASS / frontend build PASS.
   (802 → 812, +10).
 - `frontend/app/globals.css` — `.decision-card` / `.decision-textarea` /
   `.decision-select` / `.decision-pre` / `.decision-detail-card`.
-- `docs/handoff/STATE_LATEST.md` — 본 §0 갱신.
+- `docs/handoff/POC2/STATE_LATEST.md` — 본 §0 갱신.
 - `docs/backlog/BACKLOG.md` — "판단 근거 저장 (decision evidence)" 항목을
   REACTIVATED → 본 STEP 처리로 상태 갱신 (단, 매매 결과 추적은 별도 STEP
   유지).
@@ -1598,7 +1598,7 @@ black PASS / flake8 PASS / frontend lint PASS / frontend build PASS.
 - `frontend/app/components/MarketDiscoveryView.tsx` — `CopyTextCard` 컴포넌트 +
   렌더 위치 + import 1줄 추가 (700 → 790).
 - `frontend/app/globals.css` — `textarea.market-copy-textarea` 최소 스타일.
-- `docs/handoff/STATE_LATEST.md` — 본 §0 갱신.
+- `docs/handoff/POC2/STATE_LATEST.md` — 본 §0 갱신.
 - `docs/backlog/BACKLOG.md` — "ETF 구성 종목 / 정적 데이터 수집" 항목 신규.
 
 ### 이번 STEP 에서 의도적으로 하지 않은 것 (지시문 §7 그대로)
@@ -1691,7 +1691,7 @@ black PASS / flake8 PASS / frontend lint PASS / frontend build PASS.
   `.market-topn-sort-status` / `.market-discovery-subtitle`.
 - `tests/test_market_topn.py` — 4 신규 테스트 (default desc / asc 가 전체 BOTTOM N /
   invalid order fallback / asc rank 1 부터 재부여).
-- `docs/handoff/STATE_LATEST.md` — 본 §0 갱신.
+- `docs/handoff/POC2/STATE_LATEST.md` — 본 §0 갱신.
 
 ### 이번 STEP 에서 의도적으로 하지 않은 것
 
@@ -1769,7 +1769,7 @@ black PASS / flake8 PASS / frontend lint PASS / frontend build PASS.
   + `app-content max-width: 960px → 1400px`.
 - `tests/test_market_topn.py` — 8 신규 테스트 (default basis / 정렬 / candidates
   3 returns / selected_basis dates / invalid fallback / rank 재부여 / missing basis 제외).
-- `docs/handoff/STATE_LATEST.md` — 본 §0 갱신.
+- `docs/handoff/POC2/STATE_LATEST.md` — 본 §0 갱신.
 - `docs/backlog/BACKLOG.md` — "Market Discovery 기본 조회 기준 설정 UI" 항목 신규.
 
 ### 이번 STEP 에서 의도적으로 하지 않은 것
@@ -1839,7 +1839,7 @@ black PASS / flake8 PASS / frontend lint PASS / frontend build PASS.
 - `frontend/app/globals.css` — `.market-topn-filter-row` + `.market-topn-tag.*` 4 색상 변형 추가.
 - `tests/test_market_topn.py` — 12 신규 테스트 (태깅 5건, filter-before-limit / default exclude /
   opt-in / multi-tag count / entries.tags / raw SQLite 미변경).
-- `docs/handoff/STATE_LATEST.md` — 본 §0 갱신.
+- `docs/handoff/POC2/STATE_LATEST.md` — 본 §0 갱신.
 
 ### 이번 STEP 에서 의도적으로 하지 않은 것
 
@@ -1920,7 +1920,7 @@ black PASS / flake8 PASS / frontend lint PASS / frontend build PASS.
 - `.gitignore` — `etf_universe_topn_latest.json` entry 제거.
 - `docs/PROJECT_ORIGIN_INTENT.md §10 #2` — SSOT 분리 정정.
 - `docs/ASSUMPTIONS.md A-2` — REOPENED → ANSWERED 재정리.
-- `docs/handoff/STATE_LATEST.md` — §0 갱신.
+- `docs/handoff/POC2/STATE_LATEST.md` — §0 갱신.
 - `docs/backlog/BACKLOG.md` — refresh running 재시작 복구 신규.
 
 ### 이번 STEP 에서 의도적으로 하지 않은 것
@@ -1991,7 +1991,7 @@ black PASS / flake8 PASS / frontend lint PASS / frontend build PASS.
 - `frontend/app/components/MarketDiscoveryView.tsx` (38→207라인) — placeholder → 3 TOP N 표.
 - `frontend/app/components/DashboardView.tsx` (84→157라인) — Market Discovery 상태 카드.
 - `frontend/app/globals.css` (798→836라인) — TOP N 표 스타일.
-- `docs/handoff/STATE_LATEST.md` — §0 갱신 (본 STEP), 이전 §0 은 §0.1 격하.
+- `docs/handoff/POC2/STATE_LATEST.md` — §0 갱신 (본 STEP), 이전 §0 은 §0.1 격하.
 - `docs/backlog/BACKLOG.md` — "PC Market Discovery TOP N 최소 표시 후 신규" 섹션 신규.
   AI 투자세션 복사용 문구 / 레버리지·인버스·합성 필터 정책 / Data Status 실제 연결 3건.
 
@@ -2878,7 +2878,7 @@ Storage:
 4. docs/KILL_SWITCHES.md 읽기
 5. docs/ASSUMPTIONS.md 읽기 (Q1 OPEN 유지 / Q4 OPEN / Q5 OPEN 명시 연결, A-4 / A-5 ANSWERED 확인)
 6. docs/MASTER_PLAN.md 읽기
-7. docs/handoff/STATE_LATEST.md 읽기 (본 문서)
+7. docs/handoff/POC2/STATE_LATEST.md 읽기 (본 문서)
 8. docs/handoff/POC2/POC2_STEP5A_MOMENTUM_ENGINE_BOUNDARY_AND_MINIMAL_CONTRACT.md 읽기 (Step5A 설계서 — 다음 STEP 의 입력/출력 계약)
 9. docs/handoff/POC2/POC2_STEP4_MOMENTUM_ENGINE_DIRECTION_AND_Q4_BOUNDARY_DESIGN.md 읽기 (Step4 설계서 — Momentum Engine 방향 가드)
 10. docs/handoff/POC2/POC2_STEP3_CONCLUSION_AND_NEXT_HANDOFF.md 읽기 (Step3 종료 선언, 필요 시)

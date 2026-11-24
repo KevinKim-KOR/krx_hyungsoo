@@ -199,7 +199,7 @@
     `docs/handoff/POC2/POC2_OCI_ACTIVE_DATA_BOUNDARY_AUDIT_V1_CONCLUSION.md`.
 - **활성 Open Question 추가 없음**: 본 결정은 방향 앵커이며, 즉시 검증 트리거가
   발생하는 것이 아니다. DB 형식 결정 시점에 도달하면 그 때 별도 Q 로 승격.
-- **참조**: `docs/handoff/PC_OCI_ARCHITECTURE_DIRECTION.md` (원본 결정 기록),
+- **참조**: `docs/handoff/OPS/PC_OCI_ARCHITECTURE_DIRECTION.md` (원본 결정 기록),
   `docs/PROJECT_ORIGIN_INTENT.md` §7 운영 원칙.
 
 ### A-5. "앞으로 못 나가는" 패턴이 재발할 것인가?

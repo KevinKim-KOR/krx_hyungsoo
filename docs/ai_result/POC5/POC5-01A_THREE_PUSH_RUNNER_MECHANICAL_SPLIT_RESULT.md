@@ -124,7 +124,7 @@ CODE_FILES             = 5 (신규 4 = 운영 모듈 3 + 검증 스크립트 1 �
 1. **커밋 · push**: 검증자 재검증 `VERIFIED` 뒤 사용자가 커밋과 push 를 함께 승인했다(2026-10-04). 선행 문서 커밋 `a0a2c514` 와 이 구현 커밋(코드 5 + 문서 6)이 같이 push 된다. OCI pull 은 사용자 몫이다.
 2. **OCI pull 시각**: 설계자 RESULT 판정 · 검증자 뒤에 한다. 거래일 08:05 ~ 15:45 는 금지다(PLAN §4). 2026-10-03(토) ~ 10-05(월)은 휴장이다(10-05 는 거래일 캘린더 `krx_trading_days_2026.csv` 에 없고, 2026-10-02 다음 행이 10-06). 그 사이 pull 하면 첫 거래일 확인은 10-06(화)이다.
 3. **사용자 소유 문서**: 두 문서 모두 내용을 고치지 않았다.
-   - `docs/handoff/POC5-00_INVESTMENT_MODEL_V2_MASTER_DESIGNER_HANDOFF_2026-10-03.md` 는 구현 전부터 있던 사용자 소유 staged 문서였다. 사용자 승인으로 선행 문서 커밋 `a0a2c514` 에 들어갔고, 코드 변경 수에 넣지 않았다.
+   - `docs/handoff/POC5/POC5-00_INVESTMENT_MODEL_V2_MASTER_DESIGNER_HANDOFF_2026-10-03.md` 는 구현 전부터 있던 사용자 소유 staged 문서였다. 사용자 승인으로 선행 문서 커밋 `a0a2c514` 에 들어갔고, 코드 변경 수에 넣지 않았다.
    - `docs/handoff/INVESTMENT_MODEL_V2_MASTER_HANDOFF_2026-07-26.md` 는 그대로 untracked 다(손대지 않음).
 4. **관찰(이번 작업과 무관)**: (사용자 화면 조작 — 사용자 확인 2026-10-04) 2026-10-04 11:09 KST 에 PC 화면 경로로 새 PARAM `param-20261004T020942-999570`(`approved_by: user` · `POST /three-push/param/apply`)이 만들어졌다. 그 PARAM 은 OCI 동기화 · 검증까지 성공했다. 11:11 에는 시장 데이터 갱신 흔적(KOSPI 정정 증거 · NAV 갱신 파일)이 생겼다. 사용자가 직접 조작한 것으로 확인됐다.
    - 에이전트 명령 475개 · 이번 작업 명령에는 API 호출 · ssh 쓰기 · PARAM 스크립트 실행이 없다.

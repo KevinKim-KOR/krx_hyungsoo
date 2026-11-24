@@ -217,4 +217,4 @@ BACKEND_FULL_REGRESSION= 3387 passed / 0 failed · exit 0 · 403.47s(2026-10-12 
   - 개인값 · 메모 · action 문자열 0(정확 문자열 검사) · `values_json` 은 recipe 설명문 1줄뿐
 - **사본 불변**: 실행 뒤 PC 사본 실행 29 · 항목 767 · 가격 결과 458 · 평가 1 · 마지막 동기화 13:09:21 — 실행 전과 같다(읽기 전용 경로 `mode=ro`).
 - 위 숫자는 재기동 전 같은 사본으로 한 읽기 전용 시험 실행(scratchpad)과 같다.
-- 같은 코드의 실화면 통과로 **`IMPLEMENTED_VERIFIED_DEPLOYED_CLOSED` 로 종료**한다(설계자 재판정 · 검증자 재검증 없음 · 설계서 §13-6). 인계 = `docs/handoff/POC5-08_ALERT_RETROSPECTIVE_ML_EVALUATION_HANDOFF_2026-10-12.md`.
+- 같은 코드의 실화면 통과로 **`IMPLEMENTED_VERIFIED_DEPLOYED_CLOSED` 로 종료**한다(설계자 재판정 · 검증자 재검증 없음 · 설계서 §13-6). 인계 = `docs/handoff/POC5/POC5-08_ALERT_RETROSPECTIVE_ML_EVALUATION_HANDOFF_2026-10-12.md`.

@@ -105,7 +105,7 @@ r3 검증자 REJECTED r3 재지적: `_BASIS_USER_LABEL.get(basis, basis)` fallba
   - 미등록 basis (`unexpected_internal_key`) 는 라벨 생략 · 내부 값 미노출
   - `_basis_user_label` 미등록 값 빈 문자열 반환
   - `holdings_observation_lines` 헤더 `[시장 흐름 연결]` 유지 · `(market_view)` 미포함
-- `docs/handoff/STATE_LATEST.md` pointer 표기 `DONE · PASS` → `PARTIAL · REJECTED r1 → r4 정정 · 사용자 재실측 대기`.
+- `docs/handoff/POC2/STATE_LATEST.md` pointer 표기 `DONE · PASS` → `PARTIAL · REJECTED r1 → r4 정정 · 사용자 재실측 대기`.
 - Conclusion §5 서두에 "r1 실측 시점 기록 · r2/r3/r4 정정 이전 · 재실측 후 §5.re · §6.re 추가 예정" 명시.
 
 ### run_id 노출 판단

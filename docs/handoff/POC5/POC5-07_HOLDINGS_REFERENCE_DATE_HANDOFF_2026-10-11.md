@@ -5,7 +5,7 @@
   - 설계서 `docs/ai_design/POC5/POC5-07_HOLDINGS_REFERENCE_DATE_DESIGN_V1.md` — V1 · §9 PLAN 판정 · §10 RESULT 판정(§10-3 = POC5-UI-01 지시) · 전달문 원문 3건
   - PLAN `docs/ai_plan/POC5/POC5-07_HOLDINGS_REFERENCE_DATE_PLAN_V1.md`
   - 결과서 `docs/ai_result/POC5/POC5-07_HOLDINGS_REFERENCE_DATE_RESULT.md` — §6-2 독립 검토 · §10 RESULT 전 실제 설정 · §11 배포 · 종료 기록
-  - 직전 인계 `docs/handoff/POC5-06_MANUAL_REENTRY_REVIEW_AND_ML_EVIDENCE_HANDOFF_2026-10-10.md` · 정본 `docs/PROGRAM_TRUTH.md` · 상태 `docs/STATE_LATEST.md` · `docs/backlog/BACKLOG.md` §8 · §10
+  - 직전 인계 `docs/handoff/POC5/POC5-06_MANUAL_REENTRY_REVIEW_AND_ML_EVIDENCE_HANDOFF_2026-10-10.md` · 정본 `docs/PROGRAM_TRUTH.md` · 상태 `docs/STATE_LATEST.md` · `docs/backlog/BACKLOG.md` §8 · §10
 
 ```text
 POC5-07   IMPLEMENTED_VERIFIED_DEPLOYED_CLOSED (2026-10-11)

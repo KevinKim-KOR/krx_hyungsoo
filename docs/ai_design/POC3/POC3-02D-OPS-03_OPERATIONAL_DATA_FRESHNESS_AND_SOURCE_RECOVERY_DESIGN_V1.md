@@ -13,7 +13,7 @@ PLAN_RESULT   = PASS_WITH_MANDATORY_AMENDMENTS (설계자 2026-09-29 · 문서 �
 RESULT        = PASS_WITH_MANDATORY_AMENDMENTS (설계자 2026-09-30 · 문서 끝 원문) — 가격 기준 OPTION_A_WITH_GUARDS · 사용자 화면 PASSED · 문구 APPROVED · 보완 뒤 설계자 재판정 없이 검증자
 ```
 
-이 문서는 설계자 지시 원문을 그대로 옮긴 기록이다. 원문은 OPS-02 종료 판정(STEP 1~3)과 OPS-03 개시를 한 지시로 묶었다. OPS-02 부분의 처리 기록은 `docs/handoff/POC3-02D-OPS-02_RUNTIME_STATE_AND_OPERATIONAL_UI_CORRECTIONS_HANDOFF_2026-09-29.md` · `docs/STATE_LATEST.md` 에 있다.
+이 문서는 설계자 지시 원문을 그대로 옮긴 기록이다. 원문은 OPS-02 종료 판정(STEP 1~3)과 OPS-03 개시를 한 지시로 묶었다. OPS-02 부분의 처리 기록은 `docs/handoff/POC3/POC3-02D-OPS-02_RUNTIME_STATE_AND_OPERATIONAL_UI_CORRECTIONS_HANDOFF_2026-09-29.md` · `docs/STATE_LATEST.md` 에 있다.
 
 설계자 판정의 입력은 개발자가 2026-09-28 에 정리한 데이터 최신성 실측(OCI 07:20 배치 로그 11회 · 실행 기록)과 OPS-02 검증자 `VERIFIED` r2 결과다(사용자 전달).
 
@@ -73,7 +73,7 @@ POC3-02D-OPS-02_DEPLOYMENT = CONFIRMED
 배포 확인 뒤 아래 인계 문서를 작성하십시오.
 
 ```text
-docs/handoff/POC3-02D-OPS-02_RUNTIME_STATE_AND_OPERATIONAL_UI_CORRECTIONS_HANDOFF_2026-09-29.md
+docs/handoff/POC3/POC3-02D-OPS-02_RUNTIME_STATE_AND_OPERATIONAL_UI_CORRECTIONS_HANDOFF_2026-09-29.md
 ```
 
 첫 자연 발송의 `last_delivered_state` 실측을 기다리느라 문서 작성이나 OPS-03 착수를 멈추지 마십시오. 인계 문서에는 우선 다음과 같이 기록합니다.

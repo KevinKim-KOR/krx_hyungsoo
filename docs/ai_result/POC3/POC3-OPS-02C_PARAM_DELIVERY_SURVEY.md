@@ -16,7 +16,7 @@ CODE_CHANGE = 0 · CRON_CHANGE = 0 · FLAG_CHANGE = 0 · DB_CHANGE = 0 · NETWOR
 |---|---|
 | 경로 | `docs/PROJECT_ORIGIN_INTENT.md` |
 | 절 | **PC 분석 평면 / OCI 운영·조회 평면 분리** (2026-06-20 추가) |
-| 참조 | 같은 절이 `docs/handoff/PC_OCI_ARCHITECTURE_DIRECTION.md` 를 가리킨다 |
+| 참조 | 같은 절이 `docs/handoff/OPS/PC_OCI_ARCHITECTURE_DIRECTION.md` 를 가리킨다 |
 
 원문 요지:
 

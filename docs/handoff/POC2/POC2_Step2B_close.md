@@ -144,7 +144,7 @@
 
 신규 (사용자 작성 — 본 챕터에 포함):
 - `docs/agent/INSTRUCTION_RULES.md` — 설계자 역할 / 필수 선행 읽기 / 지시문 작성 규칙
-- `docs/handoff/STATE_LATEST.md` — 프로젝트 현재 상태 스냅샷
+- `docs/handoff/POC2/STATE_LATEST.md` — 프로젝트 현재 상태 스냅샷
 
 ---
 

@@ -161,5 +161,5 @@ USER_CHECK        = 실제 수집 1회 · 화면 확인 완료(2026-10-13 · §7
 
 - 코드 · 시험 · 문서 · 종료 기록과 09 · 10 묶음 인계 문서 · 설계자용 메모를 한 커밋으로 push했다(사용자 승인 2026-10-13 · 커밋 번호 = `git log`). PC 화면 · 갱신 서비스는 자동 다시 읽기로 이미 반영됐다. OCI pull 은 없다(PC 전용 · OCI 08:10 배치는 원래 승인 seed ∪ 현재 보유를 받는다 · PLAN 현행 표).
 - `DEF-PRICE-EQUITY-REFRESH` 수집 원인 = 해소(BACKLOG).
-- 인계: `docs/handoff/POC5-09-10_STORED_VOLUME_AND_HOLDINGS_EQUITY_REFRESH_HANDOFF_2026-10-13.md`.
+- 인계: `docs/handoff/POC5/POC5-09-10_STORED_VOLUME_AND_HOLDINGS_EQUITY_REFRESH_HANDOFF_2026-10-13.md`.
 - 다음 차례 = 설계자 — 「오늘의 투자 점검」 정보량(사용자 의견 · 메모 `docs/ai_result/POC5/POC5_TODAY_SCREEN_DENSITY_NOTE_2026-10-13.md`).

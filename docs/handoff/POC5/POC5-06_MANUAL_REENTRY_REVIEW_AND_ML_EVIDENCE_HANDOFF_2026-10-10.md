@@ -5,7 +5,7 @@
   - 설계서 `docs/ai_design/POC5/POC5-06_MANUAL_REENTRY_REVIEW_AND_ML_EVIDENCE_DESIGN_V1.md` — 개정 2 · §10 PLAN 판정 · §11 RESULT 판정 · 전달문 원문 3건
   - PLAN `docs/ai_plan/POC5/POC5-06_MANUAL_REENTRY_REVIEW_AND_ML_EVIDENCE_PLAN_V1.md`
   - 결과서 `docs/ai_result/POC5/POC5-06_MANUAL_REENTRY_REVIEW_AND_ML_EVIDENCE_RESULT.md` — §6-2 독립 검토 · §6-3 검증자 r1 정정 · §10 배포 · 종료 기록
-  - 직전 인계 `docs/handoff/POC5-05_PERSONAL_HOLDINGS_TRADE_HISTORY_HANDOFF_2026-10-09.md` · 정본 `docs/PROGRAM_TRUTH.md` · 상태 `docs/STATE_LATEST.md` · `docs/backlog/BACKLOG.md` §8
+  - 직전 인계 `docs/handoff/POC5/POC5-05_PERSONAL_HOLDINGS_TRADE_HISTORY_HANDOFF_2026-10-09.md` · 정본 `docs/PROGRAM_TRUTH.md` · 상태 `docs/STATE_LATEST.md` · `docs/backlog/BACKLOG.md` §8
 
 ```text
 POC5-06   IMPLEMENTED_VERIFIED_DEPLOYED_CLOSED (2026-10-10)

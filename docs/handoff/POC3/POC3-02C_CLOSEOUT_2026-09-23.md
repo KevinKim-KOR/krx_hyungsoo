@@ -365,8 +365,8 @@ ssh oci-krx "cd /home/ubuntu/krx_hyungsoo && grep <날짜> state/three_push/oci_
 | OPS-01 결과서 | `docs/ai_result/POC3/POC3-02C-OPS-01_PC_AUTO_PARAM_DELIVERY_RESULT.md` |
 | OPS-02 결과서 (목업 §7 · D2/D3 §23 · 교차 §24) | `docs/ai_result/POC3/POC3-02C-OPS-02_INTRADAY_SURGE_DROP_ALERT_RESULT.md` |
 | OPS-03 결과서 (P1 §12 · 도달성 §13 · 활성화 §14) | `docs/ai_result/POC3/POC3-02C-OPS-03_INTRADAY_ALERT_ACTIVATION_RESULT.md` |
-| OPS-01 종료 | `docs/handoff/POC3-02C-OPS-01_CLOSEOUT_2026-09-18.md` |
-| OPS-02 종료 | `docs/handoff/POC3-02C-OPS-02_CLOSEOUT_2026-09-21.md` |
+| OPS-01 종료 | `docs/handoff/POC3/POC3-02C-OPS-01_CLOSEOUT_2026-09-18.md` |
+| OPS-02 종료 | `docs/handoff/POC3/POC3-02C-OPS-02_CLOSEOUT_2026-09-21.md` |
 | 지금 실제 동작 | `docs/PROGRAM_TRUTH.md` 프로세스 C · §13-7 · 부록 A |
 | 상태 앵커 | `docs/STATE_LATEST.md` |
 

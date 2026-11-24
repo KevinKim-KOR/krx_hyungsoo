@@ -302,7 +302,7 @@ EOD 분석 1회
 
 2. **STATE_LATEST 읽기**:
    - `docs/STATE_LATEST.md` (canonical, 2026-06-07 정리 이후) — 현재 상태 / history 요약 / index.
-   - `docs/handoff/STATE_LATEST_ARCHIVE.md` — 현재 단계 + Step7C VERIFIED 확인 (시간순 누적 본문 보존).
+   - `docs/handoff/POC2/STATE_LATEST_ARCHIVE.md` — 현재 단계 + Step7C VERIFIED 확인 (시간순 누적 본문 보존).
 
 3. **BACKLOG 읽기**:
    - `docs/backlog/BACKLOG.md` — STEP7C 종료 후 신규 + STEP7B + STEP7A + STEP7

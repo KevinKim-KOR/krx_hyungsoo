@@ -309,5 +309,5 @@ r4 변이는 작업 폴더가 아닌 저장소 사본(scratchpad)에서 실행�
 - **첫 정상 OCI 적용(기존 보유 그대로)**: PC 적용 기록 `OCI_APPLIED` · 2026-10-09 07:34:43 KST. 개발자 OCI 읽기 전용 확인 — `state/holdings/holdings_latest.json` 07:34:41 · 5,474바이트 · 최상위 키 `holdings` 하나 · 32줄 · 행 키 = 허용 5필드(`account_group` · `avg_buy_price` · `name` · `quantity` · `ticker`) · 비유한 값 0 · 삼중조합 중복 0 · sha256 `e3246de34ab2ced0d8c520b13b313d8aec4b14da7291a8a454c9c80ee006503e` = PC 현재 보유로 만든 payload sha256 = PC `last_applied_sha256`(개인 이력 · ID 없음 · PC 현재 보유와 일치).
 - **PC 보유 파일**: 저장 없이 기존 형식 그대로(8월 13일 · 5,701바이트 · 백업과 같은 sha256 · §7-2).
 - **종료 뒤 사용자 직접 요청 UI 1건**(2026-10-09 · 색만 · PC 화면 전용 · 설계 · 검증 대상 아님): OCI 카드 'OCI 에 적용된 보유와 같음' 태그를 초록(`hmx-tag-ok` · `--ok` 계열 · 경고 태그와 같은 형태)으로. `OciApplyCard.tsx` 110 → 110 · `globals.css` 3291 → 3293 · 시험 1건 추가(`HoldingsManageView.behavior.test.tsx` 311 → 322) · `npx vitest run` → 30파일 372 passed · `tsc` · `eslint` exit 0. OCI 동작 영향 없음(PC 화면 · 문서만이라 OCI pull 불필요 · 다음 pull 때 맞춰짐). 색은 사용자가 다음 화면에서 확인.
-- **인계**: `docs/handoff/POC5-05_PERSONAL_HOLDINGS_TRADE_HISTORY_HANDOFF_2026-10-09.md`.
+- **인계**: `docs/handoff/POC5/POC5-05_PERSONAL_HOLDINGS_TRADE_HISTORY_HANDOFF_2026-10-09.md`.
 - 종료 조건(설계자 §12-4-5): PC 실화면 · 첫 정상 적용 확인 → 충족. 실제 첫 매매 · v2 저장 · 전량매도 · 다음 영업일 관찰은 종료 조건이 아니다.
