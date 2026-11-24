@@ -5,7 +5,7 @@
 ## POC7 — 판단 품질 연구 (PC 연구 · 연구 중 운영 기능 동결)
 
 ```text
-상태     = POC6 종료(POC6-35 AC3 PASS · CLOSED 2026-11-23) / POC7-01 CLOSED(2026-11-22 · 커밋 c32f13a5 · push · 판정 C · 운영 미채택) / POC7-02 PLAN PASS · 맥북 구현 r5 VERIFIED · Windows 실측 완료(2026-11-24) · AC4 품질 미달 → 설계자 결과 판정 대기
+상태     = POC6 종료(POC6-35 AC3 PASS · CLOSED 2026-11-23) / POC7-01 CLOSED(2026-11-22 · 커밋 c32f13a5 · push · 판정 C · 운영 미채택) / POC7-02 CLOSED(2026-11-24 · 설계자 RESULT 확정 · AC4 품질 미달 · 운영 미채택) / POC7-03 설계 V1 수신 · 개발 PLAN 작성 중
 총괄 설계 = docs/ai_design/POC7/POC7_MASTER_DESIGN_V1_2026-11-20.md(총괄 설계자 V1 · 2026-11-20 · 원문 보관 · 설계자 보관 · STATE 기록 수용 · 원본과 바이트 단위 일치 확인 2026-11-21)
            머리 PREDECESSOR · §7 의 'POC6-35 종료 선행' 문구는 POC7-01 PLAN 판정 §1 로 대체(설계서 머리에 개발자 기록 한 줄)
 POC7-01  주간 ETF 신규 후보의 즉시 참여와 한 주 보류 비교 = PLAN PASS(설계자 2026-11-22) · 형수님 착수 지시(2026-11-22) → PC 연구 구현 · 시험 · 공식 실행 1회
@@ -82,13 +82,18 @@ POC7-02  로컬 AI 주간 ETF 검토 한 장 요약(정확성 · 사용 시간 �
          → 검증자 r5 VERIFIED(2026-11-23 · 결과서 §19 · 제출 시험 435 · 독립 재현 17 통과 · F13 두 회수 순서 모두 별도 실행 2건 · AC4 판정 불가 · 위험 LOW)
          → 설계자 실행 전 판정(2026-11-23 · docs/ai_design/POC7/POC7_02_WEEKLY_REVIEW_LOCAL_AI_SUMMARY_PRE_RUN_DECISION_2026-11-23.md
             · r5 VERIFIED 수용 · Windows 실측 승인 · 질문 19건 판정 · 이번 전달 USB(소스는 git) · 개발자 반복 시간 직접 측정 · 하한만으로 절감 판정 금지(Q-R → report 정정 예정)
-            · POC6 인계서는 POC7-02 마감 문서 묶음에)
+            · POC6 인계서는 POC7-02 마감 문서 묶음에 → 형수님 지시로 소스 커밋 e7979545 에 함께 넣음)
          → Windows 실측(2026-11-24 · 결과서 §20 · KODEX 인도Nifty50(453810) · 보관 01:44(11/23 국내 자료 공개 전 · 형수님 결정)
             · 전달 = 맥북 공용 폴더(SMB · 같은 와이파이 · 형수님 결정 · 판정서 Q-D USB 와 다름) · Ollama 0.40.17 · RTX 4070 SUPER GPU 근거 있음 · 본 요약 COMPLETED · 회수 대조 통과
             · 한 장 본문 399자(생각 글 23,504자) · 중요한 오류 7건(대상 · 방향 · 의미 · 날짜 4 + 필수 누락 3) → AC1 충족 · AC2 미달 · AC4 품질 미달
             · L 직접 7분 · 전체 20분 · 다시 열기 1 · 다시 쓰겠는가 아니오 · L · U 모두 세 답을 내지 못함(형수님: 원문은 숫자 · 내용이 많아 이해 어려움 · 한 장은 너무 짧음)
-            · 커밋 전 전체 백엔드 회귀 7,070 passed · 2 skipped · 실패 0(2026-11-24))
-         다음 = 설계자 결과 판정(결과서 §20-5 질문 R1 ~ R3 · 형수님 의견 원문 §20-4)
+            · 전체 백엔드 회귀 7,070 passed · 2 skipped · 실패 0(2026-11-24 00:35 시작 → 소스 커밋 · push 00:39 → 01:06 끝 · 결과서 §7))
+         → 설계자 RESULT 판정(2026-11-24 · docs/ai_design/POC7/POC7_02_WEEKLY_REVIEW_LOCAL_AI_SUMMARY_RESULT_DECISION_2026-11-24.md)
+            = CLOSED · AC4 품질 미달 · 운영 미채택 · R2 다음 질문 채택(투자 지식이 많지 않아도 첫 화면에서 후보 움직임 · 확인 범위를 이해하는가 · 정확성 + 이해 기준)
+            · R3 Q-R 정정 보류(시간 절감 판정에 다시 쓰기 전 정정 · 결과서 §6-11) · 공용 폴더 전달 사본 삭제(바이트 대조 뒤) · 공용 폴더 · 파일 공유는 형수님 결정으로 유지
+POC7-03  주간 ETF 전체 비교와 우선 검토 후보 = 설계 V1 수신(2026-11-24 · 원문 보관)
+         설계 = docs/ai_design/POC7/POC7_03_WEEKLY_ETF_CANDIDATE_COMPARISON_DESIGN_V1_2026-11-24.md
+         다음 = 개발 PLAN 작성(설계서 근거 'POC7-02 RESULT 판정 R2' 수신 · 반영)
 방향 의견 = docs/ai_design/POC7/POC7_DIRECTION_OPINIONS_LOG.md(의견 1 = 총괄 설계자 앞선 답변 · 개발자 사실 대조 · 질문 7 · 처리 = 총괄 설계 V1)
 문서 정리 = docs/handoff 최상위 문서 34개를 POC2 ~ POC6 · OPS(운영 절차) 하위 폴더로 이동(2026-11-24 · 형수님 요청 · git mv · 문서 · 스크립트 74곳 경로 글자 일괄 수정 · 옛 경로 0곳) · 최상위에는 형수님 총괄 인계서 · 개발자 인계 양식만 남김
 ML_OPERATION_PROMOTION = NOT_APPROVED · CURRENT_DEPLOYABLE_ML_MODEL = none · ASSUMPTIONS Q6 OPEN 유지
