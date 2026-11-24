@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>주간 ETF 전체 비교 · 목업</title>
+<style>
+:root {
+  --bg: #f6f7f4; --card: #ffffff; --fg: #1d2420; --muted: #5d6862; --line: #dfe3dd;
+  --accent: #1f6f5c; --accent-soft: #e3f0eb; --up: #b42318; --down: #1f5fb4; --flat: #7a847e;
+  --warn: #8a5a00; --warn-soft: #fbf1dc; --mock: #6b4fa0; --mock-soft: #efe9f8;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #151917; --card: #1e2421; --fg: #e6ebe7; --muted: #9aa59f; --line: #333b37;
+    --accent: #6cc3a8; --accent-soft: #1f3a32; --up: #ff8a7a; --down: #8ab4ff; --flat: #9aa59f;
+    --warn: #e8b85a; --warn-soft: #3a2f17; --mock: #c3a8ef; --mock-soft: #2e2540; color-scheme: dark; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg);
+  font: 15px/1.6 -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+.mock { background: var(--mock-soft); color: var(--mock); border-radius: 8px; padding: 8px 12px; font-size: 13px; }
+h1 { font-size: 22px; margin: 0; text-wrap: balance; }
+h2 { font-size: 17px; margin: 0 0 8px; }
+.sub { color: var(--muted); font-size: 13px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px; min-width: 0; }
+.head { display: grid; gap: 6px; }
+.dates { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--muted); }
+.dates b { color: var(--fg); font-weight: 600; }
+.status { background: var(--warn-soft); color: var(--warn); border-radius: 8px; padding: 8px 12px; font-size: 14px; }
+.nums { display: flex; flex-wrap: wrap; gap: 8px 24px; margin: 4px 0 12px; }
+.nums .v { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.nums .k { font-size: 12px; color: var(--muted); }
+.dist { display: grid; gap: 4px; max-width: 520px; }
+.dist .row { display: grid; grid-template-columns: 96px 1fr 44px; gap: 8px; align-items: center; font-size: 13px; }
+.dist .bar { height: 12px; background: var(--accent-soft); border-radius: 3px; overflow: hidden; }
+.dist .bar i { display: block; height: 100%; background: var(--accent); }
+.dist .n { text-align: right; font-variant-numeric: tabular-nums; }
+.btn { display: inline-block; border: 1px solid var(--accent); color: var(--accent); background: transparent;
+  border-radius: 8px; padding: 0 14px; height: 40px; line-height: 38px; font-size: 14px; cursor: pointer; font-family: inherit; }
+.btn.primary { background: var(--accent); color: var(--card); }
+.btn.sm { height: 30px; line-height: 28px; padding: 0 10px; font-size: 13px; }
+.btnrow { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+details.list > summary { list-style: none; cursor: pointer; }
+details.list > summary::-webkit-details-marker { display: none; }
+details.list > summary .btn::after { content: " ▾"; }
+details.list[open] > summary .btn::after { content: " ▴"; }
+.tbl { overflow-x: auto; margin-top: 10px; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; font-variant-numeric: tabular-nums; }
+th, td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; white-space: nowrap; }
+th { color: var(--muted); font-weight: 600; }
+td.r, th.r { text-align: right; }
+.wk span { display: inline-block; width: 18px; text-align: center; }
+.u { color: var(--up); } .d { color: var(--down); } .f { color: var(--flat); }
+.tag { display: inline-block; font-size: 11px; border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; color: var(--muted); }
+.tag.top { border-color: var(--accent); color: var(--accent); }
+.na { color: var(--warn); }
+.pick { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
+.pc { border: 1px solid var(--line); border-radius: 8px; padding: 12px; display: grid; gap: 6px; min-width: 0; }
+.pc .t { font-weight: 700; }
+.pc .m { font-size: 13px; color: var(--muted); }
+.diff { margin-top: 10px; background: var(--accent-soft); border-radius: 8px; padding: 10px 12px; font-size: 14px; }
+.lead { font-size: 16px; font-weight: 600; margin: 0 0 4px; }
+.kv { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 6px 12px; font-size: 14px; margin-top: 8px; }
+.kv .k { color: var(--muted); }
+@media (max-width: 560px) { .kv { grid-template-columns: minmax(0, 1fr); } .kv .k { margin-top: 6px; } }
+.weeks { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.weeks div { border: 1px solid var(--line); border-radius: 6px; padding: 6px; font-size: 12px; text-align: center; }
+.weeks b { display: block; font-size: 14px; }
+.copy { width: 100%; min-height: 260px; font: 13px/1.55 ui-monospace, Menlo, monospace; background: var(--bg);
+  color: var(--fg); border: 1px solid var(--line); border-radius: 8px; padding: 10px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.note { font-size: 12px; color: var(--muted); margin-top: 6px; }
+.copied { font-size: 13px; color: var(--accent); align-self: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="mock">목업 · 예시 값입니다(실제 자료 아님). ETF 이름은 A ~ J 로 바꿔 적었습니다. 설계 §2 의 가상 화면 A · B 예와 PLAN 판정 §4 를 따랐습니다.</div>
+
+<section class="card head">
+  <h1>이번 주 ETF 전체 비교</h1>
+  <div class="dates">
+    <span>1개월 <b>10/21 → 11/20(금) 마감</b></span>
+    <span>네 주 <b>10/23 → 10/30 → 11/06 → 11/13 → 11/20</b></span>
+    <span>비교 기준 <b>KODEX 200</b>(국내 시장)</span>
+  </div>
+  <div class="sub">1개월 끝일과 네 주 끝일이 다르면(주 중간에 연 경우) 두 날짜를 각각 적고 '주중 참고'를 붙입니다.</div>
+  <div class="status">이 순서는 <b>연구 중인 기준</b>입니다. 과거 비교 결과: 아직 판정 전 — 판정이 나오면 이 줄에 적습니다.</div>
+</section>
+
+<section class="card">
+  <h2>① 전체 범위</h2>
+  <div class="nums">
+    <div><div class="v">912개</div><div class="k">비교한 ETF(인버스 · 레버리지 · 합성 · 선물 제외)</div></div>
+    <div><div class="v">30개</div><div class="k">기존 「주간 ETF 점검」 상위</div></div>
+    <div><div class="v">8개</div><div class="k">주 마감 가격이 없어 '오른 횟수 미확인'</div></div>
+  </div>
+  <div class="sub" style="margin-bottom:6px">지난 네 주 중 오른 주가 몇 번이었나(변화 없음은 오름으로 세지 않음)</div>
+  <div class="dist">
+    <div class="row"><span>4번 모두</span><span class="bar"><i style="width:20%"></i></span><span class="n">61</span></div>
+    <div class="row"><span>3번</span><span class="bar"><i style="width:63%"></i></span><span class="n">188</span></div>
+    <div class="row"><span>2번</span><span class="bar"><i style="width:100%"></i></span><span class="n">297</span></div>
+    <div class="row"><span>1번</span><span class="bar"><i style="width:81%"></i></span><span class="n">241</span></div>
+    <div class="row"><span>0번</span><span class="bar"><i style="width:39%"></i></span><span class="n">117</span></div>
+    <div class="row"><span>미확인</span><span class="bar"><i style="width:3%"></i></span><span class="n">8</span></div>
+  </div>
+</section>
+
+<section class="card">
+  <h2>② 먼저 볼 후보</h2>
+  <div class="sub" style="margin-bottom:8px">1개월 수익률이 플러스인 ETF 중, 지난 네 주에 오른 주가 많은 순서입니다. 같으면 1개월 순위를 따릅니다.</div>
+  <div class="pick">
+    <div class="pc"><div class="t">1. ETF E</div><div>지난 4주에 매주 올랐습니다. 1개월 수익률 순위도 5위로 높은 편입니다.</div><div class="m">1개월 +9.4%(5위) · 오른 주 4번</div><span class="btn">자세히 보기</span></div>
+    <div class="pc"><div class="t">2. ETF G</div><div>지난 4주에 매주 올랐습니다. 1개월 수익률은 9위입니다.</div><div class="m">1개월 +8.6%(9위) · 오른 주 4번</div><span class="btn">자세히 보기</span></div>
+    <div class="pc"><div class="t">3. ETF B</div><div>지난 4주에 매주 올랐습니다. 1개월 수익률은 A보다 낮습니다.</div><div class="m">1개월 +7.0%(37위 · 상위 30 밖) · 오른 주 4번</div><span class="btn primary">자세히 보기</span></div>
+  </div>
+  <div class="diff">수익률 순위로는 <b>A · C · D</b> 를 먼저 봤습니다. A 는 1개월 1위(+11.0%)지만 네 주 중 한 주만 올랐고, C 는 두 주, D 는 세 주 올랐습니다. 그래서 네 주 모두 오른 <b>E · G · B</b> 를 앞세웠습니다.</div>
+</section>
+
+<section class="card">
+  <details class="list">
+    <summary><span class="btn">전체 목록 열기 (912개)</span> <span class="sub">기본은 접혀 있습니다 · 상위 30 밖도 골라 상세를 볼 수 있습니다</span></summary>
+    <div class="tbl">
+      <table>
+        <thead><tr><th class="r">1개월 순위</th><th class="r">공통 순위</th><th>ETF</th><th class="r">1개월</th><th>네 주</th><th class="r">오른 주</th><th>표시</th><th></th></tr></thead>
+        <tbody>
+          <tr><td class="r">1</td><td class="r">1</td><td>ETF A</td><td class="r u">+11.0%</td><td class="wk"><span class="d">▼</span><span class="d">▼</span><span class="u">▲</span><span class="d">▼</span></td><td class="r">1</td><td><span class="tag top">상위 30</span></td><td><span class="btn sm">상세</span></td></tr>
+          <tr><td class="r">2</td><td class="r">2</td><td>ETF C</td><td class="r u">+10.2%</td><td class="wk"><span class="u">▲</span><span class="d">▼</span><span class="u">▲</span><span class="d">▼</span></td><td class="r">2</td><td><span class="tag top">상위 30</span> <span class="tag">같은 기초지수 2개</span></td><td><span class="btn sm">상세</span></td></tr>
+          <tr><td class="r">3</td><td class="r">3</td><td>ETF D</td><td class="r u">+9.8%</td><td class="wk"><span class="u">▲</span><span class="u">▲</span><span class="d">▼</span><span class="u">▲</span></td><td class="r">3</td><td><span class="tag top">상위 30</span></td><td><span class="btn sm">상세</span></td></tr>
+          <tr><td class="r">5</td><td class="r">5</td><td>ETF E</td><td class="r u">+9.4%</td><td class="wk"><span class="u">▲</span><span class="u">▲</span><span class="u">▲</span><span class="u">▲</span></td><td class="r">4</td><td><span class="tag top">상위 30</span></td><td><span class="btn sm">상세</span></td></tr>
+          <tr><td class="r">9</td><td class="r">9</td><td>ETF G</td><td class="r u">+8.6%</td><td class="wk"><span class="u">▲</span><span class="u">▲</span><span class="u">▲</span><span class="u">▲</span></td><td class="r">4</td><td><span class="tag top">상위 30</span></td><td><span class="btn sm">상세</span></td></tr>
+          <tr><td class="r">37</td><td class="r">37</td><td>ETF B</td><td class="r u">+7.0%</td><td class="wk"><span class="u">▲</span><span class="u">▲</span><span class="u">▲</span><span class="u">▲</span></td><td class="r">4</td><td><span class="tag">상위 30 밖</span></td><td><span class="btn sm">상세</span></td></tr>
+          <tr><td class="r">214</td><td class="r na">미확인</td><td>ETF J</td><td class="r u">+2.3%</td><td class="wk"><span class="f">?</span><span class="u">▲</span><span class="u">▲</span><span class="u">▲</span></td><td class="r na">미확인</td><td><span class="tag">10/23 주 마감 가격 없음</span></td><td><span class="btn sm">상세</span></td></tr>
+          <tr><td class="r">418</td><td class="r">416</td><td>ETF H</td><td class="r f">0.0%</td><td class="wk"><span class="f">－</span><span class="u">▲</span><span class="f">－</span><span class="d">▼</span></td><td class="r">1</td><td><span class="tag">상위 30 밖</span></td><td><span class="btn sm">상세</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="note">목업은 912개 중 일부만 보였습니다. 1개월 순위 = 비교한 전체 안의 순위 · 공통 순위 = 주 마감 가격이 모두 있는 후보 안의 순위. ▲ 오름 · ▼ 내림 · － 변화 없음 · ? 가격 없음. 같은 기초지수 표시는 기존 화면의 계열 의미를 따릅니다.</div>
+  </details>
+</section>
+
+<section class="card">
+  <h2>③ 후보 상세 — ETF B</h2>
+  <p class="lead">10월 21일부터 11월 20일까지 ETF B는 7.0% 올랐습니다. 같은 기간 국내 시장 비교 기준인 KODEX 200은 2.1% 내렸습니다.</p>
+  <div class="kv">
+    <div class="k">3개월</div><div>8월 20일부터 11월 20일까지 4.2% 올랐습니다. 같은 기간 KODEX 200은 5.3% 내렸습니다.</div>
+    <div class="k">네 주 구간</div>
+    <div>
+      <div class="weeks">
+        <div>10/23 → 10/30<b class="u">+1.2%</b></div>
+        <div>10/30 → 11/06<b class="u">+2.0%</b></div>
+        <div>11/06 → 11/13<b class="u">+0.6%</b></div>
+        <div>11/13 → 11/20<b class="u">+1.1%</b></div>
+      </div>
+    </div>
+    <div class="k">구성 자료</div><div>B 의 구성은 11/16 기준 상위 10행만 저장돼 있습니다.</div>
+    <div class="k">내 보유와 겹침</div><div>확보된 상위 10행 안에서는 내 보유와 같은 주식이 <b>0개(확인된 0)</b>입니다. 다만 B 의 상위 10행 밖, 그리고 내 보유 ETF 7개 중 3개의 상위 30행 밖 구성은 <b>확인하지 못했습니다</b> — 그래서 '겹침 없음'이 아닙니다.</div>
+    <div class="k">어디까지 말할 수 있나</div><div>가격 움직임(1 · 3개월 · 네 주)은 말할 수 있습니다. 내 보유와 얼마나 겹치는지는 일부만 말할 수 있습니다. 11/20 가격은 마감 뒤 저장값입니다.</div>
+    <div class="k">다음 확인 한 가지</div><div><b>B 의 전체 구성</b> — 내 보유와 같은 주식을 많이 담았다면 새로 담아도 위험이 분산되지 않기 때문입니다.</div>
+  </div>
+  <div class="btnrow"><span class="btn">구성종목 보기 →</span><span class="btn">비교 상세 →</span></div>
+  <div class="note">상위 30 밖 후보도 같은 기간 가격 근거를 엽니다. 구성종목은 저장된 것만 쓰고, 없으면 '미확인'으로 적습니다(새로 조회하지 않음). 보유 ETF 개수 같은 개인 자료는 이 로컬 상세에만 보이고 복사문에는 넣지 않습니다.</div>
+</section>
+
+<section class="card">
+  <h2>④ AI 에 물을 비교 묶음</h2>
+  <div class="btnrow" style="margin:0 0 8px"><button class="btn primary" id="copyBtn" type="button">복사</button><span class="copied" id="copied" hidden>복사했습니다</span></div>
+<div class="copy" id="copyText">답변 전에 판단에 사용하는 항목의 최신 공개 자료를 확인해 주세요. 공식 출처를 우선하고, 국내 종가·수급과 해외 지표는 각 자료의 거래일과 공표 시점을 기준으로 확인해 주세요. 확인 결과에는 값·기준일·출처 링크를 적어 주세요. 저장값과 같으면 그 사실을, 더 최신 값이나 같은 날짜의 정정값이 있으면 어느 해석이 달라지는지 적어 주세요. 최신 공개 자료를 확인할 수 없으면 ‘최신 자료 확인 불가’라고 쓰고 제공된 저장 자료의 기준일을 밝혀 설명해 주세요.
+
+[주간 ETF 비교 묶음 · 1개월 끝일 11/20(금) 마감 · 개인 보유 자료(금액 · 비중 · 종목 · 수량 · 건수) 없음]
+비교 범위: 인버스 · 레버리지 · 합성 · 선물 제외 ETF 912개 · 오른 횟수 미확인 8개
+기간: 1개월 10/21 → 11/20 · 네 주 10/23 → 10/30 → 11/06 → 11/13 → 11/20 · 비교 기준 KODEX 200(1개월 -2.1% · 3개월 -5.3%)
+
+[연구 기준이 먼저 본 3개] 1개월 플러스 중 오른 주가 많은 순
+- ETF E: 1개월 +9.4%(5위) · 오른 주 4번(+0.8 / +1.5 / +0.9 / +1.0%)
+- ETF G: 1개월 +8.6%(9위) · 오른 주 4번(+0.4 / +2.2 / +1.3 / +0.7%)
+- ETF B: 1개월 +7.0%(37위) · 3개월 +4.2% · 오른 주 4번(+1.2 / +2.0 / +0.6 / +1.1%) · 구성 상위 10행만 확인(11/16)
+[수익률 순위 상위 3개]
+- ETF A: 1개월 +11.0%(1위) · 오른 주 1번
+- ETF C: 1개월 +10.2%(2위) · 오른 주 2번
+- ETF D: 1개월 +9.8%(3위) · 오른 주 3번
+[내 보유와 겹침 확인 범위] 고른 ETF 의 확보된 구성 안에서는 겹치는 주식이 확인되지 않았지만, 고른 ETF 와 내 보유 쪽 모두 구성을 확인하지 못한 부분이 있어 '겹침 없음'이 아님
+
+질문 견본: B 를 먼저 볼 이유가 A 와 어떻게 다르고, 내 보유와 겹치는지를 어디까지 확인했나요? 대상 · 기간 · 근거를 짚어 설명해 주세요. 매수 · 매도 결론은 쓰지 마세요.</div>
+  <div class="note">순서는 프로그램이 계산합니다. AI 는 위 표의 대상 · 기간 · 근거로 차이를 설명합니다(설계 §2). 첫 문단은 기존 '최신 공개 자료 확인' 문단 그대로입니다.</div>
+</section>
+
+</div>
+<script>
+(function () {
+  var btn = document.getElementById("copyBtn");
+  var box = document.getElementById("copyText");
+  var done = document.getElementById("copied");
+  function shown() { done.hidden = false; setTimeout(function () { done.hidden = true; }, 2000); }
+  function fallback() {
+    var r = document.createRange(); r.selectNodeContents(box);
+    var s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+    try { if (document.execCommand("copy")) { shown(); return; } } catch (e) {}
+    done.textContent = "글을 선택해 두었습니다 — ⌘C 로 복사하세요"; done.hidden = false;
+  }
+  btn.addEventListener("click", function () {
+    var text = box.innerText;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(shown, fallback);
+    } else { fallback(); }
+  });
+})();
+</script>
+</body>
+</html>
