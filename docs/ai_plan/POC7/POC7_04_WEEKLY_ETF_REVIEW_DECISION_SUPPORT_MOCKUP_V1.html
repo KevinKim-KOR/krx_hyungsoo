@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>POC7-04 관심 ETF 검토 목업</title>
+<style>
+:root { --bg:#f6f7f9; --card:#fff; --fg:#1d2330; --mute:#5b6472; --line:#e2e6ec; --up:#c62828; --down:#1565c0; --acc:#2f5bd3; --ai:#eef4ff; --aib:#c9d8fb; --mine:#eef7f0; --mineb:#bfe0c8; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.6 -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; word-break:keep-all; overflow-wrap:break-word; }
+.wrap { max-width:920px; margin:0 auto; padding:16px; display:flex; flex-direction:column; gap:14px; }
+.banner { background:#fff8e6; border:1px solid #f0d98c; border-radius:10px; padding:10px 14px; font-size:13px; color:#6b5200; }
+.card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; }
+h1 { font-size:20px; margin:0 0 4px; }
+h2 { font-size:16px; margin:0 0 8px; display:flex; align-items:center; gap:8px; }
+.step { display:inline-flex; width:24px; height:24px; border-radius:50%; background:var(--fg); color:#fff; font-size:13px; align-items:center; justify-content:center; flex:none; }
+.sub { color:var(--mute); font-size:13px; }
+.nw { white-space:nowrap; }
+.up { color:var(--up); } .down { color:var(--down); }
+.pick { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:10px 0 4px; }
+.pick select { font-size:15px; padding:8px 10px; border:1px solid var(--line); border-radius:8px; max-width:100%; }
+.lead { font-size:18px; font-weight:700; margin:12px 0 2px; }
+.facts { list-style:none; margin:12px 0 0; padding:0; display:grid; gap:10px; }
+.facts li { display:grid; grid-template-columns:150px 1fr; gap:4px 14px; }
+.facts .k { color:var(--mute); font-size:13px; padding-top:2px; }
+.facts .v { min-width:0; }
+.src { display:inline-block; font-size:11px; border-radius:6px; padding:0 6px; border:1px solid #b9c4dc; color:#40527a; white-space:nowrap; }
+.src.rec { border-color:#9bc59f; color:#2e6b34; }
+.src.obs { border-color:#d6c49b; color:#7a5b00; }
+.ai { background:var(--ai); border:1px solid var(--aib); }
+.ask { font-size:18px; font-weight:700; margin:6px 0 10px; }
+.btnrow { display:flex; flex-wrap:wrap; align-items:center; gap:10px; }
+.btn { height:48px; padding:0 18px; border-radius:8px; border:1px solid var(--acc); background:var(--acc); color:#fff; font-size:16px; font-weight:600; }
+.btn.alt { background:#fff; color:var(--acc); height:40px; font-size:14px; font-weight:500; }
+.look { margin:12px 0 0; padding-left:18px; }
+.look li { margin:2px 0; }
+details { margin-top:10px; }
+summary { cursor:pointer; color:var(--acc); }
+pre { white-space:pre-wrap; word-break:break-word; background:#fff; border:1px solid var(--line); border-radius:8px; padding:12px; font-size:13px; margin:8px 0 0; }
+.mine { background:var(--mine); border:1px solid var(--mineb); }
+.choice { display:flex; flex-wrap:wrap; gap:8px; margin:6px 0 10px; }
+.choice label { border:1px solid var(--line); background:#fff; border-radius:8px; padding:10px 14px; font-size:15px; }
+.form { display:grid; gap:10px; }
+input[type=text], textarea { width:100%; font-size:14px; padding:9px; border:1px solid var(--line); border-radius:8px; font-family:inherit; background:#fff; }
+.checks { display:flex; flex-wrap:wrap; gap:6px 14px; font-size:14px; }
+/* 지난 네 주 — 넓은 화면 = 주별 한 행 · 좁은 화면 = 주마다 세로 카드 */
+.weeks { display:grid; gap:0; margin-top:8px; }
+.wk { display:grid; grid-template-columns:92px 1.4fr 1.3fr 1fr; gap:10px; padding:10px 4px; border-bottom:1px solid var(--line); }
+.wk.head { font-size:12px; color:var(--mute); font-weight:600; padding-top:4px; }
+.wk .cell div { line-height:1.5; }
+.wk .lbl { display:none; font-size:12px; color:var(--mute); }
+.date { font-weight:600; }
+@media (max-width: 600px) {
+  .facts li { grid-template-columns:1fr; }
+  .wk.head { display:none; }
+  .wk { grid-template-columns:1fr; gap:6px; border:1px solid var(--line); border-radius:10px; margin-bottom:10px; padding:12px; }
+  .wk .lbl { display:block; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="banner">목업(설계자 PLAN 판정 반영 · 형수님 요청으로 '지난 네 주'를 ①과 ② 사이에) — 실제 저장 자료(PC 시세 DB · 공식 기준정보 · 판단 근거 기록 · 2026-11-24 읽기 전용)로 채운 한 후보 예시. 개인 보유 수치와 메모 원문은 넣지 않았습니다.</div>
+
+<section class="card">
+  <h1>관심 ETF 검토</h1>
+  <div class="sub">검토 기준일 <span class="nw">11/23(월)</span> · 가격 마감 뒤 저장 · 완료 주 마감 <span class="nw">11/20(금)</span> · 11/23 주는 거래 중</div>
+  <div class="pick"><select aria-label="검토할 ETF"><option>KODEX 인도Nifty50 (453810)</option></select><span class="sub">후보를 바꾸면 아래 근거와 질문이 같은 기준일로 바뀝니다</span></div>
+
+  <h2><span class="step">1</span>왜 이번에 보나</h2>
+  <div class="lead"><span class="nw">10/26 ~ 11/23</span> <span class="up nw">+18.11%</span> · 1개월 <b>4위</b></div>
+  <div class="sub">「주간 ETF 점검」 조건(1개월 · 인버스 · 레버리지 · 합성 · 선물 제외) 970개 중</div>
+  <ul class="facts">
+    <li><div class="k">같은 기간 KODEX 200</div><div class="v"><span class="down nw">−14.09%</span></div></li>
+    <li><div class="k">최근 네 주</div><div class="v">11/20 마감까지 네 주 모두 상승</div></li>
+    <li><div class="k">확인된 근거</div><div class="v">같은 Nifty 50 지수를 따르는 TIGER 인도니프티50(같은 구조 · 총보수 0.19%)도 같은 기간 <span class="up nw">+18.71%</span>.<br>두 상품의 원화 가격이 함께 올랐습니다.</div></li>
+    <li><div class="k">순위 흐름</div><div class="v"><span class="nw">10/30 순위권 밖(138위)</span> → <span class="nw">11/6 · 11/13 · 11/20</span> 마감 기준 상위 30(<span class="nw">9 · 9 · 4위</span>) → <span class="nw">11/23 4위</span><br><span class="src">현재 ETF 목록과 저장 가격으로 복원</span></div></li>
+    <li><div class="k">지난 검토와 비교</div><div class="v"><span class="nw">11/16 저장 기록</span>: 3위 · <span class="nw">+10.80%</span> · <span class="nw">10/19 → 11/16</span> · 같은 조건<br>→ 지금 4위 · <span class="nw">+18.11%</span> · <span class="nw">10/26 → 11/23</span><br><span class="src rec">저장 기록 있음 · 사용자 판단 미확인</span></div></li>
+    <li><div class="k">자료 공백</div><div class="v">원화 가격이라 현지 지수 움직임과 환율 영향이 나뉘지 않습니다.</div></li>
+  </ul>
+</section>
+
+<section class="card">
+  <h2>지난 네 주</h2>
+  <div class="sub">검토가 속한 주(11/23 주) 직전 네 완료 주 · 실제 거래 일정의 마감일</div>
+  <div class="weeks">
+    <div class="wk head"><div>주 마감</div><div>그때 후보로 어떻게 보였나</div><div>그 주 저장 기록</div><div>그 뒤 다음 주 마감까지</div></div>
+
+    <div class="wk">
+      <div class="cell date">10/30(금)</div>
+      <div class="cell"><div class="lbl">그때</div><div>138위 · 순위권 밖</div><div>1개월 <span class="nw">+0.71%</span> · <span class="nw">9/30 → 10/30</span></div><div class="sub">네 주 중 2주 상승 · <span class="src">복원</span></div></div>
+      <div class="cell"><div class="lbl">그 주 저장 기록</div><div>없음</div></div>
+      <div class="cell"><div class="lbl">그 뒤 <span class="src obs">관측</span></div><div>ETF <span class="up nw">+9.71%</span></div><div>KODEX 200 <span class="down nw">−12.99%</span></div></div>
+    </div>
+
+    <div class="wk">
+      <div class="cell date">11/06(금)</div>
+      <div class="cell"><div class="lbl">그때</div><div><b>9위</b> · 상위 30</div><div>1개월 <span class="nw">+13.06%</span> · <span class="nw">10/7 → 11/6</span></div><div class="sub">네 주 중 3주 상승 · <span class="src">복원</span></div></div>
+      <div class="cell"><div class="lbl">그 주 저장 기록</div><div>없음</div><div class="sub">그 주 저장 기록 3건에 이 ETF 없음</div></div>
+      <div class="cell"><div class="lbl">그 뒤 <span class="src obs">관측</span></div><div>ETF <span class="nw">+0.17%</span></div><div>KODEX 200 <span class="up nw">+5.20%</span></div></div>
+    </div>
+
+    <div class="wk">
+      <div class="cell date">11/13(금)</div>
+      <div class="cell"><div class="lbl">그때</div><div>9위 · 상위 30</div><div>1개월 <span class="nw">+11.52%</span> · <span class="nw">10/14 → 11/13</span></div><div class="sub">네 주 중 3주 상승 · <span class="src">복원</span></div></div>
+      <div class="cell"><div class="lbl">그 주 저장 기록</div><div>없음</div></div>
+      <div class="cell"><div class="lbl">그 뒤 <span class="src obs">관측</span></div><div>ETF <span class="up nw">+3.32%</span></div><div>KODEX 200 <span class="down nw">−8.31%</span></div></div>
+    </div>
+
+    <div class="wk">
+      <div class="cell date">11/20(금)</div>
+      <div class="cell"><div class="lbl">그때</div><div><b>4위</b> · 상위 30</div><div>1개월 <span class="nw">+15.06%</span> · <span class="nw">10/21 → 11/20</span></div><div class="sub">네 주 모두 상승 · <span class="src">복원</span></div></div>
+      <div class="cell"><div class="lbl">그 주 저장 기록</div><div><b>11/16 기록</b> · 3위 · <span class="nw">+10.80%</span> · <span class="nw">10/19 → 11/16</span></div><div class="sub">사용자 판단 미확인 · 메모 있음 · <span class="src rec">당시 저장 기록</span></div>
+        <details><summary>저장 기록 자세히</summary><div class="sub">원래 저장값 '보류' · 직접 선택 여부 미확인(이 저장 화면의 기본값이 '보류') · 메모 있음(원문은 로컬 화면에서만) · 출처 화면 「요즘 잘 오르는 ETF」(당시) · 저장 11/17 00:14</div></details>
+      </div>
+      <div class="cell"><div class="lbl">그 뒤</div><div>기간 미경과</div><div class="sub"><span class="nw">11/27(금)</span> 종료 예정</div></div>
+    </div>
+  </div>
+  <details><summary>복원 · 대조 근거</summary>
+    <div class="sub">현재 ETF 목록과 저장 가격으로 복원했습니다. 기준일까지의 가격과 같은 선정 조건만 씁니다. 상장폐지 등으로 당시 목록과 다를 수 있습니다. 대조: 11/16 을 기준일로 복원하면 3위 · +10.7973% 로 그날 저장값과 같습니다. 그 뒤 관측은 그때 판단의 근거에 넣지 않습니다.</div>
+  </details>
+  <details><summary>구성 · 겹침(이번 판단을 바꾸지 않아 접어 둠)</summary>
+    <div class="sub">11/16 에 저장된 상위 30종목이 이 ETF 편입 비중의 84.96%(모두 인도 대형주). 저장된 양쪽 구성에서 확인된 중복 주식 0종목. 남은 구성은 미확인입니다.</div>
+  </details>
+</section>
+
+<section class="card ai">
+  <h2><span class="step">2</span>AI에 확인할 것</h2>
+  <div class="ask"><span class="nw">10/26~11/23</span>에 Nifty 50은 현지 통화로도 올랐나요?</div>
+  <div class="btnrow"><button class="btn" type="button">AI 질문 복사</button><span>복사한 질문을 평소 쓰는 AI 채팅에 붙여 넣으세요.</span></div>
+  <ul class="look">
+    <li><b>답에서 볼 것</b> · 현지 지수도 올랐는지</li>
+    <li>ETF 원화 수익률과 차이가 있다면 무엇으로 설명되는지</li>
+    <li>그 결과가 검토 의견을 어떻게 바꾸는지 — 인도 시장 자체의 상승이 확인되면 같은 지수 ETF 를 계속 비교할 근거가 됩니다</li>
+  </ul>
+  <details><summary>복사되는 전체 글 보기</summary>
+<pre>[최신 공개 자료 확인 문단 — 기존 문장 그대로]
+
+[검토 대상] KODEX 인도Nifty50(453810) · 검토 기준일 2026-11-23(월 · 가격 마감 뒤 저장) · 완료 주 마감 11/20(금)
+[이번에 후보로 나온 이유] 「주간 ETF 점검」 조건(1개월 수익률 · 인버스 · 레버리지 · 합성 · 선물 제외) 970개 중 4위 · 10/26 ~ 11/23 +18.11% · 같은 기간 KODEX 200 −14.09% · 11/20 마감까지 최근 네 주 모두 상승
+[확인된 근거] 같은 Nifty 50 지수를 따르는 TIGER 인도니프티50(같은 구조 · 총보수 0.19%)도 10/26 ~ 11/23 +18.71% — 두 상품의 원화 가격이 함께 오름
+[지난 네 주 — 현재 ETF 목록과 저장 가격으로 복원] 10/30 138위(순위권 밖) → 11/06 9위 → 11/13 9위 → 11/20 4위
+[당시 저장 기록] 11/16 기준 1건 — 3위 · 1개월 +10.80%(10/19 → 11/16) · 사용자 판단 미확인
+[그 뒤 관측] 10/30 → 11/06 ETF +9.71% · KODEX 200 −12.99% / 11/06 → 11/13 ETF +0.17% · KODEX 200 +5.20% / 11/13 → 11/20 ETF +3.32% · KODEX 200 −8.31% / 11/20 → 11/27 기간 미경과
+[판단에 영향을 주는 자료 공백] 원화 가격이라 현지 지수 움직임과 환율 영향이 나뉘지 않음 · 분배금 미반영
+
+[AI에 확인할 것] 10/26~11/23에 Nifty 50은 현지 통화로도 올랐나요?
+공식 자료에서 지수의 실제 비교일 · 수익률 · 출처를 확인해 주세요. 새로 확인한 값은 기준일 · 출처와 함께 적어 위 저장값과 구별해 주세요.
+ETF 원화 수익률과 차이가 크면 필요에 따라 관련 환율 · 환헤지 여부 · 두 자료의 마감 시각과 수익률 기준을 확인하고, 차이가 환율로 설명된다고 하려면 근거를 제시해 주세요.
+정확한 비교가 어려우면 확인된 범위와 부족한 근거를 적어 주세요.
+
+이 ETF를 이번 주 계속 검토할지 보류할지 권고해 주세요. 우리 후보 기준에서 이번에 어떻게 보였는지와 이전 네 주에서 달라진 점을 근거로 들어 주세요. 같은 기간 비교에서 권고에 불리한 근거 한 가지와, 어떤 사실을 확인하면 결론이 달라질지 한 가지를 알려 주세요. 당시 저장 기록, 현재 기준 복원, 그 뒤 관측은 구분해서 인용해 주세요.</pre>
+  </details>
+</section>
+
+<section class="card mine">
+  <h2><span class="step">3</span>내 판단 남기기</h2>
+  <div class="sub">AI 답을 읽은 뒤 고르세요. 처음은 '미기록'입니다.</div>
+  <div class="choice"><label><input type="radio" name="v"> 검토 계속</label><label><input type="radio" name="v"> 보류</label><label><input type="radio" name="v" checked> 미기록</label></div>
+  <div class="form">
+    <input type="text" placeholder="이유 한 줄">
+    <input type="text" placeholder="다음에 확인할 것 한 가지">
+    <div class="checks"><span class="sub">판단에 쓴 근거</span><label><input type="checkbox"> 순위 흐름</label><label><input type="checkbox"> 같은 지수 상품</label><label><input type="checkbox"> 지난 검토와 비교</label><label><input type="checkbox"> AI 답</label></div>
+    <textarea rows="3" placeholder="AI 답 붙여 넣기(쓴 대목을 표시) — 어느 AI 인지와 붙인 시각이 함께 남습니다"></textarea>
+    <div class="btnrow"><button class="btn" type="button">저장</button><button class="btn alt" type="button">지난 판단 열기</button></div>
+    <div class="sub">저장하면 지금 화면의 근거 · 지난 네 주 · 복사된 질문 원문 · 기준일 · 조회 조건을 함께 고정합니다. 저장에 실패하면 쓴 내용을 그대로 두고 '저장 안 됨 — 다시 저장'을 보입니다.</div>
+  </div>
+</section>
+
+
+</div>
+</body>
+</html>
